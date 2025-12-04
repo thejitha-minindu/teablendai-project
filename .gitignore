@@ -166,3 +166,13 @@ venv/
 .venv/
 env/
 .env/
+
+
+# Environment files
+.env.development
+.env.production
+.env.local
+*.env
+
+# Docker
+docker-compose.override.yml
