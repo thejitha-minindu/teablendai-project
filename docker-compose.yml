@@ -1,0 +1,46 @@
+version: '3.9'
+
+services:
+  # Backend Service
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: teablend_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source code for hot-reloading
+      - ./backend:/app
+      # Exclude __pycache__
+      - /app/__pycache__
+    env_file:
+      - .env.development  # for development environment
+    networks:
+      - teablend_network
+    restart: unless-stopped
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: teablend_frontend
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot-reloading
+      - ./frontend:/app
+      - /app/node_modules
+    env_file:
+      - .env.development
+    depends_on:
+      - backend
+    networks:
+      - teablend_network
+    restart: unless-stopped
+    command: npm run dev
+
+networks:
+  teablend_network:
+    driver: bridge
