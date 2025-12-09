@@ -1,3 +1,7 @@
+import React from 'react';
+import './globals.css';
+// import AuctionPreview from '@/components/AuctionPreview';
+
 export default function HomePage() {
   return (
     <main>
