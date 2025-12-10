@@ -15,6 +15,7 @@ export function SellerNavBar() {
     { name: 'Live Auction', href: '/seller/live' },
     { name: 'Scheduled Auction', href: '/seller/scheduled' },
     { name: 'Chat Bot', href: '/chatbot' },
+
   ];
 
   return (
