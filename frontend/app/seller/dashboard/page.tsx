@@ -32,13 +32,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-[#ECF3E0] to-[#D4E2C6] p-12 rounded-3xl border-4 border-[#3A5A40] text-center shadow-2xl h-96 flex flex-col justify-center items-center hover:scale-105 transition-transform duration-300">
+      <div className="bg-linear-to-br from-[#ECF3E0] to-[#D4E2C6] p-12 rounded-3xl border-4 border-[#3A5A40] text-center shadow-2xl h-96 flex flex-col justify-center items-center hover:scale-105 transition-transform duration-300">
         <h2 className="text-4xl font-extrabold text-[#1A2F1C] mb-4 animate-fade-in">Ready to Sell Your Tea?</h2>
         <p className="text-[#4F5D45] mb-8 max-w-md text-lg">Create a new auction and set your desired tea grade, quantity, and starting price.</p>
         
         <Link 
           href="/seller/create-auction"
-          className="bg-white text-black font-bold py-4 px-10 text-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-[2px] hover:translate-y-[2px] transition-all duration-200"
+          className="bg-white text-black font-bold py-4 px-10 text-2xl border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all duration-200"
         >
           Create Auction
         </Link>

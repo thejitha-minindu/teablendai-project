@@ -6,14 +6,14 @@ import { usePathname } from 'next/navigation';
 import { UserCircle } from 'lucide-react';
 import '../../app/globals.css';
 
-export function SellerNavBar() {
+export function BuyerNavBar() {
   const pathname = usePathname();
 
   const navItems = [
-    { name: 'Home', href: '/seller/dashboard' },
-    { name: 'Auction History', href: '/seller/history' },
-    { name: 'Live Auction', href: '/seller/live' },
-    { name: 'Scheduled Auction', href: '/seller/scheduled' },
+    { name: 'Home', href: '/buyer/dashboard' },
+    // { name: 'Auction History', href: '/buyer/history' },
+    // { name: 'Live Auction', href: '/buyer/live' },
+    // { name: 'Scheduled Auction', href: '/buyer/scheduled' },
     { name: 'Chat Bot', href: '/chatbot' },
 
   ];
@@ -49,7 +49,7 @@ export function SellerNavBar() {
 
       <div className="flex items-center gap-4">
         <button className="text-sm font-semibold text-gray-700 hover:text-[#3A5A40] transition-colors">
-          Become a Buyer
+          Become a Seller
         </button>
         <UserCircle className="w-8 h-8 text-gray-600 cursor-pointer hover:text-[#3A5A40] transition-colors" />
       </div>
