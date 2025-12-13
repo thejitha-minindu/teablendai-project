@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-// Import your local components
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
-import { AuctionModal } from '@/components/features/seller/AuctionModal';
+import { LiveAuctionModal } from '@/components/features/seller/AuctionModal';
 
 export default function LiveAuctionsPage() {
-  // 1. Manage the "Selected Auction" state locally
   const [selectedAuction, setSelectedAuction] = useState<string | null>(null);
 
   // Mock Data for Live Auctions
@@ -34,15 +32,14 @@ export default function LiveAuctionsPage() {
             type="live" 
             id={auction.id} 
             data={auction.data}
-            // 2. When clicked, save this ID to state
             onViewClick={(id) => setSelectedAuction(id)}
           />
         ))}
       </div>
 
-      {/* 3. Show Modal if an auction is selected */}
+      {/* Live Auction Modal */}
       {selectedAuction && (
-        <AuctionModal 
+        <LiveAuctionModal 
           auctionId={selectedAuction} 
           onClose={() => setSelectedAuction(null)} 
         />

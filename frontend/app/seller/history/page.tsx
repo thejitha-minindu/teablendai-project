@@ -2,29 +2,31 @@
 
 import React, { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-// Import your local components
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
-import { AuctionModal } from '@/components/features/seller/AuctionModal';
+import { HistoryAuctionModal } from '@/components/features/seller/AuctionModal';
 
 export default function HistoryPage() {
-  // State for Sorting
   const [sortOpen, setSortOpen] = useState(false);
   const [sortBy, setSortBy] = useState('date');
   
-  // State for Modal (Managed locally here instead of passed as prop)
-  const [selectedAuction, setSelectedAuction] = useState<string | null>(null);
+  // Store the FULL ID instead of just a string, 
+  // or use the ID to find the data later.
+  const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
 
   // Mock Data
   const historyAuctions = [1, 2, 3, 4, 5, 6].map((i) => ({
     id: `Auction ${i}`,
     data: {
-      status: i % 3 === 0 ? 'Unsold' : 'Sold',
+      status: i % 3 === 0 ? 'Unsold' : 'Sold', // Auction 3 and 6 will be Unsold
       grade: i % 2 === 0 ? 'BOPF' : 'Dust-1',
       quantity: 750 + i * 50,
       price: 1450 + i * 100,
       buyer: 'Global Teas PLC'
     }
   }));
+
+  // Helper to find the data for the selected ID
+  const selectedAuctionData = historyAuctions.find(a => a.id === selectedAuctionId)?.data;
 
   return (
     <div className="max-w-7xl mx-auto px-4">
@@ -67,17 +69,17 @@ export default function HistoryPage() {
             type="history" 
             id={auction.id} 
             data={auction.data}
-            // When "View" is clicked, we set the state here
-            onViewClick={(id) => setSelectedAuction(id)}
+            onViewClick={(id) => setSelectedAuctionId(id)}
           />
         ))}
       </div>
 
-      {/* Conditionally Render the Modal */}
-      {selectedAuction && (
-        <AuctionModal 
-          auctionId={selectedAuction} 
-          onClose={() => setSelectedAuction(null)} 
+      {/* History Modal - NOW PASSING DATA */}
+      {selectedAuctionId && selectedAuctionData && (
+        <HistoryAuctionModal 
+          auctionId={selectedAuctionId}
+          data={selectedAuctionData} // <--- Passing the specific card data
+          onClose={() => setSelectedAuctionId(null)} 
         />
       )}
     </div>
