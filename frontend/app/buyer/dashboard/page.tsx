@@ -1,70 +1,38 @@
-import React from 'react'
-import AuctionPreview from '@/components/features/buyer/AuctionPreview'
-import AuctionPreviewCard from '@/components/features/buyer/AuctionPreviewCard'
-import AnalyticsDashboardPreview from '@/components/features/buyer/AnalyticsDashboardPreview'
-import AuctionCalendar from '@/components/features/buyer/AuctionCalendar'
+import React from "react";
+import { ChartPie } from "@/components/features/buyer/ChartPie";
+import { Calendar } from "@/components/ui/calendar";
+import { AuctionHomePreview } from "@/components/features/buyer/AuctionHomePreview";
+import { AuctionCard } from "@/components/features/buyer/AuctionCard";
+import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 
-function Dashboard() {
+export default function BuyerDashboardPage() {
   return (
-    <div className="min-h-screen bg-background p-4 overflow-auto">
-      <div className="max-w-[1600px] mx-auto">
-        {/* Two Column Layout */}
-        <div className="grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-10">
-          {/* Left Column - Analytics and Calendar */}
-          <div className="flex flex-col gap-4">
-            {/* Analytics Dashboard */}
-            <AnalyticsDashboardPreview 
-              title="Sessions"
-              subtitle="Monthly Tea Price\n(by Distric)"
-            />
-            
-            {/* Calendar */}
-            <AuctionCalendar />
+    <div className="px-2 sm:px-4">
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold">Dashboard</h1>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 mb-10">
+        <div className="flex flex-col md:col-span-1 lg:col-span-1">
+          <ChartPie />
+          <div className="mt-10">
+            <Calendar />
           </div>
-
-          {/* Right Column - Auction Preview and Cards */}
-          <div className="flex flex-col gap-4">
-            {/* Featured Auction Preview */}
-            <AuctionPreview 
-              auctionTitle="Auction 1" 
-              company="TeaTera PVT LTD" 
-              date="2024-11-10" 
-              time="10:00 AM"
-              estateName="Green Valley Estate"
-              grade="BOPF"
-              quantity="1000 kg"
-              reservePrice="$5,000"
-            />
-
-            {/* Auction Cards Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <AuctionPreviewCard 
-                auctionTitle="Auction 1" 
-                company="TeaTera PVT LTD"
-                description="This lot consists of high-quality tea offered for sale through open auction. Each lot includes details such as garden name, grade, quantity, and manufacture date."
-                date="2024-11-10"
-                time="10:00 AM"
-              />
-              <AuctionPreviewCard 
-                auctionTitle="Auction 1" 
-                company="TeaTera PVT LTD"
-                description="This lot consists of high-quality tea offered for sale through open auction. Each lot includes details such as garden name, grade, quantity, and manufacture date."
-                date="2024-11-10"
-                time="10:00 AM"
-              />
-              <AuctionPreviewCard 
-                auctionTitle="Auction 1" 
-                company="TeaTera PVT LTD"
-                description="This lot consists of high-quality tea offered for sale through open auction. Each lot includes details such as garden name, grade, quantity, and manufacture date."
-                date="2024-11-10"
-                time="10:00 AM"
-              />
-            </div>
+        </div>
+        <div className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 lg:gap-10">
+          <div>
+            <AuctionHomePreview />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+            <AuctionCard />
+            <AuctionCard />
+            <AuctionCard />
+          </div>
+          <div className="flex flex-row justify-center sm:mt-10 mt-6">
+            <PaginationBuyerAuction />
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
-
-export default Dashboard
