@@ -1,4 +1,4 @@
-import { BuyerNavBar } from "@/components/layout/BuyerNavBar";
+import { NavSidebar } from "@/components/layout/NavSidebar";
 
 export default function BuyerLayout({
   children,
@@ -7,7 +7,7 @@ export default function BuyerLayout({
 }) {
   return (
     <div className="min-h-screen bg-(--background-color)">
-      <BuyerNavBar />
+      <NavSidebar />
       <main className="container mx-auto py-8 px-4">
         {children}
       </main>
