@@ -1,12 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-// Import your local components
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
-import { AuctionModal } from '@/components/features/seller/AuctionModal';
+import { ScheduledAuctionModal } from '@/components/features/seller/AuctionModal';
 
 export default function ScheduledAuctionsPage() {
-  // 1. Manage the "Selected Auction" state locally
   const [selectedAuction, setSelectedAuction] = useState<string | null>(null);
 
   // Mock Data
@@ -34,15 +32,14 @@ export default function ScheduledAuctionsPage() {
             type="scheduled" 
             id={auction.id} 
             data={auction.data}
-            // 2. Wired to local state
             onViewClick={(id) => setSelectedAuction(id)}
           />
         ))}
       </div>
 
-      {/* 3. Render Modal when an auction is selected */}
+      {/* Scheduled Auction Modal */}
       {selectedAuction && (
-        <AuctionModal 
+        <ScheduledAuctionModal 
           auctionId={selectedAuction} 
           onClose={() => setSelectedAuction(null)} 
         />
