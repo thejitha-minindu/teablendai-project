@@ -10,7 +10,7 @@ export default function BuyerLayout({
     <SidebarProvider>
       <NavSidebar />
       <SidebarTrigger />
-      <main className="p-10">
+      <main className="p-10 h-max-screen w-full">
         {children}
       </main>
     </SidebarProvider>

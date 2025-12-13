@@ -60,7 +60,15 @@ export function NavSidebar() {
     <Sidebar className="flex flex-col h-screen">
       <SidebarContent className="flex-1 flex flex-col">
         <SidebarGroup>
-          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupLabel className="p-10 pt-13">
+            <div className="flex items-center justify-center">
+              <img
+                src="/logo.png"
+                alt="TeaBlend Logo"
+                className="h-10 w-auto mx-auto my-4"
+              />
+            </div>
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             {(() => {
               // Example: get role from localStorage or context
