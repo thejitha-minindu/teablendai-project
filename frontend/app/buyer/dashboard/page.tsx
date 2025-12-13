@@ -19,7 +19,7 @@ export default function BuyerDashboardPage() {
             <Calendar />
           </div>
         </div>
-        <div className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 lg:gap-10">
+        <div className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 gap-5 lg:gap-10">
           <div>
             <AuctionHomePreview />
           </div>
