@@ -1,3 +1,5 @@
+"use client";
+import { useState } from "react";
 import {
   Calendar,
   Home,
@@ -18,6 +20,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar";
 
 import {
@@ -26,6 +29,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+
+import { ProfileMenu } from "./ProfileMenu";
 
 // Buyer menu items.
 const Buyeritems = [
@@ -56,6 +61,9 @@ const Selleritems = [
 ];
 
 export function NavSidebar() {
+  const { open } = useSidebar();
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+
   return (
     <Sidebar className="flex flex-col h-screen">
       <SidebarContent className="flex-1 flex flex-col">
@@ -97,26 +105,18 @@ export function NavSidebar() {
         <div className="flex-1" />
         <SidebarFooter>
           <SidebarMenu>
-            <SidebarMenuItem>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <SidebarMenuButton>
-                    <User2 /> Username
-                    <ChevronUp className="ml-auto" />
-                  </SidebarMenuButton>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  side="top"
-                  className="w-[--radix-popper-anchor-width]"
-                >
-                  <DropdownMenuItem>
-                    <span>Account</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <span>Sign out</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+            <SidebarMenuItem className="relative">
+              <SidebarMenuButton
+                onClick={() => setShowProfileMenu(!showProfileMenu)}
+              >
+                <User2 /> Username
+                <ChevronUp className="ml-auto" />
+              </SidebarMenuButton>
+              <ProfileMenu
+                isOpen={showProfileMenu}
+                onClose={() => setShowProfileMenu(false)}
+                isCollapsed={!open}
+              />
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
