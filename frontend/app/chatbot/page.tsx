@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { AnimatedAIChat } from "./chat";
-import { ChatSidebar } from "./chatSidebar";
+import { AnimatedAIChat } from "../../components/features/chatbot/chat";
+import { ChatSidebar } from "../../components/features/chatbot/chatSidebar";
 
 export default function ChatbotPage() {
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +26,7 @@ export default function ChatbotPage() {
   };
 
   return (
-    <div className="flex h-screen bg-black">
+    <div className="flex h-screen bg-gray-50">
       <ChatSidebar
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
