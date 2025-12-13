@@ -103,7 +103,7 @@ export function ChatSidebar({
     return (
         <motion.div
             className={cn(
-                "h-screen bg-black/40 backdrop-blur-xl border-r border-white/5 flex flex-col relative",
+                "h-screen bg-white border-r border-gray-200 flex flex-col relative",
                 "transition-all duration-300 ease-in-out",
                 isCollapsed ? "w-16" : "w-80",
                 className
@@ -112,7 +112,7 @@ export function ChatSidebar({
             animate={{ x: 0 }}
         >
             {/* HEADER */}
-            <div className="p-4 border-b border-white/5">
+            <div className="p-4 border-b border-gray-200">
                 <AnimatePresence mode="wait">
                     {!isCollapsed ? (
                         <motion.div
@@ -126,9 +126,9 @@ export function ChatSidebar({
                                 <img className="w-60 h-24" src="/TeaLogo.png" alt="Tea Logo" />
                                 <button
                                     onClick={() => setIsCollapsed(true)}
-                                    className="p-1.5 hover:bg-white/5 rounded-lg transition-colors"
+                                    className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
-                                    <ChevronLeft className="w-8 h-8 text-white/60" />
+                                    <ChevronLeft className="w-8 h-8 text-gray-600" />
                                 </button>
                             </div>
 
@@ -136,7 +136,7 @@ export function ChatSidebar({
                                 onClick={handleNewChat}
                                 whileHover={{ scale: 1.02 }}
                                 whileTap={{ scale: 0.98 }}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-white/5 hover:bg-white/10 rounded-xl text-white/90 transition-all border border-white/5"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-900 transition-all border border-gray-200"
                             >
                                 <MessageSquarePlus className="w-8 h-8" />
                                 <span className="font-medium">New Chat</span>
@@ -156,7 +156,7 @@ export function ChatSidebar({
                                 title="Expand sidebar"
                                 aria-label="Expand sidebar"
                             >
-                                <ChevronRight className="w-8 h-8 text-white/60 hover:text-white" />
+                                <ChevronRight className="w-8 h-8 text-gray-600 hover:text-gray-900" />
                             </button>
 
                             <button
@@ -165,7 +165,7 @@ export function ChatSidebar({
                                 title="New chat"
                                 aria-label="New chat"
                             >
-                                <MessageSquarePlus className="w-7 h-7 text-white/70 hover:text-white" />
+                                <MessageSquarePlus className="w-7 h-7 text-gray-700 hover:text-gray-900" />
                             </button>
                         </motion.div>
                     )}
@@ -182,7 +182,7 @@ export function ChatSidebar({
                             exit={{ opacity: 0 }}
                             className="p-4 h-full"
                         >
-                            <h2 className="text-lg font-semibold text-white/90 mb-4">
+                            <h2 className="text-lg font-semibold text-gray-900 mb-4">
                                 Chat History
                             </h2>
 
@@ -204,8 +204,8 @@ export function ChatSidebar({
                                 </div>
                             ) : (
                                 <div className="text-center py-12">
-                                    <History className="w-12 h-12 text-white/20 mx-auto mb-3" />
-                                    <p className="text-white/40 text-sm">No chat history yet</p>
+                                    <History className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                                    <p className="text-gray-500 text-sm">No chat history yet</p>
                                 </div>
                             )}
                         </motion.div>
@@ -214,7 +214,7 @@ export function ChatSidebar({
             </div>
 
             {/* FOOTER */}
-            <div className="p-4 border-t border-white/5 relative">
+            <div className="p-4 border-t border-gray-200 relative">
                 <AnimatePresence mode="wait">
                     {!isCollapsed ? (
                         <motion.div
@@ -226,7 +226,7 @@ export function ChatSidebar({
                         >
                             <button 
                                 onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-white/5 rounded-lg transition-colors text-white/70 hover:text-white/90" 
+                                className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900" 
                                 title="Settings"
                             >
                                 <Settings className="w-8 h-8" />
@@ -247,7 +247,7 @@ export function ChatSidebar({
                                 title="Settings"
                                 aria-label="Settings"
                             >
-                                <Settings className="w-8 h-8 text-white/60 hover:text-white/90" />
+                                <Settings className="w-8 h-8 text-gray-600 hover:text-gray-900" />
                             </button>
                         </motion.div>
                     )}
@@ -261,16 +261,16 @@ export function ChatSidebar({
                             animate={{ opacity: 1, y: 0, scale: 1 }}
                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
-                            className="absolute bottom-full left-4 right-4 mb-2 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                            className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50"
                         >
-                            <div className="p-3 border-b border-white/10">
+                            <div className="p-3 border-b border-gray-200">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center">
                                         <User className="w-7 h-7 text-white" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-white">User</p>
-                                        <p className="text-xs text-white/50">user@example.com</p>
+                                        <p className="text-sm font-medium text-gray-900">User</p>
+                                        <p className="text-xs text-gray-500">user@example.com</p>
                                     </div>
                                 </div>
                             </div>
@@ -280,7 +280,7 @@ export function ChatSidebar({
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <User className="w-4 h-4" />
                                     <span>Profile</span>
@@ -290,19 +290,19 @@ export function ChatSidebar({
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <HelpCircle className="w-4 h-4" />
                                     <span>Help & Support</span>
                                 </button>
                             </div>
 
-                            <div className="p-2 border-t border-white/10">
+                            <div className="p-2 border-t border-gray-200">
                                 <button
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                 >
                                     <LogOut className="w-4 h-4" />
                                     <span>Logout</span>
@@ -316,16 +316,16 @@ export function ChatSidebar({
                             animate={{ opacity: 1, x: 0, scale: 1 }}
                             exit={{ opacity: 0, x: -10, scale: 0.95 }}
                             transition={{ duration: 0.2 }}
-                            className="absolute bottom-0 left-full ml-2 w-56 bg-black/90 backdrop-blur-xl border border-white/10 rounded-xl shadow-2xl overflow-hidden z-50"
+                            className="absolute bottom-0 left-full ml-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50"
                         >
-                            <div className="p-3 border-b border-white/10">
+                            <div className="p-3 border-b border-gray-200">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center">
                                         <User className="w-7 h-7 text-white" />
                                     </div>
                                     <div>
-                                        <p className="text-sm font-medium text-white">User</p>
-                                        <p className="text-xs text-white/50">user@example.com</p>
+                                        <p className="text-sm font-medium text-gray-900">User</p>
+                                        <p className="text-xs text-gray-500">user@example.com</p>
                                     </div>
                                 </div>
                             </div>
@@ -335,7 +335,7 @@ export function ChatSidebar({
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <User className="w-4 h-4" />
                                     <span>Profile</span>
@@ -345,19 +345,19 @@ export function ChatSidebar({
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                 >
                                     <HelpCircle className="w-4 h-4" />
                                     <span>Help & Support</span>
                                 </button>
                             </div>
 
-                            <div className="p-2 border-t border-white/10">
+                            <div className="p-2 border-t border-gray-200">
                                 <button
                                     onClick={() => {
                                         setShowProfileMenu(false);
                                     }}
-                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-colors"
+                                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                                 >
                                     <LogOut className="w-4 h-4" />
                                     <span>Logout</span>
@@ -413,16 +413,16 @@ function ChatHistoryCard({
                 "group relative p-1 rounded-xl cursor-pointer transition-all",
                 "border border-transparent",
                 isSelected
-                    ? "bg-white/10 border-white/10"
-                    : "hover:bg-white/5 hover:border-white/5"
+                    ? "bg-gray-100 border-gray-200"
+                    : "hover:bg-gray-50 hover:border-gray-200"
             )}
         >
             <div className="flex items-start justify-between p-2">
                 <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-white/90 truncate mb-1">
+                    <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
                         {chat.title}
                     </h4>
-                    <p className="text-xs text-white/50 truncate mb-1">
+                    <p className="text-xs text-gray-500 truncate mb-1">
                         {chat.preview}
                     </p>
                 </div>
@@ -440,7 +440,7 @@ function ChatHistoryCard({
                                 className="p-1.5 rounded-lg transition-colors"
                                 title="Delete chat"
                             >
-                                <Trash2 className="w-5 h-5 text-white/50 hover:text-white/90 cursor-pointer" />
+                                <Trash2 className="w-5 h-5 text-gray-500 hover:text-gray-900 cursor-pointer" />
                             </button>
                         </motion.div>
                     )}

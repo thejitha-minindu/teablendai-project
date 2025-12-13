@@ -3,11 +3,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import {
-    Sparkles,
-    SendIcon,
-    LoaderIcon,
-} from "lucide-react";
+import { Sparkles, SendIcon, LoaderIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import * as React from "react";
 
@@ -111,28 +107,15 @@ export function AnimatedAIChat({ onSendMessage, isLoading }: AnimatedAIChatProps
 
     
     return (
-        <div className="h-screen flex flex-col w-full items-center justify-center bg-black text-white p-6 relative overflow-hidden">
+        <div className="h-screen flex flex-col w-full items-center justify-center bg-white text-gray-900 p-6 relative overflow-hidden">
 
             <div className="w-full max-w-6xl text-center space-y-1 pb-8">
-                <h1 className="font-bold text-[#558332] pb-6 text-center leading-tight">
-                    <span className="flex pb-4 text-6xl justify-center items-center gap-4">
-                        <span>Find teas</span>
-                        <img src="/TeacupIcon.png" alt="Tea Cup Icon" className="w-24 h-18 inline-block"/>
-                        <span>that warm your soul</span>
-                    </span>
-
-                    <span className="block text-5xl">
-                        Brew your perfect cup with AI
-                    </span>
-                </h1>
-
-
-                <p className="text-xl text-white/40 pt-2">
+                <p className="text-xl text-gray-500 pt-2">
                     Chat with our Tea AI to discover blends, rituals, and flavors made just for you.
                 </p>
             </div>
 
-            <div className="w-full max-w-3xl backdrop-blur-2xl bg-white/5 border border-white/10 rounded-2xl shadow-xl">
+            <div className="w-full max-w-3xl bg-gray-50 border border-gray-200 rounded-2xl shadow-xl">
                 <div className="p-4 flex flex-row items-center gap-3 w-full">
                     <button 
                         className="p-2 rounded-full transition-all shrink-0 self-center"
@@ -155,7 +138,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading }: AnimatedAIChatProps
                         }}
                         placeholder="Ask me anything about tea  .  .  ."
                         containerClassName="flex-1"
-                        className="text-[14px] text-white/90 placeholder:text-white/30 leading-normal py-2"
+                        className="text-[14px] text-gray-900 placeholder:text-gray-400 leading-normal py-2"
                     />
 
                     <motion.button
@@ -168,8 +151,8 @@ export function AnimatedAIChat({ onSendMessage, isLoading }: AnimatedAIChatProps
                             "px-5 py-2.5 rounded-xl text-sm font-medium transition-all self-center",
                             "flex items-center gap-2",
                             value.trim() && !isLoading
-                                ? "bg-[#ffffff] text-black shadow-lg hover:bg-[#6a9e3e]"
-                                : "bg-white/5 text-white/30 cursor-not-allowed"
+                                ? "bg-[#558332] text-white shadow-lg hover:bg-[#6a9e3e]"
+                                : "bg-gray-200 text-gray-400 cursor-not-allowed"
                         )}
                     >
                         {isLoading ? (
@@ -183,7 +166,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading }: AnimatedAIChatProps
             </div>
 
             <div className="w-full max-w-3xl mt-4">
-                <p className="text-sm text-white/50 mb-2 text-center">Try asking:</p>
+                <p className="text-sm text-gray-500 mb-2 text-center">Try asking:</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                     {suggestionQuestions.map((question, index) => (
                         <motion.button
@@ -194,9 +177,9 @@ export function AnimatedAIChat({ onSendMessage, isLoading }: AnimatedAIChatProps
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.1 }}
-                            className="p-3 text-left rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#558332]/50 transition-all group"
+                            className="p-3 text-left rounded-xl bg-gray-100 hover:bg-gray-200 border border-gray-200 hover:border-[#558332]/50 group"
                         >
-                            <p className="text-sm text-white/70 group-hover:text-white/90 transition-colors">
+                            <p className="text-sm text-gray-700 group-hover:text-gray-900">
                                 {question}
                             </p>
                         </motion.button>
