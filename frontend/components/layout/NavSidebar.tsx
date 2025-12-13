@@ -1,18 +1,23 @@
-"use client";
-import { useSidebar } from "@/components/ui/sidebar";
-import { Calendar, Home, Inbox, User2, ChevronUp } from "lucide-react";
+import {
+  Calendar,
+  Home,
+  Inbox,
+  Search,
+  Settings,
+  User2,
+  ChevronUp,
+} from "lucide-react";
 
 import {
   Sidebar,
-  SidebarProvider,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 
 import {
@@ -50,85 +55,38 @@ const Selleritems = [
   },
 ];
 
-function SidebarToggleButton() {
-  const { open, setOpen } = useSidebar();
-  return (
-    <button
-      aria-label={open ? "Close Sidebar" : "Open Sidebar"}
-      className="sidebar-toggle-btn"
-      onClick={() => setOpen(!open)}
-      style={{
-        position: "relative",
-        top: -30,
-        left: 250,
-        background: "none",
-        border: "none",
-        cursor: "pointer",
-      }}
-    >
-      <svg
-        width="24"
-        height="24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      >
-        <path d="M4 6h16M4 12h16M4 18h16" />
-      </svg>
-    </button>
-  );
-}
-
-function SidebarHeader() {
-  return (
-    <SidebarGroup>
-      <SidebarGroupLabel className="h-14 m-0 flex items-center justify-left">
-        <a href="/">
-          <img src="/logo.png" className="h-10 w-20" alt="Logo" />
-        </a>
-      </SidebarGroupLabel>
-      <SidebarToggleButton />
-    </SidebarGroup>
-  );
-}
-
-function NavSidebarContent() {
-  return (
-    <SidebarGroup className="z-0">
-      <SidebarGroupContent >
-        {/* Replace this with your actual role logic */}
-        {(() => {
-          // Example: get role from localStorage or context
-          const role = typeof window !== "undefined" ? localStorage.getItem("role") : null;
-          const menuItems = role === "seller" ? Selleritems : Buyeritems;
-          return (
-            <SidebarMenu>
-              {menuItems.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton asChild>
-                <a href={item.url}>
-                  <item.icon />
-                  <span>{item.title}</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          );
-        })()}
-      </SidebarGroupContent>
-    </SidebarGroup>
-  );
-}
-
 export function NavSidebar() {
   return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader />
-        <SidebarContent>
-          <NavSidebarContent />
-        </SidebarContent>
+    <Sidebar className="flex flex-col h-screen">
+      <SidebarContent className="flex-1 flex flex-col">
+        <SidebarGroup>
+          <SidebarGroupLabel>Application</SidebarGroupLabel>
+          <SidebarGroupContent>
+            {(() => {
+              // Example: get role from localStorage or context
+              const role =
+                typeof window !== "undefined"
+                  ? localStorage.getItem("role")
+                  : null;
+              const menuItems = role === "seller" ? Selleritems : Buyeritems;
+              return (
+                <SidebarMenu>
+                  {menuItems.map((item) => (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <a href={item.url}>
+                          <item.icon />
+                          <span>{item.title}</span>
+                        </a>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              );
+            })()}
+          </SidebarGroupContent>
+        </SidebarGroup>
+        <div className="flex-1" />
         <SidebarFooter>
           <SidebarMenu>
             <SidebarMenuItem>
@@ -139,7 +97,10 @@ export function NavSidebar() {
                     <ChevronUp className="ml-auto" />
                   </SidebarMenuButton>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent side="top" className="w-fit">
+                <DropdownMenuContent
+                  side="top"
+                  className="w-[--radix-popper-anchor-width]"
+                >
                   <DropdownMenuItem>
                     <span>Account</span>
                   </DropdownMenuItem>
@@ -151,7 +112,7 @@ export function NavSidebar() {
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarFooter>
-      </Sidebar>
-    </SidebarProvider>
+      </SidebarContent>
+    </Sidebar>
   );
 }

@@ -1,4 +1,5 @@
 import { NavSidebar } from "@/components/layout/NavSidebar";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 
 export default function BuyerLayout({
   children,
@@ -6,11 +7,12 @@ export default function BuyerLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-(--background-color)">
+    <SidebarProvider>
       <NavSidebar />
-      <main className="container mx-auto py-8 px-4">
+      <SidebarTrigger />
+      <main className="p-10">
         {children}
       </main>
-    </div>
+    </SidebarProvider>
   );
 }
