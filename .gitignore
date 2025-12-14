@@ -150,7 +150,6 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
 lib64/
 parts/
 sdist/
@@ -166,3 +165,16 @@ venv/
 .venv/
 env/
 .env/
+
+
+# env files (can opt-in for committing if needed)
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+# Allow example files to be committed
+!.env*.example
+
+# Docker
+docker-compose.override.yml
