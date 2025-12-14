@@ -20,7 +20,7 @@ export function ProfileMenu({
       {/* Profile Info */}
       <div className="p-3 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center shrink-0">
             <User className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1 min-w-0">
@@ -36,7 +36,7 @@ export function ProfileMenu({
           onClick={onClose}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <User className="w-4 h-4 flex-shrink-0" />
+          <User className="w-4 h-4 shrink-0" />
           <span>Profile</span>
         </button>
 
@@ -44,7 +44,7 @@ export function ProfileMenu({
           onClick={onClose}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         >
-          <HelpCircle className="w-4 h-4 flex-shrink-0" />
+          <HelpCircle className="w-4 h-4 shrink-0" />
           <span>Help & Support</span>
         </button>
       </div>
@@ -55,7 +55,7 @@ export function ProfileMenu({
           onClick={onClose}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
         >
-          <LogOut className="w-4 h-4 flex-shrink-0" />
+          <LogOut className="w-4 h-4 shrink-0" />
           <span>Logout</span>
         </button>
       </div>
