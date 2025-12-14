@@ -1,3 +1,4 @@
+
 "use client";
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -14,6 +15,8 @@ export function SellerNavBar() {
     { name: 'Auction History', href: '/seller/history' },
     { name: 'Live Auction', href: '/seller/live' },
     { name: 'Scheduled Auction', href: '/seller/scheduled' },
+    { name: 'Chat Bot', href: '/chatbot' },
+
   ];
 
   return (
