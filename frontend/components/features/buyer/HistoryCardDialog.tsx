@@ -1,0 +1,106 @@
+import * as React from "react";
+
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+
+const auctionHistoryDetails = {
+  auctionName: "Spring Harvest Auction",
+  company: "ABC Tea Company",
+  date: "2025-10-12",
+  time: "10:00 AM",
+  estateName: "Darjeeling Estate",
+  grade: "FTGFOP1",
+  soldPrice: "$500",
+  winner: "John Doe",
+};
+
+const bid = [
+  { amount: "$550", date: "2025-10-12", time: "11:00 AM" },
+  { amount: "$600", date: "2025-10-12", time: "11:30 AM" },
+  { amount: "$650", date: "2025-10-12", time: "12:00 PM" },
+  { amount: "$700", date: "2025-10-12", time: "12:30 PM" },
+  { amount: "$750", date: "2025-10-12", time: "1:00 PM" },
+  { amount: "$800", date: "2025-10-12", time: "1:30 PM" },
+];
+
+export function HistoryCardDialog() {
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">More</Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
+        <DialogHeader className="pb-4">
+          <DialogTitle>{auctionHistoryDetails.auctionName}</DialogTitle>
+          <DialogDescription>
+            Detailed information about your auction history.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="mt-10 h-full">
+          <div className="flex flex-col md:flex-row gap-6 sm:items-center lg:items-start h-full">
+            <div className="flex flex-row flex-1 w-full md:w-auto justify-center sm:justify-start">
+              <div>
+                <h2 className="text-m font-semibold mb-2">
+                  {auctionHistoryDetails.estateName}
+                </h2>
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Grade:</span>{" "}
+                  {auctionHistoryDetails.grade}
+                </p>
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Base Price:</span>{" "}
+                  {auctionHistoryDetails.soldPrice}
+                </p>
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Quantity:</span>{" "}
+                  {auctionHistoryDetails.winner}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-col h-full items-center sm:items-start text-xs lg:mr-5 mt-0 mb-4 md:mb-0">
+              <ScrollArea className="h-100 w-75 rounded-md border">
+                <div className="p-4">
+                  <h4 className="mb-4 text-sm leading-none font-medium">
+                    Bids
+                  </h4>
+                  {bid.map((tag) => (
+                    <React.Fragment key={`${tag.date}-${tag.time}`}>
+                      <div className="text-sm">
+                        Amount: {tag.amount}, Date: {tag.date}, Time: {tag.time}
+                      </div>
+                      <Separator className="my-2" />
+                    </React.Fragment>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                variant="outline"
+                className="md:absolute md:left-6 md:bottom-6 lg:absolute lg:left-6 lg:bottom-6"
+              >
+                Cancel
+              </Button>
+            </DialogClose>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

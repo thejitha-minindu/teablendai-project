@@ -26,6 +26,8 @@ const cardType = "history";
 import { Button } from "@/components/ui/button";
 import { AuctionHistoryDialog } from "@/components/features/buyer/AuctionHistoryDialog";
 import { AuctionCardDialog } from "@/components/features/buyer/AuctionCardDialog";
+import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
+import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 
 export function AuctionCard() {
   return (
@@ -65,7 +67,7 @@ export function AuctionCard() {
       </CardContent>
       <CardFooter className="flex justify-end">
         {cardType === "history" ? (
-          <AuctionHistoryDialog />
+          <HistoryCardDialog />
         ) : cardType === "auction" ? (
           <AuctionCardDialog />
         ) : null}
