@@ -21,7 +21,12 @@ const auctionDetails = {
   basePrice: "$500"
 };
 
+const cardType: "order" | "history" = "order";
+
 import { Button } from "@/components/ui/button";
+import { AuctionHistoryDialog } from "@/components/features/buyer/AuctionHistoryDialog";
+import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
+import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 
 export function AuctionCard() {
   return (
@@ -60,7 +65,11 @@ export function AuctionCard() {
         </div>
       </CardContent>
       <CardFooter className="flex justify-end">
-        <Button variant="default">Bid</Button>
+        {cardType === "history" ? (
+          <HistoryCardDialog />
+        ) : cardType === "order" ? (
+          <OrderCardDialog />
+        ) : null}
       </CardFooter>
     </Card>
   );
