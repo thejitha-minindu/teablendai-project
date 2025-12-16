@@ -1,23 +1,17 @@
-import { SellerNavBar } from "@/components/layout/SellerNavBar";
-import { AIChatButton } from "@/components/layout/AIChatButton"; // Import the new button
+import React from "react";
+import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { NavSidebar } from "@/components/layout/NavSidebar";
 
-export default function SellerLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function SellerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-[#F5F7EB] relative">
-      {/* 1. Navigation Bar */}
-      <SellerNavBar />
+    <SidebarProvider>
+      <NavSidebar />
+      {/* Placed here, it will sit tightly next to the sidebar */}
+      <SidebarTrigger/> 
       
-      {/* 2. Page Content */}
-      <main>
-        {children}
+      <main className="p-10 h-max-screen w-full">
+         {children}
       </main>
-
-      {/* 3. Global AI Button - Floats on top of everything */}
-      <AIChatButton />
-    </div>
+    </SidebarProvider>
   );
 }
