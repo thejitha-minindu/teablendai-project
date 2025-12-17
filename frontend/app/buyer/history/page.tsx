@@ -210,7 +210,7 @@ export default function BuyerHistoryPage() {
   // Show "No results" message if no auctions match filters
   if (totalCards === 0) {
     return (
-      <div className="sm:px-4 lg:px-20 lg:pt-10">
+      <div className="sm:px-4 lg:px-10 lg:pt-10">
         <div className="mb-5 items-start">
           <h1 className="text-3xl font-bold">Auction History</h1>
         </div>

@@ -216,7 +216,7 @@ export default function BuyerHistoryPage() {
   */
 
   return (
-    <div className="sm:px-4 lg:px-20 lg:pt-10">
+    <div className="sm:px-4 lg:px-10 lg:pt-10">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
