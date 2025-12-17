@@ -1,20 +1,10 @@
 "use client";
 
-<<<<<<< Updated upstream
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { Award } from 'lucide-react';
-=======
-import { useState } from 'react';
-import {
-  BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart
-} from 'recharts';
-import { Download, Award } from 'lucide-react';
-
->>>>>>> Stashed changes
 
 // Dummy Data
 const blendComposition = [
@@ -67,7 +57,6 @@ const annualComparison = [
   { blend: 'Royal Reserve', year2023: 11.2, year2024: 12.6, growth: 12.5 },
 ];
 
-<<<<<<< Updated upstream
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function BlendPerformanceAnalytics() {
@@ -286,11 +275,4 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
       {children}
     </div>
   );
-=======
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-export default function BlendsAnalyticsDashboard() {
-    
->>>>>>> Stashed changes
 }
