@@ -47,7 +47,7 @@ export default function SellerDashboardPage() {
   ];
 
   return (
-    <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#F5F7EB]">
+    <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl">
       
       {/* 1. Page Title & Quick Stats */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
