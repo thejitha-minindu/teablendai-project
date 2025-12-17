@@ -30,9 +30,10 @@ export interface FilterState {
 }
 
 const GRADE_OPTIONS = [
-  { value: "A", label: "Grade A" },
-  { value: "B", label: "Grade B" },
-  { value: "C", label: "Grade C" },
+  { value: "all", label: "All Grades" },
+  { value: "A", label: "Premium (FTGFOP1, SFTGFOP, Silver Needle)" },
+  { value: "B", label: "Standard (BOP, OP, FBOP, TGFOP)" },
+  { value: "C", label: "Specialty (Herbal)" },
 ];
 
 const STATUS_OPTIONS = [

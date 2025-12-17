@@ -66,7 +66,7 @@ const buyerNavItems: NavItem[] = [
   { name: "Dashboard", href: "/buyer/dashboard", icon: LayoutDashboard },
   { name: "History", href: "/buyer/history", icon: Inbox },
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
-  { name: "Browse Auctions", href: "/buyer/browse", icon: Search },
+  { name: "Auctions", href: "/buyer/auctions", icon: Search },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
@@ -75,14 +75,18 @@ const analyticsNavItems: NavItem[] = [
   { name: "Overview", href: "/analytics-dashboard", icon: LayoutDashboard },
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
-  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History },
+  {
+    name: "Blend Performance",
+    href: "/analytics-dashboard/blends",
+    icon: History,
+  },
   { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
 ];
 
 function useRoleDetection(): UserRole {
   const pathname = usePathname();
 
-  const role: UserRole = pathname.startsWith("/analytics-dashboard") 
+  const role: UserRole = pathname.startsWith("/analytics-dashboard")
     ? "analytics"
     : pathname.startsWith("/buyer")
     ? "buyer"
@@ -97,38 +101,65 @@ function useRoleDetection(): UserRole {
   return role;
 }
 
-const getSwitchInfo = (currentRole: UserRole): { role: UserRole; path: string } => {
-  switch(currentRole) {
-    case "seller": return { role: "buyer", path: "/buyer/dashboard" };
-    case "buyer": return { role: "seller", path: "/seller/dashboard" };
-    case "analytics": return { role: "seller", path: "/seller/dashboard" };
-    default: return { role: "buyer", path: "/buyer/dashboard" };
+const getSwitchInfo = (
+  currentRole: UserRole
+): { role: UserRole; path: string } => {
+  switch (currentRole) {
+    case "seller":
+      return { role: "buyer", path: "/buyer/dashboard" };
+    case "buyer":
+      return { role: "seller", path: "/seller/dashboard" };
+    case "analytics":
+      return { role: "seller", path: "/seller/dashboard" };
+    default:
+      return { role: "buyer", path: "/buyer/dashboard" };
   }
 };
 
 const getRoleDisplayName = (role: UserRole): string => {
-  switch(role) {
-    case "seller": return "Seller";
-    case "buyer": return "Buyer";
-    case "analytics": return "Analytics";
-    default: return "User";
+  switch (role) {
+    case "seller":
+      return "Seller";
+    case "buyer":
+      return "Buyer";
+    case "analytics":
+      return "Analytics";
+    default:
+      return "User";
   }
 };
 
 export function NavSidebar() {
   const pathname = usePathname();
-  const { open } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const role = useRoleDetection();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Initialize collapsed state based on sidebar state
+  useEffect(() => {
+    if (state === "collapsed") {
+      setIsCollapsed(true);
+    } else if (state === "expanded") {
+      setIsCollapsed(false);
+    }
+  }, [state]);
+
+  // Sync isCollapsed with sidebar open state
+  useEffect(() => {
+    setOpen(!isCollapsed);
+  }, [isCollapsed, setOpen]);
+
   const isActivePath = (href: string): boolean => pathname === href;
 
   const navItems = useMemo(() => {
-    switch(role) {
-      case "buyer": return buyerNavItems;
-      case "analytics": return analyticsNavItems;
-      default: return sellerNavItems;
+    switch (role) {
+      case "buyer":
+        return buyerNavItems;
+      case "analytics":
+        return analyticsNavItems;
+      default:
+        return sellerNavItems;
     }
   }, [role]);
 
@@ -161,7 +192,7 @@ export function NavSidebar() {
                           text-xs text-white opacity-0 group-hover:opacity-100
                           transition-opacity pointer-events-none"
             >
-            Expand sidebar
+              Expand sidebar
             </span>
           </button>
         </motion.div>
@@ -177,7 +208,7 @@ export function NavSidebar() {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="h-screen"
           >
-            <Sidebar className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
+            <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
               <SidebarContent className="flex-1 flex flex-col">
                 <SidebarGroup>
                   <div className="flex items-center justify-between relative">
@@ -221,7 +252,9 @@ export function NavSidebar() {
                         >
                           <button className="w-full flex items-center justify-center gap-2 bg-[#3A5A40] text-white py-3 rounded-lg font-bold shadow-md hover:bg-[#2A402E] transition-all hover:shadow-lg">
                             <Plus className="w-5 h-5" aria-hidden="true" />
-                            <span className={open ? "block" : "hidden"}>Create Auction</span>
+                            <span>
+                              Create Auction
+                            </span>
                           </button>
                         </Link>
                       </div>
@@ -238,17 +271,24 @@ export function NavSidebar() {
                               asChild
                               isActive={isActive}
                               className={`w-full transition-all duration-200 rounded-md p-3
-                                ${isActive 
-                                    ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]" 
-                                    : "text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40]"}`
-                              }
+                                ${
+                                  isActive
+                                    ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]"
+                                    : "text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40]"
+                                }`}
                             >
-                              <Link 
-                                href={item.href} 
+                              <Link
+                                href={item.href}
                                 className="flex items-center gap-3"
                                 aria-current={isActive ? "page" : undefined}
                               >
-                                <Icon className={`w-5 h-5 ${isActive ? "text-[#3A5A40]" : "text-gray-500"}`} />
+                                <Icon
+                                  className={`w-5 h-5 ${
+                                    isActive
+                                      ? "text-[#3A5A40]"
+                                      : "text-gray-500"
+                                  }`}
+                                />
                                 <span className="text-sm">{item.name}</span>
                               </Link>
                             </SidebarMenuButton>
@@ -273,14 +313,16 @@ export function NavSidebar() {
                             aria-label="User profile menu"
                           >
                             <div className="flex items-center gap-3 w-full">
-                              <div 
+                              <div
                                 className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]"
                                 aria-hidden="true"
                               >
                                 <User2 className="w-5 h-5" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold text-gray-800">Kenmare Estate</span>
+                                <span className="truncate font-semibold text-gray-800">
+                                  Kenmare Estate
+                                </span>
                                 <span className="truncate text-xs text-gray-500 capitalize">
                                   {getRoleDisplayName(role)} Account
                                 </span>
@@ -289,50 +331,78 @@ export function NavSidebar() {
                             </div>
                           </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        
-                        <DropdownMenuContent side="top" align="end" className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2">
+
+                        <DropdownMenuContent
+                          side="top"
+                          align="end"
+                          className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+                        >
                           <DropdownMenuLabel className="p-0 font-normal">
                             <div className="flex items-center gap-3 px-2 py-2.5 text-left">
                               <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
                                 <User2 className="w-6 h-6" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">Kenmare Estate</span>
-                                <span className="truncate text-xs text-gray-500">kenmareestate@gmail.com</span>
+                                <span className="truncate font-semibold">
+                                  Kenmare Estate
+                                </span>
+                                <span className="truncate text-xs text-gray-500">
+                                  kenmareestate@gmail.com
+                                </span>
                               </div>
                             </div>
                           </DropdownMenuLabel>
-                          
+
                           <DropdownMenuSeparator />
-                          
-                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                            <Link href="/profile" className="flex items-center w-full">
+
+                          <DropdownMenuItem
+                            asChild
+                            className="cursor-pointer hover:bg-gray-50"
+                          >
+                            <Link
+                              href="/profile"
+                              className="flex items-center w-full"
+                            >
                               <User className="mr-2 h-4 w-4 text-gray-500" />
                               <span>My Profile</span>
                             </Link>
                           </DropdownMenuItem>
 
                           {/* Switch Role */}
-                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                            <Link href={switchInfo.path} className="flex items-center w-full">
+                          <DropdownMenuItem
+                            asChild
+                            className="cursor-pointer hover:bg-gray-50"
+                          >
+                            <Link
+                              href={switchInfo.path}
+                              className="flex items-center w-full"
+                            >
                               <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                              <span>Switch to {getRoleDisplayName(switchInfo.role)}</span>
+                              <span>
+                                Switch to {getRoleDisplayName(switchInfo.role)}
+                              </span>
                             </Link>
                           </DropdownMenuItem>
-                          
+
                           {/* Analytics Link */}
                           {role !== "analytics" && (
-                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                              <Link href="/analytics-dashboard" className="flex items-center w-full">
+                            <DropdownMenuItem
+                              asChild
+                              className="cursor-pointer hover:bg-gray-50"
+                            >
+                              <Link
+                                href="/analytics-dashboard"
+                                className="flex items-center w-full"
+                              >
                                 <History className="mr-2 h-4 w-4 text-gray-500" />
                                 <span>Analytics Dashboard</span>
                               </Link>
                             </DropdownMenuItem>
                           )}
-                          
+
                           <DropdownMenuSeparator />
-                          
-                          <DropdownMenuItem 
+
+                          <DropdownMenuItem
                             className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
                             onClick={() => {
                               localStorage.removeItem("role");
