@@ -72,31 +72,23 @@ const analyticsNavItems: NavItem[] = [
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
   { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History },
-  { name: "Supply vs Demand", href: "/analytics-dashboard/supply-demand", icon: Calendar },
   { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
 ];
 
 function useRoleDetection(): UserRole {
   const pathname = usePathname();
-  const [role, setRole] = useState<UserRole>("seller");
+
+  const role: UserRole = pathname.startsWith("/analytics-dashboard") 
+    ? "analytics"
+    : pathname.startsWith("/buyer")
+    ? "buyer"
+    : pathname.startsWith("/seller")
+    ? "seller"
+    : (localStorage.getItem("role") as UserRole) || "seller";
 
   useEffect(() => {
-    if (!pathname) return;
-
-    if (pathname.startsWith("/analytics-dashboard")) {
-      setRole("analytics");
-      localStorage.setItem("role", "analytics");
-    } else if (pathname.startsWith("/buyer")) {
-      setRole("buyer");
-      localStorage.setItem("role", "buyer");
-    } else if (pathname.startsWith("/seller")) {
-      setRole("seller");
-      localStorage.setItem("role", "seller");
-    } else {
-      const stored = localStorage.getItem("role") as UserRole;
-      if (stored) setRole(stored);
-    }
-  }, [pathname]);
+    localStorage.setItem("role", role);
+  }, [role]);
 
   return role;
 }
@@ -285,7 +277,7 @@ export function NavSidebar() {
                                 <User2 className="w-5 h-5" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold text-gray-800">Thejitha Minindu</span>
+                                <span className="truncate font-semibold text-gray-800">Kenmare Estate</span>
                                 <span className="truncate text-xs text-gray-500 capitalize">
                                   {getRoleDisplayName(role)} Account
                                 </span>
@@ -302,8 +294,8 @@ export function NavSidebar() {
                                 <User2 className="w-6 h-6" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">Thejitha Minindu</span>
-                                <span className="truncate text-xs text-gray-500">thejitha@example.com</span>
+                                <span className="truncate font-semibold">Kenmare Estate</span>
+                                <span className="truncate text-xs text-gray-500">kenmareestate@gmail.com</span>
                               </div>
                             </div>
                           </DropdownMenuLabel>

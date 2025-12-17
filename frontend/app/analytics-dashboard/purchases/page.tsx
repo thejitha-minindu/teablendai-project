@@ -1,11 +1,9 @@
 "use client";
 
-import { useState } from 'react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Area, AreaChart
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { Filter, Download } from 'lucide-react';
 
 // Dummy Data
 const purchaseVolumeByGrade = [
@@ -38,19 +36,10 @@ const supplierContribution = [
   { supplier: 'Kandy Premium', quantity: 6630, cost: 9282000 },
 ];
 
-const purchaseQuantityCost = [
-  { month: 'Jan', quantity: 7200, cost: 8640000 },
-  { month: 'Feb', quantity: 7500, cost: 9000000 },
-  { month: 'Mar', quantity: 7800, cost: 9360000 },
-  { month: 'Apr', quantity: 8100, cost: 9720000 },
-  { month: 'May', quantity: 8400, cost: 10080000 },
-  { month: 'Jun', quantity: 7780, cost: 9336000 },
-];
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function PurchaseAnalytics() {
-  const [timeFilter, setTimeFilter] = useState('6months');
 
   return (
     <div className="space-y-8">
