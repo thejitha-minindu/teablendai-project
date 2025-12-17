@@ -8,12 +8,116 @@ import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { useSidebar } from "@/components/ui/sidebar";
 
 const WATCHLIST_DATA = [
-  { id: 1, title: "Watchlist Auction 1" },
-  { id: 2, title: "Watchlist Auction 2" },
-  { id: 3, title: "Watchlist Auction 3" },
-  { id: 4, title: "Watchlist Auction 4" },
-  { id: 5, title: "Watchlist Auction 5" },
+  {
+    id: 1,
+    type: "live",
+    title: "Spring Harvest Auction",
+    company: "ABC Tea Company",
+    date: "2025-10-12",
+    estateName: "Darjeeling Estate",
+    time: "10:00 AM",
+    quantity: "100 kg",
+    grade: "FTGFOP1",
+    basePrice: "$500",
+  },
+  {
+    id: 2,
+    type: "scheduled",
+    title: "Summer Blend Auction",
+    company: "GreenLeaf Ltd.",
+    date: "2025-11-01",
+    estateName: "Assam Valley",
+    time: "2:00 PM",
+    quantity: "80 kg",
+    grade: "BOP",
+    basePrice: "$400",
+  },
+  {
+    id: 3,
+    type: "live",
+    title: "Autumn Reserve Auction",
+    company: "Tea Masters",
+    date: "2025-12-05",
+    estateName: "Nilgiri Hills",
+    time: "11:30 AM",
+    quantity: "120 kg",
+    grade: "OP",
+    basePrice: "$600",
+  },
+  {
+    id: 4,
+    type: "scheduled",
+    title: "Winter Classic Auction",
+    company: "Royal Teas",
+    date: "2026-01-15",
+    estateName: "Ceylon Estate",
+    time: "9:00 AM",
+    quantity: "90 kg",
+    grade: "FBOP",
+    basePrice: "$550",
+  },
+  {
+    id: 5,
+    type: "live",
+    title: "Monsoon Special Auction",
+    company: "Sunrise Teas",
+    date: "2026-02-20",
+    estateName: "Kangra Valley",
+    time: "3:00 PM",
+    quantity: "70 kg",
+    grade: "SFTGFOP",
+    basePrice: "$700",
+  },
+  {
+    id: 6,
+    type: "scheduled",
+    title: "First Flush Auction",
+    company: "Heritage Teas",
+    date: "2026-03-10",
+    estateName: "Dooars Estate",
+    time: "1:00 PM",
+    quantity: "110 kg",
+    grade: "TGFOP",
+    basePrice: "$480",
+  },
+  {
+    id: 7,
+    type: "live",
+    title: "Golden Tips Auction",
+    company: "Golden Leaf",
+    date: "2026-04-18",
+    estateName: "Munnar Estate",
+    time: "4:00 PM",
+    quantity: "95 kg",
+    grade: "FTGFOP1",
+    basePrice: "$620",
+  },
+  {
+    id: 8,
+    type: "scheduled",
+    title: "Silver Needle Auction",
+    company: "Silver Teas",
+    date: "2026-05-22",
+    estateName: "Sikkim Estate",
+    time: "12:00 PM",
+    quantity: "85 kg",
+    grade: "Silver Needle",
+    basePrice: "$800",
+  },
+  {
+    id: 9,
+    type: "live",
+    title: "Herbal Infusion Auction",
+    company: "Herbal Harmony",
+    date: "2026-06-30",
+    estateName: "Anamalai Estate",
+    time: "5:00 PM",
+    quantity: "60 kg",
+    grade: "Herbal",
+    basePrice: "$350",
+  },
 ];
+
 
 export default function BuyerAuctionPage() {
   const [currentPage, setCurrentPage] = useState(1);
@@ -79,7 +183,7 @@ export default function BuyerAuctionPage() {
             >
               {paginatedWatchlist.map((item, index) => (
               <div key={item.id} className="card-animate" style={{ animationDelay: `${index * 80}ms` }}>
-                <AuctionCard cardType="auction"/>
+                <AuctionCard cardType="auction" auction={item}/>
               </div>
               ))}
             </div>
