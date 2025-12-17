@@ -131,10 +131,19 @@ const getRoleDisplayName = (role: UserRole): string => {
 
 export function NavSidebar() {
   const pathname = usePathname();
-  const { open, setOpen } = useSidebar();
+  const { state, setOpen } = useSidebar();
   const role = useRoleDetection();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Initialize collapsed state based on sidebar state
+  useEffect(() => {
+    if (state === "collapsed") {
+      setIsCollapsed(true);
+    } else if (state === "expanded") {
+      setIsCollapsed(false);
+    }
+  }, [state]);
 
   // Sync isCollapsed with sidebar open state
   useEffect(() => {
@@ -183,7 +192,7 @@ export function NavSidebar() {
                           text-xs text-white opacity-0 group-hover:opacity-100
                           transition-opacity pointer-events-none"
             >
-            Expand sidebar
+              Expand sidebar
             </span>
           </button>
         </motion.div>
@@ -199,7 +208,7 @@ export function NavSidebar() {
             transition={{ duration: 0.3, ease: "easeInOut" }}
             className="h-screen"
           >
-            <Sidebar className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
+            <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
               <SidebarContent className="flex-1 flex flex-col">
                 <SidebarGroup>
                   <div className="flex items-center justify-between relative">
@@ -243,7 +252,7 @@ export function NavSidebar() {
                         >
                           <button className="w-full flex items-center justify-center gap-2 bg-[#3A5A40] text-white py-3 rounded-lg font-bold shadow-md hover:bg-[#2A402E] transition-all hover:shadow-lg">
                             <Plus className="w-5 h-5" aria-hidden="true" />
-                            <span className={open ? "block" : "hidden"}>
+                            <span>
                               Create Auction
                             </span>
                           </button>
