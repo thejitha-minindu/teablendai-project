@@ -2,7 +2,11 @@
 
 import { 
   TrendingUp, TrendingDown, ShoppingCart, DollarSign, 
+<<<<<<< Updated upstream
   Package, Activity, Award 
+=======
+  Package, Users, Award, Activity 
+>>>>>>> Stashed changes
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -11,12 +15,21 @@ import {
 
 // Dummy Data
 const kpiData = {
+<<<<<<< Updated upstream
   totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' as const },
   totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' as const },
   totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' as const },
   avgAuctionPrice: { value: 1250, unit: 'LKR/kg', trend: -3.1, trending: 'down' as const },
   profitMargin: { value: 22.5, unit: '%', trend: 4.2, trending: 'up' as const },
   activeAuctions: { value: 8, unit: '', trend: 0, trending: 'neutral' as const },
+=======
+  totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' },
+  totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' },
+  totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' },
+  avgAuctionPrice: { value: 1250, unit: 'LKR/kg', trend: -3.1, trending: 'down' },
+  profitMargin: { value: 22.5, unit: '%', trend: 4.2, trending: 'up' },
+  activeAuctions: { value: 8, unit: '', trend: 0, trending: 'neutral' },
+>>>>>>> Stashed changes
 };
 
 const revenueByMonth = [
@@ -196,12 +209,21 @@ interface KPICardProps {
 
 function KPICard({ title, value, unit, trend, trending, icon, color }: KPICardProps) {
   const colorClasses = {
+<<<<<<< Updated upstream
     blue: 'bg-blue-50',
     green: 'bg-green-50',
     purple: 'bg-purple-50',
     orange: 'bg-orange-50',
     indigo: 'bg-indigo-50',
     pink: 'bg-pink-50',
+=======
+    blue: 'bg-blue-200',
+    green: 'bg-green-200',
+    purple: 'bg-purple-200',
+    orange: 'bg-orange-200',
+    indigo: 'bg-indigo-200',
+    pink: 'bg-pink-200',
+>>>>>>> Stashed changes
   };
 
   return (
