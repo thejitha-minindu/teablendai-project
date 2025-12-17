@@ -1,5 +1,5 @@
 import { NavSidebar } from "@/components/layout/NavSidebar";
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { SidebarProvider } from "@/components/ui/sidebar";
 
 export default function BuyerLayout({
   children,
@@ -9,8 +9,7 @@ export default function BuyerLayout({
   return (
     <SidebarProvider>
       <NavSidebar />
-      <SidebarTrigger />
-      <main className="p-10 h-max-screen w-full">
+      <main className="p-10 m-7 h-max-screen w-full">
         {children}
       </main>
     </SidebarProvider>
