@@ -3,6 +3,7 @@
 import * as React from "react";
 import { TrendingUp, Expand } from "lucide-react";
 import { Label, Pie, PieChart } from "recharts";
+import Link from "next/link";
 
 import {
   Card,
@@ -68,7 +69,10 @@ export function ChartPie() {
           <CardDescription>January - June 2025</CardDescription>
         </div>
         <div>
+          <Link
+            href="/analytics-dashboard">
             <Expand className="h-4 w-4 text-muted-foreground" />
+          </Link>
         </div>
       </CardHeader>
       <CardContent className="flex-1 pb-0">
