@@ -2,7 +2,7 @@
 
 import { 
   TrendingUp, TrendingDown, ShoppingCart, DollarSign, 
-  Package, Users, Award, Activity 
+  Package, Activity, Award 
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -11,12 +11,12 @@ import {
 
 // Dummy Data
 const kpiData = {
-  totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' },
-  totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' },
-  totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' },
-  avgAuctionPrice: { value: 1250, unit: 'LKR/kg', trend: -3.1, trending: 'down' },
-  profitMargin: { value: 22.5, unit: '%', trend: 4.2, trending: 'up' },
-  activeAuctions: { value: 8, unit: '', trend: 0, trending: 'neutral' },
+  totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' as const },
+  totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' as const },
+  totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' as const },
+  avgAuctionPrice: { value: 1250, unit: 'LKR/kg', trend: -3.1, trending: 'down' as const },
+  profitMargin: { value: 22.5, unit: '%', trend: 4.2, trending: 'up' as const },
+  activeAuctions: { value: 8, unit: '', trend: 0, trending: 'neutral' as const },
 };
 
 const revenueByMonth = [
