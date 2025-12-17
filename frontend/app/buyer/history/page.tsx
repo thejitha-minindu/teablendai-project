@@ -68,7 +68,7 @@ export default function BuyerHistoryPage() {
               animationDelay: `${index * 80}ms`,
             }}
           >
-            <AuctionCard />
+            <AuctionCard cardType="history" />
           </div>
         ))}
       </div>

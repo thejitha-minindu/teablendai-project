@@ -5,6 +5,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { AuctionHomePreview } from "@/components/features/buyer/AuctionHomePreview";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
+import { useSidebar } from "@/components/ui/sidebar";
 
 const WATCHLIST_DATA = [
   { id: 1, title: "Watchlist Auction 1" },
@@ -16,8 +17,10 @@ const WATCHLIST_DATA = [
 
 export default function BuyerAuctionPage() {
   const [currentPage, setCurrentPage] = useState(1);
+  const { open: isSidebarOpen } = useSidebar();
   
-  const itemsPerPage = 3;
+  // Adjust items per page based on sidebar state
+  const itemsPerPage = isSidebarOpen ? 2 : 3;
   const totalItems = WATCHLIST_DATA.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
@@ -67,11 +70,17 @@ export default function BuyerAuctionPage() {
             <div>
               <h2 className="text-2xl font-bold my-4 mt-5">Watchlist</h2>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
+            <div
+              className={`
+              grid grid-cols-1
+              ${isSidebarOpen ? "md:grid-cols-2 lg:grid-cols-2" : "md:grid-cols-3 lg:grid-cols-3"}
+              gap-6 w-full
+              `}
+            >
               {paginatedWatchlist.map((item, index) => (
-                <div key={item.id} className="card-animate" style={{ animationDelay: `${index * 80}ms` }}>
-                  <AuctionCard />
-                </div>
+              <div key={item.id} className="card-animate" style={{ animationDelay: `${index * 80}ms` }}>
+                <AuctionCard cardType="auction"/>
+              </div>
               ))}
             </div>
             </div>
