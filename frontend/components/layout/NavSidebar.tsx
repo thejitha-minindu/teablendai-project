@@ -55,7 +55,7 @@ const buyerNavItems = [
   { name: "Dashboard", href: "/buyer/dashboard", icon: Home },
   { name: "History", href: "/buyer/history", icon: Inbox },
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
-  { name: "Browse Auctions", href: "/buyer/browse", icon: Search },
+  { name: "Auctions", href: "/buyer/auctions", icon: Search },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
