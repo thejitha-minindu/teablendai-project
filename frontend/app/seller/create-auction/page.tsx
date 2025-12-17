@@ -160,33 +160,6 @@ export default function CreateAuctionPage() {
           </div>
         </form>
       </div>
-
-      <button 
-        onClick={() => setShowAIChat(!showAIChat)}
-        className="fixed bottom-8 right-8 bg-white p-4 rounded-full border-2 border-[#8AA848] shadow-2xl flex flex-col items-center justify-center w-20 h-20 hover:scale-110 transition-transform duration-300 hover:shadow-[0_0_20px_rgba(138,168,72,0.5)]"
-      >
-        <span className="font-bold text-[#4F772D] text-xs">ASK</span>
-        <span className="font-bold text-[#4F772D] text-lg">AI</span>
-      </button>
-
-      {showAIChat && (
-        <div className="fixed bottom-32 right-8 bg-white p-6 rounded-2xl shadow-2xl border-2 border-[#8AA848] w-80 animate-fade-in">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="font-bold text-[#4F772D]">AI Assistant</h3>
-            <button onClick={() => setShowAIChat(false)}>
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <p className="text-sm text-gray-600 mb-4">
-            Hi! I can help you with pricing suggestions, market trends, and auction timing advice.
-          </p>
-          <input 
-            type="text" 
-            placeholder="Ask me anything..."
-            className="w-full border-2 border-gray-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-[#8AA848] focus:border-transparent"
-          />
-        </div>
-      )}
     </div>
   );
 }
