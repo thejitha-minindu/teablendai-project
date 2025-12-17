@@ -64,16 +64,18 @@ export function ChartPie() {
   return (
     <Card className="flex flex-col">
       <CardHeader className="flex flex-row items-center pb-0 justify-between">
-        <div className="flex flex-col">
-          <CardTitle>Tea Distribution</CardTitle>
-          <CardDescription>January - June 2025</CardDescription>
-        </div>
-        <div>
-          <Link
-            href="/analytics-dashboard">
-            <Expand className="h-4 w-4 text-muted-foreground" />
-          </Link>
-        </div>
+          <div className="flex flex-col">
+            <Link href="/analytics-dashboard">
+              <CardTitle>Tea Distribution</CardTitle>
+              <CardDescription>January - June 2025</CardDescription>
+            </Link>
+          </div>
+          <div>
+              <Link href="/analytics-dashboard">
+                <Expand className="h-5 w-5 text-muted-foreground" />
+              </Link>
+          </div>
+        
       </CardHeader>
       <CardContent className="flex-1 pb-0">
         <ChartContainer

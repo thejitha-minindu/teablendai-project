@@ -19,7 +19,8 @@ import {
   Inbox,
   Calendar,
   Search,
-  PanelLeftIcon
+  PanelLeftIcon,
+  LayoutDashboard
 } from "lucide-react";
 
 import {
@@ -52,7 +53,8 @@ type NavItem = {
 type UserRole = "seller" | "buyer" | "analytics";
 
 const sellerNavItems: NavItem[] = [
-  { name: "Home", href: "/seller/dashboard", icon: Home },
+  { name: "Home", href: "/", icon: Home },
+  { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { name: "Auction History", href: "/seller/history", icon: History },
   { name: "Live Auction", href: "/seller/live", icon: Gavel },
   { name: "Scheduled Auction", href: "/seller/scheduled", icon: CalendarClock },
@@ -60,7 +62,8 @@ const sellerNavItems: NavItem[] = [
 ];
 
 const buyerNavItems: NavItem[] = [
-  { name: "Dashboard", href: "/buyer/dashboard", icon: Home },
+  { name: "Home", href: "/", icon: Home },
+  { name: "Dashboard", href: "/buyer/dashboard", icon: LayoutDashboard },
   { name: "History", href: "/buyer/history", icon: Inbox },
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
   { name: "Browse Auctions", href: "/buyer/browse", icon: Search },
@@ -68,7 +71,8 @@ const buyerNavItems: NavItem[] = [
 ];
 
 const analyticsNavItems: NavItem[] = [
-  { name: "Overview", href: "/analytics-dashboard", icon: Home },
+  { name: "Home", href: "/", icon: Home },
+  { name: "Overview", href: "/analytics-dashboard", icon: LayoutDashboard },
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
   { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History },
@@ -146,21 +150,20 @@ export function NavSidebar() {
           className="fixed left-0 top-4 z-50"
         >
           <button
-                                    onClick={() => setIsCollapsed(false)}
-                                    className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                    aria-label="Expand sidebar"
-                                >
-                                    <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
-
-                                    <span
-                                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
-                                                text-xs text-white opacity-0 group-hover:opacity-100
-                                                transition-opacity pointer-events-none"
-                                    >
-                                        Expand sidebar
-                                    </span>
-                                </button>
+            onClick={() => setIsCollapsed(false)}
+            className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+            aria-label="Expand sidebar"
+          >
+            <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
+            <span
+              className="absolute left-full ml-2 top-1/2 -translate-y-1/2
+                          whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
+                          text-xs text-white opacity-0 group-hover:opacity-100
+                          transition-opacity pointer-events-none"
+            >
+            Expand sidebar
+            </span>
+          </button>
         </motion.div>
       )}
 
