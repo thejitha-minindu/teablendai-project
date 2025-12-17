@@ -5,8 +5,8 @@ export default function Login() {
                 <img className="h-full" src="/login-image.webp" alt="leftSideImage" />
             </div>
 
-             <div className="absolute top-0 left-0">
-              <img src="/TeaLogo.png" alt="overlayImage" className="h-[100px] " />
+             <div className="absolute top-5 left-5">
+              <img src="/tea-blend-logo.svg" alt="Tea Blend Logo" className="h-[80px] " />
                </div>
         
             <div className="w-full flex flex-col items-center justify-center">
