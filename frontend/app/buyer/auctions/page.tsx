@@ -5,7 +5,6 @@ import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { AuctionFilterSort } from "@/components/features/buyer/AuctionFilterSort";
 import { Button } from "@/components/ui/button";
 
-// Sample auction data - replace with your real data
 const AUCTION_DATA = [
   { id: 1, type: "live", title: "Auction 1" },
   { id: 2, type: "scheduled", title: "Auction 2" },
@@ -20,13 +19,21 @@ const AUCTION_DATA = [
 
 export default function BuyerHistoryPage() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 6;
   const totalCards = AUCTION_DATA.length;
+  const totalPages = Math.ceil(totalCards / itemsPerPage);
   const initialCards = 3;
-  const expandedCards = 6; // Load 3 more cards (2 rows total)
+  const expandedCards = 6;
   const hasMoreCards = totalCards > initialCards;
 
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = AUCTION_DATA.slice(startIndex, endIndex);
+
   const visibleCards = isExpanded ? expandedCards : initialCards;
-  const cardsToShow = AUCTION_DATA.slice(0, visibleCards);
+  const cardsToShow = isExpanded ? paginatedData : AUCTION_DATA.slice(0, visibleCards);
 
   return (
     <div className="sm:px-4 lg:px-20 lg:pt-10">
@@ -103,7 +110,6 @@ export default function BuyerHistoryPage() {
           </div>
         )}
       </div>
-      {/* Pagination Component - Only show when expanded */}
       {isExpanded && (
         <div
           className="flex flex-row justify-center sm:mt-10 mt-6"
@@ -111,7 +117,11 @@ export default function BuyerHistoryPage() {
             animation: "fadeInUp 0.5s ease-out",
           }}
         >
-          <PaginationBuyerAuction />
+          <PaginationBuyerAuction
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
     </div>

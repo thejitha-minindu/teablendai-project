@@ -13,19 +13,25 @@ const AUCTION_DATA = [
   { id: 5, type: "scheduled", title: "Auction 5" },
   { id: 6, type: "history", title: "Auction 6" },
   { id: 7, type: "live", title: "Auction 7" },
-  { id: 8, type: "scheduled", title: "Auction 8" },
-  { id: 9, type: "history", title: "Auction 9" },
 ];
 
 export default function BuyerHistoryPage() {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 6;
   const totalCards = AUCTION_DATA.length;
+  const totalPages = Math.ceil(totalCards / itemsPerPage);
   const initialCards = 3;
   const expandedCards = 6;
   const hasMoreCards = totalCards > initialCards;
 
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedData = AUCTION_DATA.slice(startIndex, endIndex);
+
   const visibleCards = isExpanded ? expandedCards : initialCards;
-  const cardsToShow = AUCTION_DATA.slice(0, visibleCards);
+  const cardsToShow = isExpanded ? paginatedData : AUCTION_DATA.slice(0, visibleCards);
 
   return (
     <div className="sm:px-4 lg:px-20 lg:pt-10">
@@ -107,7 +113,11 @@ export default function BuyerHistoryPage() {
             animation: "fadeInUp 0.5s ease-out",
           }}
         >
-          <PaginationBuyerAuction />
+          <PaginationBuyerAuction
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       )}
     </div>
