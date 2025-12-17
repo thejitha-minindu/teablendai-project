@@ -28,7 +28,7 @@ export default function BuyerHistoryPage() {
   const cardsToShow = AUCTION_DATA.slice(0, visibleCards);
 
   return (
-    <div className="sm:px-4 lg:px-20">
+    <div className="sm:px-4 lg:px-20 lg:pt-10">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -46,7 +46,7 @@ export default function BuyerHistoryPage() {
       `}</style>
 
       <div className="mb-5 items-start">
-        <h1 className="text-2xl font-bold">Auction History</h1>
+        <h1 className="text-3xl font-bold">Auction History</h1>
       </div>
 
       <AuctionFilterSort />

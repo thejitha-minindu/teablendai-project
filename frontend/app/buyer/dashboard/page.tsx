@@ -26,7 +26,7 @@ export default function BuyerAuctionPage() {
       `}</style>
 
       <div className="mb-5">
-        <h1 className="text-2xl font-bold">Dashboard</h1>
+        <h1 className="text-3xl font-bold">Buyer Dashboard</h1>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 mb-10">
         <div 
@@ -39,7 +39,7 @@ export default function BuyerAuctionPage() {
           </div>
         </div>
         <div 
-          className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 gap-5 lg:gap-10 card-animate"
+          className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 gap-10 lg:gap-10 card-animate"
           style={{ animationDelay: "80ms" }}
         >
           <div>
@@ -47,7 +47,7 @@ export default function BuyerAuctionPage() {
           </div>
           <div>
             <div>
-              <h2 className="text-2xl font-bold my-4 mt-10">Watchlist</h2>
+              <h2 className="text-2xl font-bold my-4 mt-5">Watchlist</h2>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
               <div className="card-animate" style={{ animationDelay: "0ms" }}>
@@ -63,7 +63,7 @@ export default function BuyerAuctionPage() {
           </div>
 
           <div 
-            className="flex flex-row justify-center sm:mt-10 mt-6 card-animate"
+            className="flex flex-row justify-center sm:mt-15 lg:mt-0 card-animate"
             style={{ animationDelay: "240ms" }}
           >
             <PaginationBuyerAuction />
