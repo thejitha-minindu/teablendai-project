@@ -16,7 +16,7 @@ export default function CreateNotificationPage() {
                     onClick={() => router.push("/admin/sendnotification/history")}
                     className="border px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100"
                 >
-                    ⭐ History
+                    History
                 </button>
             </div>
 
@@ -47,26 +47,40 @@ export default function CreateNotificationPage() {
 
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="font-medium">Notification Type</label>
-                        <input className="col-span-3 border p-2 rounded" />
+                        <select className="col-span-3 border p-2 rounded">
+                            <option value="">Select Type</option>
+                            <option value="System Notifications">System Notifications</option>
+                            <option value="User Verification Notifications">User Verification Notifications</option>
+                            <option value="Auction-Related Notifications">Auction-Related Notification</option>
+                            <option value="Bid & Transaction Notifications">Bid & Transaction</option>
+                            <option value="Violation & Compliance Notifications">Violation & Compliance</option>
+                            <option value="Custom Notifications">Custom Notifications</option>
+                            <option value="Complaint & Review Notifications">Complaint & Review Notifications</option>
+                        </select>
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="font-medium">Revisers</label>
-                        <input className="col-span-3 border p-2 rounded" />
+                        <select className="col-span-3 border p-2 rounded">
+                            <option value="">Select Reviser</option>
+                            <option value="buyer">Buyer</option>
+                            <option value="seller">Seller</option>
+                            <option value="all">ALl</option>
+                        </select>
                     </div>
 
                     <div className="grid grid-cols-4 items-center gap-4">
                         <label className="font-medium">Revisers Specify</label>
-                        <input className="col-span-3 border p-2 rounded" />
+                        <input className="col-span-3 border p-2 rounded" placeholder="Enter User ID"/>
                     </div>
 
                     {/* Actions */}
                     <div className="flex justify-end gap-3 mt-6">
                         <button className="border px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-gray-100">
-                            ❌ Cancel
+                            Cancel
                         </button>
                         <button className="border px-4 py-2 rounded-lg flex items-center gap-2 bg-green-700 text-white hover:bg-green-800">
-                            📤 Send & Save
+                            Send & Save
                         </button>
                     </div>
                 </div>

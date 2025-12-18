@@ -1,12 +1,7 @@
-import React from 'react';
 
-const AdminPage: React.FC = () => {
-    return (
-        <div>
-            <h1>Admin Dashboard</h1>
-            <p>Welcome to the admin panel!</p>
-        </div>
-    );
-};
+import { redirect } from "next/navigation";
 
-export default AdminPage;
+export default function AdminPage() {
+    // Server-side redirect to the seller dashboard
+    redirect("/admin/dashboard");
+}
