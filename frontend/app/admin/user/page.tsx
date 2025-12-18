@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { Eye, EyeOff, Pencil, User } from "lucide-react";
 
 export default function AdminProfile() {
@@ -207,7 +207,7 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function inputClass(enabled) {
+function inputClass(enabled: boolean) {
   return `w-full border rounded-full px-4 py-2 text-sm outline-none transition-colors
     ${enabled
       ? "bg-white border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600" 
