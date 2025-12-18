@@ -355,8 +355,12 @@ export function HistoryFilterSort({
                     Reset Filters
                   </Button>
                 )}
-                <Button onClick={handleFilterApply} className="h-10 px-6">
-                  Apply Filters
+                <Button
+                  onClick={handleFilterApply}
+                  className="flex-1 h-11 cursor-pointer hover:scale-98 transition-transform"
+                  style={{ backgroundColor: "var(--color4)" }}
+                >
+                  Apply
                 </Button>
               </div>
             </div>

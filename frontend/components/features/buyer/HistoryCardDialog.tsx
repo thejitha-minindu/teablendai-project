@@ -41,14 +41,24 @@ export function HistoryCardDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">More</Button>
+        <Button
+          variant="outline"
+          style={{ transition: "background 0.2s" }}
+          className="hover:text-white hover:cursor-pointer"
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "var(--color3)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+        >
+          More
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
         <DialogHeader className="pb-4 lg:mb-5">
-          <DialogTitle className="text-2xl">
+          <DialogTitle style={{ color: "var(--color4)", fontWeight: "bold" }} className="text-2xl">
             {auctionHistoryDetails.auctionName}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription style={{ color: "var(--color3)"}}>
             Detailed information about your auction history.
           </DialogDescription>
         </DialogHeader>
@@ -105,7 +115,14 @@ export function HistoryCardDialog() {
             <DialogClose asChild>
               <Button
                 variant="outline"
-                className="md:absolute md:left-6 md:bottom-6 lg:absolute lg:left-6 lg:bottom-6"
+                className="md:absolute md:left-6 md:bottom-6 lg:absolute lg:left-6 lg:bottom-6 hover:text-white hover:cursor-pointer"
+                style={{ transition: "background 0.2s" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "var(--color3)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "")
+                }
               >
                 Cancel
               </Button>

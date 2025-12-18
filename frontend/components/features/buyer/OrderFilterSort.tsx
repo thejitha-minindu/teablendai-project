@@ -234,9 +234,10 @@ export function OrderFilterSort({
             <div className="lg:col-span-3 flex items-end gap-2">
               <Button
                 onClick={handleFilterApply}
-                className="flex-1 h-11"
+                className="flex-1 h-11 cursor-pointer hover:scale-98 transition-transform"
+                style={{ backgroundColor: "var(--color4)" }}
               >
-                Apply Filters
+                Apply
               </Button>
               {activeFiltersCount > 0 && (
                 <Button
