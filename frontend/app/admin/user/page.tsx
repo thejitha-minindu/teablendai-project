@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 import { Eye, EyeOff, Pencil } from "lucide-react";
 
 export default function AdminProfile() {
@@ -16,7 +16,7 @@ export default function AdminProfile() {
     joined: "2020/12/26",
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAdmin({ ...admin, [e.target.name]: e.target.value });
   };
 
@@ -170,7 +170,7 @@ export default function AdminProfile() {
 }
 
 /* ===== Helpers ===== */
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium mb-1">{label}</label>
@@ -179,7 +179,7 @@ function Field({ label, children }) {
   );
 }
 
-function inputClass(enabled) {
+function inputClass(enabled: boolean) {
   return `w-full border rounded-full px-4 py-2 text-sm outline-none
     ${enabled ? "bg-white" : "bg-gray-100 text-gray-600"}`;
 }
