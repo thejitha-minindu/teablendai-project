@@ -19,11 +19,13 @@ const auctionHistoryDetails = {
   auctionName: "Spring Harvest Auction",
   company: "ABC Tea Company",
   date: "2025-10-12",
-  time: "10:00 AM",
   estateName: "Darjeeling Estate",
+  quantity: "100 kg",
   grade: "FTGFOP1",
-  soldPrice: "$500",
+  basePrice: "$500",
   winner: "John Doe",
+  winningBid: "$550",
+  soldPrice: "$600",
 };
 
 const bid = [
@@ -39,19 +41,31 @@ export function HistoryCardDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">More</Button>
+        <Button
+          variant="outline"
+          style={{ transition: "background 0.2s" }}
+          className="hover:text-white hover:cursor-pointer"
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "var(--color3)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+        >
+          More
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
-        <DialogHeader className="pb-4">
-          <DialogTitle>{auctionHistoryDetails.auctionName}</DialogTitle>
-          <DialogDescription>
+        <DialogHeader className="pb-4 lg:mb-5">
+          <DialogTitle style={{ color: "var(--color4)", fontWeight: "bold" }} className="text-2xl">
+            {auctionHistoryDetails.auctionName}
+          </DialogTitle>
+          <DialogDescription style={{ color: "var(--color3)"}}>
             Detailed information about your auction history.
           </DialogDescription>
         </DialogHeader>
         <div className="mt-10 h-full">
           <div className="flex flex-col md:flex-row gap-6 sm:items-center lg:items-start h-full">
             <div className="flex flex-row flex-1 w-full md:w-auto justify-center sm:justify-start">
-              <div>
+              <div className="flex flex-col gap-3">
                 <h2 className="text-m font-semibold mb-2">
                   {auctionHistoryDetails.estateName}
                 </h2>
@@ -67,11 +81,19 @@ export function HistoryCardDialog() {
                   <span className="font-medium">Quantity:</span>{" "}
                   {auctionHistoryDetails.winner}
                 </p>
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Winning Bid:</span>{" "}
+                  {auctionHistoryDetails.winningBid}
+                </p>
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Sold Price:</span>{" "}
+                  {auctionHistoryDetails.soldPrice}
+                </p>
               </div>
             </div>
 
-            <div className="flex flex-col h-full items-center sm:items-start text-xs lg:mr-5 mt-0 mb-4 md:mb-0">
-              <ScrollArea className="h-100 w-75 rounded-md border">
+            <div className="flex flex-col h-full items-center sm:items-start text-xs lg:mr-5 mt-0 mb-10">
+              <ScrollArea className="h-48 md:h-60 lg:h-75 w-full sm:w-64 md:w-72 lg:w-80 rounded-md border ">
                 <div className="p-4">
                   <h4 className="mb-4 text-sm leading-none font-medium">
                     Bids
@@ -93,7 +115,14 @@ export function HistoryCardDialog() {
             <DialogClose asChild>
               <Button
                 variant="outline"
-                className="md:absolute md:left-6 md:bottom-6 lg:absolute lg:left-6 lg:bottom-6"
+                className="md:absolute md:left-6 md:bottom-6 lg:absolute lg:left-6 lg:bottom-6 hover:text-white hover:cursor-pointer"
+                style={{ transition: "background 0.2s" }}
+                onMouseEnter={(e) =>
+                  (e.currentTarget.style.backgroundColor = "var(--color3)")
+                }
+                onMouseLeave={(e) =>
+                  (e.currentTarget.style.backgroundColor = "")
+                }
               >
                 Cancel
               </Button>

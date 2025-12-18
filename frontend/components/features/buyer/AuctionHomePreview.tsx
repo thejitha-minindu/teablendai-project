@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import '@/app/globals.css';
 
 import {
   Card,
@@ -30,8 +31,10 @@ export function AuctionHomePreview() {
     <Card className="w-full mx-auto">
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
         <div className="flex flex-col">
-          <CardTitle>{auctionDetails.auctionName}</CardTitle>
-          <CardDescription>(by {auctionDetails.company})</CardDescription>
+            <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>
+            {auctionDetails.auctionName}
+            </CardTitle>
+          <CardDescription style={{ color: "var(--color3)" }}>(by {auctionDetails.company})</CardDescription>
         </div>
         <div className="flex flex-col items-start lg:items-end text-xs mt-2 sm:mt-0 sm:ml-4 sm:items-start">
           <p>{auctionDetails.date}</p>
