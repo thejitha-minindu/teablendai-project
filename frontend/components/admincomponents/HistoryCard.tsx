@@ -18,7 +18,7 @@ export function HistoryCard({
     revisers,
 }: HistoryCardProps) {
     return (
-        <div className="border-2 border-green-800 rounded-xl p-6 bg-white mb-5">
+        <div className="bg-white rounded-xl shadow-md p-5  mb-5 w-full max-w-full min-w-0 block min-h-48">
 
             {/* TOP ROW */}
             <div className="flex gap-6 mb-4 font-medium text-sm">

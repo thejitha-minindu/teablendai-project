@@ -15,9 +15,9 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Buyers" value="234" sub="Pending Buyers 27" />
-        <StatCard title="Total Sellers" value="156" sub="Pending Sellers 12" />
-        <StatCard title="Total Auctions" value="890" sub="Pending Auctions 45" />
+        <StatCard title="Total Buyers" value="234" sub="Pending 27" />
+        <StatCard title="Total Sellers" value="156" sub="Pending 12" />
+        <StatCard title="Total Auctions" value="890" sub="Pending 45" />
         <ViolationCard />
       </div>
 
@@ -25,7 +25,7 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
         {/* ANALYTICS */}
-        <div className="lg:col-span-2 bg-white rounded-2xl shadow p-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6">
           <h2 className="font-semibold mb-2">System Activity</h2>
           <p className="text-sm text-gray-500 mb-4">
             Monthly system activity overview
@@ -40,7 +40,7 @@ export default function AdminDashboard() {
         {/* NOTIFY USERS */}
         <Link
           href="/admin/sendnotification"
-          className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between hover:shadow-lg transition"
+          className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-lg transition"
         >
           <div className="flex items-center gap-3">
             <Bell className="w-8 h-8 text-green-700" />
@@ -81,7 +81,7 @@ function StatCard({
   sub: string;
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow p-6">
+    <div className="bg-white rounded-2xl shadow p-10">
       <h3 className="text-sm text-gray-500">{title}</h3>
       <p className="text-4xl font-bold my-3">{value}</p>
       <span className="inline-block text-sm bg-green-800 text-white px-3 py-1 rounded-full">
