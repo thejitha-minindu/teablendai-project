@@ -2,10 +2,9 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Home,
   History,
   Gavel,
   CalendarClock,
@@ -20,7 +19,7 @@ import {
   Calendar,
   Search,
   PanelLeftIcon,
-  LayoutDashboard
+  LayoutDashboard,
 } from "lucide-react";
 
 import {
@@ -53,7 +52,6 @@ type NavItem = {
 type UserRole = "seller" | "buyer" | "analytics";
 
 const sellerNavItems: NavItem[] = [
-  { name: "Home", href: "/", icon: Home },
   { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { name: "Auction History", href: "/seller/history", icon: History },
   { name: "Live Auction", href: "/seller/live", icon: Gavel },
@@ -62,7 +60,6 @@ const sellerNavItems: NavItem[] = [
 ];
 
 const buyerNavItems: NavItem[] = [
-  { name: "Home", href: "/", icon: Home },
   { name: "Dashboard", href: "/buyer/dashboard", icon: LayoutDashboard },
   { name: "History", href: "/buyer/history", icon: Inbox },
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
@@ -71,15 +68,10 @@ const buyerNavItems: NavItem[] = [
 ];
 
 const analyticsNavItems: NavItem[] = [
-  { name: "Home", href: "/", icon: Home },
   { name: "Overview", href: "/analytics-dashboard", icon: LayoutDashboard },
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
-  {
-    name: "Blend Performance",
-    href: "/analytics-dashboard/blends",
-    icon: History,
-  },
+  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History},
   { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
 ];
 
@@ -244,6 +236,18 @@ export function NavSidebar() {
 
                 <SidebarGroup>
                   <SidebarGroupContent className="px-3 space-y-4 flex-grow">
+                    {/* Back Button 
+                    <div className="mb-4">
+                      <button
+                        onClick={() => router.back()}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40] rounded-lg transition-all duration-200"
+                        aria-label="Go back"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span className="text-sm font-medium">Back</span>
+                      </button>
+                    </div>
+                      */}
                     {role === "seller" && (
                       <div className="mb-6">
                         <Link
