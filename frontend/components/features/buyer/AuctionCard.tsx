@@ -1,5 +1,6 @@
 "use client";
 import * as React from "react";
+import '@/app/globals.css';
 
 import {
   Card,
@@ -10,9 +11,9 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AuctionHistoryDialog } from "@/components/features/buyer/AuctionHistoryDialog";
 import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
 import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
+
 
 export type CardType = "order" | "history" | "auction";
 
@@ -89,7 +90,17 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
       case "order":
         return <OrderCardDialog />;
       case "auction":
-        return <Button variant="outline">Place Bid</Button>;
+        return (
+          <Button
+            variant="outline"
+            style={{ transition: "background 0.2s" }}
+            className="hover:text-white hover:cursor-pointer"
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}
+          >
+            Place Bid
+          </Button>
+        );
       default:
         return null;
     }
@@ -99,8 +110,8 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
     <Card className="w-full mx-auto">
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">
         <div className="flex flex-col">
-          <CardTitle>{safeAuction.title}</CardTitle>
-          <CardDescription>(by {safeAuction.company})</CardDescription>
+          <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>{safeAuction.title}</CardTitle>
+          <CardDescription style={{ color: "var(--color3)" }}>(by {safeAuction.company})</CardDescription>
         </div>
         <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
           <p>{safeAuction.date}</p>

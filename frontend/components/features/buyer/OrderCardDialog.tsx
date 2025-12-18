@@ -27,14 +27,27 @@ export function OrderCardDialog() {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="outline">More</Button>
+        <Button
+          variant="outline"
+          style={{ transition: "background 0.2s" }}
+          className="hover:text-white hover:cursor-pointer"
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.backgroundColor = "var(--color3)")
+          }
+          onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+        >
+          More
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
         <DialogHeader className="pb-4 lg:mb-5">
-          <DialogTitle className="text-2xl">
+          <DialogTitle
+            style={{ color: "var(--color4)", fontWeight: "bold" }}
+            className="text-2xl"
+          >
             {auctionOrderDetails.auctionName}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription style={{ color: "var(--color3)" }}>
             Detailed information about your auction history.
           </DialogDescription>
         </DialogHeader>
@@ -68,8 +81,28 @@ export function OrderCardDialog() {
           </div>
 
           <DialogFooter className="flex flex-col md:flex-row md:justify-center md:items-center gap-2 lg:mt-10">
-            <Button variant="outline">Go to Payment</Button>
-            <Button variant="outline">Download Invoice</Button>
+            <Button
+              variant="outline"
+              className="hover:text-white hover:cursor-pointer"
+              style={{ transition: "background 0.2s" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--color3)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+            >
+              Go to Payment
+            </Button>
+            <Button
+              variant="outline"
+              className="hover:text-white hover:cursor-pointer"
+              style={{ transition: "background 0.2s" }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--color3)")
+              }
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+            >
+              Download Invoice
+            </Button>
           </DialogFooter>
         </div>
       </DialogContent>
