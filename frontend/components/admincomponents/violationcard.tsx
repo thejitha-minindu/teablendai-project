@@ -17,7 +17,7 @@ export function ViolationCard({
     reason,
 }: ViolationCardProps) {
     return (
-        <div className="border-2 border-green-800 rounded-xl p-5 bg-white mb-5">
+        <div className="bg-white rounded-xl shadow-md p-5  mb-5 w-full max-w-full min-w-0 block min-h-48">
 
             {/* Header */}
             <div className="flex items-center gap-3 mb-3">

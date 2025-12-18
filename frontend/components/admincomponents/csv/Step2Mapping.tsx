@@ -1,40 +1,62 @@
-type Props = {
-    onNext: () => void;
-    onBack: () => void;
+"use client";
+
+const tableFields: Record<string, string[]> = {
+    TeaPurchase: [
+        "PurchaseID",
+        "SourceType",
+        "Standard",
+        "PricePerKg",
+        "QuantityKg",
+        "PurchaseDate",
+    ],
+    TeaBlendSale: [
+        "SaleID",
+        "CustomerID",
+        "BlendName",
+        "PricePerKg",
+        "QuantityKg",
+        "SaleDate",
+    ],
+    BlendComposition: ["BlendID", "Standard", "Ratio"],
+    Customer: ["CustomerID", "Name", "Region"],
+    BlendPurchaseMapping: [
+        "MappingID",
+        "SaleID",
+        "PurchaseID",
+        "Standard",
+        "QuantityUsedKg",
+    ],
 };
 
-export function Step2Mapping({ onNext, onBack }: Props) {
+export default function Step2Mapping({
+    table,
+    csvHeaders,
+    mapping,
+    setMapping,
+}: any) {
     return (
-        <div className="bg-white rounded-xl border p-6 space-y-6">
-            <h2 className="text-xl font-bold">Column Mapping</h2>
+        <div>
+            <h2 className="font-semibold mb-4">Map Columns</h2>
 
-            <p className="text-sm text-gray-500">
-                Match CSV columns with database fields.
-            </p>
+            {tableFields[table]?.map((field) => (
+                <div key={field} className="flex gap-4 mb-3">
+                    <span className="w-48">{field}</span>
 
-            {/* Dummy Mapping UI */}
-            <div className="space-y-3">
-                {["Column A", "Column B", "Column C"].map((col) => (
-                    <div key={col} className="flex gap-4 items-center">
-                        <span className="w-40 text-sm">{col}</span>
-                        <select className="flex-1 border rounded-lg p-2">
-                            <option>-- Select DB Column --</option>
-                            <option>id</option>
-                            <option>name</option>
-                            <option>quantity</option>
-                        </select>
-                    </div>
-                ))}
-            </div>
-
-            <div className="flex justify-between">
-                <button onClick={onBack} className="border px-6 py-2 rounded-lg">
-                    Back
-                </button>
-                <button onClick={onNext} className="bg-green-700 text-white px-6 py-2 rounded-lg">
-                    Next
-                </button>
-            </div>
+                    <select
+                        className="border rounded p-1 flex-1"
+                        onChange={(e) =>
+                            setMapping({ ...mapping, [field]: e.target.value })
+                        }
+                    >
+                        <option value="">Select CSV column</option>
+                        {csvHeaders.map((h: string) => (
+                            <option key={h} value={h}>
+                                {h}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            ))}
         </div>
     );
 }

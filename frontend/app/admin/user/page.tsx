@@ -1,19 +1,21 @@
 "use client";
 
-import { useState, ReactNode } from "react";
-import { Eye, EyeOff, Pencil } from "lucide-react";
+import { useState } from "react";
+import { Eye, EyeOff, Pencil, User } from "lucide-react";
 
 export default function AdminProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
   const [admin, setAdmin] = useState({
-    username: "adminxxxxx",
-    email: "example@gmail.com",
-    password: "password123",
-    firstName: "Jane",
-    lastName: "Fernando",
-    joined: "2020/12/26",
+    username: "admin_tea_master",
+    email: "admin@teauction.com",
+    password: "securePass123!",
+    firstName: "Robert",
+    lastName: "Chen",
+    joined: "2022/05/15",
+    role: "Senior Auction Administrator",
+    avatarUrl: "/api/placeholder/112/112" // This will show a placeholder
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,15 +53,12 @@ export default function AdminProfile() {
           </svg>
           <div className="absolute left-1/2 -bottom-14 -translate-x-1/2">
             <div className="relative">
-              <div className="w-28 h-28 rounded-full border-4 border-white bg-gray-200 overflow-hidden">
-                <img
-                  src="/user-avatar.svg"
-                  alt="Avatar"
-                  className="w-full h-full object-cover"
-                />
+              <div className="w-28 h-28 rounded-full border-4 border-white bg-gray-100 overflow-hidden flex items-center justify-center">
+                {/* Fallback to User icon if avatar doesn't load */}
+                <User className="w-14 h-14 text-gray-400" />
               </div>
-              <button className="absolute bottom-1 right-1 bg-white rounded-full p-1 shadow">
-                <Pencil size={14} />
+              <button className="absolute bottom-1 right-1 bg-white rounded-full p-1.5 shadow hover:bg-gray-50">
+                <Pencil size={14} className="text-gray-600" />
               </button>
             </div>
           </div>
@@ -67,8 +66,9 @@ export default function AdminProfile() {
 
         {/* HEADER */}
         <div className="pt-20 text-center">
-          <h2 className="text-2xl font-semibold">Admin xxxxxx</h2>
-          <p className="text-sm text-gray-500">Joined {admin.joined}</p>
+          <h2 className="text-2xl font-semibold">{admin.firstName} {admin.lastName}</h2>
+          <p className="text-sm text-gray-500">{admin.role}</p>
+          <p className="text-xs text-gray-400 mt-1">Joined {admin.joined}</p>
         </div>
 
         {/* CONTENT */}
@@ -89,6 +89,7 @@ export default function AdminProfile() {
             <Field label="Email">
               <input
                 name="email"
+                type="email"
                 value={admin.email}
                 disabled={!isEditing}
                 onChange={handleChange}
@@ -109,32 +110,58 @@ export default function AdminProfile() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={!isEditing}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </Field>
 
-            <Field label="First Name">
-              <input
-                name="firstName"
-                value={admin.firstName}
-                disabled={!isEditing}
-                onChange={handleChange}
-                className={inputClass(isEditing)}
-              />
-            </Field>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Field label="First Name">
+                <input
+                  name="firstName"
+                  value={admin.firstName}
+                  disabled={!isEditing}
+                  onChange={handleChange}
+                  className={inputClass(isEditing)}
+                />
+              </Field>
 
-            <Field label="Last Name">
-              <input
-                name="lastName"
-                value={admin.lastName}
-                disabled={!isEditing}
-                onChange={handleChange}
-                className={inputClass(isEditing)}
-              />
-            </Field>
+              <Field label="Last Name">
+                <input
+                  name="lastName"
+                  value={admin.lastName}
+                  disabled={!isEditing}
+                  onChange={handleChange}
+                  className={inputClass(isEditing)}
+                />
+              </Field>
+            </div>
+          </div>
+
+          {/* Additional Info Section */}
+          <div className="mt-8 pt-6 border-t">
+            <h3 className="font-semibold mb-4">Additional Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-gray-500">Admin ID</p>
+                <p className="font-medium">ADMIN_20220515</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Account Status</p>
+                <p className="font-medium text-green-600">Active</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Last Login</p>
+                <p className="font-medium">2024-01-15 14:30:22</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Total Auctions Managed</p>
+                <p className="font-medium">247</p>
+              </div>
+            </div>
           </div>
 
           {/* ACTIONS */}
@@ -143,22 +170,23 @@ export default function AdminProfile() {
               <>
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-6 py-2 rounded-full border text-sm"
+                  className="px-6 py-2 rounded-full border text-sm hover:bg-gray-50 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-6 py-2 rounded-full bg-green-800 text-white text-sm hover:bg-green-700"
+                  className="px-6 py-2 rounded-full bg-green-800 text-white text-sm hover:bg-green-700 transition-colors"
                 >
-                  Save Edits
+                  Save Changes
                 </button>
               </>
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-6 py-2 rounded-full border text-sm"
+                className="px-6 py-2 rounded-full border text-sm hover:bg-gray-50 transition-colors flex items-center gap-2"
               >
+                <Pencil size={14} />
                 Edit Profile
               </button>
             )}
@@ -179,7 +207,10 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
-function inputClass(enabled: boolean) {
-  return `w-full border rounded-full px-4 py-2 text-sm outline-none
-    ${enabled ? "bg-white" : "bg-gray-100 text-gray-600"}`;
+function inputClass(enabled) {
+  return `w-full border rounded-full px-4 py-2 text-sm outline-none transition-colors
+    ${enabled
+      ? "bg-white border-gray-300 focus:border-green-600 focus:ring-1 focus:ring-green-600" 
+      : "bg-gray-50 border-gray-200 text-gray-600 cursor-not-allowed"
+    }`;
 }
