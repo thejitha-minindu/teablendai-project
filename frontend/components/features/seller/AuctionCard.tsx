@@ -1,11 +1,25 @@
 "use client";
 import React, { useState } from 'react';
-import { Calendar, Clock, Package } from 'lucide-react';
+import { Calendar, Clock } from 'lucide-react'; // Kept icons for specific conditional renders if needed
 import { AuctionCardProps } from '@/types/auction.types';
+import '../../../app/globals.css';
+
+// Import Shadcn UI components to match Buyer Card
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge"; // Optional: Good for the "LIVE" tag
 
 export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
   
+  // --- EXISTING LOGIC PRESERVED ---
   const getPriceLabel = () => {
     if (type === 'live') return 'Highest Bid';
     if (type === 'history') return 'Final Price';
@@ -15,95 +29,92 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
   const getStatusColor = () => {
     if (type === 'history' && data.status === 'Sold') return 'text-green-600';
     if (type === 'live') return 'text-blue-600';
-    return 'text-gray-600';
+    return 'text-muted-foreground';
   };
+  // -------------------------------
 
   return (
-    <div 
-      className="bg-white p-6 rounded-2xl border-2 border-[#A3B18A] shadow-sm hover:shadow-2xl hover:border-[#588157] transition-all duration-300 transform hover:-translate-y-2 flex flex-col justify-between h-full"
+    <Card 
+      className="w-full mx-auto hover:shadow-lg transition-all duration-300"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div>
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-[#588157] font-bold text-xl">{id}</h3>
-          {type === 'live' && (
-            <span className="animate-pulse bg-red-500 text-white text-xs px-3 py-1 rounded-full font-bold">LIVE</span>
-          )}
-        </div>
-        
-        <div className="space-y-3 text-sm">
-          {type === 'history' && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600 font-semibold">Status</span>
-              <span className={`font-bold ${getStatusColor()}`}>{data.status}</span>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-600 font-semibold">{getPriceLabel()}</span>
-            <span className="text-[#588157] font-bold text-lg">${data.price}</span>
+      {/* 1. HEADER: Title (ID) & Date/Time */}
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            {/* Title / ID */}
+            <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>
+            
+            {/* LIVE Badge (Preserved Logic) */}
+            {type === 'live' && (
+              <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
+            )}
           </div>
-
-          {type === 'scheduled' && data.date && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600 font-semibold flex items-center gap-2"><Calendar className="w-4 h-4" /> Date</span>
-              <span className="text-gray-800 font-medium">{data.date}</span>
-            </div>
-          )}
-
-          {type === 'live' && data.buyer && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600 font-semibold">Leading Buyer</span>
-              <span className="text-blue-600 font-medium">{data.buyer}</span>
-            </div>
-          )}
-
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-600 font-semibold flex items-center gap-2"><Package className="w-4 h-4" /> Grade</span>
-            <span className="text-gray-800 font-medium">{data.grade}</span>
-          </div>
-
-          <div className="flex justify-between items-center py-2 border-b border-gray-100">
-            <span className="text-gray-600 font-semibold">Quantity</span>
-            <span className="text-gray-800 font-medium">{data.quantity} kg</span>
-          </div>
-
-          {type === 'history' && data.buyer && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600 font-semibold">Buyer</span>
-              <span className="text-gray-800 font-medium">{data.buyer}</span>
-            </div>
-          )}
-
-          {type === 'scheduled' && data.time && (
-            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-              <span className="text-gray-600 font-semibold flex items-center gap-2"><Clock className="w-4 h-4" /> Time</span>
-              <span className="text-gray-800 font-medium">{data.time}</span>
-            </div>
-          )}
-
-          {type === 'live' && data.countdown && (
-            <div className="flex justify-between items-center py-2 bg-red-50 px-3 rounded-lg">
-              <span className="text-red-600 font-bold">Countdown</span>
-              <span className="text-red-600 font-mono font-bold text-lg">{data.countdown}</span>
-            </div>
-          )}
+          <CardDescription>
+             {/* Using Grade as subtitle since Estate is usually implied in Seller Dashboard */}
+             {data.grade} Grade
+          </CardDescription>
         </div>
-      </div>
 
-      <div className="mt-6 flex justify-between items-end border-t border-gray-200 pt-4">
-        <div className="text-xs text-gray-500 font-medium">
-          <div>2024-11-10</div>
-          <div>10:00 AM</div>
+        {/* Date & Time (Moved from bottom to top-right to match Buyer Card) */}
+        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
+          <p>{data.date || "Date N/A"}</p>
+          {data.time && <p>{data.time}</p>}
         </div>
-        <button 
-          onClick={() => onViewClick?.(id)}
-          className={`bg-[#588157] text-white px-8 py-2.5 rounded-lg hover:bg-[#3A5A40] transition-all duration-300 font-bold shadow-md uppercase text-sm tracking-wide ${isHovered ? 'scale-105' : 'scale-100'}`}
+      </CardHeader>
+
+      {/* 2. CONTENT: Data Fields */}
+      <CardContent>
+        <div className="flex flex-col gap-2">
+            
+            {/* Price (Highlighted) */}
+            <div className="flex justify-between items-center mb-1">
+                 <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
+                 <span className="text-lg font-bold text-[#1A2F1C]">${data.price}</span>
+            </div>
+
+            {/* Quantity */}
+            <p className="flex justify-between text-sm">
+                <span className="font-medium text-muted-foreground">Quantity:</span>
+                <span>{data.quantity} kg</span>
+            </p>
+
+            {/* Status (History only) */}
+            {type === 'history' && (
+                <p className="flex justify-between text-sm">
+                    <span className="font-medium text-muted-foreground">Status:</span>
+                    <span className={`font-bold ${getStatusColor()}`}>{data.status}</span>
+                </p>
+            )}
+
+            {/* Buyer (Live/History only) */}
+            {(type === 'live' || type === 'history') && data.buyer && (
+                <p className="flex justify-between text-sm">
+                    <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
+                    <span className="text-blue-600 font-medium">{data.buyer}</span>
+                </p>
+            )}
+
+            {/* Countdown (Live only) */}
+            {type === 'live' && data.countdown && (
+                <div className="mt-2 bg-red-50 p-2 rounded-md flex justify-between items-center">
+                    <span className="text-xs font-bold text-red-600 uppercase">Ending In</span>
+                    <span className="text-sm font-mono font-bold text-red-600">{data.countdown}</span>
+                </div>
+            )}
+        </div>
+      </CardContent>
+
+      {/* 3. FOOTER: Action Button */}
+      <CardFooter className="flex justify-end pt-2">
+        <Button 
+            onClick={() => onViewClick?.(id)}
+            className="bg-[var(--color1)] hover:bg-[var(--color3)] hover:text-white text-black font-bold"
         >
-          View
-        </button>
-      </div>
-    </div>
+            View Details
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
