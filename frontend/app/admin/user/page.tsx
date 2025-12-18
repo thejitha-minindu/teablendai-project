@@ -18,7 +18,7 @@ export default function AdminProfile() {
     avatarUrl: "/api/placeholder/112/112" // This will show a placeholder
   });
 
-  const handleChange = (e) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setAdmin({ ...admin, [e.target.name]: e.target.value });
   };
 
@@ -198,7 +198,7 @@ export default function AdminProfile() {
 }
 
 /* ===== Helpers ===== */
-function Field({ label, children }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
       <label className="block text-sm font-medium mb-1">{label}</label>

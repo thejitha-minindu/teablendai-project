@@ -9,8 +9,17 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 
+type Trending = 'up' | 'down' | 'neutral';
+
+interface KPIItem {
+  value: number;
+  unit: string;
+  trend: number;
+  trending: Trending;
+}
+
 // Dummy Data
-const kpiData = {
+const kpiData: Record<string, KPIItem> = {
   totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' },
   totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' },
   totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' },
