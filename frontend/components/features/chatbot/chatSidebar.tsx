@@ -13,11 +13,11 @@ import {
     Menu,
     X,
     PanelLeftIcon,
-    Home,
+    ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface ChatHistoryItem {
     id: string;
@@ -39,6 +39,7 @@ export function ChatSidebar({
     onDeleteChat,
     className,
 }: ChatSidebarProps) {
+    const router = useRouter();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
@@ -228,20 +229,22 @@ export function ChatSidebar({
                                 exit={{ opacity: 0 }}
                                 className="flex flex-col items-center gap-3"
                             >
-                                <Link href="/" className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                aria-label="Back to Home">
-                                    <Home className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform" />
+                                <button
+                                    onClick={() => router.back()}
+                                    className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                    aria-label="Go back"
+                                >
+                                    <ArrowLeft className="w-5 h-5 text-gray-700 group-hover:text-gray-900" />
                                     <span
                                         className="absolute left-full ml-2 top-1/2 -translate-y-1/2
                                         whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
                                         text-xs text-white opacity-0 group-hover:opacity-100
                                         transition-opacity pointer-events-none"
                                     >
-                                        Back to Home
+                                        Back
                                     </span>
-                                </Link>
+                                </button>
 
-                                
                                 <button
                                     onClick={() => setIsCollapsed(false)}
                                     className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
