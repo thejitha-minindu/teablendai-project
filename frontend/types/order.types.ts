@@ -8,7 +8,7 @@ export interface Order {
   order_id: string;
   user_id: string;
   auction_id: string;
-  total_price: number;
+  total_amount: number;
   order_date: Date;
   status: "pending" | "completed" | "canceled";
   payment_details: PaymentDetails;
@@ -16,7 +16,7 @@ export interface Order {
 
 export interface PaymentDetails {
   payment_id: string;
-  payment_method: string;
+  payment_method: "credit_card" | "paypal" | "bank_transfer";
   payment_date: Date;
   order_id: string;
   amount: number;
