@@ -204,7 +204,7 @@ export function ChatSidebar({
 
                                         <span
                                             className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                    whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
+                                                    whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
                                                     text-xs text-white opacity-0 group-hover:opacity-100
                                                     transition-opacity pointer-events-none"
                                         >
@@ -237,7 +237,7 @@ export function ChatSidebar({
                                     <ArrowLeft className="w-5 h-5 text-gray-700 group-hover:text-gray-900" />
                                     <span
                                         className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                        whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
+                                        whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
                                         text-xs text-white opacity-0 group-hover:opacity-100
                                         transition-opacity pointer-events-none"
                                     >
@@ -254,7 +254,7 @@ export function ChatSidebar({
 
                                     <span
                                         className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
+                                                whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
                                                 text-xs text-white opacity-0 group-hover:opacity-100
                                                 transition-opacity pointer-events-none"
                                     >
@@ -271,7 +271,7 @@ export function ChatSidebar({
 
                                     <span
                                         className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                whitespace-nowrap rounded-xl bg-gray-900 px-2 py-1
+                                                whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
                                                 text-xs text-white opacity-0 group-hover:opacity-100
                                                 transition-opacity pointer-events-none"
                                     >
