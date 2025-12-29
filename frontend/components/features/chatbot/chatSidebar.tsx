@@ -12,12 +12,13 @@ import {
     LogOut,
     Menu,
     X,
-    PanelLeftIcon,
+    PanelLeft,
     ArrowLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 interface ChatHistoryItem {
     id: string;
@@ -130,6 +131,14 @@ export function ChatSidebar({
         onDeleteChat?.(chatId);
     };
 
+    const handleBack = () => {
+        if (window.history.length > 1) {
+            router.back();
+        } else {
+            router.push("/");
+        }
+    };
+
     const getTimeAgo = (date: Date) => {
         const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
         if (seconds < 60) return "Just now";
@@ -140,22 +149,32 @@ export function ChatSidebar({
     };
 
     const shouldShowOnMobile = isMobileOpen;
-    const isDesktop = isMounted && window.innerWidth >= 768;
+    const isDesktop = isMounted && typeof window !== 'undefined' && window.innerWidth >= 768;
 
     return (
         <>
             {/* Mobile Menu Toggle Button */}
-            <button
-                onClick={() => setIsMobileOpen(!isMobileOpen)}
-                className="mobile-menu-toggle fixed top-4 left-4 z-50 md:hidden p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-                aria-label="Toggle menu"
-            >
-                {isMobileOpen ? (
-                    <X className="w-6 h-6 text-gray-700" />
-                ) : (
-                    <Menu className="w-6 h-6 text-gray-700" />
-                )}
-            </button>
+            {isMounted && (
+                <button
+                    onClick={() => setIsMobileOpen(!isMobileOpen)}
+                    className="mobile-menu-toggle fixed top-4 left-4 z-50 md:hidden p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    aria-label={isMobileOpen ? "Close menu" : "Open menu"}
+                >
+                    {isMobileOpen ? (
+                        <X className="w-6 h-6 text-gray-700" />
+                    ) : (
+                        <Menu className="w-6 h-6 text-gray-700" />
+                    )}
+                </button>
+            )}
+
+            {/* Overlay for mobile */}
+            {isMounted && isMobileOpen && (
+                <div 
+                    className="fixed inset-0 bg-black/20 z-30 md:hidden"
+                    onClick={() => setIsMobileOpen(false)}
+                />
+            )}
 
             {/* Sidebar */}
             <motion.div
@@ -169,7 +188,7 @@ export function ChatSidebar({
                 )}
                 initial={{ x: -320 }}
                 animate={{ 
-                    x: shouldShowOnMobile || isDesktop ? 0 : -320 
+                    x: shouldShowOnMobile || (isMounted && isDesktop) ? 0 : -320 
                 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
             >
@@ -195,22 +214,20 @@ export function ChatSidebar({
                                             priority
                                         />
                                     </div>
-                                    <button
-                                        onClick={() => setIsCollapsed(true)}
-                                        className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                        aria-label="Collapse sidebar"
-                                    >
-                                        <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
-
-                                        <span
-                                            className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                    whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
-                                                    text-xs text-white opacity-0 group-hover:opacity-100
-                                                    transition-opacity pointer-events-none"
-                                        >
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <button
+                                                onClick={() => setIsCollapsed(true)}
+                                                className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                                aria-label="Collapse sidebar"
+                                            >
+                                                <PanelLeft className="w-5 h-5 text-gray-600 hover:text-gray-900" />
+                                            </button>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="right" sideOffset={8}>
                                             Collapse sidebar
-                                        </span>
-                                    </button>
+                                        </TooltipContent>
+                                    </Tooltip>
                                 </div>
 
                                 <motion.button
@@ -229,55 +246,50 @@ export function ChatSidebar({
                                 exit={{ opacity: 0 }}
                                 className="flex flex-col items-center gap-3"
                             >
-                                <button
-                                    onClick={() => router.back()}
-                                    className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                    aria-label="Go back"
-                                >
-                                    <ArrowLeft className="w-5 h-5 text-gray-700 group-hover:text-gray-900" />
-                                    <span
-                                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                        whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
-                                        text-xs text-white opacity-0 group-hover:opacity-100
-                                        transition-opacity pointer-events-none"
-                                    >
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={handleBack}
+                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            aria-label="Go back"
+                                        >
+                                            <ArrowLeft className="w-5 h-5 text-gray-700 hover:text-gray-900" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" sideOffset={8}>
                                         Back
-                                    </span>
-                                </button>
+                                    </TooltipContent>
+                                </Tooltip>
 
-                                <button
-                                    onClick={() => setIsCollapsed(false)}
-                                    className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                    aria-label="Expand sidebar"
-                                >
-                                    <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
-
-                                    <span
-                                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
-                                                text-xs text-white opacity-0 group-hover:opacity-100
-                                                transition-opacity pointer-events-none"
-                                    >
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => setIsCollapsed(false)}
+                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            aria-label="Expand sidebar"
+                                        >
+                                            <PanelLeft className="w-5 h-5 text-gray-700 hover:text-gray-900 transform rotate-180" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" sideOffset={8}>
                                         Expand sidebar
-                                    </span>
-                                </button>
+                                    </TooltipContent>
+                                </Tooltip>
 
-                                <button
-                                    onClick={handleNewChat}
-                                    className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                                    aria-label="New chat"
-                                >
-                                    <MessageSquarePlus className="w-5 h-5 text-gray-700 group-hover:text-gray-900" />
-
-                                    <span
-                                        className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                                                whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
-                                                text-xs text-white opacity-0 group-hover:opacity-100
-                                                transition-opacity pointer-events-none"
-                                    >
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={handleNewChat}
+                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            aria-label="New chat"
+                                        >
+                                            <MessageSquarePlus className="w-5 h-5 text-gray-700 hover:text-gray-900" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" sideOffset={8}>
                                         New chat
-                                    </span>
-                                </button>
+                                    </TooltipContent>
+                                </Tooltip>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -348,7 +360,7 @@ export function ChatSidebar({
                             >
                                 <button 
                                     onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900" 
+                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900 group" 
                                     title="Profile menu"
                                     aria-label="Profile menu"
                                 >
@@ -369,16 +381,21 @@ export function ChatSidebar({
                                 exit={{ opacity: 0 }}
                                 className="flex flex-col gap-1 items-center"
                             >
-                                <button
-                                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                    className="p-2 rounded-lg hover:bg-gray-100 transition-colors relative"
-                                    title="Profile"
-                                    aria-label="Profile"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center">
-                                        <User className="w-5 h-5 text-white" />
-                                    </div>
-                                </button>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={() => setShowProfileMenu(!showProfileMenu)}
+                                            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                                        >
+                                            <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center">
+                                                <User className="w-5 h-5 text-white" />
+                                            </div>
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" sideOffset={8}>
+                                        Profile
+                                    </TooltipContent>
+                                </Tooltip>
                             </motion.div>
                         )}
                     </AnimatePresence>
@@ -593,14 +610,20 @@ function ChatHistoryCard({
                             exit={{ opacity: 0, scale: 0.8 }}
                             className="flex items-center gap-1"
                         >
-                            <button
-                                onClick={onDelete}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
-                                title="Delete chat"
-                                aria-label="Delete chat"
-                            >
-                                <Trash2 className="w-5 h-5 text-gray-500 hover:text-red-500 cursor-pointer" />
-                            </button>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <button
+                                        onClick={onDelete}
+                                        className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                                        aria-label="Delete chat"
+                                    >
+                                        <Trash2 className="w-5 h-5 text-gray-500 hover:text-red-500" />
+                                    </button>
+                                </TooltipTrigger>
+                                <TooltipContent side="right" sideOffset={8}>
+                                    Delete
+                                </TooltipContent>
+                            </Tooltip>
                         </motion.div>
                     )}
                 </AnimatePresence>
