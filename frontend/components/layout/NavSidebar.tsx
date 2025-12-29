@@ -43,6 +43,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+// Add Tooltip imports if you have them, or create a simple tooltip
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
 type NavItem = {
   name: string;
   href: string;
@@ -172,21 +180,26 @@ export function NavSidebar() {
           transition={{ duration: 0.3 }}
           className="fixed left-0 top-4 z-50"
         >
-          <button
-            onClick={() => setIsCollapsed(false)}
-            className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-            aria-label="Expand sidebar"
-          >
-            <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
-            <span
-              className="absolute left-full ml-2 top-1/2 -translate-y-1/2
-                          whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1
-                          text-xs text-white opacity-0 group-hover:opacity-100
-                          transition-opacity pointer-events-none"
-            >
-              Expand sidebar
-            </span>
-          </button>
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setIsCollapsed(false)}
+                  className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                  aria-label="Expand sidebar"
+                >
+                  <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                sideOffset={10}
+                className="z-[9999] bg-gray-900 text-white text-xs"
+              >
+                Expand sidebar
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </motion.div>
       )}
 
@@ -214,37 +227,32 @@ export function NavSidebar() {
                         priority
                       />
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsCollapsed(true)}
-                      className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                      aria-label="Collapse sidebar"
-                    >
-                      <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
-
-                      <div className="fixed left-[var(--sidebar-width)] top-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-[100]">
-                        <div className="whitespace-nowrap rounded-lg bg-gray-900 px-2 py-1 text-xs text-white shadow-lg">
+                    <TooltipProvider delayDuration={300}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            onClick={() => setIsCollapsed(true)}
+                            className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                            aria-label="Collapse sidebar"
+                          >
+                            <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="right"
+                          sideOffset={10}
+                          className="z-[9999] bg-gray-900 text-white text-xs"
+                        >
                           Collapse sidebar
-                        </div>
-                      </div>
-                    </button>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
                 </SidebarGroup>
 
                 <SidebarGroup>
                   <SidebarGroupContent className="px-3 space-y-4 flex-grow">
-                    {/* Back Button 
-                    <div className="mb-4">
-                      <button
-                        onClick={() => router.back()}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40] rounded-lg transition-all duration-200"
-                        aria-label="Go back"
-                      >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span className="text-sm font-medium">Back</span>
-                      </button>
-                    </div>
-                      */}
                     {role === "seller" && (
                       <div className="mb-6">
                         <Link
