@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 AuctionType = Literal["scheduled", "live", "history"]
 
-class AuctionData(BaseModel):
+class Auction(BaseModel):
     auction_id: str
     seller_id: str
     grade: str
