@@ -6,6 +6,7 @@ from sqlalchemy import pool
 from alembic import context
 from src.database import Base
 from src.infrastructure.database.bid import Bid
+from src.infrastructure.database.auction import Auction
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
