@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.presentation.routers.v1 import health
+from src.presentation.routers.v1 import health, bid, auction, user, order
 
 app = FastAPI()
 
@@ -20,6 +20,16 @@ app.add_middleware(
 )
 
 # API v1 routers
+
+# Register bid router
+app.include_router(bid.router, prefix="/api/v1")
+# Register auction router
+app.include_router(auction.router, prefix="/api/v1")
+# Register user router
+app.include_router(user.router, prefix="/api/v1")
+# Register order router
+app.include_router(order.router, prefix="/api/v1")
+# Register health check router
 app.include_router(health.router, prefix="/api/v1")
 
 
