@@ -1,25 +1,19 @@
 # Core FastAPI Stack
 fastapi==0.115.0
-starlette==0.50.0
 uvicorn[standard]==0.32.0
 python-multipart==0.0.12
-fastapi-cors==0.0.6
 
 # Pydantic
 pydantic==2.10.0
 pydantic-settings==2.6.0
 annotated-types==0.7.0
-typing-extensions==4.15.0
-typing-inspection==0.4.2
 
 # Database & ORM
-SQLAlchemy==2.0.45
-alembic==1.17.2
-PyMySQL==1.1.2
-pyodbc==5.3.0
-greenlet==3.3.0
-Mako==1.3.10
-MarkupSafe==3.0.3
+SQLAlchemy==2.0.35
+alembic==1.13.3
+asyncpg==0.30.0
+greenlet==3.1.1
+psycopg2-binary==2.9.10
 
 # MCP
 mcp==1.1.2
@@ -31,33 +25,46 @@ langchain-google-genai==2.0.5
 google-generativeai==0.8.3
 
 # Web & Networking
-httpx==0.27.0
-anyio==4.12.0
-h11==0.16.0
+httpx==0.27.2
+aiohttp==3.10.10
+anyio==4.6.2.post1
+h11==0.14.0
 idna==3.11
-click==8.3.1
+certifi==2024.8.30
+
+# CLI
+click==8.1.7
 colorama==0.4.6
 
 # Security
-cryptography==46.0.3
-cffi==2.0.0
-pycparser==2.23
+cryptography==43.0.3
+python-jose[cryptography]==3.3.0 
+passlib[bcrypt]==1.7.4 
+bcrypt==4.2.0
 
 # Data Processing
-numpy==1.26.2
-pandas==2.1.4
+numpy==1.26.4
+pandas==2.2.3
 
 # Web Search
 tavily-python==0.5.0
 
 # Utilities
-python-dotenv==1.2.1
+python-dotenv==1.0.1
 aiofiles==24.1.0
-annotated-doc==0.0.4
+pyyaml==6.0.2
+python-dateutil==2.9.0.post0
 
 # Visualization
+matplotlib==3.9.2
 plotly==5.24.1
+
+# Caching
+redis==5.2.0
+hiredis==3.0.0
 
 # Development & Testing
 pytest==8.3.3
 pytest-asyncio==0.24.0
+pytest-cov==5.0.0
+
