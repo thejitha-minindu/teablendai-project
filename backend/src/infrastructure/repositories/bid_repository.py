@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from src.infrastructure.database.bid import Bid as BidModel
+from src.domain.models.bid import Bid as BidModel
 from src.application.schemas.bid import Bid
 from src.domain.repositories.bid_repository import BidRepositoryInterface
 

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, String, Float, DateTime
-from src.database import Base
+from src.infrastructure.database.base import Base
 
 class Auction(Base):
     __tablename__ = "auctions"
@@ -12,5 +12,6 @@ class Auction(Base):
     date = Column(DateTime, nullable=False)
     duration = Column(Float, nullable=False)
     status = Column(String(64), nullable=False)
-    buyer = Column(String(64), nullable=True)
-    sold_price = Column(Float, nullable=True)
+    buyer = Column(String(64))
+    sold_price = Column(Float)
+    countdown = Column(Float)

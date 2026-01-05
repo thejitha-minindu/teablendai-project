@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List
 from src.application.schemas.auction import Auction
 from src.application.use_cases.auction_service import AuctionService
-from src.database import get_db
+from src.infrastructure.database.base import get_db
 
 router = APIRouter()
 

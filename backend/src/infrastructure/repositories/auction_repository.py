@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from src.infrastructure.database.auction import Auction as BidModel
+from src.domain.models.auction import Auction as BidModel
 from src.application.schemas.auction import Auction
 from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 
