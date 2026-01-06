@@ -1,4 +1,5 @@
-from sqlalchemy import Column, String, Float, DateTime
+from sqlalchemy import Column, ForeignKey, String, Float, DateTime
+from sqlalchemy.orm import relationship
 from src.infrastructure.database.base import Base
 
 class Auction(Base):
@@ -6,7 +7,10 @@ class Auction(Base):
 
     auction_id = Column(String(64), primary_key=True, index=True)
     seller_id = Column(String(64), nullable=False)
+    auction_name = Column(String(128), nullable=False)
     grade = Column(String(64), nullable=False)
+    company_name = Column(String(128), nullable=False)
+    estate_name = Column(String(128), nullable=False)
     quantity = Column(Float, nullable=False)
     base_price = Column(Float, nullable=False)
     date = Column(DateTime, nullable=False)
@@ -15,3 +19,6 @@ class Auction(Base):
     buyer = Column(String(64))
     sold_price = Column(Float)
     countdown = Column(Float)
+
+    bids = relationship("Bid", back_populates="auction")
+    order = relationship("Order", back_populates="auction", uselist=False)
