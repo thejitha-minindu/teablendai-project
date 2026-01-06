@@ -3,6 +3,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.presentation.routers.v1 import health, bid, auction, user, order
 
+from dotenv import load_dotenv
+load_dotenv()
+
 app = FastAPI()
 
 # CORS setup

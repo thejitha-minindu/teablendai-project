@@ -8,6 +8,7 @@ from src.infrastructure.database.base import Base
 from src.domain.models.bid import Bid
 from src.domain.models.auction import Auction
 from src.domain.models.order import Order, PaymentDetails, WinsAuction
+from src.domain.models.user import User
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
