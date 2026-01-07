@@ -15,7 +15,11 @@ class Auction(BaseModel):
     base_price: float
     date: datetime
     duration: float
-    status: str
+    status: AuctionType
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[float] = None
+    image_url: Optional[str] = None
+
+    class Config:
+        from_attributes = True

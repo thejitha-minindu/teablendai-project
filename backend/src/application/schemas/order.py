@@ -7,6 +7,9 @@ class WinsAuction(BaseModel):
     user_id: str
     order_id: str
 
+    class Config:
+        from_attributes = True
+
 class PaymentDetails(BaseModel):
     payment_id: str
     payment_method: Literal["credit_card", "paypal", "bank_transfer"]
@@ -14,6 +17,9 @@ class PaymentDetails(BaseModel):
     order_id: str
     amount: float
     status: Literal["successful", "failed", "pending"]
+
+    class Config:
+        from_attributes = True
 
 class Order(BaseModel):
     order_id: str
@@ -23,3 +29,6 @@ class Order(BaseModel):
     order_date: datetime
     status: Literal["pending", "completed", "canceled"]
     payment_details: Optional[PaymentDetails] = None
+
+    class Config:
+        from_attributes = True
