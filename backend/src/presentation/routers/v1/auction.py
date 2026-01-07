@@ -21,7 +21,7 @@ def create_auction(
 def read_auctions(service: AuctionService = Depends(get_auction_service)):
     return service.list_auctions()
 
-@router.get("/auctions/{auction_id}", response_model=Auction)
+@router.get("/auctions/{auction_id}", response_model=AuctionResponse)
 def read_auction(auction_id: str, service: AuctionService = Depends(get_auction_service)):
     auction = service.get_auction(auction_id)
     if not auction:

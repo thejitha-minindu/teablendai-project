@@ -1,7 +1,7 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Plus, Leaf, ArrowRight, DollarSign, Users, RefreshCw, Calendar as CalendarIcon } from "lucide-react";
+import { Plus, Leaf, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 
 // Components
 import { ChartPie } from "@/components/features/buyer/ChartPie"; 
@@ -13,7 +13,7 @@ const formatDateTitle = (date: Date) => {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
 };
 
-// Helper: Compare Dates
+// Helper: Compare Dates (ignoring time)
 const isSameDay = (d1: Date, d2: Date) => {
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
@@ -23,57 +23,74 @@ const isSameDay = (d1: Date, d2: Date) => {
 export default function SellerDashboardPage() {
   const [isHovered, setIsHovered] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+  const [allAuctions, setAllAuctions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  // --- 1. MOCK DATA SETUP ---
-  const today = new Date();
-  // Reset time part for accurate comparison
-  today.setHours(0, 0, 0, 0);
+  // Today's date (reset time for comparison)
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
-  const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
-  const dayAfter = new Date(today); dayAfter.setDate(dayAfter.getDate() + 2);
-  const yesterday = new Date(today); yesterday.setDate(yesterday.getDate() - 1);
+  // --- 1. FETCH REAL DATA ---
+  useEffect(() => {
+    const fetchAllData = async () => {
+      try {
+        setLoading(true);
+        // Fetch from all 3 endpoints in parallel
+        const [liveRes, schedRes, histRes] = await Promise.all([
+            fetch('http://localhost:8000/api/v1/auctions/status/live'),
+            fetch('http://localhost:8000/api/v1/auctions/status/scheduled'),
+            fetch('http://localhost:8000/api/v1/auctions/status/history')
+        ]);
 
-  const allAuctions = [
-    {
-        id: "Auction #104",
-        grade: "BOPF",
-        quantity: 800,
-        price: 1200,
-        sellerBrand: "Kenmare Estate",
-        date: tomorrow.toISOString().split('T')[0], // Scheduled (Tomorrow)
-        time: "10:00 AM",
-        status: "Scheduled"
-    },
-    {
-        id: "Auction #105",
-        grade: "Dust-1",
-        quantity: 500,
-        price: 950,
-        sellerBrand: "Kenmare Estate",
-        date: dayAfter.toISOString().split('T')[0], // Scheduled (Day after)
-        time: "02:00 PM",
-        status: "Scheduled"
-    },
-    {
-        id: "Auction #106",
-        grade: "FBOP",
-        quantity: 300,
-        price: 2100,
-        sellerBrand: "Kenmare Estate",
-        date: today.toISOString().split('T')[0], // ACTIVE (Today)
-        time: "08:00 AM",
-        status: "Live"
-    },
-    {
-        id: "Auction #102",
-        grade: "Pekoe",
-        quantity: 1200,
-        price: 1800,
-        sellerBrand: "Kenmare Estate",
-        date: yesterday.toISOString().split('T')[0], // PAST (Yesterday)
-        status: "Sold",
-    }
-  ];
+        const liveData = await liveRes.json();
+        const schedData = await schedRes.json();
+        const histData = await histRes.json();
+
+        // Helper to normalize API data for the UI
+        const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
+            // Force UTC to Local conversion
+            const safeTime = item.start_time.endsWith('Z') ? item.start_time : item.start_time + 'Z';
+            const dateObj = new Date(safeTime);
+            
+            return {
+                id: 'Auction',
+                grade: item.grade,
+                quantity: item.quantity,
+                price: item.base_price, // map base_price to price for card
+                sellerBrand: item.seller_brand || "My Estate",
+                dateObj: dateObj, // Keep object for logic
+                date: dateObj.toLocaleDateString(), // String for display
+                time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                status: type === 'live' ? 'Live' : (type === 'history' ? (item.status || 'Sold') : 'Scheduled'),
+                type: type, // 'live', 'scheduled', 'history'
+                
+                // Add fields needed for Live Card
+                buyer: item.buyer,
+                countdown: item.duration ? "Calculating..." : null, 
+                rawStart: item.start_time,
+                duration: item.duration
+            };
+        };
+
+        const combined = [
+            ...liveData.map((i: any) => normalize(i, 'live')),
+            ...schedData.map((i: any) => normalize(i, 'scheduled')),
+            ...histData.map((i: any) => normalize(i, 'history'))
+        ];
+
+        setAllAuctions(combined);
+      } catch (error) {
+        console.error("Failed to load dashboard data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAllData();
+  }, []);
 
   // --- 2. CALENDAR STYLING LOGIC ---
   const { activeDates, scheduledDates, pastDates } = useMemo(() => {
@@ -82,48 +99,50 @@ export default function SellerDashboardPage() {
     const past: Date[] = [];
 
     allAuctions.forEach(auction => {
-        const auctionDate = new Date(auction.date);
-        auctionDate.setHours(0,0,0,0); // Normalize time
-        
-        if (isSameDay(auctionDate, today)) {
-            active.push(auctionDate);
-        } else if (auctionDate > today) {
-            scheduled.push(auctionDate);
+        // If it's LIVE, it counts as "Active" regardless of start date
+        if (auction.type === 'live') {
+            active.push(auction.dateObj);
+            // Also ensure it highlights TODAY if it started previously
+            if (!isSameDay(auction.dateObj, today)) {
+                active.push(today);
+            }
+        } 
+        else if (auction.type === 'scheduled') {
+            scheduled.push(auction.dateObj);
         } else {
-            past.push(auctionDate);
+            past.push(auction.dateObj);
         }
     });
 
     return { activeDates: active, scheduledDates: scheduled, pastDates: past };
-  }, [allAuctions]);
+  }, [allAuctions, today]);
 
-  // --- 3. FILTER LOGIC (FIXED: Defaults to Today, avoids mess) ---
-  
-  // If a date is selected on calendar, use it. Otherwise, use TODAY.
+  // --- 3. FILTER LOGIC (THE FIX) ---
   const targetDate = selectedDate || today;
   
   const displayedAuctions = allAuctions.filter(a => {
-      // Need to adjust the auction string date to local object for comparison
-      const aDate = new Date(a.date);
-      // Fix timezone offset issues for string dates like "2025-12-16"
-      aDate.setMinutes(aDate.getMinutes() + aDate.getTimezoneOffset());
-      return isSameDay(aDate, targetDate);
+      // RULE 1: If viewing TODAY, show ALL Live auctions (even if they started yesterday)
+      if (isSameDay(targetDate, today) && a.type === 'live') {
+          return true;
+      }
+      
+      // RULE 2: Otherwise, match the exact date selected on calendar
+      return isSameDay(a.dateObj, targetDate);
   });
 
   return (
     <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
       
-      {/* 1. Page Title & Quick Stats */}
+      {/* 1. Page Title */}
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#1A2F1C]">Seller Dashboard</h1>
-          <p className="text-gray-500">Welcome back, Kenmare Estate</p>
+          <p className="text-gray-500">Welcome back</p>
         </div>
       </div>
 
       {/* --- ROW 1: Chart & Hero Section --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
-        
         {/* Left: Chart */}
         <div className="lg:col-span-1 h-full">
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center min-h-[420px]">
@@ -141,7 +160,6 @@ export default function SellerDashboardPage() {
                 onMouseEnter={() => setIsHovered(true)}
                 onMouseLeave={() => setIsHovered(false)}
             >
-                {/* Background Decor */}
                 <div className="absolute inset-0 opacity-20">
                     <Leaf className="absolute -right-10 -bottom-10 w-64 h-64 text-white rotate-12 transition-all duration-700 group-hover:rotate-0 group-hover:scale-110" />
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20" />
@@ -200,8 +218,6 @@ export default function SellerDashboardPage() {
                     selected={selectedDate || today} 
                     onSelect={setSelectedDate}
                     className="rounded-md border-none w-full" 
-                    
-                    // --- CALENDAR COLOR LOGIC ---
                     modifiers={{
                         active: activeDates,     // Green (Today/Live)
                         scheduled: scheduledDates, // Orange (Future)
@@ -214,7 +230,6 @@ export default function SellerDashboardPage() {
                     }}
                 />
 
-                {/* Legend */}
                 <div className="mt-6 flex flex-wrap gap-3 text-xs w-full px-2">
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Live/Today</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Scheduled</div>
@@ -228,43 +243,37 @@ export default function SellerDashboardPage() {
             <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-bold text-[#1A2F1C]">
-                        {/* Dynamic Title based on selection */}
                         {isSameDay(targetDate, today) ? "Today's Auctions" : `Auctions on ${formatDateTitle(targetDate)}`}
                     </h2>
                 </div>
-                
-                {!isSameDay(targetDate, today) && (
-                    <Link href="/seller/history" className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline">
-                        View History
-                    </Link>
-                )}
             </div>
 
-            {displayedAuctions.length > 0 ? (
+            {loading ? (
+                <div className="flex flex-col items-center justify-center h-48 bg-white rounded-3xl border border-gray-100">
+                    <p className="text-gray-500 animate-pulse">Loading dashboard data...</p>
+                </div>
+            ) : displayedAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {displayedAuctions.map((auction, idx) => (
                         <AuctionCard 
                             key={idx}
-                            id={auction.id}
-                            type={auction.status === 'Sold' || new Date(auction.date) < today ? 'history' : (auction.status === 'Live' ? 'live' : 'scheduled')} 
+                            id={`${auction.id.substring(0,7)}`}
+                            // Map dashboard type to AuctionCard type
+                            type={auction.type} 
                             data={auction}
                         />
                     ))}
                 </div>
             ) : (
-                /* --- FIXED EMPTY STATE UI --- 
-                   Added min-height and flex center to prevent "Messy" collapse 
-                */
                 <div className="flex flex-col items-center justify-center h-full min-h-[300px] bg-white rounded-3xl border border-dashed border-gray-300 p-8 text-center">
                     <div className="w-16 h-16 bg-[#F5F7EB] rounded-full flex items-center justify-center mb-4">
                         <CalendarIcon className="w-8 h-8 text-[#A3B18A]" />
                     </div>
                     <h3 className="text-lg font-bold text-gray-800 mb-2">No Auctions Found</h3>
                     <p className="text-gray-500 max-w-sm">
-                        You don't have any auctions scheduled for <span className="font-semibold text-[#3A5A40]">{formatDateTitle(targetDate)}</span>.
+                        You don't have any auctions for <span className="font-semibold text-[#3A5A40]">{formatDateTitle(targetDate)}</span>.
                     </p>
                     
-                    {/* Show "Create" button if date is today or future */}
                     {targetDate >= today && (
                         <Link href="/seller/create-auction" className="mt-6 text-sm font-bold text-white bg-[#3A5A40] px-6 py-2.5 rounded-full hover:bg-[#2D4A2B] transition-colors">
                             Schedule New Auction
