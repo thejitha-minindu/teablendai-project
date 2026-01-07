@@ -1,25 +1,124 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban } from 'lucide-react';
 
 // ==========================================
-// 1. SCHEDULED AUCTION MODAL
+// 1. SCHEDULED AUCTION MODAL (Connected to Backend)
 // ==========================================
 export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: string; onClose: () => void }) {
-  // Mock data - replace with actual data from props or API
-  const auctionData = {
-    estateName: 'Highland Estate',
-    grade: 'BOPF',
-    quantity: 1000,
-    origin: 'Nuwara Eliya',
-    description: 'Premium quality black tea with rich flavor profile and excellent aroma.',
-    basePrice: 450,
-    scheduledDate: '2024-11-15',
-    scheduledTime: '10:00 AM',
-    duration: '24 hours',
-    createdDate: '2024-11-10',
-    status: 'Scheduled'
+  const [auction, setAuction] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  
+  // Controls which "mode" the modal is in: View, Editing Details, or Rescheduling
+  const [editMode, setEditMode] = useState<'none' | 'details' | 'schedule'>('none');
+
+  // Form State for editing
+  const [formData, setFormData] = useState({
+    grade: '',
+    quantity: 0,
+    base_price: 0,
+    origin: '',
+    description: '',
+    start_time: '',
+    duration: 0
+  });
+
+  // 1. FETCH DATA ON MOUNT
+  useEffect(() => {
+    const fetchDetails = async () => {
+      try {
+        const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`);
+        if (!res.ok) throw new Error("Failed to load");
+        const data = await res.json();
+        
+        setAuction(data);
+        // Initialize form data with fetched values
+        setFormData({
+          grade: data.grade,
+          quantity: data.quantity,
+          base_price: data.base_price,
+          origin: data.origin,
+          description: data.description || '',
+          start_time: data.start_time.slice(0, 16), // Format for input type="datetime-local"
+          duration: data.duration
+        });
+      } catch (error) {
+        console.error("Error fetching auction details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (auctionId) fetchDetails();
+  }, [auctionId]);
+
+  // 2. HANDLE SAVE (PUT Request)
+  const handleSave = async () => {
+    try {
+      // Keep existing data that isn't in the form, maintain ISO date format
+      const payload = {
+        ...formData,
+        seller_brand: auction.seller_brand || 'My Estate', 
+        start_time: new Date(formData.start_time).toISOString(),
+      };
+
+      const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert("Auction updated successfully!");
+        setEditMode('none');
+        onClose(); // Close to force refresh of the main list
+      } else {
+        alert("Failed to update auction.");
+      }
+    } catch (error) {
+      console.error("Update error:", error);
+      alert("An error occurred while updating.");
+    }
   };
+
+  // 3. HANDLE DELETE (DELETE Request)
+  const handleCancelAuction = async () => {
+    if (!confirm("Are you sure you want to cancel this auction? This action cannot be undone.")) return;
+
+    try {
+      const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        alert("Auction cancelled successfully.");
+        onClose();
+      } else {
+        alert("Failed to cancel auction.");
+      }
+    } catch (error) {
+      console.error("Cancel error:", error);
+      alert("An error occurred while cancelling.");
+    }
+  };
+
+  // Helper to format dates for display
+  const formatDate = (isoString: string) => {
+    if (!isoString) return 'N/A';
+    return new Date(isoString).toLocaleDateString();
+  };
+
+  const formatTime = (isoString: string) => {
+    if (!isoString) return 'N/A';
+    return new Date(isoString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  if (loading) return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white p-8 rounded-xl shadow-2xl">Loading Details...</div>
+    </div>
+  );
+  
+  if (!auction) return null;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fade-in">
@@ -30,7 +129,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
             <div className="flex items-center gap-3">
               <h2 className="text-2xl font-bold text-[#1A2F1C]">{auctionId}</h2>
               <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-bold">
-                {auctionData.status}
+                Scheduled
               </span>
             </div>
             <button 
@@ -57,31 +156,94 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                 <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                   <div className="flex justify-between py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Estate Name:</span>
-                    <span className="text-gray-800 font-medium">{auctionData.estateName}</span>
+                    <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-300">
+
+                  {/* GRADE - Editable */}
+                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Grade:</span>
-                    <span className="text-gray-800 font-medium">{auctionData.grade}</span>
+                    {editMode === 'details' ? (
+                       <select 
+                         value={formData.grade}
+                         onChange={(e) => setFormData({...formData, grade: e.target.value})}
+                         className="border border-gray-300 rounded p-1 text-sm"
+                       >
+                         <option value="BOPF">BOPF</option>
+                         <option value="Dust-1">Dust-1</option>
+                         <option value="Pekoe">Pekoe</option>
+                       </select>
+                    ) : (
+                      <span className="text-gray-800 font-medium">{auction.grade}</span>
+                    )}
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-300">
+
+                  {/* QUANTITY - Editable */}
+                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Quantity:</span>
-                    <span className="text-gray-800 font-medium">{auctionData.quantity} kg</span>
+                    {editMode === 'details' ? (
+                       <div className="flex items-center gap-1">
+                          <input 
+                            type="number"
+                            value={formData.quantity}
+                            onChange={(e) => setFormData({...formData, quantity: parseFloat(e.target.value)})}
+                            className="border border-gray-300 rounded p-1 text-sm w-20"
+                          />
+                          <span className="text-sm">kg</span>
+                       </div>
+                    ) : (
+                       <span className="text-gray-800 font-medium">{auction.quantity} kg</span>
+                    )}
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-300">
+
+                  {/* ORIGIN - Editable */}
+                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Origin:</span>
-                    <span className="text-gray-800 font-medium">{auctionData.origin}</span>
+                    {editMode === 'details' ? (
+                        <input 
+                           type="text"
+                           value={formData.origin}
+                           onChange={(e) => setFormData({...formData, origin: e.target.value})}
+                           className="border border-gray-300 rounded p-1 text-sm w-32"
+                        />
+                    ) : (
+                        <span className="text-gray-800 font-medium">{auction.origin}</span>
+                    )}
                   </div>
-                  <div className="flex justify-between py-2">
+
+                  {/* BASE PRICE - Editable */}
+                  <div className="flex justify-between items-center py-2">
                     <span className="font-semibold text-gray-600">Base Price:</span>
-                    <span className="text-[#588157] font-bold text-xl">${auctionData.basePrice}</span>
+                    {editMode === 'details' ? (
+                       <div className="flex items-center gap-1">
+                          <span className="text-sm font-bold">$</span>
+                          <input 
+                            type="number"
+                            value={formData.base_price}
+                            onChange={(e) => setFormData({...formData, base_price: parseFloat(e.target.value)})}
+                            className="border border-gray-300 rounded p-1 text-sm w-20"
+                          />
+                       </div>
+                    ) : (
+                        <span className="text-[#588157] font-bold text-xl">${auction.base_price}</span>
+                    )}
                   </div>
                 </div>
 
+                {/* DESCRIPTION - Editable */}
                 <div>
                   <h4 className="font-semibold text-gray-700 mb-2">Description:</h4>
-                  <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg">
-                    {auctionData.description}
-                  </p>
+                  {editMode === 'details' ? (
+                    <textarea 
+                       value={formData.description}
+                       onChange={(e) => setFormData({...formData, description: e.target.value})}
+                       className="w-full border border-gray-300 rounded p-2 text-sm"
+                       rows={4}
+                    />
+                  ) : (
+                    <p className="text-gray-600 text-sm leading-relaxed bg-gray-50 p-3 rounded-lg">
+                      {auction.description || "No description provided."}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -95,42 +257,100 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                 </h3>
                 
                 <div className="space-y-3 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
-                  <div className="flex justify-between py-2">
+                  {/* START DATE & TIME - Reschedule Mode */}
+                  <div className="flex justify-between items-center py-2">
                     <span className="font-semibold text-gray-700 flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       Auction Date:
                     </span>
-                    <span className="text-gray-800 font-medium">{auctionData.scheduledDate}</span>
+                    {editMode === 'schedule' ? (
+                         <span className="text-xs text-blue-600 font-bold">(Edit below)</span>
+                    ) : (
+                        <span className="text-gray-800 font-medium">{formatDate(auction.start_time)}</span>
+                    )}
                   </div>
-                  <div className="flex justify-between py-2">
+                  
+                  <div className="flex justify-between items-center py-2">
                     <span className="font-semibold text-gray-700 flex items-center gap-2">
                       <Clock className="w-4 h-4" />
                       Start Time:
                     </span>
-                    <span className="text-gray-800 font-medium">{auctionData.scheduledTime}</span>
+                    {editMode === 'schedule' ? (
+                        <input 
+                          type="datetime-local"
+                          value={formData.start_time}
+                          onChange={(e) => setFormData({...formData, start_time: e.target.value})}
+                          className="border border-blue-300 rounded p-1 text-sm"
+                        />
+                    ) : (
+                        <span className="text-gray-800 font-medium">{formatTime(auction.start_time)}</span>
+                    )}
                   </div>
-                  <div className="flex justify-between py-2">
+
+                  {/* DURATION - Reschedule Mode */}
+                  <div className="flex justify-between items-center py-2">
                     <span className="font-semibold text-gray-700">Duration:</span>
-                    <span className="text-gray-800 font-medium">{auctionData.duration}</span>
+                    {editMode === 'schedule' ? (
+                        <div className="flex items-center gap-1">
+                           <input 
+                             type="number"
+                             value={formData.duration}
+                             onChange={(e) => setFormData({...formData, duration: parseFloat(e.target.value)})}
+                             className="border border-blue-300 rounded p-1 text-sm w-16"
+                           />
+                           <span className="text-sm">hrs</span>
+                        </div>
+                    ) : (
+                        <span className="text-gray-800 font-medium">{auction.duration} hours</span>
+                    )}
                   </div>
+
                   <div className="flex justify-between py-2 border-t border-blue-300 pt-3 mt-2">
                     <span className="font-semibold text-gray-700">Created On:</span>
-                    <span className="text-gray-600 text-sm">{auctionData.createdDate}</span>
+                    <span className="text-gray-600 text-sm">{formatDate(auction.created_at)}</span>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
               <div className="space-y-3">
-                <button className="w-full bg-[#588157] hover:bg-[#3A5A40] text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md">
-                  Edit Auction Details
-                </button>
-                <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md">
-                  Reschedule Auction
-                </button>
-                <button className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md">
-                  Cancel Auction
-                </button>
+                {editMode === 'none' ? (
+                  <>
+                    <button 
+                      onClick={() => setEditMode('details')}
+                      className="w-full bg-[#588157] hover:bg-[#3A5A40] text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md"
+                    >
+                      Edit Auction Details
+                    </button>
+                    <button 
+                      onClick={() => setEditMode('schedule')}
+                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md"
+                    >
+                      Reschedule Auction
+                    </button>
+                    <button 
+                      onClick={handleCancelAuction}
+                      className="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md"
+                    >
+                      Cancel Auction
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button 
+                      onClick={handleSave}
+                      className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md"
+                    >
+                      Save Changes
+                    </button>
+                    <button 
+                      onClick={() => setEditMode('none')}
+                      className="w-full bg-gray-400 hover:bg-gray-500 text-white font-bold py-3 px-6 rounded-lg transition-all duration-300 hover:scale-105 shadow-md"
+                    >
+                      Discard Changes
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Info Box */}
