@@ -26,10 +26,12 @@ export default function LiveAuctionsPage() {
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch Live Auctions
+  // 1. Fetch Live Auctions (Added cache busting)
   const fetchLiveAuctions = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/auctions/status/live');
+      const res = await fetch('http://localhost:8000/api/v1/auctions/status/live', {
+        cache: 'no-store' // Ensure we get fresh data
+      });
       if (!res.ok) throw new Error("Failed to fetch");
       const data = await res.json();
 
@@ -37,12 +39,11 @@ export default function LiveAuctionsPage() {
         id: item.auction_id,
         displayId: `${item.grade} - ${item.origin}`,
         data: {
-          price: item.base_price, // Or current highest bid if you had that logic
+          price: item.base_price, 
           grade: item.grade,
           quantity: item.quantity,
-          buyer: item.buyer || "No Bids Yet", // Show placeholder if no buyer
+          buyer: item.buyer || "No Bids Yet",
           countdown: calculateCountdown(item.start_time, item.duration),
-          // Store raw start/duration for timer updates
           rawStart: item.start_time,
           rawDuration: item.duration
         }
@@ -61,18 +62,31 @@ export default function LiveAuctionsPage() {
     fetchLiveAuctions();
   }, []);
 
-  // 3. Update Countdowns every second
+  // 3. Update Countdowns & Auto-Reload
   useEffect(() => {
     const timer = setInterval(() => {
-      setAuctions(prevAuctions => 
-        prevAuctions.map(auc => ({
+      setAuctions(prevAuctions => {
+        
+        // --- NEW LOGIC: Check for expired auctions ---
+        const shouldReload = prevAuctions.some(auc => {
+            const status = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
+            return status === "Closing...";
+        });
+
+        if (shouldReload) {
+            console.log("Auction ended. Refreshing list...");
+            fetchLiveAuctions(); // Reload from backend to remove the expired item
+        }
+        // ---------------------------------------------
+
+        return prevAuctions.map(auc => ({
           ...auc,
           data: {
             ...auc.data,
             countdown: calculateCountdown(auc.data.rawStart, auc.data.rawDuration)
           }
-        }))
-      );
+        }));
+      });
     }, 1000);
 
     return () => clearInterval(timer);

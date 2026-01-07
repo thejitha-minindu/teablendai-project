@@ -8,16 +8,55 @@ import { ChartPie } from "@/components/features/buyer/ChartPie";
 import { Calendar } from "@/components/ui/calendar";
 import { AuctionCard } from "@/components/features/seller/AuctionCard"; 
 
+// Import Modals
+import { 
+    LiveAuctionModal, 
+    ScheduledAuctionModal, 
+    HistoryAuctionModal 
+} from "@/components/features/seller/AuctionModal";
+
 // Helper: Date Formatting
 const formatDateTitle = (date: Date) => {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
 };
 
-// Helper: Compare Dates (ignoring time)
+// Helper: Compare Dates
 const isSameDay = (d1: Date, d2: Date) => {
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
+};
+
+// --- HELPER: Calculate Countdown ---
+const calculateCountdown = (auction: any) => {
+    const safeStart = auction.rawStart.endsWith('Z') ? auction.rawStart : auction.rawStart + 'Z';
+    const startTime = new Date(safeStart).getTime();
+    const now = new Date().getTime();
+
+    let targetTime = 0;
+
+    if (auction.type === 'live') {
+        targetTime = startTime + (auction.duration * 60 * 60 * 1000);
+    } else if (auction.type === 'scheduled') {
+        targetTime = startTime;
+    } else {
+        return null; 
+    }
+
+    const diff = targetTime - now;
+    if (diff <= 0) return auction.type === 'live' ? "Closing..." : "Starting...";
+
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days > 0 && auction.type === 'scheduled') {
+        return `${days}d ${hours}h ${minutes}m`;
+    }
+
+    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
 export default function SellerDashboardPage() {
@@ -26,19 +65,20 @@ export default function SellerDashboardPage() {
   const [allAuctions, setAllAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Today's date (reset time for comparison)
+  // --- NEW STATE: Selected Auction for Modal ---
+  const [selectedAuction, setSelectedAuction] = useState<any | null>(null);
+
+  // Today's date
   const today = useMemo(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
     return d;
   }, []);
 
-  // --- 1. FETCH REAL DATA ---
-  useEffect(() => {
-    const fetchAllData = async () => {
+  // --- 1. FETCH DATA (Same as before) ---
+  const fetchAllData = async () => {
       try {
         setLoading(true);
-        // Fetch from all 3 endpoints in parallel
         const [liveRes, schedRes, histRes] = await Promise.all([
             fetch('http://localhost:8000/api/v1/auctions/status/live'),
             fetch('http://localhost:8000/api/v1/auctions/status/scheduled'),
@@ -49,30 +89,28 @@ export default function SellerDashboardPage() {
         const schedData = await schedRes.json();
         const histData = await histRes.json();
 
-        // Helper to normalize API data for the UI
         const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
-            // Force UTC to Local conversion
             const safeTime = item.start_time.endsWith('Z') ? item.start_time : item.start_time + 'Z';
             const dateObj = new Date(safeTime);
             
-            return {
+            const auctionObj = {
                 id: 'Auction',
                 grade: item.grade,
                 quantity: item.quantity,
-                price: item.base_price, // map base_price to price for card
+                price: item.base_price,
                 sellerBrand: item.seller_brand || "My Estate",
-                dateObj: dateObj, // Keep object for logic
-                date: dateObj.toLocaleDateString(), // String for display
+                dateObj: dateObj,
+                date: dateObj.toLocaleDateString(),
                 time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                 status: type === 'live' ? 'Live' : (type === 'history' ? (item.status || 'Sold') : 'Scheduled'),
-                type: type, // 'live', 'scheduled', 'history'
-                
-                // Add fields needed for Live Card
+                type: type,
                 buyer: item.buyer,
-                countdown: item.duration ? "Calculating..." : null, 
                 rawStart: item.start_time,
-                duration: item.duration
+                duration: item.duration,
+                countdown: null as string | null
             };
+            auctionObj.countdown = calculateCountdown(auctionObj);
+            return auctionObj;
         };
 
         const combined = [
@@ -87,46 +125,48 @@ export default function SellerDashboardPage() {
       } finally {
         setLoading(false);
       }
-    };
+  };
 
+  useEffect(() => {
     fetchAllData();
   }, []);
 
-  // --- 2. CALENDAR STYLING LOGIC ---
+  // --- 2. TIMER EFFECT ---
+  useEffect(() => {
+    const timer = setInterval(() => {
+        setAllAuctions(prevAuctions => 
+            prevAuctions.map(auc => {
+                if (auc.type === 'history') return auc;
+                return { ...auc, countdown: calculateCountdown(auc) };
+            })
+        );
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // --- 3. CALENDAR LOGIC ---
   const { activeDates, scheduledDates, pastDates } = useMemo(() => {
     const active: Date[] = [];
     const scheduled: Date[] = [];
     const past: Date[] = [];
 
     allAuctions.forEach(auction => {
-        // If it's LIVE, it counts as "Active" regardless of start date
         if (auction.type === 'live') {
             active.push(auction.dateObj);
-            // Also ensure it highlights TODAY if it started previously
-            if (!isSameDay(auction.dateObj, today)) {
-                active.push(today);
-            }
-        } 
-        else if (auction.type === 'scheduled') {
+            if (!isSameDay(auction.dateObj, today)) active.push(today);
+        } else if (auction.type === 'scheduled') {
             scheduled.push(auction.dateObj);
         } else {
             past.push(auction.dateObj);
         }
     });
-
     return { activeDates: active, scheduledDates: scheduled, pastDates: past };
   }, [allAuctions, today]);
 
-  // --- 3. FILTER LOGIC (THE FIX) ---
+  // --- 4. FILTER LOGIC ---
   const targetDate = selectedDate || today;
-  
   const displayedAuctions = allAuctions.filter(a => {
-      // RULE 1: If viewing TODAY, show ALL Live auctions (even if they started yesterday)
-      if (isSameDay(targetDate, today) && a.type === 'live') {
-          return true;
-      }
-      
-      // RULE 2: Otherwise, match the exact date selected on calendar
+      if (isSameDay(targetDate, today) && a.type === 'live') return true;
       return isSameDay(a.dateObj, targetDate);
   });
 
@@ -141,7 +181,7 @@ export default function SellerDashboardPage() {
         </div>
       </div>
 
-      {/* --- ROW 1: Chart & Hero Section --- */}
+      {/* --- ROW 1: Chart & Hero --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
         {/* Left: Chart */}
         <div className="lg:col-span-1 h-full">
@@ -171,20 +211,14 @@ export default function SellerDashboardPage() {
                             <span className="w-2 h-2 rounded-full bg-[#E5F7CB] animate-pulse" />
                             Quick Action
                         </div>
-                        
                         <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4 leading-tight">
                             Create Your <br/>
                             <span className="text-[#E5F7CB]">Next Auction</span>
                         </h2>
-                        
                         <p className="text-gray-200 text-lg mb-8 font-medium">
                             Ready to sell? Define your grade, set your price, and reach global buyers in minutes.
                         </p>
-
-                        <Link 
-                            href="/seller/create-auction"
-                            className="inline-flex items-center gap-3 bg-white text-[#1A2F1C] font-bold py-3.5 px-8 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/btn"
-                        >
+                        <Link href="/seller/create-auction" className="inline-flex items-center gap-3 bg-white text-[#1A2F1C] font-bold py-3.5 px-8 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/btn">
                             <Plus className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-500 text-[#3A5A40]" />
                             <span>Create New Auction</span>
                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover/btn:text-[#3A5A40] group-hover/btn:translate-x-1 transition-all" />
@@ -197,39 +231,29 @@ export default function SellerDashboardPage() {
 
       {/* --- ROW 2: Calendar & Listings --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-        
         {/* Left: Calendar */}
         <div className="lg:col-span-1">
             <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center">
                 <div className="w-full flex justify-between items-center mb-4 px-2">
                     <h3 className="font-bold text-gray-700">Calendar</h3>
                     {selectedDate && (
-                        <button 
-                            onClick={() => setSelectedDate(undefined)}
-                            className="text-[10px] uppercase font-bold text-[#3A5A40] bg-[#E5F7CB] px-2 py-1 rounded-md hover:bg-[#3A5A40] hover:text-white transition-colors"
-                        >
+                        <button onClick={() => setSelectedDate(undefined)} className="text-[10px] uppercase font-bold text-[#3A5A40] bg-[#E5F7CB] px-2 py-1 rounded-md hover:bg-[#3A5A40] hover:text-white transition-colors">
                             Reset to Today
                         </button>
                     )}
                 </div>
-                
                 <Calendar 
                     mode="single"
                     selected={selectedDate || today} 
                     onSelect={setSelectedDate}
                     className="rounded-md border-none w-full" 
-                    modifiers={{
-                        active: activeDates,     // Green (Today/Live)
-                        scheduled: scheduledDates, // Orange (Future)
-                        past: pastDates          // Gray (Past)
-                    }}
+                    modifiers={{ active: activeDates, scheduled: scheduledDates, past: pastDates }}
                     modifiersClassNames={{
                         active: "bg-green-100 text-green-700 font-bold hover:bg-green-200 rounded-full",
                         scheduled: "bg-orange-100 text-orange-700 font-medium hover:bg-orange-200 rounded-full",
                         past: "bg-gray-100 text-gray-400 line-through hover:bg-gray-200 rounded-full"
                     }}
                 />
-
                 <div className="mt-6 flex flex-wrap gap-3 text-xs w-full px-2">
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Live/Today</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Scheduled</div>
@@ -246,6 +270,9 @@ export default function SellerDashboardPage() {
                         {isSameDay(targetDate, today) ? "Today's Auctions" : `Auctions on ${formatDateTitle(targetDate)}`}
                     </h2>
                 </div>
+                {!isSameDay(targetDate, today) && (
+                    <Link href="/seller/history" className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline">View History</Link>
+                )}
             </div>
 
             {loading ? (
@@ -258,9 +285,10 @@ export default function SellerDashboardPage() {
                         <AuctionCard 
                             key={idx}
                             id={`${auction.id.substring(0,7)}`}
-                            // Map dashboard type to AuctionCard type
                             type={auction.type} 
                             data={auction}
+                            // --- CLICK HANDLER FOR MODAL ---
+                            onViewClick={() => setSelectedAuction(auction)} 
                         />
                     ))}
                 </div>
@@ -273,7 +301,6 @@ export default function SellerDashboardPage() {
                     <p className="text-gray-500 max-w-sm">
                         You don't have any auctions for <span className="font-semibold text-[#3A5A40]">{formatDateTitle(targetDate)}</span>.
                     </p>
-                    
                     {targetDate >= today && (
                         <Link href="/seller/create-auction" className="mt-6 text-sm font-bold text-white bg-[#3A5A40] px-6 py-2.5 rounded-full hover:bg-[#2D4A2B] transition-colors">
                             Schedule New Auction
@@ -283,6 +310,35 @@ export default function SellerDashboardPage() {
             )}
         </div>
       </div>
+
+      {/* --- MODAL DISPLAY LOGIC --- */}
+      {selectedAuction && selectedAuction.type === 'live' && (
+        <LiveAuctionModal 
+            auctionId={selectedAuction.id} 
+            onClose={() => {
+                setSelectedAuction(null);
+                fetchAllData(); // Refresh list on close
+            }}
+        />
+      )}
+
+      {selectedAuction && selectedAuction.type === 'scheduled' && (
+        <ScheduledAuctionModal 
+            auctionId={selectedAuction.id} 
+            onClose={() => {
+                setSelectedAuction(null);
+                fetchAllData(); // Refresh list on close
+            }}
+        />
+      )}
+
+      {selectedAuction && selectedAuction.type === 'history' && (
+        <HistoryAuctionModal 
+            auctionId={selectedAuction.id} 
+            data={selectedAuction}
+            onClose={() => setSelectedAuction(null)}
+        />
+      )}
 
     </div>
   );
