@@ -1,51 +1,67 @@
 from sqlalchemy.orm import Session
+from typing import List
+import uuid
 from src.domain.models.auction import Auction as AuctionModel
-from src.application.schemas.auction import Auction
-from src.domain.models.user import User
+from src.application.schemas.auction import Auction, AuctionCreate
 from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
         self.db = db
 
-    def create_auction(self, auction: Auction):
-        db_auction = AuctionModel(**auction.dict(exclude={"countdown"}))
+    def create_auction(self, auction_data: AuctionCreate) -> Auction:
+        new_id = str(uuid.uuid4())
+        
+        db_auction = AuctionModel(
+            auction_id=new_id,
+            seller_id="user_123_placeholder", 
+            seller_brand=auction_data.seller_brand,
+            grade=auction_data.grade,
+            quantity=auction_data.quantity,
+            origin=auction_data.origin,
+            description=auction_data.description,
+            base_price=auction_data.base_price,
+            start_time=auction_data.start_time,
+            duration=auction_data.duration,
+            status="Scheduled"
+        )
+        
         self.db.add(db_auction)
         self.db.commit()
         self.db.refresh(db_auction)
         return db_auction
-
-    def get_auction_by_id(self, auction_id: str):
+    
+    def get_auction(self, auction_id: str):
         return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
 
+    def list_auctions(self):
+        return self.db.query(AuctionModel).all()
 
-    def list_auctions(self, user_id: str = None, as_buyer: bool = False, status: str = None):
-        query = self.db.query(AuctionModel)
-        if user_id:
-            if as_buyer:
-                query = query.filter(AuctionModel.buyer == user_id)
-            else:
-                query = query.filter(AuctionModel.seller_id == user_id)
-        if status:
-            query = query.filter(AuctionModel.status == status)
+    def get_by_status(self, status: str) -> List[Auction]:
+        return self.db.query(AuctionModel).filter(AuctionModel.status == status).all()
+
+    def get_by_id(self, auction_id: str) -> Auction:
+        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+
+    def delete(self, auction_id: str) -> bool:
+        auction = self.get_by_id(auction_id)
+        if auction:
+            self.db.delete(auction)
+            self.db.commit()
+            return True
+        return False
+
+    def update(self, auction_id: str, update_data: dict) -> AuctionModel:
+        # Fetch the auction
+        auction = self.get_by_id(auction_id)
+        if not auction:
+            return None
         
-        return query.all()
-
-    def list_auctions_history(self, user_id: str, as_buyer: bool = False):
-        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status="history")
-
-    def list_auctions_order(self, user_id: str):
-        return self.list_auctions(user_id=user_id, as_buyer=True, status="history")
- 
-    def list_auctions_watchlist(self, user_id: str):
-        user = self.db.query(User).filter(User.user_id == user_id).first()
-        if not user or not user.watch_list:
-            return []
-        auction_ids = [entry.auction_id for entry in user.watch_list]
-        if not auction_ids:
-            return []
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
-
-    def get_home_preview_auctions(self, user_id: str):
-        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id == user_id, AuctionModel.status == "live").order_by(AuctionModel.date.desc())
-        return query.limit(5).all()
+        # Update fields dynamically
+        for key, value in update_data.items():
+            if hasattr(auction, key) and value is not None:
+                setattr(auction, key, value)
+        
+        self.db.commit()
+        self.db.refresh(auction)
+        return auction

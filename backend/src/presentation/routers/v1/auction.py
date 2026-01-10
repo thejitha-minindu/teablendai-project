@@ -1,49 +1,59 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
-from src.application.schemas.auction import Auction
+from typing import List
+from src.application.schemas.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 
-router = APIRouter(prefix="/auctions", tags=["auctions"])
+router = APIRouter()
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
 
-# Create a new auction
-@router.post("", response_model=Auction)
-def create_auction(auction: Auction, service: AuctionService = Depends(get_auction_service)):
+@router.post("/auctions", response_model=AuctionResponse, status_code=status.HTTP_201_CREATED)
+def create_auction(
+    auction: AuctionCreate,  
+    service: AuctionService = Depends(get_auction_service)
+):
     return service.create_auction(auction)
 
-# List auctions with optional filters
-@router.get("", response_model=List[Auction])
-def list_auctions(user_id: Optional[str] = None, as_buyer: bool = False, status: Optional[str] = None, service: AuctionService = Depends(get_auction_service)):
-    return service.list_auctions(user_id=user_id, as_buyer=as_buyer, status=status)
+@router.get("/auctions", response_model=List[Auction])
+def read_auctions(service: AuctionService = Depends(get_auction_service)):
+    return service.list_auctions()
 
-# Get auction by ID
-@router.get("/{auction_id}", response_model=Auction)
+@router.get("/auctions/{auction_id}", response_model=AuctionResponse)
 def read_auction(auction_id: str, service: AuctionService = Depends(get_auction_service)):
     auction = service.get_auction(auction_id)
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
     return auction
 
-# Get auction history for user
-@router.get("/user/{user_id}/history", response_model=List[Auction])
-def get_auctions_history(user_id: str, as_buyer: bool = False, service: AuctionService = Depends(get_auction_service)):
-    return service.list_auctions_history(user_id=user_id, as_buyer=as_buyer)
+@router.get("/auctions/status/scheduled", response_model=List[AuctionResponse])
+def get_scheduled_auctions(service: AuctionService = Depends(get_auction_service)):
+    return service.get_scheduled_auctions()
 
-# Get auctions where user is buyer with history status
-@router.get("/user/{user_id}/orders", response_model=List[Auction])
-def get_auctions_orders(user_id: str, service: AuctionService = Depends(get_auction_service)):
-    return service.list_auctions_order(user_id=user_id)
+@router.get("/auctions/status/live", response_model=List[AuctionResponse])
+def get_live_auctions(service: AuctionService = Depends(get_auction_service)):
+    return service.get_live_auctions()
 
-# Get auctions in user's watchlist
-@router.get("/user/{user_id}/watchlist", response_model=List[Auction])
-def get_auctions_watchlist(user_id: str, service: AuctionService = Depends(get_auction_service)):
-    return service.list_auctions_watchlist(user_id=user_id)
+@router.get("/auctions/status/history", response_model=List[AuctionResponse])
+def get_history_auctions(service: AuctionService = Depends(get_auction_service)):
+    return service.get_history_auctions()
 
-# Get home preview auctions for user
-@router.get("/user/{user_id}/preview", response_model=List[Auction])
-def get_home_preview(user_id: str, service: AuctionService = Depends(get_auction_service)):
-    return service.get_home_preview_auctions(user_id=user_id)
+@router.delete("/auctions/{auction_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_auction(auction_id: str, service: AuctionService = Depends(get_auction_service)):
+    success = service.delete_auction(auction_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    return None
+
+@router.put("/auctions/{auction_id}", response_model=AuctionResponse)
+def update_auction(
+    auction_id: str, 
+    auction_update: AuctionCreate, # Reuse Create schema or make a specific Update one
+    service: AuctionService = Depends(get_auction_service)
+):
+    updated_auction = service.update_auction(auction_id, auction_update)
+    if not updated_auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+    return updated_auction
