@@ -2,8 +2,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.presentation.routers.v1 import health, bid, auction, user, order
+from src.infrastructure.database.base import Base, engine
+Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="Tea Auction Platform",
+    description="Backend API for TeaBlendAI",
+    version="1.0.0"
+)
 
 # CORS setup
 origins = [
