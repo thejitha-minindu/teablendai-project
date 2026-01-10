@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from src.application.schemas.bid import Bid
+from src.application.schemas.buyer.bid import Bid
 import logging
 
 logger = logging.getLogger(__name__)

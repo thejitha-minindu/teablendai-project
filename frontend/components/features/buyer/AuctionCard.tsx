@@ -17,17 +17,9 @@ import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 
 export type CardType = "order" | "history" | "auction";
 
+// Accepts both legacy and backend auction objects
 export interface AuctionDetails {
-  title: string;
-  company: string;
-  date: string;
-  estateName: string;
-  quantity?: string;
-  grade?: string;
-  basePrice?: string;
-  time?: string;
-  soldPrice?: string;
-  winner?: string;
+  [key: string]: any;
 }
 
 export interface AuctionCardProps {
@@ -47,38 +39,60 @@ const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
 });
 
 export function AuctionCard({ cardType, auction }: AuctionCardProps) {
-  const safeAuction = auction || getDefaultAuction(cardType);
+  const safeAuction = React.useMemo(() => {
+    if (!auction) return getDefaultAuction(cardType);
+    
+    // Extract raw values from auction object with multiple fallbacks
+    const rawTitle = auction.auction_name || auction.title || "Auction";
+    const rawCompany = auction.company_name || auction.company || "-";
+    const rawDate = auction.date;
+    const rawEstateName = auction.estate_name || auction.estateName || "-";
+    const rawQuantity = auction.quantity;
+    const rawGrade = auction.grade || "-";
+    const rawBasePrice = auction.base_price || auction.basePrice;
+    const rawSoldPrice = auction.sold_price || auction.soldPrice;
+    const rawWinner = auction.buyer || auction.winner;
+    const rawTime = auction.time;
+    
+    return {
+      title: rawTitle,
+      company: rawCompany,
+      date: rawDate ? new Date(rawDate).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "-",
+      estateName: rawEstateName,
+      quantity: (rawQuantity !== undefined && rawQuantity !== null) ? `${rawQuantity} kg` : "-",
+      grade: rawGrade,
+      basePrice: rawBasePrice ? `${rawBasePrice} LKR` : "-",
+      soldPrice: rawSoldPrice ? `${rawSoldPrice} LKR` : undefined,
+      winner: rawWinner,
+      time: rawTime,
+    };
+  }, [auction, cardType]);
 
   const renderAuctionDetails = () => (
     <div className="flex flex-col gap-2">
       <h2 className="text-m font-semibold mb-2">
-      {safeAuction.estateName}
+        {safeAuction.estateName}
       </h2>
       <p className="mb-1 text-sm">
-      <span className="font-medium">Quantity:</span>{" "}
-      {safeAuction.quantity}
+        <span className="font-medium">Quantity:</span> {safeAuction.quantity}
       </p>
       <p className="mb-1 text-sm">
-      <span className="font-medium">Grade:</span>{" "}
-      {safeAuction.grade}
+        <span className="font-medium">Grade:</span> {safeAuction.grade}
       </p>
       {(cardType === "history" || cardType === "order") && (
-      <p className="mb-1 text-sm">
-        <span className="font-medium">Sold Price:</span>{" "}
-        {auction?.soldPrice}
-      </p>
+        <p className="mb-1 text-sm">
+          <span className="font-medium">Sold Price:</span> {safeAuction.soldPrice}
+        </p>
       )}
       {cardType === "auction" && (
-      <p className="mb-1 text-sm">
-        <span className="font-medium">Base Price:</span>{" "}
-        {safeAuction.basePrice}
-      </p>
+        <p className="mb-1 text-sm">
+          <span className="font-medium">Base Price:</span> {safeAuction.basePrice}
+        </p>
       )}
       {cardType === "history" && (
-      <p className="mb-1 text-sm">
-        <span className="font-medium">Winner:</span>{" "}
-        {auction?.winner}
-      </p>
+        <p className="mb-1 text-sm">
+          <span className="font-medium">Winner:</span> {safeAuction.winner}
+        </p>
       )}
     </div>
   );
@@ -106,6 +120,16 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
     }
   };
 
+
+  // Parse date and time for display
+  let displayDate = "-";
+  let displayTime = "-";
+  if (auction?.date) {
+    const d = new Date(auction.date);
+    displayDate = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
+    displayTime = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+
   return (
     <Card className="w-full mx-auto">
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">
@@ -113,11 +137,11 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
           <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>{safeAuction.title}</CardTitle>
           <CardDescription style={{ color: "var(--color3)" }}>(by {safeAuction.company})</CardDescription>
         </div>
-        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
-          <p>{safeAuction.date}</p>
-          {cardType === "auction" && safeAuction.time && (
-            <p>{safeAuction.time}</p>
-          )}
+        <div className="flex flex-row items-start sm:items-end text-sm text-muted-foreground">
+          <div className="flex flex-col items-end">
+            <p>{displayDate}</p>
+            <p>{displayTime}</p>
+          </div>
         </div>
       </CardHeader>
       <CardContent>

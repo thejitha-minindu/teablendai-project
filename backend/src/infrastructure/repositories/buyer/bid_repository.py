@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 from src.domain.models.bid import Bid as BidModel
-from src.application.schemas.bid import Bid
-from src.domain.repositories.bid_repository import BidRepositoryInterface
+from src.application.schemas.buyer.bid import Bid
+from src.domain.repositories.buyer.bid_repository import BidRepositoryInterface
 import logging
 
 logger = logging.getLogger(__name__)
