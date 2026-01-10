@@ -1,7 +1,7 @@
 
 "use client";
 import { useState, useMemo, useEffect } from "react";
-import { listAuctionsHistory } from "@/services/auctionService";
+import { listAuctionsHistory } from "@/services/buyer/auctionService";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { HistoryFilterSort, FilterState } from "@/components/features/buyer/HistoryFilterSort";

@@ -1,6 +1,6 @@
-import { Bid } from "../types/bid.types";
+import { Bid } from "../../types/bid.types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/buyer`;
 
 // Helper for fetch with error handling
 async function fetcher<T>(url: string, options: RequestInit = {}): Promise<T> {

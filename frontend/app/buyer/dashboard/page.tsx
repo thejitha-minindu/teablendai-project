@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { listAuctionsWatchlist } from "@/services/auctionService";
+import { listAuctionsWatchlist } from "@/services/buyer/auctionService";
 import { ChartPie } from "@/components/features/buyer/ChartPie";
 import { Calendar } from "@/components/ui/calendar";
 import { AuctionHomePreview } from "@/components/features/buyer/AuctionHomePreview";

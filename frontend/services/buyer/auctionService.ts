@@ -1,8 +1,8 @@
-import { AuctionData, AuctionCardHomePreview, AuctionCard, AuctionHistoryCard, AuctionOrderCard, AuctionHistoryDialog, AuctionOrderDialog } from "../types/auction.types";
-import { Bid } from "../types/bid.types";
-import { Order } from "../types/order.types";
+import { AuctionData, AuctionCardHomePreview, AuctionCard, AuctionHistoryCard, AuctionOrderCard, AuctionHistoryDialog, AuctionOrderDialog } from "../../types/auction.types";
+import { Bid } from "../../types/bid.types";
+import { Order } from "../../types/order.types";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/buyer`;
 
 // Helper for fetch with error handling
 async function fetcher<T>(url: string, options: RequestInit = {}): Promise<T> {

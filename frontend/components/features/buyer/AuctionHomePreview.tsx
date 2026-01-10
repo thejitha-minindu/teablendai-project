@@ -2,7 +2,7 @@
 import * as React from "react";
 import '@/app/globals.css';
 import { useEffect, useState } from "react";
-import { getHomePreviewAuctions } from "@/services/auctionService";
+import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 

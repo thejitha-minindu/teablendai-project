@@ -8,7 +8,7 @@ import {
 } from "@/components/features/buyer/AuctionFilterSort";
 import { Button } from "@/components/ui/button";
 
-import { listAuctions } from "@/services/auctionService";
+import { listAuctions } from "@/services/buyer/auctionService";
 
 export default function BuyerHistoryPage() {
   const [auctionData, setAuctionData] = useState<any[]>([]);

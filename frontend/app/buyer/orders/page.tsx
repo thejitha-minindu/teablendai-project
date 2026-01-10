@@ -1,6 +1,6 @@
 "use client";
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { listAuctionsOrder } from "@/services/auctionService";
+import { listAuctionsOrder } from "@/services/buyer/auctionService";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { OrderFilterSort, FilterState } from "@/components/features/buyer/OrderFilterSort";
