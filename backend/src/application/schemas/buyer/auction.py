@@ -1,11 +1,13 @@
 from typing import Optional, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 AuctionType = Literal["scheduled", "live", "history"]
 
 # Base auction data model - full data representation
 class AuctionData(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     auction_id: str
     seller_id: str
     auction_name: str
@@ -14,7 +16,7 @@ class AuctionData(BaseModel):
     estate_name: str
     quantity: float
     base_price: float
-    date: datetime
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     duration: float
     status: AuctionType
     buyer: Optional[str] = None
@@ -22,24 +24,22 @@ class AuctionData(BaseModel):
     countdown: Optional[float] = None
     image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # home page preview cards
 class AuctionCardHomePreview(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     auction_id: str
     grade: str
     quantity: float
     base_price: float
-    date: datetime
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     status: AuctionType
     image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # auction cards
 class AuctionCard(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     auction_id: str
     auction_name: str
     company_name: str
@@ -47,28 +47,26 @@ class AuctionCard(BaseModel):
     grade: str
     quantity: float
     base_price: float
-    date: datetime
-
-    class Config:
-        from_attributes = True
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
 
 # history cards
 class AuctionHistoryCard(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     auction_id: str
     auction_name: str
     company_name: str
     estate_name: str
     grade: str
     quantity: float
-    date: datetime
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
 
-    class Config:
-        from_attributes = True
-
 # order cards
 class AuctionOrderCard(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     auction_id: str
     auction_name: str
     company_name: str
@@ -76,13 +74,12 @@ class AuctionOrderCard(BaseModel):
     grade: str
     quantity: float
     sold_price: Optional[float] = None
-    date: datetime
-
-    class Config:
-        from_attributes = True
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
 
 # create/update requests
 class AuctionCreateRequest(BaseModel):
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+    
     seller_id: str
     auction_name: str
     grade: str
@@ -90,32 +87,27 @@ class AuctionCreateRequest(BaseModel):
     estate_name: str
     quantity: float
     base_price: float
-    date: datetime
+    date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     duration: float
     image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # API responses
 class AuctionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     success: bool
     data: Optional[AuctionData] = None
     message: Optional[str] = None
 
-    class Config:
-        from_attributes = True
-
 # list responses
 class AuctionListResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    
     success: bool
     data: list[AuctionData] = Field(default_factory=list)
     total: int = 0
     page: Optional[int] = None
     page_size: Optional[int] = None
-
-    class Config:
-        from_attributes = True
 
 # Backward compatibility alias
 Auction = AuctionData
