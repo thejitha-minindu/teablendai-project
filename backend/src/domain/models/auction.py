@@ -1,15 +1,17 @@
 
-from sqlalchemy import Column, ForeignKey, String, Float, DateTime,Text
+from sqlalchemy import Column, ForeignKey, String, Float, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import uuid4
 from src.infrastructure.database.base import Base
 
 class Auction(Base):
     __tablename__ = "auctions"
 
-    auction_id = Column(String(64), primary_key=True, index=True)
+    auction_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
     auction_name = Column(String(128), nullable=False)
-    seller_id = Column(String(64), ForeignKey("users.user_id"), nullable=False)
+    seller_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False)
     seller_brand = Column(String(100), nullable=True)
     grade = Column(String(64), nullable=False)
     company_name = Column(String(128), nullable=False)
