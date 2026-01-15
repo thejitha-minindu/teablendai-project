@@ -1,13 +1,15 @@
 from sqlalchemy import Column, ForeignKey, String, Float, DateTime
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import uuid4
 from src.infrastructure.database.base import Base
 
 class Bid(Base):
     __tablename__ = "bids"
 
-    bid_id = Column(String(64), primary_key=True, index=True)
-    auction_id = Column(String(64), ForeignKey("auctions.auction_id", ondelete="CASCADE"), primary_key=True, index=True)
-    buyer_id = Column(String(64), ForeignKey("users.user_id"), primary_key=True, index=True)
+    bid_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
+    auction_id = Column(UNIQUEIDENTIFIER, ForeignKey("auctions.auction_id", ondelete="CASCADE"), primary_key=True, index=True)
+    buyer_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), primary_key=True, index=True)
     bid_amount = Column(Float)
     bid_time = Column(DateTime)
 

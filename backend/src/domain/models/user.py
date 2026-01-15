@@ -1,11 +1,13 @@
 from sqlalchemy import Column, String, ForeignKey
 from sqlalchemy.orm import relationship
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import uuid4
 from src.infrastructure.database.base import Base
 
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(String(64), primary_key=True, index=True)
+    user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
     email = Column(String(128), unique=True, nullable=False)
     phone_num = Column(String(32), nullable=False)
     user_name = Column(String(64), unique=True, nullable=False)
@@ -22,8 +24,8 @@ class User(Base):
 class FinancialDetails(Base):
     __tablename__ = "financial_details"
 
-    id = Column(String(64), primary_key=True, index=True)
-    user_id = Column(String(64), ForeignKey("users.user_id"), nullable=False, unique=True)
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
+    user_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False, unique=True)
     bank_name = Column(String(128), nullable=False)
     account_num = Column(String(64), nullable=False)
     branch_name = Column(String(128), nullable=False)
@@ -34,9 +36,9 @@ class FinancialDetails(Base):
 class WatchList(Base):
     __tablename__ = "watch_lists"
 
-    id = Column(String(64), primary_key=True, index=True)
-    user_id = Column(String(64), ForeignKey("users.user_id"), nullable=False)
-    auction_id = Column(String(64), ForeignKey("auctions.auction_id"), nullable=False)
+    id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
+    user_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False)
+    auction_id = Column(UNIQUEIDENTIFIER, ForeignKey("auctions.auction_id"), nullable=False)
 
     user = relationship("User", back_populates="watch_list")
     auction = relationship("Auction")

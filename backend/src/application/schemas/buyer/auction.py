@@ -1,15 +1,16 @@
 from typing import Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict
+from uuid import UUID
 
-AuctionType = Literal["scheduled", "live", "history"]
+AuctionType = Literal["Scheduled", "Live", "History"]
 
 # Base auction data model - full data representation
 class AuctionData(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    auction_id: str
-    seller_id: str
+    auction_id: UUID
+    seller_id: UUID
     auction_name: str
     grade: str
     company_name: str
@@ -28,7 +29,7 @@ class AuctionData(BaseModel):
 class AuctionCardHomePreview(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    auction_id: str
+    auction_id: UUID
     grade: str
     quantity: float
     base_price: float
@@ -40,7 +41,7 @@ class AuctionCardHomePreview(BaseModel):
 class AuctionCard(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    auction_id: str
+    auction_id: UUID
     auction_name: str
     company_name: str
     estate_name: str
@@ -53,7 +54,7 @@ class AuctionCard(BaseModel):
 class AuctionHistoryCard(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    auction_id: str
+    auction_id: UUID
     auction_name: str
     company_name: str
     estate_name: str
@@ -67,7 +68,7 @@ class AuctionHistoryCard(BaseModel):
 class AuctionOrderCard(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    auction_id: str
+    auction_id: UUID
     auction_name: str
     company_name: str
     estate_name: str
@@ -80,7 +81,7 @@ class AuctionOrderCard(BaseModel):
 class AuctionCreateRequest(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
-    seller_id: str
+    seller_id: UUID
     auction_name: str
     grade: str
     company_name: str
