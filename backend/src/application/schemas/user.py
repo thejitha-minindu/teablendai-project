@@ -1,6 +1,7 @@
 from typing import Optional, Literal
 from datetime import datetime
 from pydantic import BaseModel
+from uuid import UUID
 
 class FinancialDetails(BaseModel):
     bank_name: str
@@ -9,7 +10,7 @@ class FinancialDetails(BaseModel):
     account_holder_name: str
 
 class User(BaseModel):
-    user_id: str
+    user_id: UUID
     email: str
     phone_num: str
     user_name: str
@@ -21,7 +22,7 @@ class User(BaseModel):
     watch_list: list[str]
 
 class Admin(BaseModel):
-    admin_id: str
+    admin_id: UUID
     user_name: str
     email: str
     phone_num: str
