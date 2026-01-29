@@ -47,5 +47,5 @@ class AuctionRepository(AuctionRepositoryInterface):
         return self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
 
     def get_home_preview_auctions(self, user_id: str):
-        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id == user_id, AuctionModel.status == "live").order_by(AuctionModel.date.desc())
+        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id == user_id, AuctionModel.status == "live").order_by(AuctionModel.created_at.desc())
         return query.limit(5).all()
