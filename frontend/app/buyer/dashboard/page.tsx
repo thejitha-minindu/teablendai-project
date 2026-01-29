@@ -16,7 +16,7 @@ export default function BuyerAuctionPage() {
   const [error, setError] = useState<string | null>(null);
   const { open: isSidebarOpen } = useSidebar();
   
-  const userId = "user_002";
+  const userId = "11111111-1111-1111-1111-111111111111";
 
   useEffect(() => {
     setLoading(true);

@@ -18,7 +18,7 @@ export default function BuyerOrderPage() {
   const [sortBy, setSortBy] = useState("recent");
 
   // TODO: Replace with actual user id from auth context
-  const userId = "user_007";
+  const userId = "11111111-1111-1111-1111-111111111111";
 
   useEffect(() => {
     setLoading(true);
