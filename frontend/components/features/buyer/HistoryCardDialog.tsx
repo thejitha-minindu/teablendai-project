@@ -71,13 +71,25 @@ export function HistoryCardDialog({ auctionId }: HistoryCardDialogProps) {
       </DialogTrigger>
       <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
         {loading ? (
-          <div className="flex items-center justify-center py-10">
-            <p>Loading...</p>
-          </div>
+          <>
+            <DialogHeader>
+              <DialogTitle>Loading Auction Details</DialogTitle>
+              <DialogDescription>Please wait...</DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center py-10">
+              <p>Loading...</p>
+            </div>
+          </>
         ) : error ? (
-          <div className="flex items-center justify-center py-10 text-red-500">
-            <p>{error}</p>
-          </div>
+          <>
+            <DialogHeader>
+              <DialogTitle>Error</DialogTitle>
+              <DialogDescription>Failed to load auction details</DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center justify-center py-10 text-red-500">
+              <p>{error}</p>
+            </div>
+          </>
         ) : dialogData ? (
           <>
             <DialogHeader className="pb-4 lg:mb-5">
