@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.order import Order, WinsAuction
+from src.application.schemas.buyer.order import Order, WinsAuction
 from src.application.use_cases.order_service import OrderService, WinsAuctionService
 from src.infrastructure.database.base import get_db
 

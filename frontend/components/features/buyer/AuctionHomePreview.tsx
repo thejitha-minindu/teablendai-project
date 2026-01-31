@@ -6,7 +6,7 @@ import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const userId = "user_002";
+const userId = "11111111-1111-1111-1111-111111111111";
 
 export function AuctionHomePreview() {
   const [auction, setAuction] = useState<any | null>(null);

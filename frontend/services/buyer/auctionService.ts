@@ -1,6 +1,7 @@
 import { AuctionData, AuctionCardHomePreview, AuctionCard, AuctionHistoryCard, AuctionOrderCard, AuctionHistoryDialog, AuctionOrderDialog } from "../../types/auction.types";
 import { Bid } from "../../types/bid.types";
-import { Order } from "../../types/order.types";
+import { WinsAuction } from "../../types/order.types";
+import { listBidsByAuction } from "./bidService";
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/buyer`;
 
@@ -62,15 +63,51 @@ export async function getHomePreviewAuctions(userId: string): Promise<AuctionCar
 	return fetcher(url);
 }
 
-// Get auction history dialog (with bids)
+// Get auction history dialog data
 export async function getAuctionHistoryDialog(auctionId: string): Promise<AuctionHistoryDialog> {
-	const url = `${API_BASE_URL}/auctions/${auctionId}/history-dialog`;
-	return fetcher(url);
+	// Fetch auction data and bids in parallel from separate endpoints
+	const [auction, bids] = await Promise.all([
+		getAuction(auctionId),
+		listBidsByAuction(auctionId),
+	]);
+
+	return {
+		auction_id: auction.auction_id,
+		auction_name: auction.auction_name,
+		estate_name: auction.estate_name,
+		grade: auction.grade,
+		quantity: auction.quantity,
+		base_price: auction.base_price,
+		date: auction.date,
+		buyer: auction.buyer,
+		sold_price: auction.sold_price,
+		bids,
+	};
 }
 
-// Get auction order dialog (with order details)
 export async function getAuctionOrderDialog(auctionId: string): Promise<AuctionOrderDialog> {
-	const url = `${API_BASE_URL}/auctions/${auctionId}/order-dialog`;
-	return fetcher(url);
+	const [auction, winsAuctions] = await Promise.all([
+		getAuction(auctionId),
+		getWinsAuctionByAuctionId(auctionId),
+	]);
+
+	const winsAuction = winsAuctions[0];
+
+	return {
+		auction_id: auction.auction_id,
+		auction_name: auction.auction_name,
+		estate_name: auction.estate_name,
+		grade: auction.grade,
+		quantity: auction.quantity,
+		sold_price: auction.sold_price,
+		date: auction.date,
+		base_price: auction.base_price,
+		order_id: winsAuction?.order_id || "",
+	};
+}
+
+// Get wins auction records by auction ID
+async function getWinsAuctionByAuctionId(auctionId: string): Promise<WinsAuction[]> {
+	return fetcher(`${API_BASE_URL}/orders/wins/auction/${auctionId}`);
 }
 

@@ -98,11 +98,13 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
   );
 
   const renderFooterButton = () => {
+    const auctionId = auction?.auction_id || auction?.id || "";
+    
     switch (cardType) {
       case "history":
-        return <HistoryCardDialog />;
+        return <HistoryCardDialog auctionId={auctionId} />;
       case "order":
-        return <OrderCardDialog />;
+        return <OrderCardDialog auctionId={auctionId} />;
       case "auction":
         return (
           <Button

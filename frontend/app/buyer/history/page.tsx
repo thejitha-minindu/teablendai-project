@@ -19,7 +19,7 @@ export default function BuyerHistoryPage() {
   const [filters, setFilters] = useState<FilterState>({ searchQuery: "" });
   const [sortBy, setSortBy] = useState<string>("recent");
 
-  const userId = "user_demo";
+  const userId = "11111111-1111-1111-1111-111111111111";
 
   useEffect(() => {
     setLoading(true);
