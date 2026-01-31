@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { listAuctionsWatchlist } from "@/services/buyer/auctionService";
 import { ChartPie } from "@/components/features/buyer/ChartPie";
-import { Calendar } from "@/components/ui/calendar";
+import { BuyerCalendar } from "@/components/features/buyer/BuyerCalendar";
 import { AuctionHomePreview } from "@/components/features/buyer/AuctionHomePreview";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
@@ -14,6 +14,7 @@ export default function BuyerAuctionPage() {
   const [watchlist, setWatchlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { open: isSidebarOpen } = useSidebar();
   
   const userId = "11111111-1111-1111-1111-111111111111";
@@ -32,14 +33,26 @@ export default function BuyerAuctionPage() {
       });
   }, []);
   
-  // Adjust items per page based on sidebar state
+  // Filter watchlist by selected date
+  const filteredWatchlist = selectedDate
+    ? watchlist.filter((item) => {
+        const auctionDate = new Date(item.date);
+        return auctionDate.toDateString() === selectedDate.toDateString();
+      })
+    : watchlist;
+
   const itemsPerPage = isSidebarOpen ? 2 : 3;
-  const totalItems = watchlist.length;
+  const totalItems = filteredWatchlist.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedWatchlist = watchlist.slice(startIndex, endIndex);
+  const paginatedWatchlist = filteredWatchlist.slice(startIndex, endIndex);
+
+  const handleDateSelect = (date: Date | undefined) => {
+    setSelectedDate(date);
+    setCurrentPage(1);
+  };
 
   return (
     <div className="sm:px-4">
@@ -68,8 +81,11 @@ export default function BuyerAuctionPage() {
           style={{ animationDelay: "0ms" }}
         >
           <ChartPie />
-          <div className="mt-10">
-            <Calendar />
+          <div>
+            <BuyerCalendar
+              selectedDate={selectedDate}
+              onDateSelect={handleDateSelect}
+            />
           </div>
         </div>
         <div 
