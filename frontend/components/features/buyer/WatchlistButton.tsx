@@ -6,6 +6,7 @@ import {
   removeFromWatchlist,
   listAuctionsWatchlist,
 } from "@/services/buyer/auctionService";
+import { toast  } from "sonner";
 
 interface WatchlistButtonProps {
   auctionId: string;
@@ -48,16 +49,16 @@ export function WatchlistButton({
         await removeFromWatchlist(userId, auctionId);
         setIsInWatchlist(false);
         onWatchlistChange?.(false);
-        alert("Removed from Watchlist!");
+        toast("Removed from Watchlist!", { position: "top-right" });
       } else {
         await addToWatchlist(userId, auctionId);
         setIsInWatchlist(true);
         onWatchlistChange?.(true);
-        alert("Added to Watchlist!");
+        toast("Added to Watchlist!", { position: "top-right" });
       }
     } catch (err) {
       console.error("Watchlist operation failed:", err);
-      alert(isInWatchlist ? "Failed to remove from watchlist." : "Failed to add to watchlist.");
+      toast(isInWatchlist ? "Failed to remove from watchlist." : "Failed to add to watchlist.", { position: "top-right" });
     } finally {
       setIsLoading(false);
     }
