@@ -25,6 +25,7 @@ export interface AuctionDetails {
 export interface AuctionCardProps {
   cardType: CardType;
   auction?: AuctionDetails;
+  onWatchlistChange?: (isInWatchlist: boolean) => void;
 }
 
 const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
@@ -38,7 +39,7 @@ const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
   ...(cardType === "auction" && { time: "TBD" }),
 });
 
-export function AuctionCard({ cardType, auction }: AuctionCardProps) {
+export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCardProps) {
   const safeAuction = React.useMemo(() => {
     if (!auction) return getDefaultAuction(cardType);
 
@@ -119,6 +120,7 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
             <WatchlistButton
               auctionId={auctionId}
               className="flex-1 min-w-[120px]"
+              onWatchlistChange={onWatchlistChange}
             />
             <Button
               variant="outline"

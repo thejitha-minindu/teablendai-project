@@ -11,12 +11,14 @@ interface WatchlistButtonProps {
   auctionId: string;
   userId?: string;
   className?: string;
+  onWatchlistChange?: (isInWatchlist: boolean) => void;
 }
 
 export function WatchlistButton({
   auctionId,
   userId = "11111111-1111-1111-1111-111111111111",
   className = "",
+  onWatchlistChange,
 }: WatchlistButtonProps) {
   const [isInWatchlist, setIsInWatchlist] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -45,10 +47,12 @@ export function WatchlistButton({
       if (isInWatchlist) {
         await removeFromWatchlist(userId, auctionId);
         setIsInWatchlist(false);
+        onWatchlistChange?.(false);
         alert("Removed from Watchlist!");
       } else {
         await addToWatchlist(userId, auctionId);
         setIsInWatchlist(true);
+        onWatchlistChange?.(true);
         alert("Added to Watchlist!");
       }
     } catch (err) {

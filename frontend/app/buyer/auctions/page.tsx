@@ -25,6 +25,10 @@ export default function BuyerHistoryPage() {
   const [sortBy, setSortBy] = useState("recent");
 
   useEffect(() => {
+    fetchAuctions();
+  }, []);
+
+  const fetchAuctions = () => {
     setLoading(true);
     // Fetch both live and scheduled auctions
     Promise.all([
@@ -41,7 +45,7 @@ export default function BuyerHistoryPage() {
         setAuctionData([]);
         setLoading(false);
       });
-  }, []);
+  };
 
   // Filtering
   const filteredData = auctionData.filter((auction) => {
@@ -191,7 +195,7 @@ export default function BuyerHistoryPage() {
                   animationDelay: `${index * 80}ms`,
                 }}
               >
-                <AuctionCard cardType="auction" auction={auction} />
+                <AuctionCard cardType="auction" auction={auction}/>
               </div>
             ))}
           </div>

@@ -20,6 +20,10 @@ export default function BuyerAuctionPage() {
   const userId = "11111111-1111-1111-1111-111111111111";
 
   useEffect(() => {
+    fetchWatchlist();
+  }, []);
+
+  const fetchWatchlist = () => {
     setLoading(true);
     listAuctionsWatchlist(userId)
       .then((data) => {
@@ -31,7 +35,11 @@ export default function BuyerAuctionPage() {
         setWatchlist([]);
         setLoading(false);
       });
-  }, []);
+  };
+
+  const handleWatchlistChange = () => {
+    fetchWatchlist();
+  };
   
   // Filter watchlist by selected date
   const filteredWatchlist = selectedDate
@@ -116,6 +124,7 @@ export default function BuyerAuctionPage() {
                     <AuctionCard
                       cardType="auction"
                       auction={item}
+                      onWatchlistChange={handleWatchlistChange}
                     />
                   </div>
                 ))
