@@ -85,6 +85,7 @@ export async function getAuctionHistoryDialog(auctionId: string): Promise<Auctio
 	};
 }
 
+// Get auction order dialog data
 export async function getAuctionOrderDialog(auctionId: string): Promise<AuctionOrderDialog> {
 	const [auction, winsAuctions] = await Promise.all([
 		getAuction(auctionId),
@@ -111,3 +112,16 @@ async function getWinsAuctionByAuctionId(auctionId: string): Promise<WinsAuction
 	return fetcher(`${API_BASE_URL}/orders/wins/auction/${auctionId}`);
 }
 
+// Add to watchlist
+export async function addToWatchlist(userId: string, auctionId: string): Promise<void> {
+	await fetcher(`${API_BASE_URL}/auctions/user/${userId}/watchlist/auctions/${auctionId}`, {
+		method: "POST",
+	});
+}
+
+// Remove from watchlist
+export async function removeFromWatchlist(userId: string, auctionId: string): Promise<void> {
+	await fetcher(`${API_BASE_URL}/auctions/user/${userId}/watchlist/auctions/${auctionId}`, {
+		method: "DELETE",
+	});
+}

@@ -47,3 +47,15 @@ def get_auctions_watchlist(user_id: str, service: AuctionService = Depends(get_a
 @router.get("/user/{user_id}/preview", response_model=List[AuctionData])
 def get_home_preview(user_id: str, service: AuctionService = Depends(get_auction_service)):
     return service.get_home_preview_auctions(user_id=user_id)
+
+# Add to watchlist
+@router.post("/user/{user_id}/watchlist/auctions/{auction_id}")
+def add_to_watchlist(user_id: str, auction_id: str, service: AuctionService = Depends(get_auction_service)):
+    service.add_to_watchlist(user_id, auction_id)
+    return {"message": "Auction added to watchlist"}
+
+# Remove from watchlist
+@router.delete("/user/{user_id}/watchlist/auctions/{auction_id}")
+def remove_from_watchlist(user_id: str, auction_id: str, service: AuctionService = Depends(get_auction_service)):
+    service.remove_from_watchlist(user_id, auction_id)
+    return {"message": "Auction removed from watchlist"}

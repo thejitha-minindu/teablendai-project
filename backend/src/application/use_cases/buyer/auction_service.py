@@ -44,4 +44,13 @@ class AuctionService:
     def get_home_preview_auctions(self, user_id: str):
         logger.info(f"Service: Getting home preview auctions for user {user_id}")
         return self.repo.get_home_preview_auctions(user_id=user_id)
+    
+    # Add auction to watchlist
+    def add_to_watchlist(self, user_id: str, auction_id: str):
+        logger.info(f"Service: Adding auction {auction_id} to watchlist for user {user_id}")
+        self.repo.add_to_watchlist(user_id, auction_id)
 
+    # Remove auction from watchlist
+    def remove_from_watchlist(self, user_id: str, auction_id: str):
+        logger.info(f"Service: Removing auction {auction_id} from watchlist for user {user_id}")
+        self.repo.remove_from_watchlist(user_id, auction_id)
