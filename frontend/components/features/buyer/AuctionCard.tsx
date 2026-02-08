@@ -1,6 +1,6 @@
 "use client";
 import * as React from "react";
-import '@/app/globals.css';
+import "@/app/globals.css";
 
 import {
   Card,
@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
 import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
-
+import { WatchlistButton } from "@/components/features/buyer/WatchlistButton";
 
 export type CardType = "order" | "history" | "auction";
 
@@ -41,7 +41,7 @@ const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
 export function AuctionCard({ cardType, auction }: AuctionCardProps) {
   const safeAuction = React.useMemo(() => {
     if (!auction) return getDefaultAuction(cardType);
-    
+
     // Extract raw values from auction object with multiple fallbacks
     const rawTitle = auction.auction_name || auction.title || "Auction";
     const rawCompany = auction.company_name || auction.company || "-";
@@ -53,13 +53,21 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
     const rawSoldPrice = auction.sold_price || auction.soldPrice;
     const rawWinner = auction.buyer || auction.winner;
     const rawTime = auction.time;
-    
+
     return {
       title: rawTitle,
       company: rawCompany,
-      date: rawDate ? new Date(rawDate).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" }) : "-",
+      date: rawDate
+        ? new Date(rawDate).toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          })
+        : "-",
       estateName: rawEstateName,
-      quantity: (rawQuantity !== undefined && rawQuantity !== null) ? `${rawQuantity} kg` : "-",
+      quantity:
+        rawQuantity !== undefined && rawQuantity !== null
+          ? `${rawQuantity} kg`
+          : "-",
       grade: rawGrade,
       basePrice: rawBasePrice ? `${rawBasePrice} LKR` : "-",
       soldPrice: rawSoldPrice ? `${rawSoldPrice} LKR` : undefined,
@@ -70,9 +78,7 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
 
   const renderAuctionDetails = () => (
     <div className="flex flex-col gap-2">
-      <h2 className="text-m font-semibold mb-2">
-        {safeAuction.estateName}
-      </h2>
+      <h2 className="text-m font-semibold mb-2">{safeAuction.estateName}</h2>
       <p className="mb-1 text-sm">
         <span className="font-medium">Quantity:</span> {safeAuction.quantity}
       </p>
@@ -81,12 +87,14 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
       </p>
       {(cardType === "history" || cardType === "order") && (
         <p className="mb-1 text-sm">
-          <span className="font-medium">Sold Price:</span> {safeAuction.soldPrice}
+          <span className="font-medium">Sold Price:</span>{" "}
+          {safeAuction.soldPrice}
         </p>
       )}
       {cardType === "auction" && (
         <p className="mb-1 text-sm">
-          <span className="font-medium">Base Price:</span> {safeAuction.basePrice}
+          <span className="font-medium">Base Price:</span>{" "}
+          {safeAuction.basePrice}
         </p>
       )}
       {cardType === "history" && (
@@ -99,7 +107,7 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
 
   const renderFooterButton = () => {
     const auctionId = auction?.auction_id || auction?.id || "";
-    
+
     switch (cardType) {
       case "history":
         return <HistoryCardDialog auctionId={auctionId} />;
@@ -107,37 +115,57 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
         return <OrderCardDialog auctionId={auctionId} />;
       case "auction":
         return (
-          <Button
-            variant="outline"
-            style={{ transition: "background 0.2s" }}
-            className="hover:text-white hover:cursor-pointer"
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "var(--color3)")}
-            onMouseLeave={e => (e.currentTarget.style.backgroundColor = "")}
-          >
-            Place Bid
-          </Button>
+          <div className="flex flex-wrap gap-4 justify-between w-full">
+            <WatchlistButton
+              auctionId={auctionId}
+              className="flex-1 min-w-[120px]"
+            />
+            <Button
+              variant="outline"
+              style={{ transition: "background 0.2s" }}
+              className="hover:text-white hover:cursor-pointer flex-1 min-w-[120px]"
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.backgroundColor = "var(--color3)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.backgroundColor = "")
+              }
+            >
+              Place Bid
+            </Button>
+          </div>
         );
       default:
         return null;
     }
   };
 
-
   // Parse date and time for display
   let displayDate = "-";
   let displayTime = "-";
   if (auction?.date) {
     const d = new Date(auction.date);
-    displayDate = d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
-    displayTime = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    displayDate = d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    displayTime = d.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   return (
     <Card className="w-full mx-auto">
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">
         <div className="flex flex-col">
-          <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>{safeAuction.title}</CardTitle>
-          <CardDescription style={{ color: "var(--color3)" }}>(by {safeAuction.company})</CardDescription>
+          <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>
+            {safeAuction.title}
+          </CardTitle>
+          <CardDescription style={{ color: "var(--color3)" }}>
+            (by {safeAuction.company})
+          </CardDescription>
         </div>
         <div className="flex flex-row items-start sm:items-end text-sm text-muted-foreground">
           <div className="flex flex-col items-end">

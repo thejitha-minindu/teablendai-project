@@ -47,3 +47,15 @@ class AuctionRepositoryInterface(ABC):
         # Get home preview auctions for user
         logger.debug("Called get_home_preview_auctions with user_id: %s", user_id)
         pass
+
+    @abstractmethod
+    def add_to_watchlist(self, user_id: str, auction_id: str):
+        # Add auction to user's watchlist
+        logger.debug("Called add_to_watchlist with user_id: %s, auction_id: %s", user_id, auction_id)
+        pass
+
+    @abstractmethod
+    def remove_from_watchlist(self, user_id: str, auction_id: str):
+        # Remove auction from user's watchlist
+        logger.debug("Called remove_from_watchlist with user_id: %s, auction_id: %s", user_id, auction_id)
+        pass
