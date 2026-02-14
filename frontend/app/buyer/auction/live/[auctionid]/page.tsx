@@ -22,32 +22,54 @@ export default function BuyerAuctionLivePage({
   const [selectedAmount, setSelectedAmount] = useState<string>("");
 
   return (
-    <div className="flex flex-col gap-6">
-      <AuctionLivePreview />
-      <LiveAuctionPageCard />
-      <LiveBidList />
-      <div>
-        <div>
-          <div className="flex w-full gap-2">
-            <Select value={selectedAmount} onValueChange={setSelectedAmount}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select amount" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="5000">5000 LKR</SelectItem>
-                <SelectItem value="10000">10000 LKR</SelectItem>
-                <SelectItem value="15000">15000 LKR</SelectItem>
-                <SelectItem value="20000">20000 LKR</SelectItem>
-                <SelectItem value="25000">25000 LKR</SelectItem>
-              </SelectContent>
-            </Select>
+    <div className="h-full">
+      <div className="flex flex-col h-full lg:grid lg:grid-cols-3">
+        <div className="flex flex-col col-span-2 gap-6">
+          <div>
+            <AuctionLivePreview />
           </div>
-          <div className="flex w-full gap-2 items-center">
-            <div className="flex-1 px-3 py-2 border rounded-md bg-white text-sm">
-              Amount: <span id="selected-amount">{selectedAmount || "Select amount"}</span>
+
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <LiveAuctionPageCard />
             </div>
-            <Button variant={"outline"} className="bg-(--color4) text-white">Bid</Button>
+
+            <div className="lg:p-4 space-y-3 flex flex-col items-center justify-center">
+                <div className="w-full">
+                <Select value={selectedAmount} onValueChange={setSelectedAmount}>
+                  <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select amount" />
+                  </SelectTrigger>
+                  <SelectContent>
+                  <SelectItem value="5000">5000 LKR</SelectItem>
+                  <SelectItem value="10000">10000 LKR</SelectItem>
+                  <SelectItem value="15000">15000 LKR</SelectItem>
+                  <SelectItem value="20000">20000 LKR</SelectItem>
+                  <SelectItem value="25000">25000 LKR</SelectItem>
+                  </SelectContent>
+                </Select>
+                </div>
+
+              <div className="flex flex-col gap-2 w-full">
+                <div className="px-3 py-2 border rounded-md bg-white text-sm">
+                  Amount:{" "}
+                  <span id="selected-amount">
+                    {selectedAmount || "Select amount"}
+                  </span>
+                </div>
+                <Button
+                  variant={"outline"}
+                  className="w-full bg-(--color4) text-white"
+                >
+                  Bid
+                </Button>
+              </div>
+            </div>
           </div>
+        </div>
+
+        <div className="h-full">
+          <LiveBidList />
         </div>
       </div>
     </div>
