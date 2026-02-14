@@ -34,22 +34,7 @@ export default function BuyerAuctionLivePage({
               <LiveAuctionPageCard />
             </div>
 
-            <div className="lg:p-4 space-y-3 flex flex-col items-center justify-center">
-                <div className="w-full">
-                <Select value={selectedAmount} onValueChange={setSelectedAmount}>
-                  <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select amount" />
-                  </SelectTrigger>
-                  <SelectContent>
-                  <SelectItem value="5000">5000 LKR</SelectItem>
-                  <SelectItem value="10000">10000 LKR</SelectItem>
-                  <SelectItem value="15000">15000 LKR</SelectItem>
-                  <SelectItem value="20000">20000 LKR</SelectItem>
-                  <SelectItem value="25000">25000 LKR</SelectItem>
-                  </SelectContent>
-                </Select>
-                </div>
-
+            <div className="lg:p-4 space-y-3 flex flex-col items-center justify-center relative z-50">
               <div className="flex flex-col gap-2 w-full">
                 <div className="px-3 py-2 border rounded-md bg-white text-sm">
                   Amount:{" "}
@@ -63,6 +48,28 @@ export default function BuyerAuctionLivePage({
                 >
                   Bid
                 </Button>
+              </div>
+
+              <div className="w-full relative">
+                <Select
+                  value={selectedAmount}
+                  onValueChange={setSelectedAmount}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select amount" />
+                  </SelectTrigger>
+                  <SelectContent
+                    position="popper"
+                    className="z-[100]"
+                    sideOffset={4}
+                  >
+                    <SelectItem value="5000">5000 LKR</SelectItem>
+                    <SelectItem value="10000">10000 LKR</SelectItem>
+                    <SelectItem value="15000">15000 LKR</SelectItem>
+                    <SelectItem value="20000">20000 LKR</SelectItem>
+                    <SelectItem value="25000">25000 LKR</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
           </div>
