@@ -3,6 +3,23 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 from langchain_community.utilities import SQLDatabase
 from typing import Tuple
+from sqlalchemy.orm import sessionmaker, Session
+
+from src.infrastructure.database.base import Base
+
+# Create a session factory (singleton)
+_ENGINE = None
+_SessionLocal = None
+
+def _init_session_factory():
+    global _ENGINE, _SessionLocal
+    if _ENGINE is None:
+        _ENGINE = create_database_connection()
+        _SessionLocal = sessionmaker(
+            autocommit=False,
+            autoflush=False,
+            bind=_ENGINE
+        )
 
 def _get_db_config() -> Tuple[str, str, str, str, bool]:
     server = os.getenv('MSSQL_SERVER')
@@ -83,3 +100,15 @@ def test_connection():
         print(f"Connection failed: {e}")
         return False
         
+def get_db():
+    """
+    FastAPI dependency that provides a SQLAlchemy Session and ensures it is closed.
+    Usage: db: Session = Depends(get_db)
+    """
+    _init_session_factory()
+
+    db: Session = _SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
