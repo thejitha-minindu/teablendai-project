@@ -19,7 +19,7 @@ class ChatMessage(Base):
     ChatMessage entity - represents a single message
     """
     
-    __tablename__ = "ChatMessages"
+    __tablename__ = "Messages"
     
     __table_args__ = (
         {'implicit_returning': False},
@@ -56,13 +56,13 @@ class ChatMessage(Base):
     )
     
     sql_query = Column(
-        "SqlQuery",
+        "SQLQuery",
         Text,
         nullable=True
     )
     
     data = Column(
-        "Data",
+        "DataJSON",
         Text,
         nullable=True
     )
