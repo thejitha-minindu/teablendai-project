@@ -75,7 +75,7 @@ export default function SellerDashboardPage() {
     return d;
   }, []);
 
-  // --- 1. FETCH DATA (Same as before) ---
+  // --- 1. FETCH DATA ---
   const fetchAllData = async () => {
       try {
         setLoading(true);
@@ -94,7 +94,7 @@ export default function SellerDashboardPage() {
             const dateObj = new Date(safeTime);
             
             const auctionObj = {
-                id: 'Auction',
+                id: item.auction_id, 
                 grade: item.grade,
                 quantity: item.quantity,
                 price: item.base_price,
@@ -284,10 +284,9 @@ export default function SellerDashboardPage() {
                     {displayedAuctions.map((auction, idx) => (
                         <AuctionCard 
                             key={idx}
-                            id={`${auction.id.substring(0,7)}`}
+                            id={`Auction`} // This is just for visual display
                             type={auction.type} 
                             data={auction}
-                            // --- CLICK HANDLER FOR MODAL ---
                             onViewClick={() => setSelectedAuction(auction)} 
                         />
                     ))}
