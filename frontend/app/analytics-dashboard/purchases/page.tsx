@@ -84,7 +84,7 @@ export default function PurchaseAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="BOP" stroke="#0088FE" strokeWidth={2} />
+              <Line type="monotone" dataKey="BOP" stroke="#" strokeWidth={2} />
               <Line type="monotone" dataKey="BOPF" stroke="#00C49F" strokeWidth={2} />
               <Line type="monotone" dataKey="Dust" stroke="#FFBB28" strokeWidth={2} />
               <Line type="monotone" dataKey="OP" stroke="#FF8042" strokeWidth={2} />
