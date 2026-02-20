@@ -17,8 +17,8 @@ IF DEFINED PS1 (
 )
 
 REM Install dependencies
-pip install --upgrade pip
-pip install -r requirements.txt
+python.exe -m pip install --upgrade pip
+python.exe -m pip install -r requirements.txt
 
 REM Run the FastAPI app
 uvicorn src.application.main:app --reload
