@@ -3,17 +3,29 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.application.schemas.buyer.bid import Bid
 from src.application.use_cases.buyer.bid_service import BidService
+from src.application.use_cases.buyer.bid_realtime_service import BidRealtimeService
 from src.infrastructure.database.base import get_db
+from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 
 router = APIRouter(prefix="/bids", tags=["bids"])
 
 def get_bid_service(db: Session = Depends(get_db)):
     return BidService(db)
 
+
+def get_bid_realtime_service() -> BidRealtimeService:
+    return BidRealtimeService(auction_ws_manager)
+
 # Create a new bid
 @router.post("", response_model=Bid)
-def create_bid(bid: Bid, service: BidService = Depends(get_bid_service)):
-    return service.create_bid(bid)
+async def create_bid(
+    bid: Bid,
+    service: BidService = Depends(get_bid_service),
+    realtime_service: BidRealtimeService = Depends(get_bid_realtime_service),
+):
+    created = service.create_bid(bid)
+    await realtime_service.broadcast_bid_created(created)
+    return created
 
 # List bids with optional filters
 @router.get("", response_model=List[Bid])

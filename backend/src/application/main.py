@@ -1,4 +1,5 @@
 
+from backend.src.presentation.routers.v1.buyer import live_auction_socket as buyer_live_ws
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.presentation.routers.v1 import health, bid, auction, user, order
@@ -43,6 +44,6 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
 app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
 app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
-
+app.include_router(buyer_live_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-ws"])
 
 # to run the app: uvicorn src.application.main:app --reload
