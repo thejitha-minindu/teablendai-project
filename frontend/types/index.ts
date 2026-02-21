@@ -2,6 +2,7 @@ export * from './user.types';
 export * from './chat.types';
 export * from './buyer/auction.types';
 export * from './buyer/bid.types'
+export * from './buyer/LiveAuctionSocket.types';
 
 export type ApiResponse<T = any> = {
   success: boolean;
