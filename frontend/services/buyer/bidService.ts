@@ -1,4 +1,4 @@
-import { Bid } from "../../types/bid.types";
+import { Bid } from "@/types/buyer/bid.types";
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/buyer`;
 

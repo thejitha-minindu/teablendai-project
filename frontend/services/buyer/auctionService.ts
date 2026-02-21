@@ -1,6 +1,6 @@
 import { AuctionData, AuctionCardHomePreview, AuctionCard, AuctionHistoryCard, AuctionOrderCard, AuctionHistoryDialog, AuctionOrderDialog } from "../../types/auction.types";
-import { Bid } from "../../types/bid.types";
-import { WinsAuction } from "../../types/order.types";
+import { Bid } from "@/types/buyer/bid.types";
+import { WinsAuction } from "@/types/buyer/order.types";
 import { listBidsByAuction } from "./bidService";
 
 const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1"}/buyer`;
