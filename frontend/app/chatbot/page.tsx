@@ -6,18 +6,43 @@ import { AnimatedAIChat } from "../../components/features/chatbot/chat";
 import { ChatSidebar } from "../../components/features/chatbot/chatSidebar";
 import MessageBubble from "../../components/features/chatbot/MessageBubble";
 import { chatService, ChatMessage, ConversationSummary } from "../../services/chatService";
+import { ArrowDownIcon } from "@/components/ui/arrow-down";
 
 export default function ChatbotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+
+  // Check if user has scrolled up
+  const handleScroll = useCallback(() => {
+    if (!messagesContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    setShowScrollButton(!isNearBottom);
+  }, []);
 
   // Auto-scroll to latest message
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, []);
+
+  // Auto-scroll when new messages arrive, but only if user is near bottom
+  useEffect(() => {
+    if (!messagesContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+    
+    if (isNearBottom) {
+      scrollToBottom();
+    }
+  }, [messages, scrollToBottom]);
 
   // Load conversation list for sidebar
   const loadConversations = useCallback(async () => {
@@ -113,6 +138,9 @@ export default function ChatbotPage() {
 
     const history = await chatService.getConversationMessages(id);
     setMessages(history);
+    
+    // Scroll to bottom after loading history
+    setTimeout(scrollToBottom, 100);
   };
 
   // Delete conversation
@@ -141,11 +169,14 @@ export default function ChatbotPage() {
       />
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         {/* Messages display - only shows when there are messages */}
         {hasMessages && (
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          <div 
+            ref={messagesContainerRef}
+            onScroll={handleScroll}
+            className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+          >
             <AnimatePresence mode="popLayout">
               {messages.map((message) => (
                 <motion.div
@@ -161,6 +192,22 @@ export default function ChatbotPage() {
             <div ref={messagesEndRef} />
           </div>
         )}
+
+        {/* Scroll to bottom button - only shows when not at bottom */}
+        <AnimatePresence>
+          {hasMessages && showScrollButton && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={scrollToBottom}
+              className="fixed bottom-24 right-8 w-12 h-12 bg-[#558332] text-white rounded-full shadow-lg flex items-center justify-center transition-colors z-50"
+              aria-label="Scroll to bottom"
+            >
+              <ArrowDownIcon className="w-7 h-7" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Chat input - always visible, centered when no messages */}
         <div className={hasMessages ? "shrink-0" : "flex-1"}>
