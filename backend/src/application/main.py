@@ -2,8 +2,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from src.presentation.routers.v1 import health, bid, auction, user, order
+from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
+from src.infrastructure.database.base import Base, engine
+Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+app = FastAPI(
+    title="Tea Auction Platform",
+    description="Backend API for TeaBlendAI",
+    version="1.0.0"
+)
 
 # CORS setup
 origins = [
@@ -31,6 +38,11 @@ app.include_router(user.router, prefix="/api/v1")
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
 app.include_router(health.router, prefix="/api/v1")
+
+# Buyer-specific endpoints (with /buyer prefix)
+app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
+app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
+app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
 
 
 # to run the app: uvicorn src.application.main:app --reload

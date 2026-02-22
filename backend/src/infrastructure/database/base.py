@@ -9,11 +9,8 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import NullPool, create_engine, text
 import os
 from dotenv import load_dotenv
-from sqlalchemy.orm import declarative_base
 
 load_dotenv()
-
-Base = declarative_base()
 
 def _get_db_config():
     server = os.getenv('MSSQL_SERVER')
@@ -100,6 +97,7 @@ def init_db():
 
     Base.metadata.create_all(bind=engine)
     print("Database initialized!")
+
 
 def test_connection():
     """

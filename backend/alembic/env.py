@@ -4,9 +4,11 @@ import os
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from src.database import Base
-from src.infrastructure.database.bid import Bid
-from src.infrastructure.database.auction import Auction
+from src.infrastructure.database.base import Base
+from src.domain.models.bid import Bid
+from src.domain.models.auction import Auction
+from src.domain.models.order import Order, PaymentDetails, WinsAuction
+from src.domain.models.user import User
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -17,10 +19,35 @@ load_dotenv()
 # access to the values within the .ini file in use.
 config = context.config
 
-# Set sqlalchemy.url from environment variable if present
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+
+# Build database URL from component environment variables
+def build_database_url():
+    server = os.getenv('MSSQL_SERVER')
+    database = os.getenv('MSSQL_DATABASE')
+    username = os.getenv('MSSQL_USERNAME') or ''
+    password = os.getenv('MSSQL_PASSWORD') or ''
+    trusted_env = os.getenv('DB_TRUSTED_CONNECTION')
+    if trusted_env is None:
+        trusted_env = os.getenv('MSSQL_TRUSTED_CONNECTION')
+    trusted = False if trusted_env is None else str(trusted_env).lower() in ('1','true','yes','y')
+    driver = "ODBC Driver 18 for SQL Server"
+    if trusted or (not username and not password):
+        url = (
+            f"mssql+pyodbc://{server}/{database}"
+            f"?driver={driver.replace(' ', '+')}"
+            f"&trusted_connection=yes"
+            f"&TrustServerCertificate=yes"
+        )
+    else:
+        url = (
+            f"mssql+pyodbc://{username}:{password}@{server}/{database}"
+            f"?driver={driver.replace(' ', '+')}"
+            f"&TrustServerCertificate=yes"
+        )
+    return url
+
+# Set sqlalchemy.url from built URL
+config.set_main_option("sqlalchemy.url", build_database_url())
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -51,7 +78,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("DATABASE_URL")
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
