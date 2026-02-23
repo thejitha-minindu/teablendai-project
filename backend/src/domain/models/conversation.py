@@ -17,8 +17,8 @@ class Conversation(Base):
     """
     
     __tablename__ = "Conversations"
-   
-    # Columns 
+
+    # Columns
     conversation_id = Column(
         "ConversationID",
         Integer,

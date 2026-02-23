@@ -11,11 +11,8 @@ export default function AdminCsvWizard() {
     const [file, setFile] = useState<File | null>(null);
     const [table, setTable] = useState("");
     const [mapping, setMapping] = useState<Record<string, string>>({});
-
-    const csvHeaders = ["PurchaseID", "Standard", "PricePerKg"];
-    const previewData = [
-        { PurchaseID: "P01", Standard: "A", PricePerKg: 1200 },
-    ];
+    const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+    const [previewData, setPreviewData] = useState<any[]>([]);
 
     return (
         <div className="max-w-6xl mx-auto p-6 bg-gray-50 rounded-xl shadow">
@@ -27,6 +24,8 @@ export default function AdminCsvWizard() {
                         setFile={setFile}
                         table={table}
                         setTable={setTable}
+                        setCsvHeaders={setCsvHeaders}
+                        setPreviewData={setPreviewData}
                     />
                 )}
 
@@ -39,12 +38,20 @@ export default function AdminCsvWizard() {
                     />
                 )}
 
-                {step === 2 && <Step3Preview data={previewData} />}
+                {step === 2 && (
+                    <Step3Preview data={previewData} />
+                )}
 
-                {step === 3 && <Step4Confirm />}
+                {step === 3 && (
+                    <Step4Confirm
+                        file={file}
+                        table={table}
+                        mapping={mapping}
+                    />
+                )}
             </div>
 
-            {/* ✅ NEXT / BACK BUTTONS */}
+            {/* NEXT / BACK BUTTONS */}
             <div className="flex justify-between mt-8">
                 <button
                     disabled={step === 0}
