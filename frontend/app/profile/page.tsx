@@ -112,7 +112,14 @@ export default function UserProfilePage() {
             </div>
 
             <div className="flex gap-3 w-full md:w-auto">
-              <Link href="http://localhost:3000/seller/dashboard" className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
+              <Link 
+                href={
+                  activeTab === 'seller' ? '/seller/dashboard' :
+                  activeTab === 'buyer' ? '/buyer/dashboard' :
+                  '/dashboard'
+                }
+                className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+              >
                 <LayoutDashboard className="w-4 h-4" /> Dashboard
               </Link>
             </div>
@@ -300,9 +307,9 @@ export default function UserProfilePage() {
                         </div>
                       </div>
                     </div>
-                    <button className="mt-6 w-full py-3 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 hover:bg-[#588157] hover:text-white hover:border-[#588157] transition-all uppercase tracking-wider">
+                    <Link href="/payment/123" className="mt-6 w-full py-3 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-600 hover:bg-[#588157] hover:text-white hover:border-[#588157] transition-all uppercase tracking-wider inline-block text-center">
                       Manage Payouts
-                    </button>
+                    </Link>
                   </div>
                 </div>
               </div>

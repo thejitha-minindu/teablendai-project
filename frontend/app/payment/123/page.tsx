@@ -25,7 +25,7 @@ export default function CheckoutPage({ params }: CheckoutProps) {
 
   // Mock Order Data
   const orderSummary = {
-    id: params.orderId || "ORD-77291",
+    id: params.orderId || "123",
     item: "Premium BOPF - Nuwara Eliya",
     seller: "Kenmare Estate",
     subtotal: 25000.00,
@@ -211,10 +211,10 @@ export default function CheckoutPage({ params }: CheckoutProps) {
             </div>
 
             {/* Logistics Info */}
-            <div className="bg-[#344e41] rounded-[1.5rem] p-6 text-white overflow-hidden relative group">
+            <div className="bg-green-600 rounded-[1.5rem] p-6 text-white overflow-hidden relative group">
               <Truck className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 group-hover:rotate-12 transition-transform duration-500" />
               <div className="relative z-10">
-                <p className="text-[10px] font-black text-green-300 uppercase tracking-widest mb-2">Delivery Details</p>
+                <p className="text-[10px] font-black text-black uppercase tracking-widest mb-2">Delivery Details</p>
                 <p className="font-bold text-sm mb-1">Emily Johnson</p>
                 <p className="text-xs text-green-100/70 leading-relaxed mb-4">425 Park Avenue, Unit 3C, San Francisco, CA 94107</p>
                 <div className="flex items-center gap-2 text-[10px] font-bold bg-white/10 w-fit px-3 py-1.5 rounded-full">
