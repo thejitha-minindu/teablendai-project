@@ -1,4 +1,5 @@
 from typing import Optional, Literal
+from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel, ConfigDict
 
@@ -34,8 +35,8 @@ class AuctionCreate(BaseModel):
 class AuctionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    auction_id: str
-    seller_id: str
+    auction_id: UUID
+    seller_id: UUID
     seller_brand: Optional[str] = None
     grade: str
     quantity: float

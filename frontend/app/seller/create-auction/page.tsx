@@ -149,7 +149,7 @@ export default function CreateAuctionPage() {
             <div className="grid grid-cols-[180px_1fr] items-center gap-4">
               <label className="font-semibold text-gray-700">Starting Price :</label>
               <div className="flex items-center max-w-xs">
-                <span className="bg-[#588157] text-white px-4 py-3 rounded-l-lg font-bold">$</span>
+                <span className="bg-[#588157] text-white px-4 py-3 rounded-l-lg font-bold">LKR</span>
                 <input 
                   required
                   type="number" 

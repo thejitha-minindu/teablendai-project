@@ -14,7 +14,7 @@ class AuctionRepository(AuctionRepositoryInterface):
         
         db_auction = AuctionModel(
             auction_id=new_id,
-            seller_id="user_123_placeholder", 
+            seller_id="12345678-1234-5678-1234-567812345678", # Placeholder, replace with actual seller_id from auth context
             seller_brand=auction_data.seller_brand,
             grade=auction_data.grade,
             quantity=auction_data.quantity,
