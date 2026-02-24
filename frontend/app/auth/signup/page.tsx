@@ -11,25 +11,26 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Eye, 
-  EyeOff, 
-  Mail, 
-  Lock, 
-  User,
-  ChevronLeft, 
-  ArrowRight,
-  Sparkles,
-  Brain,
-  Shield,
-  Zap,
-  Globe,
-  CheckCircle,
-  Users,
-  Leaf,
-  UserPlus,
-  KeyRound,
-  TrendingUp
+import {
+    Eye,
+    EyeOff,
+    Mail,
+    Lock,
+    User,
+    ChevronLeft,
+    ArrowRight,
+    Sparkles,
+    Brain,
+    Shield,
+    Zap,
+    Globe,
+    CheckCircle,
+    Users,
+    Leaf,
+    UserPlus,
+    KeyRound,
+    TrendingUp,
+    ShoppingBag
 } from "lucide-react";
 
 export default function Signup() {
@@ -37,6 +38,7 @@ export default function Signup() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreeTerms, setAgreeTerms] = useState(false);
+    const [role, setRole] = useState<'seller' | 'buyer'>('buyer');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -46,7 +48,7 @@ export default function Signup() {
     };
 
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-green-50 flex flex-col lg:flex-row">
+        <div className="max-h-screen w-full bg-gradient-to-br from-gray-50 to-green-50 flex flex-col lg:flex-row">
             {/* Left Section - Full Screen Background Image */}
             <div className="lg:w-1/2 w-full relative min-h-[50vh] lg:min-h-screen">
                 {/* Full Screen Background Image */}
@@ -60,14 +62,14 @@ export default function Signup() {
                         sizes="50vw"
                         quality={90}
                     />
-                    
+
                     {/* Dark Overlay for Better Text Contrast */}
                     <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/25 to-transparent"></div>
-                    
+
                     {/* Subtle Pattern Overlay */}
                     <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]"></div>
                 </div>
-                
+
                 {/* Logo */}
                 <div className="absolute top-6 left-6 z-20">
                     <Link href="/" className="flex items-center gap-2 group">
@@ -92,11 +94,11 @@ export default function Signup() {
             </div>
 
             {/* Right Section - Signup Form */}
-            <div className="lg:w-1/2 w-full flex items-center justify-center p-4 lg:p-8">
-                <div className="w-full max-w-md">
+            <div className="lg:w-1/2 w-full flex items-center justify-center p-4 lg:p-8 h-full overflow-auto">
+                <div className="w-full max-w-md max-h-[95vh] h-full flex flex-col justify-center">
                     {/* Mobile Logo */}
-                    <div className="lg:hidden flex justify-center mb-8">
-                        <div className="relative h-14 w-40">
+                    <div className="lg:hidden flex justify-center mb-6">
+                        <div className="relative h-12 w-32">
                             <Image
                                 src="/tea-blend-logo.svg"
                                 alt="Tea Blend AI Logo"
@@ -108,18 +110,18 @@ export default function Signup() {
 
                     <Card className="border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
                         <CardHeader className="space-y-2 text-center">
-                            <CardTitle className="text-3xl lg:text-4xl font-bold text-gray-900">
+                            <CardTitle className="text-2xl lg:text-3xl font-bold text-gray-900">
                                 Create Account
                             </CardTitle>
-                            <p className="text-sm text-gray-600">
+                            <p className="text-xs text-gray-600">
                                 Fill in your details to get started
                             </p>
                         </CardHeader>
 
                         <CardContent>
-                            <form onSubmit={handleSubmit} className="space-y-6">
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 {/* Full Name Field */}
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                     <Label htmlFor="fullName" className="text-gray-700">
                                         Full Name
                                     </Label>
@@ -129,14 +131,51 @@ export default function Signup() {
                                             id="fullName"
                                             type="text"
                                             placeholder="John Doe"
-                                            className="pl-12 h-12 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
+                                            className="pl-12 h-10 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
                                             required
                                         />
                                     </div>
                                 </div>
 
+                                {/* Role Selection */}
+                                <div className="space-y-1">
+                                    <Label className="text-gray-700">
+                                        Default Role
+                                    </Label>
+                                    <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                id="buyer"
+                                                name="role"
+                                                value="buyer"
+                                                checked={role === 'buyer'}
+                                                onChange={() => setRole('buyer')}
+                                                className="w-4 h-4 cursor-pointer accent-green-500"
+                                            />
+                                            <Label htmlFor="buyer" className="cursor-pointer text-xs font-medium">
+                                                Buyer
+                                            </Label>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="radio"
+                                                id="seller"
+                                                name="role"
+                                                value="seller"
+                                                checked={role === 'seller'}
+                                                onChange={() => setRole('seller')}
+                                                className="w-4 h-4 cursor-pointer accent-green-500"
+                                            />
+                                            <Label htmlFor="seller" className="cursor-pointer text-xs font-medium">
+                                                Seller
+                                            </Label>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 {/* Email Field */}
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                     <Label htmlFor="email" className="text-gray-700">
                                         Email Address
                                     </Label>
@@ -146,14 +185,14 @@ export default function Signup() {
                                             id="email"
                                             type="email"
                                             placeholder="you@example.com"
-                                            className="pl-12 h-12 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
+                                            className="pl-12 h-10 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
                                             required
                                         />
                                     </div>
                                 </div>
 
                                 {/* Password Field */}
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                     <Label htmlFor="password" className="text-gray-700">
                                         Password
                                     </Label>
@@ -163,7 +202,7 @@ export default function Signup() {
                                             id="password"
                                             type={showPassword ? "text" : "password"}
                                             placeholder="Create a strong password"
-                                            className="pl-12 pr-12 h-12 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
+                                            className="pl-12 pr-12 h-10 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
                                             required
                                         />
                                         <button
@@ -178,14 +217,14 @@ export default function Signup() {
                                             )}
                                         </button>
                                     </div>
-                                    <p className="text-xs text-gray-500 flex items-center gap-1">
+                                    <p className="text-[10px] text-gray-500 flex items-center gap-1">
                                         <KeyRound className="w-3 h-3" />
                                         Use 8+ characters with letters, numbers & symbols
                                     </p>
                                 </div>
 
                                 {/* Confirm Password Field */}
-                                <div className="space-y-2">
+                                <div className="space-y-1">
                                     <Label htmlFor="confirmPassword" className="text-gray-700">
                                         Confirm Password
                                     </Label>
@@ -195,7 +234,7 @@ export default function Signup() {
                                             id="confirmPassword"
                                             type={showConfirmPassword ? "text" : "password"}
                                             placeholder="Confirm your password"
-                                            className="pl-12 pr-12 h-12 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
+                                            className="pl-12 pr-12 h-10 rounded-full border-2 focus:border-green-500 focus:ring-green-500/20"
                                             required
                                         />
                                         <button
@@ -213,15 +252,15 @@ export default function Signup() {
                                 </div>
 
                                 {/* Terms and Conditions */}
-                                <div className="space-y-4 pt-2">
-                                    <div className="flex items-start space-x-3">
-                                        <Checkbox 
-                                            id="terms" 
+                                <div className="space-y-2 pt-1">
+                                    <div className="flex items-start space-x-2">
+                                        <Checkbox
+                                            id="terms"
                                             checked={agreeTerms}
                                             onCheckedChange={(checked) => setAgreeTerms(checked as boolean)}
                                             className="mt-1"
                                         />
-                                        <Label htmlFor="terms" className="text-sm text-gray-700 cursor-pointer">
+                                        <Label htmlFor="terms" className="text-xs text-gray-700 cursor-pointer">
                                             I agree to the{" "}
                                             <Link href="/terms" className="text-green-600 hover:underline">
                                                 Terms of Service
@@ -237,7 +276,7 @@ export default function Signup() {
                                 {/* Submit Button */}
                                 <Button
                                     type="submit"
-                                    className="w-full h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-medium text-lg shadow-lg hover:shadow-xl transition-all duration-300 group"
+                                    className="w-full h-10 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white font-medium text-base shadow-lg hover:shadow-xl transition-all duration-300 group"
                                     disabled={isLoading || !agreeTerms}
                                 >
                                     {isLoading ? (
@@ -255,9 +294,9 @@ export default function Signup() {
                             </form>
 
                             {/* Divider */}
-                            <div className="relative my-8">
-                                <Separator className="my-6" />
-                                <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-white px-4 text-sm text-gray-500">
+                            <div className="relative my-6">
+                                <Separator className="my-4" />
+                                <span className="absolute left-1/2 -translate-x-1/2 -top-3 bg-white px-3 text-xs text-gray-500">
                                     Already have an account?
                                 </span>
                             </div>
@@ -266,7 +305,7 @@ export default function Signup() {
                             <Button
                                 asChild
                                 variant="outline"
-                                className="w-full h-12 rounded-full border-2 hover:bg-gray-50"
+                                className="w-full h-10 rounded-full border-2 hover:bg-gray-50"
                             >
                                 <Link href="/auth/login" className="flex items-center justify-center gap-2">
                                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

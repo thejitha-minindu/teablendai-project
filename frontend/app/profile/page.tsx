@@ -156,20 +156,22 @@ export default function UserProfilePage() {
               {activeTab === 'seller' && 'Estate & Business Intelligence'}
               {activeTab === 'buyer' && 'Purchasing & Order History'}
             </h2>
-            <div className="w-full sm:w-auto">
-              {isEditing ? (
-                <div className="flex gap-2 w-full">
-                  <button onClick={() => setIsEditing(false)} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                  <button onClick={handleSave} disabled={isLoading} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#4a6d49]">
-                    {isLoading ? "Saving..." : <><Save className="w-4 h-4" /> Save</>}
+            {activeTab === 'personal' && (
+              <div className="w-full sm:w-auto">
+                {isEditing ? (
+                  <div className="flex gap-2 w-full">
+                    <button onClick={() => setIsEditing(false)} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
+                    <button onClick={handleSave} disabled={isLoading} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#4a6d49]">
+                      {isLoading ? "Saving..." : <><Save className="w-4 h-4" /> Save</>}
+                    </button>
+                  </div>
+                ) : (
+                  <button onClick={() => setIsEditing(true)} className="w-full sm:w-auto px-4 py-2 text-sm font-bold text-[#588157] border border-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#F5F7EB] transition-all">
+                    <Edit2 className="w-4 h-4" /> Edit Profile
                   </button>
-                </div>
-              ) : (
-                <button onClick={() => setIsEditing(true)} className="w-full sm:w-auto px-4 py-2 text-sm font-bold text-[#588157] border border-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#F5F7EB] transition-all">
-                  <Edit2 className="w-4 h-4" /> Edit Profile
-                </button>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="p-6 md:p-8">
