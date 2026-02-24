@@ -1,4 +1,5 @@
 from typing import Optional, Literal
+from uuid import UUID
 from datetime import datetime
 from pydantic import BaseModel
 
@@ -16,3 +17,35 @@ class Auction(BaseModel):
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[str] = None
+
+# 1. Input Schema (Frontend -> Backend)
+# This validates the JSON your React app sends when creating an auction.
+class AuctionCreate(BaseModel):
+    seller_brand: str 
+    grade: str
+    quantity: float
+    origin: str
+    description: Optional[str] = None
+    base_price: float
+    start_time: datetime
+    duration: float
+
+# 2. Output Schema (Backend -> Frontend)
+# This defines what the API sends back to the React app.
+class AuctionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    auction_id: UUID
+    seller_id: UUID
+    seller_brand: Optional[str] = None
+    grade: str
+    quantity: float
+    origin: str
+    description: Optional[str] = None
+    base_price: float
+    start_time: datetime
+    duration: float
+    status: str
+    buyer: Optional[str] = None
+    sold_price: Optional[float] = None
+    created_at: datetime
