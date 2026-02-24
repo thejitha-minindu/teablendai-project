@@ -1,9 +1,10 @@
 "use client";
 import React, { useState } from 'react';
-import { Calendar, Clock } from 'lucide-react'; 
+import { Calendar, Clock } from 'lucide-react'; // Kept icons for specific conditional renders if needed
 import { AuctionCardProps } from '@/types/auction.types';
 import '../../../app/globals.css';
 
+// Import Shadcn UI components to match Buyer Card
 import {
   Card,
   CardContent,
@@ -13,7 +14,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge"; 
+import { Badge } from "@/components/ui/badge"; // Optional: Good for the "LIVE" tag
 
 export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
@@ -95,19 +96,11 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
                 </p>
             )}
 
-            {/* Countdown (Live OR Scheduled) - UPDATED SECTION */}
-            {(type === 'live' || type === 'scheduled') && data.countdown && (
-                <div className={`mt-2 p-2 rounded-md flex justify-between items-center ${
-                    type === 'live' 
-                        ? 'bg-red-50 text-red-600' // Red for LIVE urgency
-                        : 'bg-blue-50 text-blue-600' // Blue for Scheduled countdown
-                }`}>
-                    <span className="text-xs font-bold uppercase">
-                        {type === 'live' ? 'Ending In' : 'Starts In'}
-                    </span>
-                    <span className="text-sm font-mono font-bold">
-                        {data.countdown}
-                    </span>
+            {/* Countdown (Live only) */}
+            {type === 'live' && data.countdown && (
+                <div className="mt-2 bg-red-50 p-2 rounded-md flex justify-between items-center">
+                    <span className="text-xs font-bold text-red-600 uppercase">Ending In</span>
+                    <span className="text-sm font-mono font-bold text-red-600">{data.countdown}</span>
                 </div>
             )}
         </div>
