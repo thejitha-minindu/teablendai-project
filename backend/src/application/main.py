@@ -1,7 +1,7 @@
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from src.presentation.routers.v1 import health, bid, auction, user, order
+from src.presentation.routers.v1 import health, bid, auction, user, order, auth
 from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
 from src.infrastructure.database.base import Base, engine
 Base.metadata.create_all(bind=engine)
@@ -12,22 +12,29 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# CORS setup
+# CORS setup - Updated to support authentication cookies
 origins = [
     "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
     "http://frontend:3000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
+    allow_credentials=True,  # Required for cookies
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allow_headers=["*"],
+    expose_headers=["*"],
+    max_age=600,
 )
 
 # API v1 routers
 
+# Register auth router
+app.include_router(auth.router)
 # Register bid router
 app.include_router(bid.router, prefix="/api/v1")
 # Register auction router
