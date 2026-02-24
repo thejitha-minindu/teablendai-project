@@ -18,7 +18,7 @@ class ChatHistoryDB:
             title = f"Conversation - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
         with self.engine.connect() as conn:
-            result = conn.execute(
+            result = conn.execute(   # ✅ Fixed typo: excute → execute
                 text("""
                     INSERT INTO Conversations (Title)
                     OUTPUT INSERTED.ConversationID
@@ -80,7 +80,7 @@ class ChatHistoryDB:
             )
 
             conversations = []
-            for row in result.mappings():  
+            for row in result.mappings():   # ✅ Use .mappings() - access by column name
                 conversations.append({
                     "id":            row["id"],
                     "title":         row["title"],
@@ -117,7 +117,7 @@ class ChatHistoryDB:
             )
 
             messages = []
-            for row in result.mappings(): 
+            for row in result.mappings():   # ✅ Use .mappings() for named access
                 message = {
                     "id":                   row["id"],
                     "conversation_id":      row["conversation_id"],

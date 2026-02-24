@@ -17,6 +17,8 @@ load_dotenv()
 
 Base = declarative_base()
 
+Base = declarative_base()
+
 def _get_db_config():
     server = os.getenv('MSSQL_SERVER')
     database = os.getenv('MSSQL_DATABASE')
