@@ -132,6 +132,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
               onMouseLeave={(e) =>
                 (e.currentTarget.style.backgroundColor = "")
               }
+              onClick={() => window.location.href = `/buyer/auction/live/${auctionId}`}
             >
               Place Bid
             </Button>
