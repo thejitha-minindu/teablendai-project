@@ -181,3 +181,4 @@ docker-compose.override.yml
 
 # Migration files
 backend/alembic/versions/*
+env.development
