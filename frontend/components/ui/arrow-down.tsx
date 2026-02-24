@@ -1,7 +1,7 @@
 "use client";
 
-import type { Variants } from "motion/react";
-import { motion, useAnimation } from "motion/react";
+import { motion, useAnimation } from "framer-motion";
+import type { Variants } from "framer-motion";
 import type { SVGAttributes } from "react";
 import { forwardRef, useCallback, useImperativeHandle, useRef } from "react";
 

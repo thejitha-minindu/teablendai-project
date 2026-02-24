@@ -2,7 +2,7 @@
 Conversations route for TeaBlendAI API.
 Backed by MSSQL chat history tables (Conversations, Messages).
 """
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
@@ -39,11 +39,11 @@ class Message(BaseModel):
 
 
 @router.get("/conversations")
-async def list_conversations(limit: int = 50, offset: int = 0) -> Dict[str, Any]:
+async def list_conversations(limit: int = Query(default=50, ge=1, le=200), offset: int = Query(default=0, ge=0)) -> Dict[str, Any]:
     """List conversations from MSSQL with pagination."""
     try:
         history = get_history_db()
-        conversations = history.get_conversations(limit=limit)
+        conversations = history.get_conversations(limit=limit, offset=offset)
         return {
             "success": True,
             "conversations": conversations,

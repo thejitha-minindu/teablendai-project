@@ -8,6 +8,7 @@ import MessageBubble from "../../components/features/chatbot/MessageBubble";
 import { chatService, ChatMessage, ConversationSummary } from "../../services/chatService";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
 
+
 export default function ChatbotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);

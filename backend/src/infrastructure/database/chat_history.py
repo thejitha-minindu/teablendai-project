@@ -18,7 +18,7 @@ class ChatHistoryDB:
             title = f"Conversation - {datetime.now().strftime('%Y-%m-%d %H:%M')}"
 
         with self.engine.connect() as conn:
-            result = conn.execute(   # ✅ Fixed typo: excute → execute
+            result = conn.execute(
                 text("""
                     INSERT INTO Conversations (Title)
                     OUTPUT INSERTED.ConversationID
@@ -53,7 +53,7 @@ class ChatHistoryDB:
             )
             conn.commit()
 
-    def get_conversations(self, limit=50):
+    def get_conversations(self, limit=50, offset=0):
         """Get conversations with message counts"""
         with self.engine.connect() as conn:
             result = conn.execute(
@@ -74,13 +74,13 @@ class ChatHistoryDB:
                     LEFT JOIN Messages m ON c.ConversationID = m.ConversationID
                     GROUP BY c.ConversationID, c.Title, c.CreatedAt, c.UpdatedAt
                     ORDER BY COALESCE(c.UpdatedAt, c.CreatedAt) DESC
-                    OFFSET 0 ROWS FETCH NEXT :limit ROWS ONLY
+                    OFFSET :offset ROWS FETCH NEXT :limit ROWS ONLY
                 """),
-                {"limit": limit}
+                {"limit": limit, "offset": offset}
             )
 
             conversations = []
-            for row in result.mappings():   # ✅ Use .mappings() - access by column name
+            for row in result.mappings():  
                 conversations.append({
                     "id":            row["id"],
                     "title":         row["title"],
@@ -117,7 +117,7 @@ class ChatHistoryDB:
             )
 
             messages = []
-            for row in result.mappings():   # ✅ Use .mappings() for named access
+            for row in result.mappings(): 
                 message = {
                     "id":                   row["id"],
                     "conversation_id":      row["conversation_id"],

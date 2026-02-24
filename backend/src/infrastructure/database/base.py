@@ -4,13 +4,18 @@ SQLAlchemy Base Configuration
 This file sets up the foundation for all ORM models.
 All domain models will inherit from this Base class.
 """
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import NullPool, create_engine, text
+
 import os
+
 from dotenv import load_dotenv
 
+
+from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import NullPool, create_engine, text
+
 load_dotenv()
+
+Base = declarative_base()
 
 def _get_db_config():
     server = os.getenv('MSSQL_SERVER')
@@ -60,7 +65,6 @@ def create_database_connection():
             f"Original error: {e}"
         )
 
-
 # Create Engine Instance
 engine = create_database_connection()
 
@@ -93,11 +97,10 @@ def init_db():
     Note: Since we created tables with SQL, this is optional.
     """
     from src.domain.models.conversation import Conversation
-    from src.domain.models.message import Message
+    from src.domain.models.message import ChatMessage
 
     Base.metadata.create_all(bind=engine)
     print("Database initialized!")
-
 
 def test_connection():
     """

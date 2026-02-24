@@ -2,13 +2,14 @@
 Query route for TeaBlendAI API.
 Implements tea-only policy, MCP-first DB search, and web fallback with visuals.
 """
+
+import logging
+import json
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List, Annotated
-import logging
 from datetime import datetime
-
-import json
 
 from src.application.dependencies import get_chat_service
 from src.infrastructure.services.chat_service import ChatService
@@ -62,7 +63,7 @@ async def query_tea(
         )
 
         # If non-tea response
-        if result.get("source") == "system" and result.get("answer"):
+        if result.get("source") in {"validation", "system"}:
             return QueryResponse(
                 success=True,
                 conversation_id=result.get("conversation_id"),
