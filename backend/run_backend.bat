@@ -4,17 +4,8 @@ IF NOT EXIST venv (
     python -m venv venv
 )
 
-REM Detect if running in PowerShell
-SET "SHELL=%ComSpec%"
-SET "PS1=%__PSLockDownPolicy%"
-
-IF DEFINED PS1 (
-    REM PowerShell: use Activate.ps1
-    powershell -ExecutionPolicy ByPass -File venv\Scripts\Activate.ps1
-) ELSE (
-    REM CMD: use activate.bat
-    call venv\Scripts\activate.bat
-)
+REM Activate the virtual environment
+call venv\Scripts\activate
 
 REM Install dependencies
 pip install --upgrade pip

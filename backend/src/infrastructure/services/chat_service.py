@@ -1,0 +1,791 @@
+"""
+Chat Service
+
+Main orchestration service for chatbot functionality.
+Coordinates between repositories, MCP servers, and validation.
+"""
+
+import asyncio
+import logging
+from typing import Dict, Any, Optional
+from datetime import datetime
+from sqlalchemy.orm import Session
+
+from src.domain.models import Conversation, ChatMessage
+from src.infrastructure.repositories import (
+    ConversationRepository,
+    ChatMessageRepository
+)
+from src.infrastructure.services.intent_classifier import intent_classifier, QueryIntent
+from .mcp_client_manager import MCPClientManager
+from .topic_validator import TopicValidator
+
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
+from src.config import get_settings
+import json
+
+logger = logging.getLogger(__name__)
+
+
+class ChatService:
+    """
+    Main chat service - orchestrates all chatbot operations
+    
+    Responsibilities:
+    1. Validate questions are tea-related
+    2. Query database via MCP
+    3. Fall back to web search if needed
+    4. Generate visualizations
+    5. Save conversation history
+    6. Return structured responses
+    """
+    
+    def __init__(
+        self,
+        db: Session,
+        mcp_client: MCPClientManager
+    ):
+        """Initialize chat service"""
+        self.db = db
+        self.mcp_client = mcp_client
+        self.conversation_repo = ConversationRepository(db)
+        self.message_repo = ChatMessageRepository(db)
+        self.validator = TopicValidator()
+
+        self.settings = get_settings()
+        self.llm = ChatGoogleGenerativeAI(
+            model=getattr(self.settings, "MODEL_NAME", "gemini-2.5-flash"),
+            google_api_key=getattr(self.settings, "GOOGLE_API_KEY", None),
+            temperature=0
+        )
+    
+    async def process_message(
+        self,
+        user_message: str,
+        conversation_id: Optional[int] = None,
+        user_id: Optional[int] = None,
+        user_role: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """
+        Process a user message and return AI response
+        
+        Main entry point for chat functionality.
+        """
+        start_time = datetime.utcnow()
+
+        # Message length
+        MAX_MESSAGE_LENGTH = 1500
+        if len(user_message) > MAX_MESSAGE_LENGTH:
+            logger.warning(f"[Chat] Message too long: {len(user_message)} chars")
+            return {
+                "success": False,
+                "error": (
+                    f"Message too long. Please keep questions under "
+                    f"{MAX_MESSAGE_LENGTH} characters."
+                ),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+        
+        try:
+            # Get or Create Conversation
+            if conversation_id:
+                conversation = self.conversation_repo.get_by_id(conversation_id)
+                if not conversation:
+                    logger.warning(f"Conversation {conversation_id} not found, creating new")
+                    conversation = await self._create_conversation(
+                        user_message, user_id
+                    )
+            else:
+                conversation = await self._create_conversation(
+                    user_message, user_id
+                )
+            
+            logger.info(
+                f"Processing message in conversation {conversation.conversation_id}"
+            )
+            
+            # Save User Message
+            user_msg = ChatMessage.create_user_message(
+                conversation_id=conversation.conversation_id,
+                content=user_message
+            )
+            self.message_repo.create(user_msg)
+            
+            # Validate Topic - MUST check before any database queries
+            has_history = conversation_id is not None
+            logger.info(f"[Chat] Validating question: '{user_message[:80]}' (has_history={has_history})")
+            
+            is_tea_related = self.validator.is_tea_related(
+                user_message,
+                has_conversation_history=has_history,
+                conversation_id=conversation.conversation_id
+            )
+            
+            logger.info(f"[Chat] Validation result: is_tea_related={is_tea_related}")
+            
+            if not is_tea_related:
+                # Return rejection message BEFORE querying database
+                logger.warning(f"[Chat] REJECTING off-topic question: '{user_message[:80]}'")
+                rejection = self.validator.get_rejection_message()
+                
+                # Save assistant rejection
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=rejection,
+                    source="validation"
+                )
+                self.message_repo.create(assistant_msg)
+                
+                logger.info(f"[Chat] Saved rejection message for conversation {conversation.conversation_id}")
+                
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": rejection,
+                    "source": "validation",
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "suggestions": self.validator.get_suggestions(user_message)
+                }
+            
+
+            # Classify query intent BEFORE querying anything
+            intent: QueryIntent = intent_classifier.classify(user_message)
+            logger.info(f"[Chat] Query intent: {intent}")
+
+            # Route based on intent
+            if intent == "knowledge":
+                return await self._handle_knowledge_query(user_message, conversation)
+
+            if intent == "database":
+                return await self._handle_database_query(user_message, conversation)
+
+            if intent == "hybrid":
+                return await self._handle_hybrid_query(user_message, conversation)
+
+            logger.warning(f"[Chat] Unknown intent '{intent}', defaulting to database")
+            return await self._handle_database_query(user_message, conversation)
+        
+        except Exception as e:
+            logger.error(f"Error processing message: {e}", exc_info=True)
+            
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.utcnow().isoformat()
+            }
+      
+    async def _create_conversation(
+        self,
+        first_message: str,
+        user_id: Optional[int] = None
+    ) -> Conversation:
+        """Create a new conversation with auto-generated title"""
+        # Generate title from first message (first 50 chars)
+        title = first_message[:50]
+        if len(first_message) > 50:
+            title += "..."
+        
+        # Create conversation
+        conversation = Conversation.create_new(
+            title=title,
+            user_id=user_id
+        )
+        
+        saved = self.conversation_repo.create(conversation)
+        
+        logger.info(f"Created conversation {saved.conversation_id}: {title}")
+        
+        return saved
+    
+    def get_conversation_history(
+        self,
+        conversation_id: int,
+        limit: int = 50
+    ) -> Dict[str, Any]:
+        """Get conversation with message history"""
+        try:
+            # Get conversation with messages
+            conversation = self.conversation_repo.get_with_messages(conversation_id)
+            
+            if not conversation:
+                return {
+                    "success": False,
+                    "error": "Conversation not found"
+                }
+            
+            # Get messages (limited)
+            messages = self.message_repo.get_by_conversation(
+                conversation_id,
+                limit=limit
+            )
+            
+            return {
+                "success": True,
+                "conversation": conversation.to_dict(),
+                "messages": [msg.to_dict() for msg in messages],
+                "total_messages": len(messages)
+            }
+        
+        except Exception as e:
+            logger.error(f"Error getting conversation history: {e}")
+            return {
+                "success": False,
+                "error": str(e)
+            }
+
+    async def _handle_knowledge_query(
+        self,
+        user_message: str,
+        conversation: Conversation
+    ) -> Dict[str, Any]:
+        """Handle questions that need general knowledge (web search)"""
+
+        start_time = datetime.utcnow()
+
+        logger.info("[Chat] Handling as KNOWLEDGE query - skipping database")
+
+        # Go straight to web search
+        search_result = await self.mcp_client.search_web(user_message)
+
+        if search_result.get("success"):
+            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            answer = search_result.get("answer", "")
+
+            # Save assistant response
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="web",
+                search_results=search_result.get("results", []),
+                response_time_ms=response_time
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "web",
+                "search_results": search_result.get("results", []),
+                "timestamp": datetime.utcnow().isoformat(),
+                "response_time_ms": response_time
+            }
+
+        # Web search failed
+        fallback = (
+            "I couldn't find information to answer your question. "
+            "Please try rephrasing or ask a different question."
+        )
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=fallback,
+            source="error"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": False,
+            "conversation_id": conversation.conversation_id,
+            "answer": fallback,
+            "source": "error"
+        }
+
+    async def _handle_database_query(
+        self,
+        user_message: str,
+        conversation: Conversation
+    ) -> Dict[str, Any]:
+        """Handle questions about business data (existing database flow)"""
+
+        start_time = datetime.utcnow()
+
+        logger.info("[Chat] Handling as DATABASE query")
+
+        # Try database first
+        db_result = await self.mcp_client.query_database(user_message)
+
+        if db_result.get("success") and db_result.get("has_data"):
+            logger.info("[Chat] Database returned data")
+
+            needs_relevance_check = self._might_be_knowledge_query(user_message)
+
+            if needs_relevance_check:
+                logger.info("[Chat] Query is ambiguous - checking data relevance")
+
+                is_relevant = await self._verify_data_relevance(
+                    question=user_message,
+                    data=db_result.get("raw_data", []),
+                    columns=db_result.get("columns", [])
+                )
+
+                if not is_relevant:
+                    logger.warning("[Chat] Database data NOT relevant, trying web search")
+                    # Try web search as fallback
+                    search_result = await self.mcp_client.search_web(user_message)
+
+                    if search_result.get("success"):
+                        answer = search_result.get("answer", "")
+                        assistant_msg = ChatMessage.create_assistant_message(
+                            conversation_id=conversation.conversation_id,
+                            content=answer,
+                            source="web",
+                            search_results=search_result.get("results", [])
+                        )
+                        self.message_repo.create(assistant_msg)
+
+                        return {
+                            "success": True,
+                            "conversation_id": conversation.conversation_id,
+                            "answer": answer,
+                            "source": "web",
+                            "search_results": search_result.get("results", [])
+                        }
+            else:
+                logger.info("[Chat] Query is clearly data-seeking - skipping relevance check")
+
+            # Data is relevant (or not ambiguous) - continue with database flow
+            logger.info("[Chat] Using database result")
+
+            columns = db_result.get("columns", [])
+            rows = db_result.get("raw_data", [])
+            suggested = db_result.get("suggested_visualization", {})
+            candidates = suggested.get("candidates", ["table"])
+
+            llm_out = await self._summarize_and_choose_viz(
+                question=user_message,
+                columns=columns,
+                rows=rows,
+                candidates=candidates
+            )
+
+            chosen_type = llm_out["visualization_type"]
+
+            viz_result = await self.mcp_client.create_visualization(
+                data=rows,
+                query=user_message,
+                chart_type=chosen_type
+            )
+
+            if not viz_result.get("success"):
+                viz_result = {"visualization": None, "visualization_type": chosen_type}
+
+            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=llm_out["summary"],
+                sql_query=db_result.get("sql_query"),
+                data=rows,
+                source="database",
+                visualization_type=chosen_type,
+                visualization_data=viz_result.get("visualization"),
+                response_time_ms=response_time
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": llm_out["summary"],
+                "source": "database",
+                "columns": columns,
+                "data": rows,
+                "row_count": len(rows),
+                "suggested_visualization": suggested,
+                "visualization_type": chosen_type,
+                "visualization": viz_result.get("visualization"),
+                "sql_query": db_result.get("sql_query"),
+                "timestamp": datetime.utcnow().isoformat(),
+                "response_time_ms": response_time
+            }
+
+        # Database query failed or returned no data - try web search
+        logger.info("[Chat] Database query failed, trying web search")
+
+        search_result = await self.mcp_client.search_web(user_message)
+
+        if search_result.get("success"):
+            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            answer = search_result.get("answer", "")
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="web",
+                search_results=search_result.get("results", []),
+                response_time_ms=response_time
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "web",
+                "search_results": search_result.get("results", []),
+                "timestamp": datetime.utcnow().isoformat(),
+                "response_time_ms": response_time
+            }
+
+        # Both failed - return fallback
+        fallback_message = (
+            "I couldn't find information to answer your question. "
+            "Please try rephrasing or ask a different tea-related question."
+        )
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=fallback_message,
+            source="error"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "answer": fallback_message,
+            "source": "error",
+            "timestamp": datetime.utcnow().isoformat()
+        }
+
+    async def _handle_hybrid_query(
+        self,
+        user_message: str,
+        conversation: Conversation
+    ) -> Dict[str, Any]:
+        """Handle questions that need both data and knowledge"""
+
+        logger.info("[Chat] Handling as HYBRID query")
+
+        # Get both database and web results
+        db_task = self.mcp_client.query_database(user_message)
+        web_task = self.mcp_client.search_web(user_message)
+
+        # Run in parallel
+        db_result, web_result = await asyncio.gather(db_task, web_task)
+
+        # Combine results
+        combined_answer = ""
+
+        if web_result.get("success"):
+            combined_answer += web_result.get("answer", "") + "\n\n"
+
+        if db_result.get("success") and db_result.get("has_data"):
+            rows = db_result.get("raw_data", [])
+            columns = db_result.get("columns", [])
+
+            # Add data summary
+            combined_answer += "From our records:\n"
+            combined_answer += f"Found {len(rows)} entries with {', '.join(columns)}"
+
+            # Create visualization
+            viz_result = await self.mcp_client.create_visualization(
+                data=rows,
+                query=user_message
+            )
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=combined_answer,
+                sql_query=db_result.get("sql_query"),
+                data=rows,
+                source="hybrid",
+                visualization_type=viz_result.get("visualization_type"),
+                visualization_data=viz_result.get("visualization"),
+                search_results=web_result.get("results", [])
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": combined_answer,
+                "source": "hybrid",
+                "data": rows,
+                "search_results": web_result.get("results", []),
+                "visualization": viz_result.get("visualization")
+            }
+
+        # Only web result available
+        if web_result.get("success"):
+            answer = web_result.get("answer", "")
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="web",
+                search_results=web_result.get("results", [])
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "web",
+                "search_results": web_result.get("results", [])
+            }
+
+        # Fallback
+        return {
+            "success": False,
+            "answer": "I couldn't find information to answer your question."
+        }
+
+    async def _verify_data_relevance(
+        self,
+        question: str,
+        data: list,
+        columns: list
+    ) -> bool:
+        """
+        Use LLM to verify if database results actually answer the question.
+
+        Returns True if data is relevant, False otherwise.
+        """
+        if not data or not columns:
+            return False
+
+        try:
+            from langchain_core.messages import SystemMessage, HumanMessage
+
+            # Take sample of data
+            sample = data[:3] if len(data) > 3 else data
+
+            system = SystemMessage(content=(
+                "You are a data relevance checker. "
+                "Determine if database results answer the user's question. "
+                "Reply ONLY with 'yes' or 'no'."
+            ))
+
+            human = HumanMessage(content=f"""
+                    Question: {question}
+
+                    Database returned {len(data)} rows with columns: {columns}
+                    Sample data: {sample}
+
+                    Does this data answer the question?
+
+                    Examples:
+                    Q: "What are health benefits?" Data: [tea standards] → no
+                    Q: "How many customers?" Data: [count: 50] → yes
+                    Q: "Show me prices" Data: [prices, dates] → yes
+                    Q: "How to brew tea?" Data: [purchase records] → no
+                    Q: "What is BOPF?" Data: [BOPF, price, quantity] → no (needs explanation, not data)
+
+                    Answer (yes/no):
+                """)
+
+            response = await self.llm.ainvoke([system, human])
+            result = response.content.strip().lower()
+
+            is_relevant = "yes" in result
+            logger.info(f"[Relevance] Question: '{question[:40]}' | Relevant: {is_relevant}")
+
+            return is_relevant
+
+        except Exception as e:
+            logger.error(f"[Relevance] Check failed: {e}, assuming relevant")
+            # On error, assume relevant (don't block legitimate queries)
+            return True
+
+    def _might_be_knowledge_query(self, question: str) -> bool:
+        """
+        Check if question might be asking for explanations/knowledge
+        rather than data, despite being classified as database query.
+
+        Only returns True for ambiguous cases where relevance check is needed.
+        """
+        q = question.lower().strip()
+
+        if any(q.startswith(signal) for signal in ["what is", "what are", "why", "how does"]):
+            logger.debug(f"[MightBeKnowledge] '{question[:40]}' - TRUE (knowledge pattern)")
+            return True
+
+        if "compare" in q:
+            data_keywords = ["price", "average", "count", "number", "sales", "revenue", "quantity"]
+            if any(keyword in q for keyword in data_keywords):
+                logger.debug(f"[MightBeKnowledge] '{question[:40]}' - FALSE (data comparison)")
+                return False  # Data comparison, no LLM check needed
+
+        # Definitely data queries
+        data_patterns = [
+            "show me",
+            "list",
+            "how many",
+            "how much",
+            "get all",
+            "find",
+        ]
+        if any(q.startswith(pattern) for pattern in data_patterns):
+            logger.debug(f"[MightBeKnowledge] '{question[:40]}' - FALSE (clear data pattern)")
+            return False
+
+        # No clear signals either way
+        logger.debug(f"[MightBeKnowledge] '{question[:40]}' - FALSE (no knowledge signals)")
+        return False
+
+    def _is_echoed_response(self, message: str) -> bool:
+        """Detect if user accidentally sent AI's response back"""
+
+        # Too long (AI responses are typically longer)
+        if len(message) > 400:
+            return True
+
+        # Starts with AI response patterns
+        ai_patterns = [
+            "based on recent listings",
+            "here are some specific",
+            "the provided data",
+            "according to the data",
+            "the dataset shows",
+            "in summary",
+            "based on the data",
+        ]
+
+        msg_lower = message.lower()
+        if any(pattern in msg_lower for pattern in ai_patterns):
+            return True
+
+        # Contains multiple price listings
+        import re
+        price_matches = re.findall(r"Rs\.\s*\d+", message)
+        if len(price_matches) >= 3:
+            return True
+
+        return False
+
+    async def _summarize_and_choose_viz(
+        self,
+        question: str,
+        columns: list,
+        rows: list,
+        candidates: list
+    ) -> Dict[str, Any]:
+        """Use Gemini to summarize DB results and choose visualization type"""
+
+        # Check if user explicitly requested a chart type
+        question_lower = question.lower()
+
+        chart_keywords = {
+            "pie": ["pie", "percentage", "proportion", "share", "distribution", "ratio"],
+            "bar": ["bar", "bar chart", "compare", "comparison"],
+            "line": ["line", "trend", "over time", "timeline", "history", "monthly", "yearly", "annual"],
+            "table": ["table", "list", "show all", "details", "detail"],
+        }
+
+        explicit_type = None
+        for chart_type, keywords in chart_keywords.items():
+            if any(keyword in question_lower for keyword in keywords):
+                explicit_type = chart_type
+                break
+
+        # If user explicitly requested a type, use it directly
+        if explicit_type:
+            try:
+                from langchain_core.messages import SystemMessage, HumanMessage
+
+                system = SystemMessage(content=(
+                    "You are TeaBlendAI, an analytics assistant for Sri Lankan tea data.\n"
+                    "Summarize the data in 4-5 sentences. Be accurate and grounded in the data.\n"
+                    "Return STRICT JSON only: {\"summary\": \"...\"}"
+                ))
+
+                sample_rows = rows[:10]
+                human = HumanMessage(content=json.dumps({
+                    "question": question,
+                    "columns": columns,
+                    "sample_rows": sample_rows,
+                }))
+
+                resp = await self.llm.ainvoke([system, human])
+                raw = resp.content.strip()
+
+                if "```" in raw:
+                    raw = raw.split("```")[1].replace("json", "").strip()
+
+                data = json.loads(raw)
+                summary = data.get("summary", "")
+                if not summary:
+                    summary = f"Found {len(rows)} records."
+
+            except Exception as e:
+                logger.error(f"[LLM] Summary failed: {e}")
+                summary = f"Found {len(rows)} records with columns: {', '.join(columns)}."
+
+            logger.info(f"[VIZ] User requested '{explicit_type}' -> using it directly")
+            return {
+                "summary": summary,
+                "visualization_type": explicit_type
+            }
+
+        # No explicit request -> let LLM pick from candidates
+        try:
+            from langchain_core.messages import SystemMessage, HumanMessage
+
+            system = SystemMessage(content=(
+                "You are TeaBlendAI, an analytics assistant for Sri Lankan tea data.\n"
+                "You must be accurate and grounded ONLY in the provided dataset.\n"
+                "Choose the most appropriate chart type from the candidates.\n"
+                "Prefer BAR for comparing categories, LINE for time trends, "
+                "PIE only for share/proportion questions, TABLE for raw data.\n"
+                "Never invent values.\n"
+                "Return STRICT JSON only: {\"summary\": \"...\", \"visualization_type\": \"...\"}"
+            ))
+
+            sample_rows = rows[:10]
+            human = HumanMessage(content=json.dumps({
+                "question": question,
+                "columns": columns,
+                "sample_rows": sample_rows,
+                "chart_candidates": candidates,
+                "instruction": (
+                    "Return JSON with exactly two fields: "
+                    "summary (4-5 sentences describing the data) "
+                    "and visualization_type (one of the chart_candidates)."
+                )
+            }))
+
+            resp = await self.llm.ainvoke([system, human])
+            raw = resp.content.strip()
+
+            if "```" in raw:
+                raw = raw.split("```")[1].replace("json", "").strip()
+
+            data = json.loads(raw.strip())
+            summary = data.get("summary", "")
+            chosen = data.get("visualization_type", "")
+
+            if chosen not in ["table", "bar", "line", "pie"]:
+                chosen = candidates[0] if candidates else "table"
+
+            if not summary:
+                summary = f"Found {len(rows)} records with columns: {', '.join(columns)}."
+
+            return {"summary": summary, "visualization_type": chosen}
+
+        except Exception as e:
+            logger.error(f"[LLM] Summarization failed: {e}", exc_info=True)
+
+            row_count = len(rows)
+            chosen = candidates[0] if candidates else "table"
+
+            if row_count == 1 and rows:
+                values = ", ".join(f"{k}: {v}" for k, v in list(rows[0].items())[:5])
+                summary = f"Result: {values}"
+            else:
+                summary = f"Found {row_count} records. Columns: {', '.join(columns[:5])}."
+
+            return {"summary": summary, "visualization_type": chosen}
+        
+        
+# HELPER FUNCTIONS
+
+def get_chat_service(
+    db: Session,
+    mcp_client: MCPClientManager
+) -> ChatService:
+    """Factory function to create chat service"""
+    return ChatService(db, mcp_client)
