@@ -25,6 +25,9 @@ from src.presentation.routers.v1 import (
     #dashboard,
     chat
 )
+from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
+from src.infrastructure.database.base import Base, engine
+Base.metadata.create_all(bind=engine)
 
 # Configure logging
 logging.basicConfig(
@@ -66,8 +69,8 @@ async def lifespan(app: FastAPI):
 
 # Create FastAPI application
 app = FastAPI(
-    title="TeaBlendAI API",
-    description="Specialized AI assistant focused on tea-related topics",
+    title="Tea Auction Platform",
+    description="Backend API for TeaBlendAI",
     version="1.0.0",
     lifespan=lifespan
 )
@@ -103,6 +106,11 @@ app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 #app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
+
+# Buyer-specific endpoints (with /buyer prefix)
+app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
+app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
+app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
 
 @app.get("/")
 async def root():
