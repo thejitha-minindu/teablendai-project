@@ -30,7 +30,7 @@ const ARROW_VARIANTS: Variants = {
 };
 
 const DownloadIcon = forwardRef<DownloadIconHandle, DownloadIconProps>(
-  ({ onMouseEnter, onMouseLeave, className, size = 28, ...props }, ref) => {
+  ({ onMouseEnter, onMouseLeave, className, size = 18, ...props }, ref) => {
     const controls = useAnimation();
     const isControlledRef = useRef(false);
 

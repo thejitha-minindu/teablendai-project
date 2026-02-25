@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useRef, useCallback } from "react";
-import { Download } from "lucide-react";
+import { DownloadIcon } from "@/components/ui/download";
 import {
   Tooltip,
   TooltipTrigger,
@@ -65,6 +65,7 @@ function DownloadButton({ onClick, tooltip }: { onClick: () => void; tooltip: st
       <TooltipTrigger asChild>
         <button
           onClick={onClick}
+          aria-label={tooltip}
           className="
             absolute top-3 right-3 z-10
             p-1.5
@@ -75,7 +76,7 @@ function DownloadButton({ onClick, tooltip }: { onClick: () => void; tooltip: st
             hover:bg-gray-50 hover:scale-105
           "
         >
-          <Download className="w-5 h-5 text-gray-600 cursor-pointer" />
+          <DownloadIcon className="w-5 h-5 text-gray-600 cursor-pointer" />
         </button>
       </TooltipTrigger>
       <TooltipContent side="right" sideOffset={DOWNLOAD_TOOLTIP_SIDE_OFFSET}>

@@ -11,6 +11,11 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/services/chatService";
 import VisualizationRenderer from "./VisualizationRenderer";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -23,7 +28,6 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
   const isUser = message.role === "user";
 
-  // Reusable copy handler
   const handleCopy = async (
     text: string,
     setState: React.Dispatch<React.SetStateAction<boolean>>
@@ -60,19 +64,26 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     return (
       <div className="flex justify-end">
         <div className="relative max-w-[75%] bg-[#558332] text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm group">
-          {/* Copy button */}
-          <button
-            onClick={() =>
-              handleCopy(message.content, setCopiedMessage)
-            }
-            className="absolute right-2 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-          >
-            {copiedMessage ? (
-              <Check className="w-5 h-5 text-white" />
-            ) : (
-              <Copy className="w-5 h-5 text-white/80 hover:text-white" />
-            )}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  handleCopy(message.content, setCopiedMessage)
+                }
+                aria-label="Copy message"
+                className="absolute right-2 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+              >
+                {copiedMessage ? (
+                  <Check className="w-5 h-5 text-white" />
+                ) : (
+                  <Copy className="w-5 h-5 text-white/80 hover:text-white" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="left" sideOffset={8}>
+              {copiedMessage ? "Copied!" : "Copy message"}
+            </TooltipContent>
+          </Tooltip>
 
           <p className="text-sm whitespace-pre-wrap pr-6">
             {message.content}
@@ -93,37 +104,47 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
         <Brain className="w-5 h-5" />
       </div>
 
-      <div className="flex-1 max-w-[85%] space-y-2">
+      <div className="flex-1 max-w-[85%] space-y-3">
+        {/* Main Message Bubble */}
         <div className="relative bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group">
-          {/* Copy button */}
-          <button
-            onClick={() =>
-              handleCopy(message.content, setCopiedMessage)
-            }
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition cursor-pointer"
-          >
-            {copiedMessage ? (
-              <Check className="w-5 h-5 text-[#558332]" />
-            ) : (
-              <Copy className="w-5 h-5 text-gray-500 hover:text-gray-700" />
-            )}
-          </button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() =>
+                  handleCopy(message.content, setCopiedMessage)
+                }
+                aria-label="Copy message"
+                className="absolute opacity-0 group-hover:opacity-100 transition cursor-pointer top-3 right-3"
+              >
+                {copiedMessage ? (
+                  <Check className="w-5 h-5 text-[#558332]" />
+                ) : (
+                  <Copy className="w-5 h-5 text-gray-500 hover:text-gray-700" />
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {copiedMessage ? "Copied!" : "Copy message"}
+            </TooltipContent>
+          </Tooltip>
 
-          {/* Source badge */}
+          {/* Source Badge */}
           <div className="flex items-center gap-1.5 mb-2">
-            {message.source === "database" ? (
-              <span className="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+            {message.source === "database" && (
+              <span className="inline-flex items-center text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
                 Database
               </span>
-            ) : message.source === "web" ? (
-              <span className="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5">
+            )}
+            {message.source === "web" && (
+              <span className="inline-flex items-center text-xs bg-blue-50 text-blue-700 border border-blue-200 rounded-full px-2 py-0.5">
                 Web Search
               </span>
-            ) : message.source === "validation" ? (
-              <span className="inline-flex items-center gap-1 text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
+            )}
+            {message.source === "validation" && (
+              <span className="inline-flex items-center text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
                 Tea Only
               </span>
-            ) : null}
+            )}
           </div>
 
           <p className="text-sm text-justify text-gray-800 whitespace-pre-wrap leading-relaxed pr-6">
@@ -137,6 +158,31 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           )}
         </div>
 
+        {/* Sources */}
+        {message.source === "web" &&
+          Array.isArray(message.search_results) &&
+          message.search_results.length > 0 && (
+            <div className="border border-gray-200 bg-white rounded-xl shadow-sm px-4 py-3">
+              <p className="text-xs font-semibold text-blue-700 mb-2">
+                Sources
+              </p>
+              <ul className="space-y-1">
+                {message.search_results.map((result, index) => (
+                  <li key={`${result.url}-${index}`}>
+                    <a
+                      href={result.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-blue-700 hover:text-blue-800 break-all hover:underline transition"
+                    >
+                      {result.title || result.url}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
         {/* Visualization */}
         {message.visualization && (
           <VisualizationRenderer
@@ -146,7 +192,7 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
           />
         )}
 
-        {/* SQL Query Block */}
+        {/* SQL Query */}
         {message.sql_query && (
           <div className="bg-gray-900 rounded-xl overflow-hidden">
             <button
@@ -163,19 +209,26 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
             {showSQL && (
               <div className="relative">
-                {/* SQL Copy Button */}
-                <button
-                  onClick={() =>
-                    handleCopy(message.sql_query!, setCopiedSQL)
-                  }
-                  className="absolute top-2 right-2 text-gray-400 hover:text-white transition cursor-pointer"
-                >
-                  {copiedSQL ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    <Copy className="w-5 h-5 text-gray-500 hover:text-gray-700" />
-                  )}
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() =>
+                        handleCopy(message.sql_query!, setCopiedSQL)
+                      }
+                      aria-label="Copy SQL"
+                      className="absolute top-2 right-2 text-gray-400 hover:text-white transition cursor-pointer"
+                    >
+                      {copiedSQL ? (
+                        <Check className="w-5 h-5 text-white" />
+                      ) : (
+                        <Copy className="w-5 h-5 text-gray-400 hover:text-white" />
+                      )}
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    {copiedSQL ? "Copied!" : "Copy SQL"}
+                  </TooltipContent>
+                </Tooltip>
 
                 <pre className="px-4 pb-3 pt-8 text-xs text-white font-mono whitespace-pre-wrap overflow-x-auto">
                   {message.sql_query}

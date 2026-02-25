@@ -117,7 +117,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             {/* Only show welcome text when no messages */}
             {showWelcome && (
                 <div className="w-full max-w-6xl text-center space-y-1 pb-8">
-                    <p className="text-xl text-gray-500 pt-2">
+                    <p className="text-xl text-gray-500 pt-2 cursor-default">
                         Chat with our Tea AI to discover blends, rituals, and flavors made just for you.
                     </p>
                 </div>
@@ -176,7 +176,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             {/* Only show suggestions when no messages */}
             {showWelcome && (
                 <div className="w-full max-w-3xl mt-4">
-                    <p className="text-sm text-gray-500 mb-2 text-center">Try asking:</p>
+                    <p className="text-sm text-gray-500 mb-2 text-center cursor-default">Try asking:</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {suggestionQuestions.map((question, index) => (
                             <motion.button
