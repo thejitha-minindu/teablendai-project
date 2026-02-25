@@ -192,13 +192,51 @@ def build_chart_config(
                 "legend": {"position": "top"},
                 "title": {
                     "display": True,
-                    "text": query[:60] if query else "Tea Analytics",
+                    "text": _build_chart_title(
+                        chart_type=chart_type,
+                        x_axis=x_axis,
+                        numeric_cols=numeric_cols,
+                        keys=keys,
+                    ),
                     "font": {"size": 14, "weight": "bold"}
                 }
             },
             "scales": scales if chart_type in ["bar", "line"] else {}
         }
     }
+
+
+def _humanize_label(label: str) -> str:
+    """Convert snake_case / camelCase-ish labels to readable title case."""
+    cleaned = (label or "").replace("_", " ").strip()
+    return " ".join(part.capitalize() for part in cleaned.split()) if cleaned else "Value"
+
+
+def _build_chart_title(
+    chart_type: str,
+    x_axis: str | None,
+    numeric_cols: List[str] | None,
+    keys: List[str],
+) -> str:
+    """Generate a concise, descriptive chart title from chart metadata."""
+    metrics = numeric_cols or []
+    dimension = x_axis or (keys[0] if keys else None)
+
+    if chart_type in ["bar", "line"]:
+        if dimension and len(metrics) == 1:
+            return f"{_humanize_label(metrics[0])} by {_humanize_label(dimension)}"
+        if dimension and len(metrics) > 1:
+            return f"Metrics by {_humanize_label(dimension)}"
+        return "Tea Analytics Overview"
+
+    if chart_type == "pie":
+        if metrics:
+            return f"{_humanize_label(metrics[0])} Distribution"
+        if dimension:
+            return f"Distribution by {_humanize_label(dimension)}"
+        return "Tea Distribution"
+
+    return "Tea Analytics Overview"
 
 
 def _is_numeric(value) -> bool:
