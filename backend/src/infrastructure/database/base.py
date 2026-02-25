@@ -33,7 +33,7 @@ def _get_db_config():
 def create_database_connection():
     server, database, username, password, trusted = _get_db_config()
 
-    driver = "ODBC Driver 18 for SQL Server"
+    driver = "ODBC Driver 17 for SQL Server"
     if trusted or (not username and not password):
         connection_string = (
             f"mssql+pyodbc://{server}/{database}"

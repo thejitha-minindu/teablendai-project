@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 AuctionType = Literal["scheduled", "live", "history"]
 
