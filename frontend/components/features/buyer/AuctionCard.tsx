@@ -108,6 +108,11 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
 
   const renderFooterButton = () => {
     const auctionId = auction?.auction_id || auction?.id || "";
+    const isLiveAuction =
+      String(auction?.status || auction?.auction_status || auction?.type || "").toLowerCase() === "live";
+    const auctionRoute = isLiveAuction
+      ? `/buyer/auction/live/${auctionId}`
+      : `/buyer/auction/${auctionId}`;
 
     switch (cardType) {
       case "history":
@@ -132,7 +137,9 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
               onMouseLeave={(e) =>
                 (e.currentTarget.style.backgroundColor = "")
               }
-              onClick={() => window.location.href = `/buyer/auction/live/${auctionId}`}
+              onClick={() => {
+                window.location.href = auctionRoute;
+              }}
             >
               Place Bid
             </Button>
