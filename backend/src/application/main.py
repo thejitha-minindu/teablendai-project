@@ -27,6 +27,7 @@ from src.presentation.routers.v1 import (
 )
 from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
 from src.infrastructure.database.base import Base, engine
+from src.presentation.routers.v1 import auth
 Base.metadata.create_all(bind=engine)
 
 # Configure logging
@@ -37,34 +38,34 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    logger.info("Starting TeaBlendAI FastAPI server.")
-    app.state.mcp_client = None
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     logger.info("Starting TeaBlendAI FastAPI server.")
+#     app.state.mcp_client = None
 
-    try:
-        app.state.mcp_client = await get_mcp_client()
-        logger.info("MCP client initialized during startup.")
-    except Exception:
-        logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
+#     try:
+#         app.state.mcp_client = await get_mcp_client()
+#         logger.info("MCP client initialized during startup.")
+#     except Exception:
+#         logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
 
-    try:
-        yield
-    finally:
-        logger.info("Shutting down TeaBlendAI server")
-        mcp_client = getattr(app.state, "mcp_client", None)
-        if mcp_client and mcp_client.is_ready():
-            try:
-                await mcp_client.shutdown()
-                logger.info("MCP client shut down cleanly.")
-            except asyncio.CancelledError:
-                logger.debug("MCP shutdown cancelled (expected on Windows)")
-            except Exception as e:
-                # Filter out harmless scope cancellation errors common on Windows
-                if "cancel scope" not in str(e).lower():
-                    logger.error(f"Error during MCP client shutdown: {e}")
-                else:
-                    logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
+#     try:
+#         yield
+#     finally:
+#         logger.info("Shutting down TeaBlendAI server")
+#         mcp_client = getattr(app.state, "mcp_client", None)
+#         if mcp_client and mcp_client.is_ready():
+#             try:
+#                 await mcp_client.shutdown()
+#                 logger.info("MCP client shut down cleanly.")
+#             except asyncio.CancelledError:
+#                 logger.debug("MCP shutdown cancelled (expected on Windows)")
+#             except Exception as e:
+#                 # Filter out harmless scope cancellation errors common on Windows
+#                 if "cancel scope" not in str(e).lower():
+#                     logger.error(f"Error during MCP client shutdown: {e}")
+#                 else:
+#                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
 
 # Create FastAPI application
@@ -72,7 +73,7 @@ app = FastAPI(
     title="Tea Auction Platform",
     description="Backend API for TeaBlendAI",
     version="1.0.0",
-    lifespan=lifespan
+    # lifespan=lifespan
 )
 
 # CORS setup
@@ -111,6 +112,7 @@ app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
 app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
 app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
 @app.get("/")
 async def root():
