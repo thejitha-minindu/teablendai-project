@@ -1,9 +1,8 @@
 """
-Authentication Schemas - Request/Response models for auth endpoints
+Authentication schemas
 """
-from pydantic import BaseModel, EmailStr, Field
-from typing import Optional
 from enum import Enum
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class UserRole(str, Enum):
@@ -12,57 +11,49 @@ class UserRole(str, Enum):
     BUYER = "buyer"
 
 
-class TokenData(BaseModel):
-    """Token payload data"""
-    user_id: str
-    email: str
-    role: UserRole
-    exp: Optional[int] = None
-
-
-class TokenResponse(BaseModel):
-    """Response with access token"""
-    access_token: str
-    token_type: str = "bearer"
-    user_id: str
-    email: str
-    role: UserRole
-
-
 class UserRegisterSchema(BaseModel):
-    """Schema for user registration"""
     email: EmailStr
-    user_name: str = Field(..., min_length=3, max_length=64)
-    first_name: str = Field(..., min_length=1, max_length=64)
-    last_name: str = Field(..., min_length=1, max_length=64)
-    phone_num: str = Field(..., min_length=10, max_length=32)
-    password: str = Field(..., min_length=8, regex="^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,}$")
-    role: UserRole = Field(default=UserRole.BUYER)
+    user_name: str = Field(min_length=3, max_length=64)
+    full_name: str = Field(min_length=1, max_length=128)
+    password: str = Field(min_length=8)
+    confirm_password: str = Field(min_length=8)
+    role: UserRole = UserRole.BUYER
 
 
 class UserLoginSchema(BaseModel):
-    """Schema for user login"""
-    username: str = Field(..., description="Email or username")
+    username: str
     password: str
 
 
-class UserResponse(BaseModel):
-    """User response schema"""
+class TokenData(BaseModel):
     user_id: str
-    email: str
+    email: EmailStr
+    role: UserRole
+    exp: int | None = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    user_id: str
+    email: EmailStr
+    role: UserRole
+
+
+class UserResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    user_id: str
+    email: EmailStr
     user_name: str
     first_name: str
     last_name: str
-    default_role: UserRole
     phone_num: str
-    is_active: bool
-    profile_image_url: Optional[str] = None
-
-    class Config:
-        from_attributes = True
+    default_role: str
+    is_active: bool = True
+    profile_image_url: str | None = None
 
 
 class PasswordChangeSchema(BaseModel):
-    """Schema for password change"""
     current_password: str
-    new_password: str = Field(..., min_length=8)
+    new_password: str = Field(min_length=8)

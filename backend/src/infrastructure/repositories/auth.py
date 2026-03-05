@@ -36,13 +36,22 @@ class AuthRepository:
             else:
                 raise ValueError(f"Username {user_data.user_name} already taken")
 
-        # Create new user
+        # Validate password match
+        if user_data.password != user_data.confirm_password:
+            raise ValueError("Passwords do not match")
+
+        # Split full_name
+        names = user_data.full_name.strip().split()
+        if len(names) >= 2:
+            first_name = names[0]
+            last_name = " ".join(names[1:])
+        else:
+            first_name = user_data.full_name
+            last_name = ""
+
         db_user = User(
             email=user_data.email,
             user_name=user_data.user_name,
-            first_name=user_data.first_name,
-            last_name=user_data.last_name,
-            phone_num=user_data.phone_num,
             hashed_password=AuthService.hash_password(user_data.password),
             default_role=user_data.role.value,
             is_active=True,

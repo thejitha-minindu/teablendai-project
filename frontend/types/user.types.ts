@@ -11,6 +11,8 @@ export interface User {
   watch_list: string[];
 }
 
+
+
 export interface FinancialDetails {
   bank_name: string;
   account_num: string;

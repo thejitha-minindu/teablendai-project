@@ -9,13 +9,12 @@ class User(Base):
 
     user_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
     email = Column(String(128), unique=True, nullable=False)
+    hashed_password = Column(String(256), nullable=False)
     phone_num = Column(String(32), nullable=False)
     user_name = Column(String(64), unique=True, nullable=False)
     first_name = Column(String(64), nullable=False)
     last_name = Column(String(64), nullable=False)
-    hashed_password = Column(String(255), nullable=False)
-    default_role = Column(String(16), nullable=False, default="buyer")
-    is_active = Column(bool, nullable=False, default=True)
+    default_role = Column(String(16), nullable=False)
     profile_image_url = Column(String(256))
     
     financial_details = relationship("FinancialDetails", back_populates="user", uselist=False)

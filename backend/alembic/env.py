@@ -30,7 +30,7 @@ def build_database_url():
     if trusted_env is None:
         trusted_env = os.getenv('MSSQL_TRUSTED_CONNECTION')
     trusted = False if trusted_env is None else str(trusted_env).lower() in ('1','true','yes','y')
-    driver = "ODBC Driver 18 for SQL Server"
+    driver = "ODBC Driver 17 for SQL Server"
     if trusted or (not username and not password):
         url = (
             f"mssql+pyodbc://{server}/{database}"

@@ -1,196 +1,96 @@
-"""
-Authentication Router - Auth endpoints (login, register, logout, profile)
-"""
-from fastapi import APIRouter, Depends, HTTPException, status, Response
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
+from google.oauth2 import id_token
+from google.auth.transport import requests
+import secrets
+
 from src.infrastructure.database.base import get_db
-from src.infrastructure.repositories.auth import AuthRepository
-from src.infrastructure.services.auth import AuthService, ACCESS_TOKEN_EXPIRE_MINUTES
-from src.application.schemas.auth import (
-    UserRegisterSchema,
-    UserLoginSchema,
-    TokenResponse,
-    UserResponse,
-    TokenData,
-    PasswordChangeSchema,
-)
-from src.application.dependencies import get_current_user
+from src.domain.models.user import User
+from src.application.schemas.user import Token, UserCreate, GoogleToken
+from src.application.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from datetime import timedelta
 
-router = APIRouter(prefix="/api/v1/auth", tags=["authentication"])
+router = APIRouter()
 
+GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" # Replace this
 
-@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
-async def register(
-    request: UserRegisterSchema,
-    db: Session = Depends(get_db),
-):
-    """
-    Register a new user
+@router.post("/register", status_code=status.HTTP_201_CREATED)
+def register(user_data: UserCreate, db: Session = Depends(get_db)):
+    # 1. Check if the email is already registered
+    existing_email = db.query(User).filter(User.email == user_data.email).first()
+    if existing_email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Email is already registered"
+        )
     
-    - **email**: Valid email address (must be unique)
-    - **user_name**: 3-64 characters (must be unique)
-    - **password**: Min 8 chars with uppercase, digit, special char
-    - **role**: admin, seller, or buyer (default: buyer)
-    """
+    # 2. Check if the username is already taken
+    existing_username = db.query(User).filter(User.user_name == user_data.user_name).first()
+    if existing_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail="Username is already taken"
+        )
+
+    # 3. Hash the password
+    hashed_pwd = get_password_hash(user_data.password)
+    
+    # 4. Create the new database user
+    # We use model_dump() to get the data, but explicitly exclude the raw password
+    db_user = User(
+        **user_data.model_dump(exclude={"password"}), 
+        hashed_password=hashed_pwd
+    )
+    
+    # 5. Save to database
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    return {"message": "User registered successfully", "user_id": str(db_user.user_id)}
+
+@router.post("/login", response_model=Token)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == form_data.username).first()
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(status_code=401, detail="Incorrect email or password")
+    
+    access_token = create_access_token(
+        data={"sub": user.email, "role": user.default_role, "id": str(user.user_id)},
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@router.post("/google", response_model=Token)
+def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
     try:
-        user = AuthRepository.create_user(db, request)
-        return UserResponse.model_validate(user)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e),
+        id_info = id_token.verify_oauth2_token(request.token, requests.Request(), GOOGLE_CLIENT_ID)
+        email = id_info.get("email")
+        
+        user = db.query(User).filter(User.email == email).first()
+        
+        # If user doesn't exist, register them automatically
+        if not user:
+            random_password = secrets.token_urlsafe(32)
+            user = User(
+                email=email,
+                first_name=id_info.get("given_name", "Unknown"),
+                last_name=id_info.get("family_name", "Unknown"),
+                user_name=email.split("@")[0],
+                phone_num="N/A",
+                default_role="buyer",
+                hashed_password=get_password_hash(random_password),
+                profile_image_url=id_info.get("picture")
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
+
+        access_token = create_access_token(
+            data={"sub": user.email, "role": user.default_role, "id": str(user.user_id)},
+            expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
-
-
-@router.post("/login")
-async def login(
-    credentials: UserLoginSchema,
-    response: Response,
-    db: Session = Depends(get_db),
-):
-    """
-    Login user with email or username
-    
-    Returns access token as HTTP-only cookie + token in response body
-    """
-    user = AuthRepository.verify_user_credentials(
-        db, credentials.username, credentials.password
-    )
-
-    if not user or not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid credentials",
-        )
-
-    # Create access token
-    access_token = AuthService.create_access_token(
-        user_id=str(user.user_id),
-        email=user.email,
-        role=user.default_role,
-    )
-
-    # Set HTTP-only cookie
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=True,  # Set to False in development if not using HTTPS
-        samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-
-    return TokenResponse(
-        access_token=access_token,
-        user_id=str(user.user_id),
-        email=user.email,
-        role=user.default_role,
-    )
-
-
-@router.post("/logout")
-async def logout(response: Response):
-    """
-    Logout user - Clear HTTP-only cookie
-    """
-    response.delete_cookie(
-        key="access_token",
-        secure=True,
-        httponly=True,
-        samesite="lax",
-    )
-    return {"message": "Logged out successfully"}
-
-
-@router.get("/me", response_model=UserResponse)
-async def get_current_user_profile(
-    current_user: TokenData = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Get current authenticated user's profile
-    """
-    user = AuthRepository.get_user_by_id(db, current_user.user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
-        )
-    return UserResponse.model_validate(user)
-
-
-@router.post("/change-password")
-async def change_password(
-    password_data: PasswordChangeSchema,
-    current_user: TokenData = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    """
-    Change user password
-    """
-    success = AuthRepository.change_password(
-        db,
-        current_user.user_id,
-        password_data.current_password,
-        password_data.new_password,
-    )
-
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Current password is incorrect",
-        )
-
-    return {"message": "Password changed successfully"}
-
-
-@router.post("/refresh-token")
-async def refresh_token(
-    current_user: TokenData = Depends(get_current_user),
-    response: Response = None,
-):
-    """
-    Refresh access token (can be called before token expires)
-    
-    Returns new token as HTTP-only cookie
-    """
-    # Create new access token
-    new_token = AuthService.create_access_token(
-        user_id=current_user.user_id,
-        email=current_user.email,
-        role=current_user.role,
-    )
-
-    # Set new HTTP-only cookie
-    response.set_cookie(
-        key="access_token",
-        value=new_token,
-        httponly=True,
-        secure=True,
-        samesite="lax",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-
-    return TokenResponse(
-        access_token=new_token,
-        user_id=current_user.user_id,
-        email=current_user.email,
-        role=current_user.role,
-    )
-
-
-@router.get("/verify-token")
-async def verify_token_endpoint(
-    current_user: TokenData = Depends(get_current_user),
-):
-    """
-    Verify if current token is valid
-    """
-    return {
-        "valid": True,
-        "user_id": current_user.user_id,
-        "email": current_user.email,
-        "role": current_user.role,
-    }
+        return {"access_token": access_token, "token_type": "bearer"}
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Invalid Google token")

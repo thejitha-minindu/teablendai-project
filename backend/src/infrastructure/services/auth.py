@@ -7,7 +7,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 import os
 from dotenv import load_dotenv
-from src.application.schemas.auth import TokenData, UserRole
+
+from src.application.schemas import TokenData, UserRole
 
 load_dotenv()
 
@@ -44,7 +45,7 @@ class AuthService:
     def create_access_token(
         user_id: str,
         email: str,
-        role: UserRole,
+        role: UserRole | str,
         expires_delta: Optional[timedelta] = None,
     ) -> str:
         """
@@ -63,10 +64,12 @@ class AuthService:
             expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 
         expire = datetime.now(timezone.utc) + expires_delta
+        normalized_role = role if isinstance(role, UserRole) else UserRole(role)
+
         to_encode = {
             "sub": str(user_id),
             "email": email,
-            "role": role.value,
+            "role": normalized_role.value,
             "exp": expire,
             "iat": datetime.now(timezone.utc),
         }
