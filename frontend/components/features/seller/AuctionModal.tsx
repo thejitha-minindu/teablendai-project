@@ -202,7 +202,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                   <>
                     <button onClick={() => setEditMode('details')} className="w-full bg-[#588157] text-white font-bold py-3 rounded-lg hover:bg-[#3A5A40]">Edit Details</button>
                     <button onClick={() => setEditMode('schedule')} className="w-full bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600">Reschedule</button>
-                    <button onClick={handleCancelAuction} className="w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600">Cancel</button>
+                    <button onClick={handleCancelAuction} className="w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600">Delete</button>
                   </>
                 ) : (
                   <>

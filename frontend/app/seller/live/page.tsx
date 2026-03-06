@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { LiveAuctionModal } from '@/components/features/seller/AuctionModal';
+import { apiClient } from '@/lib/apiClient';
 
 // Helper to calculate time remaining
 const calculateCountdown = (startTime: string, durationHours: number) => {
@@ -29,11 +30,22 @@ export default function LiveAuctionsPage() {
   // 1. Fetch Live Auctions (Added cache busting)
   const fetchLiveAuctions = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/auctions/status/live', {
-        cache: 'no-store' // Ensure we get fresh data
+      // Decode the token to get YOUR specific user ID
+      const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
+      if (!token) return;
+      
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const myUserId = payload.id; 
+
+      // Use apiClient and attach the seller_id to the URL
+      const res = await apiClient.get(`/auctions/status/live?seller_id=${myUserId}`, {
+        headers: {
+          'Pragma': 'no-cache',
+          'Cache-Control': 'no-cache'
+        }
       });
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data = await res.json();
+      
+      const data = res.data; // Axios puts the JSON in .data
 
       const formattedData = data.map((item: any) => ({
         id: item.auction_id,

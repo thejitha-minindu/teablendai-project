@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { ScheduledAuctionModal } from '@/components/features/seller/AuctionModal';
+import { apiClient } from '@/lib/apiClient';
 
 interface AuctionAPIResponse {
   auction_id: string;
@@ -45,15 +46,22 @@ export default function ScheduledAuctionsPage() {
   // 1. Fetch Data Function
   const fetchAuctions = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/v1/auctions/status/scheduled', {
-        cache: 'no-store',
+      // Decode the token to get YOUR specific user ID
+      const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
+      if (!token) return;
+      
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const myUserId = payload.id; 
+
+      // Use apiClient and attach the seller_id to the URL
+      const res = await apiClient.get(`/auctions/status/scheduled?seller_id=${myUserId}`, {
         headers: {
           'Pragma': 'no-cache',
           'Cache-Control': 'no-cache'
         }
       });
-      if (!res.ok) throw new Error("Failed to fetch");
-      const data: AuctionAPIResponse[] = await res.json();
+      
+      const data: AuctionAPIResponse[] = res.data;
 
       // 2. Map API Data to Card Format
       const formattedData = data.map((item) => {
@@ -87,7 +95,7 @@ export default function ScheduledAuctionsPage() {
       setLoading(false);
     }
   };
-
+  
   // 3. Load on Mount
   useEffect(() => {
     fetchAuctions();
