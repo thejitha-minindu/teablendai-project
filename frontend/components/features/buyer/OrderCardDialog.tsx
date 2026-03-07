@@ -19,19 +19,13 @@ interface OrderCardDialogProps {
   auctionId: string;
 }
 
-type AuctionOrderDialogWithOptionalOrderId = AuctionOrderDialog & {
-  order_id?: string | number | null;
-};
-
 export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogData, setDialogData] = useState<AuctionOrderDialog | null>(null);
 
-  const orderId =
-    dialogData &&
-    (dialogData as AuctionOrderDialogWithOptionalOrderId).order_id;
+  const orderId = dialogData?.order_id;
 
   useEffect(() => {
     if (isOpen && auctionId) {
