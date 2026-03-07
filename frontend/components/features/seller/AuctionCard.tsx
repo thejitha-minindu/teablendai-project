@@ -70,7 +70,7 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
             {/* Price (Highlighted) */}
             <div className="flex justify-between items-center mb-1">
                  <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
-                 <span className="text-lg font-bold text-[#1A2F1C]">${data.price}</span>
+                 <span className="text-lg font-bold text-[#1A2F1C]">LKR {data.price}</span>
             </div>
 
             {/* Quantity */}

@@ -6,7 +6,6 @@ import {
     MessageSquarePlus,
     History,
     Settings,
-    Trash2,
     User,
     HelpCircle,
     LogOut,
@@ -19,6 +18,8 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { ConversationSummary } from "@/services/chatService";
+import { DeleteIcon } from "@/components/ui/delete";
 
 interface ChatHistoryItem {
     id: string;
@@ -28,6 +29,7 @@ interface ChatHistoryItem {
 }
 
 interface ChatSidebarProps {
+    conversations?: ConversationSummary[];
     onNewChat?: () => void;
     onSelectChat?: (chatId: string) => void;
     onDeleteChat?: (chatId: string) => void;
@@ -35,6 +37,7 @@ interface ChatSidebarProps {
 }
 
 export function ChatSidebar({
+    conversations = [],
     onNewChat,
     onSelectChat,
     onDeleteChat,
@@ -46,42 +49,20 @@ export function ChatSidebar({
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [showSettingsModal, setShowSettingsModal] = useState(false);
+    const [showHelpModal, setShowHelpModal] = useState(false);
     const [isMounted, setIsMounted] = useState(false);
     const profileMenuRef = useRef<HTMLDivElement>(null);
 
-    // Mock chat history
-    const [chatHistory, setChatHistory] = useState<ChatHistoryItem[]>(() => [
-        {
-            id: "1",
-            title: "Sri Lanka Tea Production Overview",
-            timestamp: new Date(Date.now() - 1000 * 60 * 30),
-            preview: "Annual tea production statistics and regional breakdown",
-        },
-        {
-            id: "2",
-            title: "Export Market Analysis",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2),
-            preview: "Key export destinations and market trends",
-        },
-        {
-            id: "3",
-            title: "Tea Quality Grades",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24),
-            preview: "Grading system and quality assessment methods",
-        },
-        {
-            id: "4",
-            title: "Plantation Economics",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 2),
-            preview: "Cost analysis and profit margins for tea estates",
-        },
-        {
-            id: "5",
-            title: "Sustainable Practices",
-            timestamp: new Date(Date.now() - 1000 * 60 * 60 * 24 * 3),
-            preview: "Environmental impact and organic tea initiatives",
-        },
-    ]);
+    // Map real conversation data to chat history format
+    const chatHistory: ChatHistoryItem[] = conversations
+        .map((c) => ({
+            id: String(c.conversation_id || (c as Record<string, unknown>).id || ""),
+            title: c.title || "New Conversation",
+            timestamp: new Date(c.updated_at || c.created_at || Date.now()),
+            preview: (c as Record<string, unknown>).preview as string || `${c.message_count || 0} messages`,
+        }))
+        .filter((item) => item.id !== "");
 
     useEffect(() => {
         setIsMounted(true);
@@ -126,7 +107,6 @@ export function ChatSidebar({
 
     const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        setChatHistory((prev) => prev.filter((chat) => chat.id !== chatId));
         if (selectedChatId === chatId) setSelectedChatId(null);
         onDeleteChat?.(chatId);
     };
@@ -306,11 +286,11 @@ export function ChatSidebar({
                                 exit={{ opacity: 0 }}
                                 className="p-4 h-full"
                             >
-                                <div className="flex items-center justify-between mb-4">
+                                <div className="flex items-center justify-between mb-4 cursor-default">
                                     <h2 className="text-lg font-semibold text-gray-900">
                                         Chat History
                                     </h2>
-                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
                                         {chatHistory.length} chats
                                     </span>
                                 </div>
@@ -319,7 +299,7 @@ export function ChatSidebar({
                                     <div className="space-y-1">
                                         {chatHistory.map((chat) => (
                                             <ChatHistoryCard
-                                                key={chat.id}
+                                                key={`chat-${chat.id}`} 
                                                 chat={chat}
                                                 isSelected={selectedChatId === chat.id}
                                                 isHovered={hoveredChatId === chat.id}
@@ -427,16 +407,7 @@ export function ChatSidebar({
                                     <button
                                         onClick={() => {
                                             setShowProfileMenu(false);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <User className="w-4 h-4" />
-                                        <span>Profile</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
+                                            setShowSettingsModal(true);
                                         }}
                                         className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
@@ -447,6 +418,7 @@ export function ChatSidebar({
                                     <button
                                         onClick={() => {
                                             setShowProfileMenu(false);
+                                            setShowHelpModal(true);
                                         }}
                                         className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
@@ -493,16 +465,7 @@ export function ChatSidebar({
                                     <button
                                         onClick={() => {
                                             setShowProfileMenu(false);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <User className="w-4 h-4" />
-                                        <span>Profile</span>
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
+                                            setShowSettingsModal(true);
                                         }}
                                         className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
@@ -513,6 +476,7 @@ export function ChatSidebar({
                                     <button
                                         onClick={() => {
                                             setShowProfileMenu(false);
+                                            setShowHelpModal(true);
                                         }}
                                         className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
                                     >
@@ -537,6 +501,157 @@ export function ChatSidebar({
                     </AnimatePresence>
                 </div>
             </motion.div>
+
+            {/* Settings Modal */}
+            <AnimatePresence>
+                {showSettingsModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+                        onClick={() => setShowSettingsModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-xl shadow-xl w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto p-6 cursor-default"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
+                                <button
+                                    onClick={() => setShowSettingsModal(false)}
+                                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Theme
+                                    </label>
+                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#558332] focus:border-transparent">
+                                        <option>Light</option>
+                                        <option>Dark</option>
+                                        <option>System</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Language
+                                    </label>
+                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#558332] focus:border-transparent">
+                                        <option>English</option>
+                                        <option>Spanish</option>
+                                        <option>French</option>
+                                        <option>German</option>
+                                    </select>
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Notifications
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                        <input type="checkbox" className="rounded border-gray-300 text-[#558332] focus:ring-[#558332]" />
+                                        <span className="text-sm text-gray-600">Enable notifications</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowSettingsModal(false)}
+                                    className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={() => setShowSettingsModal(false)}
+                                    className="px-4 py-2 text-sm rounded-lg bg-[#558332] text-white hover:bg-[#446a28] transition"
+                                >
+                                    Save Changes
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Help & Support Modal */}
+            <AnimatePresence>
+                {showHelpModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+                        onClick={() => setShowHelpModal(false)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-xl shadow-xl w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto p-6 cursor-default"
+                        >
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-semibold text-gray-900">Help & Support</h2>
+                                <button
+                                    onClick={() => setShowHelpModal(false)}
+                                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5 text-gray-500" />
+                                </button>
+                            </div>
+                            
+                            <div className="space-y-4">
+                                <div className="p-4 bg-gray-50 rounded-lg">
+                                    <h3 className="font-medium text-gray-900 mb-2">Frequently Asked Questions</h3>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">How do I start a new chat?</p>
+                                            <p className="text-sm text-gray-500">Click the "New Chat" button in the sidebar to start a new conversation.</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">Can I delete old conversations?</p>
+                                            <p className="text-sm text-gray-500">Yes, hover over any chat in the history and click the delete icon.</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-medium text-gray-700">Is my data secure?</p>
+                                            <p className="text-sm text-gray-500">We take data security seriously. All conversations are encrypted and stored securely.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 className="font-medium text-gray-900 mb-2">Contact Support</h3>
+                                    <p className="text-sm text-gray-500 mb-3">Need more help? Reach out to our support team.</p>
+                                    <a href="mailto:support@teablend.ai" className="text-[#558332] hover:underline text-sm">
+                                        support@teablend.ai
+                                    </a>
+                                </div>
+                            </div>
+                            
+                            <div className="mt-6 flex justify-end">
+                                <button
+                                    onClick={() => setShowHelpModal(false)}
+                                    className="px-4 py-2 text-sm rounded-lg bg-[#558332] text-white hover:bg-[#446a28] transition"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </>
     );
 }
@@ -564,70 +679,123 @@ function ChatHistoryCard({
     getTimeAgo,
 }: ChatHistoryCardProps) {
     const [showActions, setShowActions] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     return (
-        <motion.div
-            layout
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.2 }}
-            onMouseEnter={() => {
-                onHover();
-                setShowActions(true);
-            }}
-            onMouseLeave={() => {
-                onLeave();
-                setShowActions(false);
-            }}
-            onClick={onSelect}
-            className={cn(
-                "group relative p-1 rounded-xl cursor-pointer transition-all",
-                "border border-transparent",
-                isSelected
-                    ? "bg-gray-100 border-gray-200 shadow-sm"
-                    : "hover:bg-gray-50 hover:border-gray-200"
-            )}
-        >
-            <div className="flex items-start justify-between p-2">
-                <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
-                        {chat.title}
-                    </h4>
-                    <p className="text-xs text-gray-500 truncate mb-1">
-                        {chat.preview}
-                    </p>
-                    <span className="text-xs text-gray-400">
-                        {getTimeAgo(chat.timestamp)}
-                    </span>
-                </div>
+        <>
+            <motion.div
+                layout
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.2 }}
+                onMouseEnter={() => {
+                    onHover();
+                    setShowActions(true);
+                }}
+                onMouseLeave={() => {
+                    onLeave();
+                    setShowActions(false);
+                }}
+                onClick={onSelect}
+                className={cn(
+                    "group relative p-1 rounded-xl cursor-pointer transition-all",
+                    "border border-transparent",
+                    isSelected
+                        ? "bg-gray-100 border-gray-200 shadow-sm"
+                        : "hover:bg-gray-50 hover:border-gray-200"
+                )}
+            >
+                <div className="flex items-start justify-between p-2">
+                    <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
+                            {chat.title}
+                        </h4>
+                        <p className="text-xs text-gray-500 truncate mb-1">
+                            {chat.preview}
+                        </p>
+                        <span className="text-xs text-gray-400">
+                            {getTimeAgo(chat.timestamp)}
+                        </span>
+                    </div>
 
-                <AnimatePresence>
-                    {(showActions || isSelected || isHovered) && (
+                    <AnimatePresence>
+                        {(showActions || isSelected || isHovered) && (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.8 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                exit={{ opacity: 0, scale: 0.8 }}
+                                className="flex items-center gap-1"
+                            >
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowConfirm(true);
+                                            }}
+                                            className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
+                                            aria-label="Delete chat"
+                                        >
+                                            <DeleteIcon className="w- h-5 text-gray-500 hover:text-red-500 cursor-pointer" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="right" sideOffset={8}>
+                                        Delete
+                                    </TooltipContent>
+                                </Tooltip>
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+                </div>
+            </motion.div>
+
+            {/* Confirmation Modal */}
+            <AnimatePresence>
+                {showConfirm && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+                        onClick={() => setShowConfirm(false)}
+                    >
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.8 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.8 }}
-                            className="flex items-center gap-1"
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-white rounded-xl shadow-xl w-80 p-6 cursor-default"
                         >
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <button
-                                        onClick={onDelete}
-                                        className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
-                                        aria-label="Delete chat"
-                                    >
-                                        <Trash2 className="w-5 h-5 text-gray-500 hover:text-red-500" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent side="right" sideOffset={8}>
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                                Delete chat?
+                            </h3>
+                            <p className="text-sm text-gray-500 mb-6">
+                                This action cannot be undone.
+                            </p>
+
+                            <div className="flex justify-end gap-3">
+                                <button
+                                    onClick={() => setShowConfirm(false)}
+                                    className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={(e) => {
+                                        onDelete(e);
+                                        setShowConfirm(false);
+                                    }}
+                                    className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                                >
                                     Delete
-                                </TooltipContent>
-                            </Tooltip>
+                                </button>
+                            </div>
                         </motion.div>
-                    )}
-                </AnimatePresence>
-            </div>
-        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </>
     );
 }

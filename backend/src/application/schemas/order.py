@@ -14,7 +14,6 @@ class PaymentDetails(BaseModel):
     class Config:
         from_attributes = True
 
-# Wins auction model
 class WinsAuction(BaseModel):
     auction_id: str
     user_id: str
@@ -22,6 +21,15 @@ class WinsAuction(BaseModel):
 
     class Config:
         from_attributes = True
+
+class Order(BaseModel):
+    order_id: str
+    user_id: str
+    auction_id: str
+    total_amount: float
+    order_date: datetime
+    status: Literal["pending", "completed", "canceled"]
+    payment_details: Optional[PaymentDetails] = None
 
 # Base order data model
 class OrderData(BaseModel):
@@ -74,5 +82,10 @@ class OrderListResponse(BaseModel):
     class Config:
         from_attributes = True
 
-# Backward compatibility alias
-Order = OrderData
+class PaymentDetails(BaseModel):
+    payment_id: str
+    payment_method: Literal["credit_card", "paypal", "bank_transfer"]
+    payment_date: datetime
+    order_id: str
+    amount: float
+    status: Literal["successful", "failed", "pending"] 

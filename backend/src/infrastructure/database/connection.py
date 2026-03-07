@@ -1,15 +1,12 @@
+
 """
 Shared database connection logic for SQLAlchemy engine.
 """
 import os
 from dotenv import load_dotenv
-
 load_dotenv()
-
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
-
-load_dotenv()
 
 def _get_db_config():
     server = os.getenv('MSSQL_SERVER')

@@ -1,12 +1,14 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { Package } from 'lucide-react'; 
+import { apiClient } from '@/lib/apiClient';
 
 export default function CreateAuctionPage() {
   const router = useRouter(); 
-  const [isSubmitting, setIsSubmitting] = useState(false); // New loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [minDateTime, setMinDateTime] = useState('');
 
   const [formData, setFormData] = useState({
     grade: '',
@@ -18,45 +20,36 @@ export default function CreateAuctionPage() {
     duration: ''
   });
 
+  // Calculate the current date/time to block past dates in the calendar picker
+  useEffect(() => {
+    const now = new Date();
+    // Adjust for local timezone offset to format correctly for datetime-local
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    setMinDateTime(now.toISOString().slice(0, 16));
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // 1. Prepare data to match Python Backend Schema (AuctionCreate)
     const payload = {
-      seller_brand: "My Estate", // Hardcoded for now (or add a field)
+      seller_brand: "My Estate",
       grade: formData.grade,
       quantity: parseFloat(formData.quantity),
       origin: formData.origin,
       description: formData.description,
-      base_price: parseFloat(formData.startingPrice),
-      start_time: new Date(formData.scheduledStart).toISOString(), // Ensure ISO format
+      base_price: parseInt(formData.startingPrice), // Ensure integer
+      start_time: new Date(formData.scheduledStart).toISOString(),
       duration: parseFloat(formData.duration)
     };
 
     try {
-      // 2. Send Request to your running Backend
-      const response = await fetch('http://localhost:8000/api/v1/auctions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to create auction');
-      }
-
-      const data = await response.json();
-      console.log('Auction Created:', data);
-      
+      const response = await apiClient.post('/auctions', payload);
       alert('Auction created successfully!');
       router.push('/seller/dashboard'); 
-
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      alert('Error creating auction. Check console for details.');
+    } catch (error: any) {
+      console.error("Error submitting form:", error.response?.data || error);
+      alert(error.response?.data?.detail || 'Error creating auction. Check console for details.');
     } finally {
       setIsSubmitting(false);
     }
@@ -103,6 +96,8 @@ export default function CreateAuctionPage() {
                 <input 
                   required
                   type="number" 
+                  min="1" // Block negative and zero
+                  step="0.1" // Allow fractional kilos if needed
                   value={formData.quantity}
                   onChange={(e) => setFormData({...formData, quantity: e.target.value})}
                   className="w-full bg-gray-50 border-2 border-gray-200 rounded-l-lg p-3 focus:ring-2 focus:ring-[#3A5A40] focus:border-transparent transition-all" 
@@ -145,29 +140,37 @@ export default function CreateAuctionPage() {
               Pricing & Timing
             </h3>
 
-            {/* Starting Price Input */}
+            {/* Starting Price Input - No Decimals */}
             <div className="grid grid-cols-[180px_1fr] items-center gap-4">
               <label className="font-semibold text-gray-700">Starting Price :</label>
               <div className="flex items-center max-w-xs">
-                <span className="bg-[#588157] text-white px-4 py-3 rounded-l-lg font-bold">$</span>
+                <span className="bg-[#588157] text-white px-4 py-3 rounded-l-lg font-bold">LKR</span>
                 <input 
                   required
                   type="number" 
-                  step="0.01"
+                  min="0" // Block negative
+                  step="1" // Block decimals
+                  onKeyDown={(e) => {
+                    // Block the user from typing a period/decimal point
+                    if (e.key === '.' || e.key === 'e' || e.key === '-') {
+                      e.preventDefault();
+                    }
+                  }}
                   value={formData.startingPrice}
                   onChange={(e) => setFormData({...formData, startingPrice: e.target.value})}
                   className="w-full bg-gray-50 border-2 border-gray-200 rounded-r-lg p-3 focus:ring-2 focus:ring-[#3A5A40] focus:border-transparent transition-all" 
-                  placeholder="0.00"
+                  placeholder="0"
                 />
               </div>
             </div>
 
-            {/* Scheduled Start Input */}
+            {/* Scheduled Start Input - No Past Dates */}
             <div className="grid grid-cols-[180px_1fr] items-center gap-4">
               <label className="font-semibold text-gray-700">Scheduled Start :</label>
               <input 
                 required
                 type="datetime-local" 
+                min={minDateTime} // Block past dates
                 value={formData.scheduledStart}
                 onChange={(e) => setFormData({...formData, scheduledStart: e.target.value})}
                 className="max-w-xs bg-gray-50 border-2 border-gray-200 rounded-lg p-3 text-gray-700 focus:ring-2 focus:ring-[#3A5A40] focus:border-transparent transition-all" 
@@ -181,6 +184,8 @@ export default function CreateAuctionPage() {
                 <input 
                   required
                   type="number" 
+                  min="1" // Minimum duration of 1 hour
+                  step="1"
                   value={formData.duration}
                   onChange={(e) => setFormData({...formData, duration: e.target.value})}
                   className="w-full bg-gray-50 border-2 border-gray-200 rounded-r-lg p-3 focus:ring-2 focus:ring-[#3A5A40] focus:border-transparent transition-all" 
@@ -212,4 +217,4 @@ export default function CreateAuctionPage() {
       </div>
     </div>
   );
-} 
+}

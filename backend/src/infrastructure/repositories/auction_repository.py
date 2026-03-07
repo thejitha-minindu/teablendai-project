@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import uuid
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
@@ -14,7 +14,7 @@ class AuctionRepository(AuctionRepositoryInterface):
         
         db_auction = AuctionModel(
             auction_id=new_id,
-            seller_id="user_123_placeholder", 
+            seller_id=auction_data.seller_id,
             seller_brand=auction_data.seller_brand,
             grade=auction_data.grade,
             quantity=auction_data.quantity,
@@ -37,9 +37,15 @@ class AuctionRepository(AuctionRepositoryInterface):
     def list_auctions(self):
         return self.db.query(AuctionModel).all()
 
-    def get_by_status(self, status: str) -> List[Auction]:
-        return self.db.query(AuctionModel).filter(AuctionModel.status == status).all()
-
+    def get_by_status(self, status: str, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
+        query = self.db.query(AuctionModel).filter(AuctionModel.status == status)
+        
+        # If a seller_id is provided, filter the results!
+        if seller_id:
+            query = query.filter(AuctionModel.seller_id == seller_id)
+            
+        return query.all()
+    
     def get_by_id(self, auction_id: str) -> Auction:
         return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
 

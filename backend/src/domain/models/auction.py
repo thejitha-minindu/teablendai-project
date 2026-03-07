@@ -10,12 +10,12 @@ class Auction(Base):
     __tablename__ = "auctions"
 
     auction_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
-    auction_name = Column(String(128), nullable=False)
+    auction_name = Column(String(128), nullable=True)
     seller_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False)
     seller_brand = Column(String(100), nullable=True)
     grade = Column(String(64), nullable=False)
-    company_name = Column(String(128), nullable=False)
-    estate_name = Column(String(128), nullable=False)
+    company_name = Column(String(128), nullable=True)
+    estate_name = Column(String(128), nullable=True)
     quantity = Column(Float, nullable=False)
     origin = Column(String(100), nullable=False)    
     description = Column(Text, nullable=True)
