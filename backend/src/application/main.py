@@ -110,7 +110,7 @@ app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 #app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
-# Buyer-specific endpoints (with /buyer prefix)
+# API v1 routers - buyer
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
 app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
 app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
@@ -152,9 +152,7 @@ async def api_info():
 
 if __name__ == "__main__":
     import uvicorn
-    
-    
-    
+     
     uvicorn.run(
         app,
         host="127.0.0.1",
