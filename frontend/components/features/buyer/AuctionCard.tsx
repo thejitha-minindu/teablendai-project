@@ -18,6 +18,12 @@ import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 export type CardType = "order" | "history" | "auction";
 
 export interface AuctionDetails {
+  id?: string | number;
+  auction_id?: string | number;
+  status?: string;
+  auction_status?: string;
+  type?: string;
+
   title: string;
   company: string;
   date: string;
@@ -65,7 +71,7 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
       {(cardType === "history" || cardType === "order") && (
       <p className="mb-1 text-sm">
         <span className="font-medium">Sold Price:</span>{" "}
-        {auction?.soldPrice}
+        {safeAuction.soldPrice}
       </p>
       )}
       {cardType === "auction" && (
@@ -77,7 +83,7 @@ export function AuctionCard({ cardType, auction }: AuctionCardProps) {
       {cardType === "history" && (
       <p className="mb-1 text-sm">
         <span className="font-medium">Winner:</span>{" "}
-        {auction?.winner}
+        {safeAuction.winner}
       </p>
       )}
     </div>

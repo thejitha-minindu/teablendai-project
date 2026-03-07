@@ -1,1 +1,44 @@
-Generic single-database configuration.
+
+Alembic MSSQL Setup Guide
+=========================
+
+1. **Define your models**
+	- Use SQLAlchemy models in `src/infrastructure/database/models/`.
+	- Example: `Column(String(64))` for string fields.
+
+2. **Configure environment variables**
+	- In your `.env` file, set:
+	  ```
+	  MSSQL_SERVER=your_server
+	  MSSQL_DATABASE=your_database
+	  MSSQL_USERNAME=your_username
+	  MSSQL_PASSWORD=your_password
+	  DB_TRUSTED_CONNECTION=false  # or true for Windows auth
+	  ```
+	- Alembic will build the connection string from these variables.
+
+3. **Edit Alembic env.py**
+	- Ensure `env.py` builds the connection string from environment variables (already set up).
+	- Imports your models and sets `target_metadata = Base.metadata`.
+
+4. **Initialize Alembic (if not done)**
+	- Run: `alembic init alembic`
+
+5. **Create a migration**
+	- Run: `alembic revision --autogenerate -m "create bids table"`
+	- This will detect changes in your models and create a migration script.
+
+6. **Apply migrations**
+	- Run: `alembic upgrade head`
+	- This will apply all migrations to your database.
+
+7. **Troubleshooting**
+	- If you get connection errors, check your `.env` values and ensure the ODBC Driver is installed.
+	- For Windows authentication, set `DB_TRUSTED_CONNECTION=true` and omit username/password if desired.
+
+8. **Useful commands**
+	- `alembic history` — Show migration history
+	- `alembic current` — Show current migration
+	- `alembic downgrade -1` — Revert last migration
+
+For more details, see Alembic documentation: https://alembic.sqlalchemy.org/en/latest/
