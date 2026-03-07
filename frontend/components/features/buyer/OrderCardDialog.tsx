@@ -13,17 +13,25 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { getAuctionOrderDialog } from "@/services/buyer/auctionService";
-import { AuctionOrderDialog } from "@/types/auction.types";
+import { AuctionOrderDialog } from "@/types/buyer/auction.types";
 
 interface OrderCardDialogProps {
   auctionId: string;
 }
+
+type AuctionOrderDialogWithOptionalOrderId = AuctionOrderDialog & {
+  order_id?: string | number | null;
+};
 
 export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dialogData, setDialogData] = useState<AuctionOrderDialog | null>(null);
+
+  const orderId =
+    dialogData &&
+    (dialogData as AuctionOrderDialogWithOptionalOrderId).order_id;
 
   useEffect(() => {
     if (isOpen && auctionId) {
@@ -115,7 +123,7 @@ export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
                     </p>
                     <p className="mb-1 text-sm">
                       <span className="font-medium">Order ID:</span>{" "}
-                      {dialogData.order_id || "-"}
+                      {orderId ?? "-"}
                     </p>
                   </div>
                 </div>

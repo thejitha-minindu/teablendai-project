@@ -16,8 +16,8 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { getAuctionHistoryDialog } from "@/services/buyer/auctionService";
-import { AuctionHistoryDialog } from "@/types/auction.types";
-import { Bid } from "@/types/bid.types";
+import { AuctionHistoryDialog } from "@/types/buyer/auction.types";
+import { Bid } from "@/types/buyer/bid.types";
 
 interface HistoryCardDialogProps {
   auctionId: string;
