@@ -16,11 +16,12 @@ import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
 import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
 import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
 
 export default function BuyerAuctionLivePage() {
   const params = useParams<{ auctionid: string }>();
+  const router = useRouter();
   const auctionId = params?.auctionid ?? "";
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -49,6 +50,17 @@ export default function BuyerAuctionLivePage() {
           getAuction(auctionId),
           listBidsByAuction(auctionId),
         ]);
+
+        const status = String(auctionData?.status || "").trim().toLowerCase();
+        if (status === "history") {
+          router.replace("/buyer/auctions");
+          return;
+        }
+        if (status !== "live") {
+          router.replace(`/buyer/auction/${auctionId}`);
+          return;
+        }
+
         setAuction(auctionData);
         setBids(bidData || []);
       } catch (loadError) {
@@ -59,7 +71,7 @@ export default function BuyerAuctionLivePage() {
     };
 
     load();
-  }, [auctionId]);
+  }, [auctionId, router]);
 
   useEffect(() => {
     if (!events.length) return;

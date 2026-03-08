@@ -40,6 +40,14 @@ const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
 });
 
 export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCardProps) {
+  const getAuctionTargetPath = React.useCallback((auctionId: string) => {
+    const rawStatus = String(auction?.status || "").trim().toLowerCase();
+    const isLive = rawStatus === "live";
+    return isLive
+      ? `/buyer/auction/live/${auctionId}`
+      : `/buyer/auction/${auctionId}`;
+  }, [auction?.status]);
+
   const safeAuction = React.useMemo(() => {
     if (!auction) return getDefaultAuction(cardType);
 
@@ -132,7 +140,10 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
               onMouseLeave={(e) =>
                 (e.currentTarget.style.backgroundColor = "")
               }
-              onClick={() => window.location.href = `/buyer/auction/live/${auctionId}`}
+              onClick={() => {
+                if (!auctionId) return;
+                window.location.href = getAuctionTargetPath(auctionId);
+              }}
             >
               Place Bid
             </Button>
