@@ -53,8 +53,10 @@ import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
   getAuthClaims,
+  getAuthClaimsFromToken,
   getDisplayNameFromEmail,
   getHomePathByRole,
+  setStoredAuthToken,
   type UserRole as AuthUserRole,
 } from "@/lib/auth";
 
@@ -163,11 +165,20 @@ export function NavSidebar() {
     try {
       setIsSwitchingRole(true);
       const response = await apiClient.post("/auth/switch-role", { role: targetRole });
-      if (typeof window !== "undefined") {
-        localStorage.setItem("teablend_token", response.data.access_token);
+
+      const newToken = response?.data?.access_token;
+      if (!newToken || typeof newToken !== "string") {
+        throw new Error("Role switch did not return a valid access token");
       }
+
+      const newClaims = getAuthClaimsFromToken(newToken);
+      if (!newClaims || newClaims.role !== targetRole) {
+        throw new Error("Role switch returned a token with unexpected role");
+      }
+
+      setStoredAuthToken(newToken);
       setActiveUserRole(targetRole);
-      router.push(getHomePathByRole(targetRole));
+      window.location.href = getHomePathByRole(targetRole);
     } catch (error) {
       console.error("Failed to switch role", error);
     } finally {

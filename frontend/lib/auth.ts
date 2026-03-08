@@ -9,6 +9,8 @@ type AuthClaims = {
   exp?: number;
 };
 
+export const AUTH_CHANGED_EVENT = "teablend-auth-changed";
+
 export function getStoredToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("teablend_token");
@@ -24,10 +26,7 @@ function decodeTokenPayload(token: string): AuthClaims | null {
   }
 }
 
-export function getAuthClaims(): AuthClaims | null {
-  const token = getStoredToken();
-  if (!token) return null;
-
+export function getAuthClaimsFromToken(token: string): AuthClaims | null {
   const claims = decodeTokenPayload(token);
   if (!claims) return null;
 
@@ -38,9 +37,22 @@ export function getAuthClaims(): AuthClaims | null {
   return claims;
 }
 
+export function getAuthClaims(): AuthClaims | null {
+  const token = getStoredToken();
+  if (!token) return null;
+  return getAuthClaimsFromToken(token);
+}
+
+export function setStoredAuthToken(token: string): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("teablend_token", token);
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
+}
+
 export function clearStoredAuthToken(): void {
   if (typeof window === "undefined") return;
   localStorage.removeItem("teablend_token");
+  window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
 }
 
 export function getHomePathByRole(role?: string | null): string {

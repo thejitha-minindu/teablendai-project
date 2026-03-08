@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, ChevronLeft, ArrowRight } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
-import { getAuthClaims, getHomePathByRole } from "@/lib/auth";
+import { getAuthClaims, getHomePathByRole, setStoredAuthToken } from "@/lib/auth";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
 // IMPORTANT: Replace this with your actual Google Client ID from the Google Cloud Console
@@ -44,9 +44,7 @@ export default function Login() {
             });
 
             // Save the JWT to localStorage
-            if (typeof window !== "undefined") {
-                localStorage.setItem("teablend_token", response.data.access_token);
-            }
+            setStoredAuthToken(response.data.access_token);
             
             const role = getAuthClaims()?.role;
             router.push(getHomePathByRole(role)); 
@@ -65,9 +63,7 @@ export default function Login() {
                 token: credentialResponse.credential 
             });
             
-            if (typeof window !== "undefined") {
-                localStorage.setItem("teablend_token", response.data.access_token);
-            }
+            setStoredAuthToken(response.data.access_token);
             
             const role = getAuthClaims()?.role;
             router.push(getHomePathByRole(role));

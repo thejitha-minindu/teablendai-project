@@ -2,7 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { clearStoredAuthToken, getAuthClaims, getHomePathByRole, type UserRole } from "@/lib/auth";
+import {
+    AUTH_CHANGED_EVENT,
+    clearStoredAuthToken,
+    getAuthClaims,
+    getHomePathByRole,
+    type UserRole,
+} from "@/lib/auth";
 
 type ProtectedRouteProps = {
     children: React.ReactNode;
@@ -14,7 +20,10 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
     const [isAuthorized, setIsAuthorized] = useState(false);
 
     useEffect(() => {
-        if (typeof window !== "undefined") {
+        const validate = () => {
+            if (typeof window === "undefined") return;
+
+            setIsAuthorized(false);
             const claims = getAuthClaims();
             if (!claims) {
                 clearStoredAuthToken();
@@ -28,7 +37,16 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
             }
 
             setIsAuthorized(true);
-        }
+        };
+
+        validate();
+        window.addEventListener(AUTH_CHANGED_EVENT, validate);
+        window.addEventListener("focus", validate);
+
+        return () => {
+            window.removeEventListener(AUTH_CHANGED_EVENT, validate);
+            window.removeEventListener("focus", validate);
+        };
     }, [pathname, requiredRole]);
 
     if (!isAuthorized) {
