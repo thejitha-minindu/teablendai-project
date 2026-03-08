@@ -24,7 +24,7 @@ export function createAuctionBidSocket(
       };
       onEvent(normalized);
     } catch {
-      // ignore invalid payload
+      console.error('Failed to parse WebSocket message:', msg.data);
     }
   };
 

@@ -9,6 +9,7 @@ import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
+import { toast  } from "sonner";
 
 export default function BuyerAuctionLivePage() {
   const params = useParams<{ auctionid: string }>();
@@ -59,6 +60,7 @@ export default function BuyerAuctionLivePage() {
         setBids(bidData || []);
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load auction");
+        toast.error("Failed to load auction", { position: "top-right" });
       } finally {
         setLoading(false);
       }
@@ -77,6 +79,8 @@ export default function BuyerAuctionLivePage() {
       const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
 
       createdEvents.forEach((event) => {
+        const isMyBid = event.data.buyer_id === userId;
+
         map.set(event.data.bid_id, {
           bid_id: event.data.bid_id,
           auction_id: event.data.auction_id,
@@ -84,6 +88,14 @@ export default function BuyerAuctionLivePage() {
           bid_time: new Date(event.data.bid_time),
           buyer_id: event.data.buyer_id,
         });
+
+        toast.success(
+          isMyBid ? "Your bid placed!" : "New bid!",
+          {
+            description: `$${event.data.bid_amount} · ${new Date(event.data.bid_time).toLocaleTimeString()}`,
+            position: "top-right",
+          }
+        );
       });
 
       return Array.from(map.values()).sort(
@@ -145,6 +157,7 @@ export default function BuyerAuctionLivePage() {
       setSelectedAmount("");
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Failed to place bid");
+      toast.error("Failed to place bid", { position: "top-right" });
     } finally {
       setSubmitting(false);
     }
