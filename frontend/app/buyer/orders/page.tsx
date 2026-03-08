@@ -5,6 +5,7 @@ import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { OrderFilterSort, FilterState } from "@/components/features/buyer/OrderFilterSort";
 import { Button } from "@/components/ui/button";
+import { getAuthClaims } from "@/lib/auth";
 
 export default function BuyerOrderPage() {
 
@@ -16,11 +17,20 @@ export default function BuyerOrderPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({ searchQuery: "" });
   const [sortBy, setSortBy] = useState("recent");
-
-  // TODO: Replace with actual user id from auth context
-  const userId = "11111111-1111-1111-1111-111111111111";
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setError("Missing authenticated user");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     listAuctionsOrder(userId)

@@ -7,8 +7,9 @@ import secrets
 
 from src.infrastructure.database.base import get_db
 from src.domain.models.user import User
-from src.application.schemas.user import Token, UserCreate, GoogleToken
+from src.application.schemas.user import Token, UserCreate, GoogleToken, RoleSwitchRequest
 from src.application.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
+from src.application.dependencies import get_current_user
 from datetime import timedelta
 
 router = APIRouter()
@@ -57,7 +58,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         raise HTTPException(status_code=401, detail="Incorrect email or password")
     
     access_token = create_access_token(
-        data={"sub": user.email, "role": user.default_role, "id": str(user.user_id)},
+        data={
+            "sub": user.email,
+            "role": user.default_role,
+            "roles": ["buyer", "seller"],
+            "id": str(user.user_id),
+        },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -88,9 +94,31 @@ def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
             db.refresh(user)
 
         access_token = create_access_token(
-            data={"sub": user.email, "role": user.default_role, "id": str(user.user_id)},
+            data={
+                "sub": user.email,
+                "role": user.default_role,
+                "roles": ["buyer", "seller"],
+                "id": str(user.user_id),
+            },
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         return {"access_token": access_token, "token_type": "bearer"}
     except ValueError:
         raise HTTPException(status_code=401, detail="Invalid Google token")
+
+
+@router.post("/switch-role", response_model=Token)
+def switch_role(
+    request: RoleSwitchRequest,
+    current_user: User = Depends(get_current_user),
+):
+    access_token = create_access_token(
+        data={
+            "sub": current_user.email,
+            "role": request.role,
+            "roles": ["buyer", "seller"],
+            "id": str(current_user.user_id),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}

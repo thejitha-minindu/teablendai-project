@@ -17,11 +17,12 @@ import type { Bid } from "@/types/buyer/bid.types";
 import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import { getAuthClaims } from "@/lib/auth";
 
 export default function BuyerAuctionLivePage() {
   const params = useParams<{ auctionid: string }>();
   const auctionId = params?.auctionid ?? "";
-  const userId = "11111111-1111-1111-1111-111111111111";
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [auction, setAuction] = useState<AuctionData | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
@@ -31,6 +32,11 @@ export default function BuyerAuctionLivePage() {
   const [selectedAmount, setSelectedAmount] = useState<string>("");
 
   const { connected, events } = useAuctionBidsSocket(auctionId);
+
+  useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
 
   useEffect(() => {
     if (!auctionId) return;
@@ -84,7 +90,10 @@ export default function BuyerAuctionLivePage() {
     return bids.reduce((current, next) => (next.bid_amount > current ? next.bid_amount : current), auction?.base_price ?? 0);
   }, [bids, auction?.base_price]);
 
-  const myBids = useMemo(() => bids.filter((bid) => bid.buyer_id === userId), [bids]);
+  const myBids = useMemo(
+    () => bids.filter((bid) => Boolean(userId) && bid.buyer_id === userId),
+    [bids, userId]
+  );
   const myHighestBid = useMemo(
     () => myBids.reduce((current, next) => (next.bid_amount > current ? next.bid_amount : current), 0),
     [myBids]
@@ -102,6 +111,11 @@ export default function BuyerAuctionLivePage() {
 
     if (!auctionId) {
       setError("Auction is not ready");
+      return;
+    }
+
+    if (!userId) {
+      setError("Missing authenticated user");
       return;
     }
 

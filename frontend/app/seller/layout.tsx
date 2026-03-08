@@ -5,7 +5,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute>
+    <ProtectedRoute requiredRole="seller">
       <SidebarProvider>
         <NavSidebar />
         {/* Placed here, it will sit tightly next to the sidebar */}

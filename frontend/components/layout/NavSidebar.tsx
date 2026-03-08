@@ -49,6 +49,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { apiClient } from "@/lib/apiClient";
+import {
+  clearStoredAuthToken,
+  getAuthClaims,
+  getDisplayNameFromEmail,
+  getHomePathByRole,
+  type UserRole as AuthUserRole,
+} from "@/lib/auth";
 
 type NavItem = {
   name: string;
@@ -82,26 +90,6 @@ const analyticsNavItems: NavItem[] = [
   { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
 ];
 
-function useRoleDetection(): UserRole {
-  const pathname = usePathname();
-
-  const role: UserRole = pathname.startsWith("/analytics-dashboard")
-    ? "analytics"
-    : pathname.startsWith("/buyer")
-    ? "buyer"
-    : pathname.startsWith("/seller")
-    ? "seller"
-    : (typeof window !== 'undefined' ? localStorage.getItem("role") as UserRole : null) || "seller";
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem("role", role);
-    }
-  }, [role]);
-
-  return role;
-}
-
 const getSwitchInfo = (
   currentRole: UserRole
 ): { role: UserRole; path: string } => {
@@ -134,9 +122,14 @@ export function NavSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { state, setOpen } = useSidebar();
-  const role = useRoleDetection();
+  const [activeUserRole, setActiveUserRole] = useState<AuthUserRole>("seller");
+
+  const role: UserRole = pathname.startsWith("/analytics-dashboard")
+    ? "analytics"
+    : activeUserRole;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   
   // --- NEW: Dynamic User State ---
   const [userEmail, setUserEmail] = useState("Loading...");
@@ -144,32 +137,41 @@ export function NavSidebar() {
 
   // Decode JWT on mount to get user info
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const token = localStorage.getItem("teablend_token");
-      if (token) {
-        try {
-          // Decode the Base64 payload of the JWT
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          const email = payload.sub;
-          setUserEmail(email);
-          
-          // Create a display name from the email (e.g. john.doe@gmail.com -> John.doe)
-          const namePart = email.split('@')[0];
-          setUserName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
-        } catch (e) {
-          console.error("Failed to decode token", e);
-        }
-      }
+    const claims = getAuthClaims();
+    if (claims?.sub) {
+      setUserEmail(claims.sub);
+      setUserName(getDisplayNameFromEmail(claims.sub));
     }
-  }, []);
+    if (claims?.role) {
+      setActiveUserRole(claims.role);
+    }
+  }, [pathname]);
 
   // --- NEW: Logout Handler ---
   const handleLogout = () => {
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("teablend_token");
-      localStorage.removeItem("role");
-      // Force hard redirect to clear all React state
-      window.location.href = "/auth/login"; 
+    clearStoredAuthToken();
+    window.location.href = "/auth/login";
+  };
+
+  const handleSwitchRole = async () => {
+    if (role === "analytics") {
+      router.push("/seller/dashboard");
+      return;
+    }
+
+    const targetRole = switchInfo.role as AuthUserRole;
+    try {
+      setIsSwitchingRole(true);
+      const response = await apiClient.post("/auth/switch-role", { role: targetRole });
+      if (typeof window !== "undefined") {
+        localStorage.setItem("teablend_token", response.data.access_token);
+      }
+      setActiveUserRole(targetRole);
+      router.push(getHomePathByRole(targetRole));
+    } catch (error) {
+      console.error("Failed to switch role", error);
+    } finally {
+      setIsSwitchingRole(false);
     }
   };
 
@@ -363,11 +365,17 @@ export function NavSidebar() {
                           </DropdownMenuItem>
 
                           {/* Switch Role */}
-                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                            <Link href={switchInfo.path} className="flex items-center w-full">
-                              <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                              <span>Switch to {getRoleDisplayName(switchInfo.role)}</span>
-                            </Link>
+                          <DropdownMenuItem
+                            className="cursor-pointer hover:bg-gray-50"
+                            disabled={isSwitchingRole}
+                            onClick={handleSwitchRole}
+                          >
+                            <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>
+                              {isSwitchingRole
+                                ? "Switching role..."
+                                : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                            </span>
                           </DropdownMenuItem>
 
                           {/* Analytics Link */}

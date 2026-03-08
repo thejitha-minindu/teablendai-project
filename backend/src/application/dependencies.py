@@ -1,4 +1,5 @@
 from functools import lru_cache
+from typing import Callable, Literal
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -42,19 +43,30 @@ def get_chat_use_case(
 ) -> ChatUseCase:
     return ChatUseCase(chat_service)
 
+
+def _decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def get_token_payload(token: str = Depends(oauth2_scheme)) -> dict:
+    return _decode_token(token)
+
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        # Decode the token to see who it belongs to
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-    except JWTError:
+    payload = _decode_token(token)
+    email: str = payload.get("sub")
+    if email is None:
         raise credentials_exception
         
     # Find the user in the database
@@ -63,3 +75,40 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     
     return user
+
+
+def get_active_role(payload: dict = Depends(get_token_payload)) -> Literal["buyer", "seller"]:
+    role = payload.get("role")
+    if role not in ("buyer", "seller"):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid role in token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return role
+
+
+def require_role(required_role: Literal["buyer", "seller"]) -> Callable:
+    def _role_dependency(active_role: str = Depends(get_active_role)) -> str:
+        if active_role != required_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"{required_role.capitalize()} role required",
+            )
+        return active_role
+
+    return _role_dependency
+
+
+def get_current_buyer(
+    current_user: User = Depends(get_current_user),
+    _role: str = Depends(require_role("buyer")),
+) -> User:
+    return current_user
+
+
+def get_current_seller(
+    current_user: User = Depends(get_current_user),
+    _role: str = Depends(require_role("seller")),
+) -> User:
+    return current_user

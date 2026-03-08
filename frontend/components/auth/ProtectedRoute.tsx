@@ -1,31 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { clearStoredAuthToken, getAuthClaims, getHomePathByRole, type UserRole } from "@/lib/auth";
 
-export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-    const router = useRouter();
+type ProtectedRouteProps = {
+    children: React.ReactNode;
+    requiredRole?: UserRole;
+};
+
+export default function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
     const pathname = usePathname();
     const [isAuthorized, setIsAuthorized] = useState(false);
 
     useEffect(() => {
-        // 1. Check if we are running in the browser
         if (typeof window !== "undefined") {
-            const token = localStorage.getItem("teablend_token");
-
-            // 2. If there is no token, kick them to the login page
-            if (!token) {
-                console.warn("Unauthorized access attempt. Redirecting to login.");
-                // We use window.location.href for a hard redirect to clear state
+            const claims = getAuthClaims();
+            if (!claims) {
+                clearStoredAuthToken();
                 window.location.href = `/auth/login?redirect=${pathname}`; 
-            } else {
-                // 3. If they have a token, allow them to see the page
-                setIsAuthorized(true);
+                return;
             }
-        }
-    }, [pathname]);
 
-    // Show nothing (or a loading spinner) while checking the token
+            if (requiredRole && claims.role !== requiredRole) {
+                window.location.href = getHomePathByRole(claims.role);
+                return;
+            }
+
+            setIsAuthorized(true);
+        }
+    }, [pathname, requiredRole]);
+
     if (!isAuthorized) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -34,6 +39,5 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         );
     }
 
-    // Render the actual page if authorized
     return <>{children}</>;
 }

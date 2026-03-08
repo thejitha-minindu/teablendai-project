@@ -5,6 +5,7 @@ import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { HistoryFilterSort, FilterState } from "@/components/features/buyer/HistoryFilterSort";
 import { Button } from "@/components/ui/button";
+import { getAuthClaims } from "@/lib/auth";
 
 const AUCTION_DATA_FALLBACK: any[] = [];
 
@@ -17,10 +18,20 @@ export default function BuyerHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({ searchQuery: "" });
   const [sortBy, setSortBy] = useState<string>("recent");
-
-  const userId = "11111111-1111-1111-1111-111111111111";
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setError("Missing authenticated user");
+      return;
+    }
+
     setLoading(true);
     listAuctionsHistory(userId, true)
       .then((data) => {
@@ -32,7 +43,7 @@ export default function BuyerHistoryPage() {
         setHistoryData(AUCTION_DATA_FALLBACK);
         setLoading(false);
       });
-  }, []);
+  }, [userId]);
 
   // Use fetched data or fallback
   const AUCTION_DATA = historyData.length > 0 ? historyData : AUCTION_DATA_FALLBACK;

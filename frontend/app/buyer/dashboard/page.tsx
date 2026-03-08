@@ -7,6 +7,7 @@ import { AuctionHomePreview } from "@/components/features/buyer/AuctionHomePrevi
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { useSidebar } from "@/components/ui/sidebar";
+import { getAuthClaims } from "@/lib/auth";
 
 
 export default function BuyerAuctionPage() {
@@ -16,14 +17,25 @@ export default function BuyerAuctionPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { open: isSidebarOpen } = useSidebar();
-  
-  const userId = "11111111-1111-1111-1111-111111111111";
+
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchWatchlist();
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
   }, []);
 
+  useEffect(() => {
+    if (!userId) return;
+    fetchWatchlist();
+  }, [userId]);
+
   const fetchWatchlist = () => {
+    if (!userId) {
+      setError("Missing authenticated user");
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     listAuctionsWatchlist(userId)
       .then((data) => {

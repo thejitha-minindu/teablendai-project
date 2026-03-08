@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Mail, Lock, ChevronLeft, ArrowRight } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
+import { getAuthClaims, getHomePathByRole } from "@/lib/auth";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
 // IMPORTANT: Replace this with your actual Google Client ID from the Google Cloud Console
@@ -47,8 +48,8 @@ export default function Login() {
                 localStorage.setItem("teablend_token", response.data.access_token);
             }
             
-            // Redirect to dashboard upon success
-            router.push("/buyer/dashboard"); 
+            const role = getAuthClaims()?.role;
+            router.push(getHomePathByRole(role)); 
         } catch (error: any) {
             console.error("Login failed:", error);
             setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
@@ -68,7 +69,8 @@ export default function Login() {
                 localStorage.setItem("teablend_token", response.data.access_token);
             }
             
-            router.push("/buyer/dashboard");
+            const role = getAuthClaims()?.role;
+            router.push(getHomePathByRole(role));
         } catch (error) {
             console.error("Google login failed:", error);
             setErrorMsg("Google authentication failed. Please try again.");

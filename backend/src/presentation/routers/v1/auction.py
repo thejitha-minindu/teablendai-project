@@ -4,7 +4,7 @@ from typing import List, Optional
 from src.application.schemas.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_user
+from src.application.dependencies import get_current_seller
 from src.domain.models.user import User
 from uuid import UUID
 
@@ -17,7 +17,7 @@ def get_auction_service(db: Session = Depends(get_db)):
 def create_auction(
     auction: AuctionCreate,  
     service: AuctionService = Depends(get_auction_service),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_seller)
 ):
     auction.seller_id = current_user.user_id
     return service.create_auction(auction)
