@@ -30,14 +30,9 @@ export default function BuyerHistoryPage() {
 
   const fetchAuctions = () => {
     setLoading(true);
-    // Fetch both live and scheduled auctions
-    Promise.all([
-      listAuctions({ status: "live" }),
-      listAuctions({ status: "scheduled" })
-    ])
-      .then(([liveData, scheduledData]) => {
-        const combinedData = [...(liveData || []), ...(scheduledData || [])];
-        setAuctionData(combinedData);
+    listAuctions()
+      .then((data) => {
+        setAuctionData(data || []);
         setLoading(false);
       })
       .catch((err) => {
@@ -55,6 +50,7 @@ export default function BuyerHistoryPage() {
     const estateName = auction.estate_name || auction.estateName || "";
     const grade = auction.grade || "";
     const basePrice = auction.base_price || auction.basePrice || 0;
+    const rawStatus = String(auction.status || "").trim().toLowerCase();
 
     // Search filter
     const query = filters.searchQuery?.toLowerCase() || "";
@@ -85,7 +81,12 @@ export default function BuyerHistoryPage() {
       matchesPrice = price >= min && price <= max;
     }
 
-    return matchesSearch && matchesGrade && matchesPrice;
+    let matchesStatus = true;
+    if (filters.status && filters.status !== "all") {
+      matchesStatus = rawStatus === filters.status;
+    }
+
+    return matchesSearch && matchesGrade && matchesPrice && matchesStatus;
   });
 
   // Sorting logic
@@ -103,6 +104,9 @@ export default function BuyerHistoryPage() {
     }
     if (sortBy === "price-low") {
       return priceA - priceB;
+    }
+    if (sortBy === "ending-soon") {
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
     }
     return 0;
   });

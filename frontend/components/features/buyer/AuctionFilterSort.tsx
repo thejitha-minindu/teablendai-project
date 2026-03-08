@@ -92,9 +92,13 @@ export function AuctionFilterSort({
     onSortChange?.("recent");
   };
 
-  const activeFiltersCount =
-    [searchQuery, priceMin, priceMax, grade, status !== "all"].filter(Boolean)
-      .length;
+  const activeFiltersCount = [
+    searchQuery,
+    priceMin,
+    priceMax,
+    grade !== "all",
+    status !== "all",
+  ].filter(Boolean).length;
 
   return (
     <div className="w-full bg-card rounded-lg border border-border p-4 md:p-6 mb-6">
