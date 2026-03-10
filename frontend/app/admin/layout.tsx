@@ -12,8 +12,8 @@ export default function AdminLayout({
 }) {
 	return (
 		<html lang="en">
-			<body className="bg-green-950 text-white">
-				<SidebarProvider>
+			<body className="min-h-screen bg-white text-black">
+					<SidebarProvider>
 					<AdminSidebar />
 					<div className="p-0 w-full min-h-screen">
 						<main className="p-6">{children}</main>

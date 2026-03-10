@@ -3,7 +3,7 @@ from typing import List, Optional
 import uuid
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
-from src.domain.repositories.auction_repository import AuctionRepositoryInterface
+from src.infrastructure.repositories.admin.auction_repository import AuctionRepositoryInterface
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
