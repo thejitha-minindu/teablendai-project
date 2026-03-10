@@ -7,7 +7,7 @@ from src.application.use_cases.admin.get_all_auctions import GetAllAuctionsUseCa
 from src.application.schemas.admin.auction_schema import AuctionResponse
 
 
-router = APIRouter(prefix="/admin", tags=["Admin Auctions"])
+router = APIRouter(prefix="", tags=["Admin Auctions"])
 
 @router.get("/auctions", response_model=list[AuctionResponse])
 def get_all_auctions(db: Session = Depends(get_db)):
