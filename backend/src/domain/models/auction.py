@@ -30,4 +30,3 @@ class Auction(Base):
 
     bids = relationship("Bid", back_populates="auction")
     order = relationship("Order", back_populates="auction", uselist=False)
-

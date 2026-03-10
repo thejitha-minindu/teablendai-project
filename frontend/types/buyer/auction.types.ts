@@ -1,5 +1,4 @@
 import { Bid } from "./bid.types";
-import { Order } from "./order.types";
 
 export type AuctionType = "scheduled" | "live" | "history";
 
@@ -59,5 +58,5 @@ export type AuctionOrderDialog = Pick<
   AuctionData,
   "auction_id" | "auction_name" | "estate_name" | "grade" | "quantity" | "sold_price" | "date" | "base_price"
 > & {
-  order: Order;
+  order_id: string;
 };

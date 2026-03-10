@@ -1,13 +1,18 @@
-
 from logging.config import fileConfig
 import os
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
-from src.database import Base
-from src.infrastructure.database.bid import Bid
-from src.infrastructure.database.auction import Auction
 from dotenv import load_dotenv
+from urllib.parse import quote_plus
+from src.infrastructure.database.base import Base
+
+from src.domain.models.auction import Auction
+from src.domain.models.bid import Bid
+from src.domain.models.user import User, FinancialDetails, WatchList
+from src.domain.models.order import Order, PaymentDetails, WinsAuction
+from src.domain.models.conversation import Conversation
+from src.domain.models.message import ChatMessage
 
 # Load environment variables from .env file
 load_dotenv()
@@ -20,7 +25,7 @@ config = context.config
 # Set sqlalchemy.url from environment variable if present
 database_url = os.getenv("DATABASE_URL")
 if database_url:
-    config.set_main_option("sqlalchemy.url", database_url)
+    config.set_main_option("sqlalchemy.url", database_url.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
@@ -33,10 +38,50 @@ if config.config_file_name is not None:
 # target_metadata = mymodel.Base.metadata
 target_metadata = Base.metadata
 
+
+EXCLUDED_AUTOGEN_TABLES = {"ChatMessages"}
+
+
+def include_object(object_, name, type_, reflected, compare_to):
+    if type_ == "table" and name in EXCLUDED_AUTOGEN_TABLES:
+        return False
+    return True
+
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
+
+
+def _build_db_url() -> str:
+    direct = os.getenv("DATABASE_URL")
+    if direct:
+        return direct
+
+    server = os.getenv("MSSQL_SERVER", "")
+    database = os.getenv("MSSQL_DATABASE", "")
+    username = os.getenv("MSSQL_USERNAME", "")
+    password = os.getenv("MSSQL_PASSWORD", "")
+    trusted = os.getenv("DB_TRUSTED_CONNECTION", "false").lower() == "true"
+
+    if trusted:
+        odbc = (
+            "DRIVER={ODBC Driver 18 for SQL Server};"
+            f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
+            "TrustServerCertificate=yes;"
+        )
+    else:
+        odbc = (
+            "DRIVER={ODBC Driver 18 for SQL Server};"
+            f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
+            "TrustServerCertificate=yes;"
+        )
+
+    return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc)}"
+
+
+db_url = _build_db_url()
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
@@ -51,10 +96,11 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("DATABASE_URL")
+    url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
+        include_object=include_object,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
     )
@@ -78,7 +124,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            include_object=include_object,
         )
 
         with context.begin_transaction():

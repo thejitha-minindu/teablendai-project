@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, HelpCircle, LogOut } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface ProfileMenuProps {
   isOpen: boolean;
@@ -13,6 +14,37 @@ export function ProfileMenu({
   onClose,
   isCollapsed,
 }: ProfileMenuProps) {
+  const router = useRouter();
+  const [userEmail, setUserEmail] = useState("Loading...");
+  const [userName, setUserName] = useState("User");
+
+  // Decode JWT on mount
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("teablend_token");
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const email = payload.sub;
+          setUserEmail(email);
+          const namePart = email.split('@')[0];
+          setUserName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+        } catch (e) {
+          console.error("Failed to decode token", e);
+        }
+      }
+    }
+  }, [isOpen]); // Re-check when opened
+
+  const handleLogout = () => {
+    onClose();
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("teablend_token");
+      localStorage.removeItem("role");
+      window.location.href = "/auth/login";
+    }
+  };
+
   if (!isOpen || isCollapsed) return null;
 
   return (
@@ -24,8 +56,8 @@ export function ProfileMenu({
             <User className="w-7 h-7 text-white" />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-gray-900 truncate">User</p>
-            <p className="text-xs text-gray-500 truncate">user@example.com</p>
+            <p className="text-sm font-medium text-gray-900 truncate">{userName}</p>
+            <p className="text-xs text-gray-500 truncate">{userEmail}</p>
           </div>
         </div>
       </div>
@@ -52,7 +84,7 @@ export function ProfileMenu({
       {/* Logout */}
       <div className="p-2 border-t border-gray-200">
         <button
-          onClick={onClose}
+          onClick={handleLogout}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
         >
           <LogOut className="w-4 h-4 shrink-0" />

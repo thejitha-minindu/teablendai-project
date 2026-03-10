@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from uuid import UUID
-from datetime import datetime
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime, timezone
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 AuctionType = Literal["scheduled", "live", "history"]
 
@@ -21,14 +21,28 @@ class Auction(BaseModel):
 # 1. Input Schema (Frontend -> Backend)
 # This validates the JSON your React app sends when creating an auction.
 class AuctionCreate(BaseModel):
+    seller_id: Optional[UUID] = None
     seller_brand: str 
     grade: str
-    quantity: float
+    # 1. Block negative quantities
+    quantity: float = Field(gt=0, description="Quantity must be greater than 0")
     origin: str
     description: Optional[str] = None
-    base_price: float
+    # 2. Block negative prices
+    base_price: float = Field(ge=0, description="Base price cannot be negative")
     start_time: datetime
-    duration: float
+    # 3. Block negative durations
+    duration: float = Field(gt=0, description="Duration must be greater than 0")
+    # 4. Block past dates
+    @field_validator('start_time')
+    def validate_start_time(cls, v: datetime):
+        # We give a 5-minute grace period to account for network delays or slow typing
+        now = datetime.now(timezone.utc) if v.tzinfo else datetime.now()
+        
+        # If the start time is strictly earlier than right now, reject it
+        if v < now:
+            raise ValueError("Scheduled start time cannot be in the past.")
+        return v
 
 # 2. Output Schema (Backend -> Frontend)
 # This defines what the API sends back to the React app.
