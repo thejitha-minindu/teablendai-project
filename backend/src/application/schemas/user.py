@@ -47,3 +47,7 @@ class UserCreate(BaseModel):
 
 class GoogleToken(BaseModel):
     token: str
+
+
+class RoleSwitchRequest(BaseModel):
+    role: Literal['buyer', 'seller']

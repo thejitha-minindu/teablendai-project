@@ -1,7 +1,10 @@
 "use client";
+import Papa from "papaparse";
 
 export default function Step1Upload({
     setFile,
+    setCsvHeaders,
+    setPreviewData,
     table,
     setTable,
 }: any) {
@@ -25,7 +28,21 @@ export default function Step1Upload({
             <input
                 type="file"
                 accept=".csv"
-                onChange={(e) => setFile(e.target.files?.[0])}
+                onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    setFile(file);
+
+                    if (file) {
+                        Papa.parse(file, {
+                            header: true,
+                            preview: 5,
+                            complete: (results) => {
+                                setCsvHeaders(results.meta.fields || []);
+                                setPreviewData(results.data);
+                            },
+                        });
+                    }
+                }}
                 className="border p-2 rounded w-full"
             />
         </div>

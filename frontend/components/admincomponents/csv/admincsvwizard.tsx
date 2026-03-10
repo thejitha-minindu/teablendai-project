@@ -11,11 +11,8 @@ export default function AdminCsvWizard() {
     const [file, setFile] = useState<File | null>(null);
     const [table, setTable] = useState("");
     const [mapping, setMapping] = useState<Record<string, string>>({});
-
-    const csvHeaders = ["PurchaseID", "Standard", "PricePerKg"];
-    const previewData = [
-        { PurchaseID: "P01", Standard: "A", PricePerKg: 1200 },
-    ];
+    const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+    const [previewData, setPreviewData] = useState<any[]>([]);
 
     return (
         <div className="max-w-6xl mx-auto p-6 bg-gray-50 rounded-xl shadow">
@@ -25,6 +22,8 @@ export default function AdminCsvWizard() {
                 {step === 0 && (
                     <Step1Upload
                         setFile={setFile}
+                        setCsvHeaders={setCsvHeaders}
+                        setPreviewData={setPreviewData}
                         table={table}
                         setTable={setTable}
                     />
@@ -41,10 +40,15 @@ export default function AdminCsvWizard() {
 
                 {step === 2 && <Step3Preview data={previewData} />}
 
-                {step === 3 && <Step4Confirm />}
+                {step === 3 && (
+                    <Step4Confirm
+                        file={file}
+                        table={table}
+                        mapping={mapping}
+                    />
+                )}
             </div>
 
-            {/* ✅ NEXT / BACK BUTTONS */}
             <div className="flex justify-between mt-8">
                 <button
                     disabled={step === 0}
@@ -57,7 +61,7 @@ export default function AdminCsvWizard() {
                 {step < 3 && (
                     <button
                         onClick={() => setStep(step + 1)}
-                        className="px-6 py-2 rounded bg-green-700 text-white hover:bg-green-800"
+                        className="px-6 py-2 rounded bg-green-700 text-white"
                     >
                         Next
                     </button>

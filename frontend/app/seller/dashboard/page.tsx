@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Leaf, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
+import { apiClient } from '@/lib/apiClient';
 
 // Components
 import { ChartPie } from "@/components/features/buyer/ChartPie"; 
@@ -79,15 +80,25 @@ export default function SellerDashboardPage() {
   const fetchAllData = async () => {
       try {
         setLoading(true);
+
+        // 1. Decode the token to get YOUR specific user ID
+        const token = localStorage.getItem("teablend_token");
+        if (!token) return;
+
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        const myUserId = payload.id; // We stored this securely during login!
+        
+        // 2. Attach your ID to the URLs using a query string (?seller_id=...)
         const [liveRes, schedRes, histRes] = await Promise.all([
-            fetch('http://localhost:8000/api/v1/auctions/status/live'),
-            fetch('http://localhost:8000/api/v1/auctions/status/scheduled'),
-            fetch('http://localhost:8000/api/v1/auctions/status/history')
+            apiClient.get(`/auctions/status/live?seller_id=${myUserId}`),
+            apiClient.get(`/auctions/status/scheduled?seller_id=${myUserId}`),
+            apiClient.get(`/auctions/status/history?seller_id=${myUserId}`)
         ]);
 
-        const liveData = await liveRes.json();
-        const schedData = await schedRes.json();
-        const histData = await histRes.json();
+        // Axios automatically parses JSON, so we just grab the .data property
+        const liveData = liveRes.data;
+        const schedData = schedRes.data;
+        const histData = histRes.data;
 
         const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
             const safeTime = item.start_time.endsWith('Z') ? item.start_time : item.start_time + 'Z';

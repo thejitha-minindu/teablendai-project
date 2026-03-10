@@ -7,6 +7,10 @@ from dotenv import load_dotenv
 load_dotenv()
 from sqlalchemy import create_engine
 from sqlalchemy.pool import NullPool
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
 
 def _get_db_config():
     server = os.getenv('MSSQL_SERVER')
@@ -49,3 +53,19 @@ def create_database_engine():
 
 # Shared engine instance
 engine = create_database_engine()
+
+# Session factory
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    """
+    FastAPI dependency that yields a database session.
+    Usage in endpoints:
+        def read_auctions(db: Session = Depends(get_db)):
+            ...
+    """
+    db: Session = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

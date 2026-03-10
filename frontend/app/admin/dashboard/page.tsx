@@ -1,11 +1,31 @@
 "use client";
 
-import { Bell, Database, Users, Gavel, AlertTriangle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Bell, Database, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 export default function AdminDashboard() {
+
+  const [totalAuctions, setTotalAuctions] = useState(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("http://localhost:8000/api/v1/admin/dashboard-stats");
+        const data = await res.json();
+
+        setTotalAuctions(data.total_auctions);
+
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+
+    fetchStats();
+  }, []);
+
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-2 space-y-4">
 
       {/* PAGE TITLE */}
       <div>
@@ -17,27 +37,24 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Buyers" value="234" sub="Pending 27" />
         <StatCard title="Total Sellers" value="156" sub="Pending 12" />
-        <StatCard title="Total Auctions" value="890" sub="Pending 45" />
+        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Pending 0" />
         <ViolationCard />
       </div>
 
       {/* ANALYTICS + ACTION */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        {/* ANALYTICS */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-lg p-6">
           <h2 className="font-semibold mb-2">System Activity</h2>
           <p className="text-sm text-gray-500 mb-4">
             Monthly system activity overview
           </p>
 
-          {/* PLACEHOLDER FOR CHART */}
           <div className="h-52 flex items-center justify-center rounded-xl bg-gray-100 text-gray-400">
             📊 Analytics Chart Here
           </div>
         </div>
 
-        {/* NOTIFY USERS */}
         <Link
           href="/admin/sendnotification"
           className="bg-white rounded-2xl shadow-lg p-6 flex flex-col justify-between hover:shadow-lg transition"
@@ -51,20 +68,31 @@ export default function AdminDashboard() {
             Send Notification
           </button>
         </Link>
+
       </div>
 
-      {/* DATABASE BUTTON */}
       <div className="flex justify-center pt-6">
         <Link
           href="/admin/insertdata"
-          className="flex items-center gap-3 bg-white px-8 py-4 rounded-full shadow hover:shadow-lg transition"
-        >
+          className="flex items-center gap-3 bg-white px-8 py-4 rounded-full shadow hover:shadow-lg transition border-3 border-green-700 animate-borderFade">
           <Database className="w-6 h-6 text-green-700" />
           <span className="font-semibold text-gray-700">
             Insert Data to Database
           </span>
         </Link>
       </div>
+
+      <style jsx global>{`
+  @keyframes borderFade {
+    50%, 50% { border-color: rgba(34, 197, 94, 1); }   /* solid green */
+    50% { border-color: rgba(34, 197, 94, 0); }       /* transparent */
+  }
+
+  .animate-borderFade {
+    animation: borderFade 3s infinite;
+  }
+`}</style>
+
     </div>
   );
 }
@@ -91,8 +119,6 @@ function StatCard({
   );
 }
 
-
-
 function ViolationCard() {
   return (
     <div className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between">
@@ -111,5 +137,3 @@ function ViolationCard() {
     </div>
   );
 }
-
-

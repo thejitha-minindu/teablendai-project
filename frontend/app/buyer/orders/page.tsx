@@ -1,160 +1,112 @@
 "use client";
-import React, { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { listAuctionsOrder } from "@/services/buyer/auctionService";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { OrderFilterSort, FilterState } from "@/components/features/buyer/OrderFilterSort";
 import { Button } from "@/components/ui/button";
-
-const AUCTION_DATA = [
-  {
-    id: 1,
-    type: "order",
-    title: "Spring Harvest Order",
-    company: "ABC Tea Company",
-    date: "2025-10-12",
-    estateName: "Darjeeling Estate",
-    quantity: "50 kg",
-    grade: "BOP",
-    soldPrice: "$250",
-    orderId: "ORD123456",
-  },
-  {
-    id: 2,
-    type: "order",
-    title: "Autumn Flush Order",
-    company: "XYZ Tea Traders",
-    date: "2025-11-05",
-    estateName: "Assam Estate",
-    quantity: "75 kg",
-    grade: "CTC",
-    soldPrice: "$375",
-    orderId: "ORD123457",
-  },
-  {
-    id: 3,
-    type: "order",
-    title: "Monsoon Special Order",
-    company: "TeaLeaf Co.",
-    date: "2025-09-20",
-    estateName: "Nilgiri Estate",
-    quantity: "100 kg",
-    grade: "OP",
-    soldPrice: "$500",
-    orderId: "ORD123458",
-  },
-  {
-    id: 4,
-    type: "order",
-    title: "Winter Reserve Order",
-    company: "Premium Teas Ltd.",
-    date: "2025-12-01",
-    estateName: "Kangra Estate",
-    quantity: "60 kg",
-    grade: "FOP",
-    soldPrice: "$300",
-    orderId: "ORD123459",
-  },
-  {
-    id: 5,
-    type: "order",
-    title: "Summer Blend Order",
-    company: "Sunrise Teas",
-    date: "2025-08-15",
-    estateName: "Dooars Estate",
-    quantity: "80 kg",
-    grade: "BOPSM",
-    soldPrice: "$400",
-    orderId: "ORD123460",
-  },
-  {
-    id: 6,
-    type: "order",
-    title: "Classic Assam Order",
-    company: "Classic Tea House",
-    date: "2025-07-10",
-    estateName: "Assam Estate",
-    quantity: "90 kg",
-    grade: "CTC",
-    soldPrice: "$450",
-    orderId: "ORD123461",
-  },
-  {
-    id: 7,
-    type: "order",
-    title: "Golden Tips Order",
-    company: "Golden Leaf",
-    date: "2025-06-18",
-    estateName: "Darjeeling Estate",
-    quantity: "40 kg",
-    grade: "FTGFOP1",
-    soldPrice: "$600",
-    orderId: "ORD123462",
-  },
-];
-
-// Types for better type safety
-interface AuctionData {
-  id: number;
-  type: string;
-  title: string;
-  company: string;
-  date: string;
-  estateName: string;
-  quantity: string;
-  grade: string;
-  soldPrice: string;
-  orderId: string;
-}
+import { getAuthClaims } from "@/lib/auth";
 
 export default function BuyerOrderPage() {
+
+  const [orderData, setOrderData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({ searchQuery: "" });
   const [sortBy, setSortBy] = useState("recent");
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) {
+      setLoading(false);
+      setError("Missing authenticated user");
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    listAuctionsOrder(userId)
+      .then((data) => {
+        setOrderData(Array.isArray(data) ? data : []);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load orders");
+        setOrderData([]);
+        setLoading(false);
+      });
+  }, [userId]);
+
+  const AUCTION_DATA = orderData;
+
 
   const filteredAndSortedData = useMemo(() => {
     let result = [...AUCTION_DATA];
-    
+
     // Apply search filter
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
-      result = result.filter(item => 
-        item.title.toLowerCase().includes(query) ||
-        item.company.toLowerCase().includes(query) ||
-        item.estateName.toLowerCase().includes(query) ||
-        item.orderId.toLowerCase().includes(query) ||
-        item.grade.toLowerCase().includes(query)
-      );
+      result = result.filter(item => {
+        // Defensive: handle missing fields
+        const title = item.title || item.auctionName || item.auction_name || "";
+        const company = item.company || item.companyName || item.company_name || "";
+        const estate = item.estateName || item.estate_name || "";
+        const orderId = item.orderId || item.order_id || "";
+        const grade = item.grade || "";
+        return (
+          title.toLowerCase().includes(query) ||
+          company.toLowerCase().includes(query) ||
+          estate.toLowerCase().includes(query) ||
+          orderId.toLowerCase().includes(query) ||
+          grade.toLowerCase().includes(query)
+        );
+      });
     }
-    
+
     // Apply sorting
     switch (sortBy) {
       case "recent":
-        result.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        result.sort((a, b) => {
+          const dateA = new Date(a.date || a.orderDate || a.order_date || 0).getTime();
+          const dateB = new Date(b.date || b.orderDate || b.order_date || 0).getTime();
+          return dateB - dateA;
+        });
         break;
       case "price-high":
         result.sort((a, b) => {
-          const priceA = parseFloat(a.soldPrice.replace(/[^0-9.-]+/g, ""));
-          const priceB = parseFloat(b.soldPrice.replace(/[^0-9.-]+/g, ""));
+          const priceA = parseFloat((a.soldPrice || a.totalAmount || a.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
+          const priceB = parseFloat((b.soldPrice || b.totalAmount || b.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
           return priceB - priceA;
         });
         break;
       case "price-low":
         result.sort((a, b) => {
-          const priceA = parseFloat(a.soldPrice.replace(/[^0-9.-]+/g, ""));
-          const priceB = parseFloat(b.soldPrice.replace(/[^0-9.-]+/g, ""));
+          const priceA = parseFloat((a.soldPrice || a.totalAmount || a.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
+          const priceB = parseFloat((b.soldPrice || b.totalAmount || b.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
           return priceA - priceB;
         });
         break;
       case "name":
-        result.sort((a, b) => a.title.localeCompare(b.title));
+        result.sort((a, b) => {
+          const nameA = (a.title || a.auctionName || a.auction_name || "").toLowerCase();
+          const nameB = (b.title || b.auctionName || b.auction_name || "").toLowerCase();
+          return nameA.localeCompare(nameB);
+        });
         break;
       default:
         break;
     }
-    
+
     return result;
-  }, [filters.searchQuery, sortBy]);
+  }, [AUCTION_DATA, filters.searchQuery, sortBy]);
 
   const itemsPerPage = 6;
   const totalItems = filteredAndSortedData.length;
@@ -228,7 +180,16 @@ export default function BuyerOrderPage() {
         initialSort={sortBy}
       />
 
-      {filteredAndSortedData.length === 0 ? (
+      {loading ? (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Loading orders...</h3>
+        </div>
+      ) : error ? (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Failed to load orders</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      ) : filteredAndSortedData.length === 0 ? (
         <div className="text-center py-10">
           <h3 className="text-lg font-semibold mb-2">No orders found</h3>
           <p className="text-muted-foreground">
@@ -240,7 +201,7 @@ export default function BuyerOrderPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
             {paginatedData.map((auction, index) => (
               <div
-                key={auction.id}
+                key={auction.id || auction.orderId || auction.order_id || `auction-${index}`}
                 className="flex flex-col w-full card-animate"
                 style={{
                   animationDelay: `${index * 80}ms`,

@@ -43,13 +43,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-// Add Tooltip imports if you have them, or create a simple tooltip
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { apiClient } from "@/lib/apiClient";
+import {
+  clearStoredAuthToken,
+  getAuthClaims,
+  getAuthClaimsFromToken,
+  getDisplayNameFromEmail,
+  getHomePathByRole,
+  setStoredAuthToken,
+  type UserRole as AuthUserRole,
+} from "@/lib/auth";
 
 type NavItem = {
   name: string;
@@ -83,24 +92,6 @@ const analyticsNavItems: NavItem[] = [
   { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
 ];
 
-function useRoleDetection(): UserRole {
-  const pathname = usePathname();
-
-  const role: UserRole = pathname.startsWith("/analytics-dashboard")
-    ? "analytics"
-    : pathname.startsWith("/buyer")
-    ? "buyer"
-    : pathname.startsWith("/seller")
-    ? "seller"
-    : (localStorage.getItem("role") as UserRole) || "seller";
-
-  useEffect(() => {
-    localStorage.setItem("role", role);
-  }, [role]);
-
-  return role;
-}
-
 const getSwitchInfo = (
   currentRole: UserRole
 ): { role: UserRole; path: string } => {
@@ -131,21 +122,75 @@ const getRoleDisplayName = (role: UserRole): string => {
 
 export function NavSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { state, setOpen } = useSidebar();
-  const role = useRoleDetection();
+  const [activeUserRole, setActiveUserRole] = useState<AuthUserRole>("seller");
+
+  const role: UserRole = pathname.startsWith("/analytics-dashboard")
+    ? "analytics"
+    : activeUserRole;
 
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+  
+  // --- NEW: Dynamic User State ---
+  const [userEmail, setUserEmail] = useState("Loading...");
+  const [userName, setUserName] = useState("User");
 
-  // Initialize collapsed state based on sidebar state
+  // Decode JWT on mount to get user info
   useEffect(() => {
-    if (state === "collapsed") {
-      setIsCollapsed(true);
-    } else if (state === "expanded") {
-      setIsCollapsed(false);
+    const claims = getAuthClaims();
+    if (claims?.sub) {
+      setUserEmail(claims.sub);
+      setUserName(getDisplayNameFromEmail(claims.sub));
     }
+    if (claims?.role) {
+      setActiveUserRole(claims.role);
+    }
+  }, [pathname]);
+
+  // --- NEW: Logout Handler ---
+  const handleLogout = () => {
+    clearStoredAuthToken();
+    window.location.href = "/auth/login";
+  };
+
+  const handleSwitchRole = async () => {
+    if (role === "analytics") {
+      router.push("/seller/dashboard");
+      return;
+    }
+
+    const targetRole = switchInfo.role as AuthUserRole;
+    try {
+      setIsSwitchingRole(true);
+      const response = await apiClient.post("/auth/switch-role", { role: targetRole });
+
+      const newToken = response?.data?.access_token;
+      if (!newToken || typeof newToken !== "string") {
+        throw new Error("Role switch did not return a valid access token");
+      }
+
+      const newClaims = getAuthClaimsFromToken(newToken);
+      if (!newClaims || newClaims.role !== targetRole) {
+        throw new Error("Role switch returned a token with unexpected role");
+      }
+
+      setStoredAuthToken(newToken);
+      setActiveUserRole(targetRole);
+      window.location.href = getHomePathByRole(targetRole);
+    } catch (error) {
+      console.error("Failed to switch role", error);
+    } finally {
+      setIsSwitchingRole(false);
+    }
+  };
+
+  useEffect(() => {
+    if (state === "collapsed") setIsCollapsed(true);
+    else if (state === "expanded") setIsCollapsed(false);
   }, [state]);
 
-  // Sync isCollapsed with sidebar open state
   useEffect(() => {
     setOpen(!isCollapsed);
   }, [isCollapsed, setOpen]);
@@ -154,24 +199,19 @@ export function NavSidebar() {
 
   const navItems = useMemo(() => {
     switch (role) {
-      case "buyer":
-        return buyerNavItems;
-      case "analytics":
-        return analyticsNavItems;
-      default:
-        return sellerNavItems;
+      case "buyer": return buyerNavItems;
+      case "analytics": return analyticsNavItems;
+      default: return sellerNavItems;
     }
   }, [role]);
 
   const switchInfo = useMemo(() => getSwitchInfo(role), [role]);
-
   const isAnalyticsPage = pathname.startsWith("/analytics-dashboard");
-
   const shouldShowProfile = !isAnalyticsPage;
 
   return (
     <div className="relative flex h-screen">
-      {/* Sidebar Collapsing and Expanding */}
+      {/* ... (Keep your existing collapse/expand Tooltip button here) ... */}
       {isCollapsed && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -191,11 +231,7 @@ export function NavSidebar() {
                   <PanelLeftIcon className="w-5 h-5 text-gray-700 group-hover:text-gray-900 transform rotate-180" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent
-                side="right"
-                sideOffset={10}
-                className="z-[9999] bg-gray-900 text-white text-xs"
-              >
+              <TooltipContent side="right" sideOffset={10} className="z-[9999] bg-gray-900 text-white text-xs">
                 Expand sidebar
               </TooltipContent>
             </Tooltip>
@@ -214,6 +250,8 @@ export function NavSidebar() {
             className="h-screen"
           >
             <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
+              
+              {/* ... (Keep your Logo and Nav Links identical here) ... */}
               <SidebarContent className="flex-1 flex flex-col">
                 <SidebarGroup>
                   <div className="flex items-center justify-between relative">
@@ -234,16 +272,11 @@ export function NavSidebar() {
                             type="button"
                             onClick={() => setIsCollapsed(true)}
                             className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                            aria-label="Collapse sidebar"
                           >
                             <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
                           </button>
                         </TooltipTrigger>
-                        <TooltipContent
-                          side="right"
-                          sideOffset={10}
-                          className="z-[9999] bg-gray-900 text-white text-xs"
-                        >
+                        <TooltipContent side="right" sideOffset={10} className="z-[9999] bg-gray-900 text-white text-xs">
                           Collapse sidebar
                         </TooltipContent>
                       </Tooltip>
@@ -255,15 +288,10 @@ export function NavSidebar() {
                   <SidebarGroupContent className="px-3 space-y-4 flex-grow">
                     {role === "seller" && (
                       <div className="mb-6">
-                        <Link
-                          href="/seller/create-auction"
-                          className="block focus:outline-none focus:ring-2 focus:ring-[#3A5A40] focus:ring-offset-2 rounded-lg"
-                        >
+                        <Link href="/seller/create-auction" className="block focus:outline-none focus:ring-2 focus:ring-[#3A5A40] focus:ring-offset-2 rounded-lg">
                           <button className="w-full flex items-center justify-center gap-2 bg-[#3A5A40] text-white py-3 rounded-lg font-bold shadow-md hover:bg-[#2A402E] transition-all hover:shadow-lg">
                             <Plus className="w-5 h-5" aria-hidden="true" />
-                            <span>
-                              Create Auction
-                            </span>
+                            <span>Create Auction</span>
                           </button>
                         </Link>
                       </div>
@@ -273,31 +301,16 @@ export function NavSidebar() {
                       {navItems.map((item) => {
                         const isActive = isActivePath(item.href);
                         const Icon = item.icon;
-
                         return (
                           <SidebarMenuItem key={item.href}>
                             <SidebarMenuButton
                               asChild
                               isActive={isActive}
                               className={`w-full transition-all duration-200 rounded-md p-3
-                                ${
-                                  isActive
-                                    ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]"
-                                    : "text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40]"
-                                }`}
+                                ${isActive ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]" : "text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40]"}`}
                             >
-                              <Link
-                                href={item.href}
-                                className="flex items-center gap-3"
-                                aria-current={isActive ? "page" : undefined}
-                              >
-                                <Icon
-                                  className={`w-5 h-5 ${
-                                    isActive
-                                      ? "text-[#3A5A40]"
-                                      : "text-gray-500"
-                                  }`}
-                                />
+                              <Link href={item.href} className="flex items-center gap-3">
+                                <Icon className={`w-5 h-5 ${isActive ? "text-[#3A5A40]" : "text-gray-500"}`} />
                                 <span className="text-sm">{item.name}</span>
                               </Link>
                             </SidebarMenuButton>
@@ -316,21 +329,15 @@ export function NavSidebar() {
                     <SidebarMenuItem>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <SidebarMenuButton
-                            size="lg"
-                            className="w-full hover:bg-gray-50"
-                            aria-label="User profile menu"
-                          >
+                          <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
                             <div className="flex items-center gap-3 w-full">
-                              <div
-                                className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]"
-                                aria-hidden="true"
-                              >
+                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
                                 <User2 className="w-5 h-5" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
+                                {/* DYNAMIC NAME */}
                                 <span className="truncate font-semibold text-gray-800">
-                                  Kenmare Estate
+                                  {userName}
                                 </span>
                                 <span className="truncate text-xs text-gray-500 capitalize">
                                   {getRoleDisplayName(role)} Account
@@ -352,26 +359,17 @@ export function NavSidebar() {
                                 <User2 className="w-6 h-6" />
                               </div>
                               <div className="grid flex-1 text-left text-sm leading-tight">
-                                <span className="truncate font-semibold">
-                                  Kenmare Estate
-                                </span>
-                                <span className="truncate text-xs text-gray-500">
-                                  kenmareestate@gmail.com
-                                </span>
+                                {/* DYNAMIC NAME & EMAIL */}
+                                <span className="truncate font-semibold">{userName}</span>
+                                <span className="truncate text-xs text-gray-500">{userEmail}</span>
                               </div>
                             </div>
                           </DropdownMenuLabel>
 
                           <DropdownMenuSeparator />
 
-                          <DropdownMenuItem
-                            asChild
-                            className="cursor-pointer hover:bg-gray-50"
-                          >
-                            <Link
-                              href="/profile"
-                              className="flex items-center w-full"
-                            >
+                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                            <Link href="/profile" className="flex items-center w-full">
                               <User className="mr-2 h-4 w-4 text-gray-500" />
                               <span>My Profile</span>
                             </Link>
@@ -379,30 +377,22 @@ export function NavSidebar() {
 
                           {/* Switch Role */}
                           <DropdownMenuItem
-                            asChild
                             className="cursor-pointer hover:bg-gray-50"
+                            disabled={isSwitchingRole}
+                            onClick={handleSwitchRole}
                           >
-                            <Link
-                              href={switchInfo.path}
-                              className="flex items-center w-full"
-                            >
-                              <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                              <span>
-                                Switch to {getRoleDisplayName(switchInfo.role)}
-                              </span>
-                            </Link>
+                            <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                            <span>
+                              {isSwitchingRole
+                                ? "Switching role..."
+                                : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                            </span>
                           </DropdownMenuItem>
 
                           {/* Analytics Link */}
                           {role !== "analytics" && (
-                            <DropdownMenuItem
-                              asChild
-                              className="cursor-pointer hover:bg-gray-50"
-                            >
-                              <Link
-                                href="/analytics-dashboard"
-                                className="flex items-center w-full"
-                              >
+                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                              <Link href="/analytics-dashboard" className="flex items-center w-full">
                                 <History className="mr-2 h-4 w-4 text-gray-500" />
                                 <span>Analytics Dashboard</span>
                               </Link>
@@ -411,12 +401,10 @@ export function NavSidebar() {
 
                           <DropdownMenuSeparator />
 
+                          {/* --- DYNAMIC LOGOUT BUTTON --- */}
                           <DropdownMenuItem
                             className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
-                            onClick={() => {
-                              localStorage.removeItem("role");
-                              console.log("Logging out...");
-                            }}
+                            onClick={handleLogout}
                           >
                             <LogOut className="mr-2 h-4 w-4" />
                             <span>Log out</span>

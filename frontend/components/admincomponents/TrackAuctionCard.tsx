@@ -2,21 +2,26 @@
 
 type TrackAuctionCardProps = {
     auctionName: string;
-    createdDetails?: string;
-    bidedDetails?: string;
-    wonDetails?: string;
-    paymentDetails?: string;
+    estateName: string;
+    grade: string;
+    quantity: number;
+    basePrice: number;
+    status: string;
+    buyer?: string;
+    soldPrice?: number;
 };
 
-export function TrackAuctionCard({ auctionName, createdDetails, bidedDetails, wonDetails, paymentDetails }: TrackAuctionCardProps) {
+import { Box } from "lucide-react";
+
+export function TrackAuctionCard({ auctionName, estateName, grade, quantity, basePrice, status, buyer, soldPrice }: TrackAuctionCardProps) {
     return (
         <div className="bg-white rounded-xl shadow-md p-5  mb-5 w-full max-w-full min-w-0 block min-h-48">
-
+            
             {/* TOP ROW */}
             <div className="flex gap-4 items-start">
                 {/* Info Icon */}
                 <div className="w-8 h-8 rounded-full border flex items-center justify-center">
-                    <span className="font-bold">i</span>
+                    <Box className="w-4 h-4" />
                 </div>
 
                 {/* Content */}
@@ -26,10 +31,18 @@ export function TrackAuctionCard({ auctionName, createdDetails, bidedDetails, wo
                     </h3>
 
                     <div className="space-y-3 text-sm text-gray-600">
-                        <p><span className="font-medium">Created Details :</span> {createdDetails}</p>
-                        <p><span className="font-medium">Bided Details :</span> {bidedDetails}</p>
-                        <p><span className="font-medium">Won Details :</span> {wonDetails}</p>
-                        <p><span className="font-medium">Payment Details :</span> {paymentDetails}</p>
+                        <p><span className="font-medium">Estate Name :</span> {estateName}</p>
+                        <p><span className="font-medium">Grade :</span> {grade}</p>
+                        <p><span className="font-medium">Quantity :</span> {quantity}</p>
+                        <p><span className="font-medium">Base Price :</span> ${basePrice.toFixed(2)}</p>
+                        <p><span className="font-medium">Status :</span> {status}</p>
+                        {buyer && (
+                            <p><span className="font-medium">Buyer :</span> {buyer}</p>
+                    
+                        )}
+                        {soldPrice !== null && (
+                            <p><span className="font-medium">Sold Price :</span> ${soldPrice.toFixed(2)}</p>
+                        )}
                     </div>
                 </div>
             </div>

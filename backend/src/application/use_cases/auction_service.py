@@ -1,7 +1,9 @@
+from uuid import UUID
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.auction_repository import AuctionRepository
+from typing import Optional
 
 class AuctionService:
     def __init__(self, db: Session):
@@ -66,17 +68,17 @@ class AuctionService:
         self._update_auction_statuses()
         return self.repo.list_auctions()
     
-    def get_scheduled_auctions(self):
-        self._update_auction_statuses()
-        return self.repo.get_by_status("Scheduled")
+    def get_scheduled_auctions(self, seller_id: Optional[UUID] = None):
+        self._update_auction_statuses() # Keep your team's auto-update logic!
+        return self.repo.get_by_status("Scheduled", seller_id)
 
-    def get_live_auctions(self):
+    def get_live_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("Live")
+        return self.repo.get_by_status("Live", seller_id)
 
-    def get_history_auctions(self):
+    def get_history_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("History")
+        return self.repo.get_by_status("History", seller_id)
         
     def delete_auction(self, auction_id: str):
         return self.repo.delete(auction_id)
