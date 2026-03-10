@@ -9,12 +9,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1 import (
-    health, 
-    bid, 
-    auction, 
-    user, 
+    health,
+    bid,
+    auction,
+    user,
     order,
-    conversations, 
+    conversations,
     query,
     #dashboard,
     chat
@@ -23,6 +23,7 @@ from src.presentation.routers.v1 import (
 from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
 from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
+from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
 Base.metadata.create_all(bind=engine)
 
 
@@ -77,6 +78,9 @@ app = FastAPI(
     version="1.0.0",
     # lifespan=lifespan
 )
+
+# Create all database tables
+Base.metadata.create_all(bind=engine)
 
 # CORS setup
 settings = get_settings()
@@ -152,7 +156,7 @@ async def api_info():
 
 if __name__ == "__main__":
     import uvicorn
-     
+
     uvicorn.run(
         app,
         host="127.0.0.1",
@@ -161,4 +165,11 @@ if __name__ == "__main__":
     )
 app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
 
-# to run the app: uvicorn src.application.main:app --reload
+# Register admin CSV router
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
+
+# Register admin auction router
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
+
+# Register admin dashboard router
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
