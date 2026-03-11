@@ -3,33 +3,60 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.application.schemas.buyer.bid import Bid
 from src.application.use_cases.buyer.bid_service import BidService
+from src.application.use_cases.buyer.buyer_bid_service import BuyerBidService
 from src.application.use_cases.buyer.bid_realtime_service import BidRealtimeService
 from src.infrastructure.database.base import get_db
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
+import asyncio
+import logging
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/bids", tags=["bids"])
 
 def get_bid_service(db: Session = Depends(get_db)):
     return BidService(db)
 
+def get_buyer_bid_service(db: Session = Depends(get_db)):
+    return BuyerBidService(db)
 
 def get_bid_realtime_service() -> BidRealtimeService:
     return BidRealtimeService(auction_ws_manager)
 
-# Create a new bid
+# Create a new bid with auction timer logic
 @router.post("", response_model=Bid)
 async def create_bid(
     bid: Bid,
-    service: BidService = Depends(get_bid_service),
+    buyer_service: BuyerBidService = Depends(get_buyer_bid_service),
     realtime_service: BidRealtimeService = Depends(get_bid_realtime_service),
     current_user: User = Depends(get_current_buyer),
 ):
-    bid.buyer_id = str(current_user.user_id)
-    created = service.create_bid(bid)
-    await realtime_service.broadcast_bid_created(created)
-    return created
+    try:
+        bid.buyer_id = str(current_user.user_id)
+        
+        # Place bid with timer extension logic
+        result = buyer_service.place_bid(
+            auction_id=str(bid.auction_id),
+            buyer_id=str(current_user.user_id),
+            bid_amount=bid.bid_amount
+        )
+        
+        # Broadcast to all connected clients
+        asyncio.create_task(
+            realtime_service.broadcast_bid_created(result)
+        )
+        
+        logger.info(f"✅ Bid placed: {result['bid'].bid_amount}")
+        
+        return result["bid"]
+    
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.error(f"Error placing bid: {e}")
+        raise HTTPException(status_code=500, detail="Error placing bid")
 
 # List bids with optional filters
 @router.get("", response_model=List[Bid])

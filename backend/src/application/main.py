@@ -24,8 +24,9 @@ from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as b
 from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
-Base.metadata.create_all(bind=engine)
+from src.infrastructure.services.auction_manager import auction_manager
 
+Base.metadata.create_all(bind=engine)
 
 load_dotenv()
 
@@ -71,12 +72,41 @@ logger = logging.getLogger(__name__)
 #                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
 
-# Create FastAPI application
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """FastAPI lifespan context manager for startup/shutdown"""
+    # ---- STARTUP ----
+    logger.info("🚀 Starting TeaBlendAI FastAPI server")
+    
+    # Start auction manager background task
+    auction_task = asyncio.create_task(auction_manager.start_background_task())
+    app.state.auction_task = auction_task
+    
+    logger.info("✅ All background tasks started")
+    
+    try:
+        yield
+    finally:
+        # ---- SHUTDOWN ----
+        logger.info("🛑 Shutting down TeaBlendAI server")
+        
+        # Stop auction manager
+        auction_manager.stop()
+        
+        try:
+            await asyncio.wait_for(auction_task, timeout=5.0)
+        except asyncio.TimeoutError:
+            logger.warning("Auction manager task did not complete in time")
+        
+        logger.info("✅ Shutdown complete")
+
+
+# Create FastAPI application with lifespan
 app = FastAPI(
     title="Tea Auction Platform",
     description="Backend API for TeaBlendAI",
     version="1.0.0",
-    # lifespan=lifespan
+    lifespan=lifespan
 )
 
 # Create all database tables
@@ -128,6 +158,14 @@ app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"]
 app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
 
+# WebSocket routers
+app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
+
+# Admin routers
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
 @app.get("/")
 async def root():
     """Root endpoint."""
@@ -140,7 +178,8 @@ async def root():
             "Tea auction management",
             "AI-powered chatbot",
             "MCP tool integration",
-            "Real-time analytics"
+            "Real-time analytics",
+            "Live auction timer with dynamic extension"
         ]
     }
 
@@ -159,7 +198,11 @@ async def api_info():
             "conversations": "/api/v1/conversations",
             "dashboard": "/api/v1/dashboard"
         },
-        "documentation": "/docs"
+        "documentation": "/docs",
+        "features": {
+            "auction_timer": "Dynamic 10s extension on bid near deadline",
+            "grace_period": "30s after winner declared before closing"
+        }
     }
 
 if __name__ == "__main__":
@@ -171,13 +214,3 @@ if __name__ == "__main__":
         port=5000,
         log_level="info"
     )
-app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
-
-# Register admin CSV router
-app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
-
-# Register admin auction router
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
-
-# Register admin dashboard router
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])

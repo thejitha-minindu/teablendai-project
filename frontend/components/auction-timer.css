@@ -1,0 +1,349 @@
+/* Auction Timer Styles */
+
+.auction-timer-container {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  min-width: 320px;
+}
+
+/* Status Badges */
+.timer-status {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.badge-live {
+  background: rgba(255, 68, 68, 0.3);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+}
+
+.badge-won {
+  background: rgba(76, 175, 80, 0.3);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+}
+
+.badge-closed {
+  background: rgba(144, 202, 249, 0.3);
+  border: 1px solid rgba(144, 202, 249, 0.5);
+}
+
+/* Timer Display */
+.timer-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin: 20px 0;
+}
+
+.timer-value {
+  font-size: 3rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+  margin: 0;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Timer States */
+.timer-live .timer-value {
+  color: #ffffff;
+}
+
+.timer-urgent .timer-value {
+  color: #ffeb3b;
+  animation: pulse-urgent 0.6s ease-in-out infinite;
+}
+
+.timer-won .timer-value {
+  color: #4caf50;
+  animation: pulse-won 0.8s ease-in-out infinite;
+}
+
+.timer-closed .timer-value {
+  color: #90caf9;
+}
+
+/* Animations */
+@keyframes pulse-urgent {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 2px 8px rgba(255, 235, 59, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    text-shadow: 0 4px 16px rgba(255, 235, 59, 0.6);
+  }
+}
+
+@keyframes pulse-won {
+  0%, 100% {
+    transform: scale(1);
+    text-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    text-shadow: 0 4px 16px rgba(76, 175, 80, 0.6);
+  }
+}
+
+@keyframes extended-pulse {
+  0%, 100% {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.4);
+  }
+}
+
+.extended-pulse {
+  animation: extended-pulse 0.8s ease-in-out;
+}
+
+/* Extension Badge */
+.extension-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 193, 7, 0.2);
+  border: 1px solid rgba(255, 193, 7, 0.5);
+  border-radius: 20px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffc107;
+  animation: fadeInOut 0.6s ease-out;
+}
+
+@keyframes fadeInOut {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.8;
+    transform: scale(1);
+  }
+}
+
+.pulse-icon {
+  display: inline-block;
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Warning Text */
+.warning-text {
+  display: inline-block;
+  padding: 8px 12px;
+  background: rgba(255, 68, 68, 0.3);
+  border: 1px solid rgba(255, 68, 68, 0.5);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #ffcdd2;
+  animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+/* Bid Information */
+.bid-info {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.bid-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+}
+
+.stat-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* Won Container */
+.won-container {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(76, 175, 80, 0.15);
+  border: 2px solid rgba(76, 175, 80, 0.5);
+  border-radius: 8px;
+}
+
+.won-info {
+  text-align: center;
+}
+
+.won-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.won-info p {
+  margin: 4px 0;
+  font-size: 0.875rem;
+  opacity: 0.95;
+}
+
+.grace-text {
+  margin-top: 8px;
+  font-size: 0.875rem;
+}
+
+.grace-text strong {
+  color: #90ee90;
+  font-size: 1.125rem;
+}
+
+/* Closed Container */
+.closed-container {
+  margin-top: 16px;
+  padding: 16px;
+  background: rgba(144, 202, 249, 0.15);
+  border: 2px solid rgba(144, 202, 249, 0.5);
+  border-radius: 8px;
+}
+
+.closed-info {
+  text-align: center;
+}
+
+.closed-info h3 {
+  margin: 0 0 12px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.winner-text {
+  margin: 0;
+  font-size: 0.875rem;
+  opacity: 0.95;
+}
+
+.final-price {
+  margin: 8px 0 0 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #a5d6ff;
+}
+
+/* Connection Status */
+.connection-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding: 8px;
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-green {
+  background: #4caf50;
+  animation: blink-green 1.5s ease-in-out infinite;
+}
+
+.dot-red {
+  background: #f44336;
+  animation: blink-red 1s ease-in-out infinite;
+}
+
+@keyframes blink-green {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+@keyframes blink-red {
+  0%, 100% {
+    opacity: 1;
+  }
+  25%, 75% {
+    opacity: 0.3;
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 480px) {
+  .auction-timer-container {
+    padding: 16px;
+    min-width: 100%;
+  }
+
+  .timer-value {
+    font-size: 2.5rem;
+  }
+
+  .bid-info {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-value {
+    font-size: 1.125rem;
+  }
+}
