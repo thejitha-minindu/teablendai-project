@@ -37,6 +37,10 @@ class AuctionRepository(AuctionRepositoryInterface):
     def list_auctions(self):
         return self.db.query(AuctionModel).all()
 
+    def get_all(self):
+        """Get all auctions - required by abstract interface"""
+        return self.db.query(AuctionModel).all()
+
     def get_by_status(self, status: str, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
         query = self.db.query(AuctionModel).filter(AuctionModel.status == status)
         

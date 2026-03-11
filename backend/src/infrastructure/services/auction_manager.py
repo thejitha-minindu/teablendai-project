@@ -1,7 +1,3 @@
-"""
-Auction Manager Service
-Handles background tasks for auction auto-closure
-"""
 import asyncio
 import logging
 from datetime import datetime, timedelta
@@ -13,7 +9,8 @@ from src.domain.models.order import Order, OrderStatus
 
 logger = logging.getLogger(__name__)
 
-GRACE_PERIOD_SECONDS = 30  # 30 seconds after winner declared
+GRACE_PERIOD_SECONDS = 30
+WAIT_BEFORE_WIN = 10
 
 
 class AuctionManager:
@@ -21,101 +18,105 @@ class AuctionManager:
         self.running = False
         
     async def start_background_task(self):
-        """Start the background auction closer task"""
+
+        # This method should be called once when the application starts
         self.running = True
-        logger.info("✅ Auction manager background task started")
+        logger.info("Auction manager background task started (0.5s intervals)")
         
         while self.running:
             try:
                 await self.process_auctions()
-                await asyncio.sleep(1)  # Check every 1 second
+                await asyncio.sleep(0.5)
             except Exception as e:
-                logger.error(f"❌ Error in auction manager: {e}", exc_info=True)
-                await asyncio.sleep(1)
+                logger.error(f"Error in auction manager: {e}", exc_info=True)
+                await asyncio.sleep(0.5)
     
     async def process_auctions(self):
-        """
-        Process all auctions:
-        1. Check Live auctions - if 10s with no bids → status = "Won"
-        2. Check Won auctions - if grace period passed → status = "Closed"
-        """
+
         db = SessionLocal()
         try:
             current_time = datetime.utcnow()
             
-            # -------- PROCESS LIVE AUCTIONS --------
+            scheduled_auctions = db.query(Auction).filter(
+                Auction.status == "Scheduled"
+            ).all()
+            
+            for auction in scheduled_auctions:
+                if current_time >= auction.start_time:
+                    auction.status = "Live"
+                    auction.end_time = auction.start_time + timedelta(seconds=auction.duration)
+                    db.commit()
+                    logger.info(f"Auction activated: {auction.auction_id}")
+            
             live_auctions = db.query(Auction).filter(
-                Auction.status == "Live"
+                Auction.status == "Live",
+                Auction.buyer.is_(None)
             ).all()
             
             for auction in live_auctions:
-                if auction.end_time and current_time >= auction.end_time:
-                    # end_time reached, check if enough time passed since last bid
-                    if auction.last_bid_time:
-                        time_since_last_bid = (current_time - auction.last_bid_time).total_seconds()
+                if current_time >= auction.end_time:
+
+                    # Get highest bid
+                    highest_bid = db.query(Bid).filter(
+                        Bid.auction_id == auction.auction_id
+                    ).order_by(Bid.bid_amount.desc()).first()
+                    
+                    if highest_bid:
+                        time_since_last_bid = (current_time - highest_bid.bid_time).total_seconds()
                         
-                        if time_since_last_bid >= 10:
-                            # ✅ NO BID FOR 10 SECONDS = WINNER DECLARED!
-                            await self._declare_winner(auction, db, current_time)
+                        if time_since_last_bid >= WAIT_BEFORE_WIN:
+                            await self._mark_winner(auction, highest_bid, db)
             
-            # -------- PROCESS WON AUCTIONS --------
             won_auctions = db.query(Auction).filter(
-                Auction.status == "Won"
+                Auction.status == "Live",
+                Auction.buyer.isnot(None)
             ).all()
             
             for auction in won_auctions:
-                if auction.final_end_time and current_time >= auction.final_end_time:
-                    # Grace period expired = fully closed
-                    await self._close_auction(auction, db)
+
+                # Get last bid time
+                last_bid = db.query(Bid).filter(
+                    Bid.auction_id == auction.auction_id
+                ).order_by(Bid.bid_time.desc()).first()
+                
+                if last_bid:
+                    grace_end_time = last_bid.bid_time + timedelta(seconds=40)
+                    
+                    if current_time >= grace_end_time:
+                        # Grace period expired = fully closed
+                        await self._close_auction(auction, db)
         
         except Exception as e:
             logger.error(f"Error processing auctions: {e}", exc_info=True)
         finally:
             db.close()
     
-    async def _declare_winner(self, auction: Auction, db: Session, current_time: datetime):
-        """
-        Declare winner when 10 seconds pass with no bids
-        Status: Live → Won
-        """
+    async def _mark_winner(self, auction: Auction, highest_bid: Bid, db: Session):
+
+        # Set buyer and sold price
         try:
-            # Get highest bid
-            highest_bid = db.query(Bid).filter(
-                Bid.auction_id == auction.auction_id
-            ).order_by(Bid.bid_amount.desc()).first()
+            auction.buyer = highest_bid.buyer_id
+            auction.sold_price = highest_bid.bid_amount
             
-            if highest_bid:
-                auction.status = "Won"
-                auction.buyer = str(highest_bid.buyer_id)
-                auction.sold_price = highest_bid.bid_amount
-                auction.winning_time = auction.last_bid_time
-                auction.final_end_time = current_time + timedelta(seconds=GRACE_PERIOD_SECONDS)
-                
-                db.commit()
-                
-                logger.info(f"🏆 WINNER DECLARED: {auction.auction_id}")
-                logger.info(f"   Winner: {highest_bid.buyer_id}")
-                logger.info(f"   Amount: ${highest_bid.bid_amount}")
-                logger.info(f"   Grace period until: {auction.final_end_time}")
+            db.commit()
+            
+            logger.info(f"   WINNER MARKED: {auction.auction_id}")
+            logger.info(f"   Winner: {highest_bid.buyer_id}")
+            logger.info(f"   Amount: ${highest_bid.bid_amount}")
+            logger.info(f"   Grace period: 30 seconds")
         
         except Exception as e:
-            logger.error(f"Error declaring winner for {auction.auction_id}: {e}")
+            logger.error(f"Error marking winner for {auction.auction_id}: {e}")
             db.rollback()
     
     async def _close_auction(self, auction: Auction, db: Session):
-        """
-        Close auction after grace period expires
-        Status: Won → Closed
-        """
         try:
             auction.status = "Closed"
-            
-            # Create order if not exists
             existing_order = db.query(Order).filter(
                 Order.auction_id == auction.auction_id
             ).first()
             
-            if not existing_order:
+            if not existing_order and auction.buyer:
                 order = Order(
                     user_id=auction.buyer,
                     auction_id=auction.auction_id,
@@ -127,7 +128,7 @@ class AuctionManager:
             
             db.commit()
             
-            logger.info(f"✅ AUCTION CLOSED: {auction.auction_id}")
+            logger.info(f"   AUCTION CLOSED: {auction.auction_id}")
             logger.info(f"   Order confirmed for {auction.buyer}")
         
         except Exception as e:
@@ -135,10 +136,7 @@ class AuctionManager:
             db.rollback()
     
     def stop(self):
-        """Stop the background task"""
         self.running = False
         logger.info("Auction manager stopped")
 
-
-# Global instance
 auction_manager = AuctionManager()

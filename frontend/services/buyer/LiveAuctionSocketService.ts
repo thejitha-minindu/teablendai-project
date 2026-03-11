@@ -1,6 +1,9 @@
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 
-const API_BASE_URL = `${process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1"}/buyer`;
+const API_BASE_URL = (() => {
+  const baseUrl = (process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1").replace(/\/$/, "");
+  return `${baseUrl}/buyer`;
+})();
 
 export function createAuctionBidSocket(
   auctionId: string,
@@ -8,13 +11,54 @@ export function createAuctionBidSocket(
   onOpen?: () => void,
   onClose?: () => void,
 ) {
-  const ws = new WebSocket(`${API_BASE_URL}/live/auction/${auctionId}`);
+  // Get JWT token from localStorage
+  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  
+  if (!token) {
+    console.error("No authentication token found. User must be logged in.");
+    onClose?.();
+    // Return a dummy WebSocket that won't connect
+    const dummyWs = new WebSocket("about:blank");
+    dummyWs.close();
+    return dummyWs;
+  }
 
-  ws.onopen = () => onOpen?.();
-  ws.onclose = () => onClose?.();
+  const wsUrl = `${API_BASE_URL}/live/auction/${auctionId}?token=${encodeURIComponent(token)}`;
+  console.log("Connecting to WebSocket:", wsUrl.substring(0, wsUrl.length - 20) + "...[token]");
+  
+  const ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    console.log("WebSocket connected for auction:", auctionId);
+    onOpen?.();
+  };
+  
+  ws.onclose = (event) => {
+    console.log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
+    onClose?.();
+  };
+  
+  ws.onerror = (event) => {
+    console.error("WebSocket error:", {
+      type: event.type,
+      timeStamp: event.timeStamp,
+      message: "Connection failed. Check if server is running and token is valid.",
+    });
+  };
+  
   ws.onmessage = (msg) => {
+    // Check for error messages from server
     try {
-      const parsed = JSON.parse(msg.data) as BidWsEvent;
+      const data = JSON.parse(msg.data);
+      
+      if (data.error) {
+        console.error("Server error via WebSocket:", data.error);
+        ws.close();
+        onClose?.();
+        return;
+      }
+      
+      const parsed = data as BidWsEvent;
       const normalized: BidWsEvent = {
         ...parsed,
         data: {
@@ -23,8 +67,8 @@ export function createAuctionBidSocket(
         },
       };
       onEvent(normalized);
-    } catch {
-      console.error('Failed to parse WebSocket message:', msg.data);
+    } catch (e) {
+      console.error('Failed to parse WebSocket message:', msg.data, e);
     }
   };
 

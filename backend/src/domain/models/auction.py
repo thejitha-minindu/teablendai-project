@@ -22,18 +22,10 @@ class Auction(Base):
     base_price = Column(Float, nullable=False)
     start_time = Column(DateTime, nullable=False)
     duration = Column(Float, nullable=False)
-    
-    # Timer fields for dynamic extension
-    end_time = Column(DateTime, nullable=True)  # Extends as bids come in
-    last_bid_time = Column(DateTime, nullable=True)  # When was last bid placed
-    winning_time = Column(DateTime, nullable=True)  # When winner is decided
-    final_end_time = Column(DateTime, nullable=True)  # Winning time + 30s grace period
-    bid_count = Column(Integer, default=0)  # Total bids count
-    
-    # Status: Scheduled → Live → Won → Closed
+    end_time = Column(DateTime, nullable=False)
     status = Column(String(20), default="Scheduled")
-    buyer = Column(String(64))
-    sold_price = Column(Float)
+    buyer = Column(UNIQUEIDENTIFIER, nullable=True)
+    sold_price = Column(Float, nullable=True)
     image_url = Column(String(256))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

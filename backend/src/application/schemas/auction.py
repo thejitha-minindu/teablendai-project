@@ -49,8 +49,8 @@ class AuctionCreate(BaseModel):
 class AuctionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    auction_id: UUID
-    seller_id: UUID
+    auction_id: str
+    seller_id: str
     seller_brand: Optional[str] = None
     grade: str
     quantity: float
@@ -63,3 +63,10 @@ class AuctionResponse(BaseModel):
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     created_at: datetime
+    
+    @field_validator('auction_id', 'seller_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
