@@ -66,13 +66,13 @@ def _build_db_url() -> str:
 
     if trusted:
         odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
+            "DRIVER={ODBC Driver 17 for SQL Server};"
             f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
             "TrustServerCertificate=yes;"
         )
     else:
         odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
+            "DRIVER={ODBC Driver 17 for SQL Server};"
             f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
             "TrustServerCertificate=yes;"
         )
