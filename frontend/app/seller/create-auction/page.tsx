@@ -33,7 +33,10 @@ export default function CreateAuctionPage() {
     setIsSubmitting(true);
 
     const payload = {
-      seller_brand: "My Estate",
+      auction_name: `${formData.grade} - ${formData.origin}`,
+      seller_brand: "My Estate", // Hardcoded for now (or add a field)
+      company_name: "My Estate",
+      estate_name: "My Estate",
       grade: formData.grade,
       quantity: parseFloat(formData.quantity),
       origin: formData.origin,
@@ -217,4 +220,4 @@ export default function CreateAuctionPage() {
       </div>
     </div>
   );
-}
+} 

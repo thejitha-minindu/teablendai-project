@@ -1,10 +1,5 @@
 """
 Query Intent Classifier
-
-Determines whether a question should be answered by:
-- Database (transactional data)
-- Web search (general knowledge)
-- Both (hybrid)
 """
 
 import logging
@@ -12,86 +7,74 @@ from typing import Literal
 
 logger = logging.getLogger(__name__)
 
-QueryIntent = Literal["database", "knowledge", "hybrid"]
+QueryIntent = Literal["database", "knowledge", "hybrid", "auction_management"]
 
 
 class IntentClassifier:
     """Classify user queries by intent"""
 
-    # Keywords that strongly indicate database query
+    # Auction action keywords
+    AUCTION_ACTION_KEYWORDS = {
+        # Create actions
+        'create auction', 'new auction', 'list tea', 'add auction',
+        'start auction', 'post auction', 'auction for',
+        
+        # Update actions
+        'update auction', 'change auction', 'modify auction',
+        'edit auction', 'update price', 'change price',
+        
+        # Delete actions
+        'delete auction', 'remove auction', 'cancel auction',
+        'close auction',
+        
+        # Schedule actions
+        'schedule auction', 'set time', 'set date',
+        'when should', 'schedule for',
+    }
+
     DATABASE_INDICATORS = {
-        # Quantitative questions
         'how many', 'how much', 'count', 'number of',
         'total', 'sum', 'average', 'median', 'min', 'max',
-        
-        # Data retrieval
         'show', 'show me', 'list', 'display', 'find',
         'get', 'fetch', 'give me', 'tell me the',
-        
-        # Business entities in YOUR system
         'customer', 'customers', 'buyer', 'buyers',
         'supplier', 'suppliers', 'vendor', 'vendors',
         'purchase', 'purchases', 'sale', 'sales',
         'transaction', 'order', 'invoice',
-        
-        # Data attributes
         'price', 'prices', 'cost', 'revenue',
         'quantity', 'amount', 'volume',
         'date', 'time', 'when', 'period',
         'region', 'location', 'area',
-        
-        # Possessive (indicates YOUR data)
         'our', 'we', 'my', 'company',
-        
-        # Aggregations
         'by region', 'by date', 'by type', 'by standard',
         'group by', 'breakdown', 'categorize',
-        
-        # Comparisons of data points
         'compare prices', 'compare sales', 'vs', 'versus',
-        'difference between prices', 'which customer',
         'top', 'bottom', 'highest', 'lowest', 'best', 'worst',
     }
 
-    # Keywords that strongly indicate knowledge query
     KNOWLEDGE_INDICATORS = {
-        # Educational/informational
         'what is', 'what are', 'what does', 'define',
         'explain', 'describe', 'tell me about',
-        
-        # Health & benefits
         'health benefit', 'benefits', 'good for',
         'healthy', 'nutritional', 'nutrition',
-        
-        # Methods & processes
         'how to', 'how should', 'how do i',
         'best way to', 'recommended way',
         'method', 'process', 'technique',
         'brew', 'brewing', 'steep', 'steeping',
         'prepare', 'preparation', 'make',
-        
-        # Properties & characteristics
         'properties', 'characteristics', 'features',
         'flavor', 'flavour', 'taste', 'aroma',
         'quality', 'grade explanation',
-        
-        # History & culture
         'history', 'historical', 'origin', 'originated',
         'traditional', 'culture', 'cultural',
         'famous for', 'known for',
-        
-        # Comparisons of concepts
         'difference between ceylon', 'compare assam',
-        'difference between oolong', 'what makes',
-        'why is', 'unique about',
-        
-        # General facts
+        'what makes', 'why is', 'unique about',
         'geography', 'climate', 'weather',
         'grows', 'grown', 'cultivation',
         'harvested', 'produced', 'production process',
     }
 
-    # Hybrid indicators (need both sources)
     HYBRID_INDICATORS = {
         'tell me about our', 'explain our',
         'what is bopf and how much', 'what is op and show',
@@ -104,18 +87,24 @@ class IntentClassifier:
         Classify question intent.
         
         Returns:
+            "auction_management" - Action commands for auctions
             "database" - Query transactional data
             "knowledge" - Search web for general info
             "hybrid" - Need both sources
         """
         q = question.lower().strip()
         
-        # Check hybrid first (most specific)
+        # Check for auction actions FIRST (highest priority)
+        if cls._is_auction_action(q):
+            logger.info(f"[Intent] AUCTION_MANAGEMENT: {question[:60]}")
+            return "auction_management"
+        
+        # Check hybrid
         if cls._contains_hybrid_indicators(q):
             logger.info(f"[Intent] HYBRID: {question[:60]}")
             return "hybrid"
         
-        # Count indicators for each type
+        # Count indicators for database vs knowledge
         db_score = cls._count_matches(q, cls.DATABASE_INDICATORS)
         knowledge_score = cls._count_matches(q, cls.KNOWLEDGE_INDICATORS)
         
@@ -131,15 +120,33 @@ class IntentClassifier:
             logger.info(f"[Intent] DATABASE: {question[:60]}")
             return "database"
         
-        # If no clear indicators, check question structure
-        # Questions starting with "what is/are" without data terms = knowledge
+        # Question structure
         if any(q.startswith(pattern) for pattern in ['what is', 'what are', 'why', 'how to']):
             logger.info(f"[Intent] KNOWLEDGE (by structure): {question[:60]}")
             return "knowledge"
         
-        # Default to database (safer to try data first, can fallback)
+        # Default to database
         logger.info(f"[Intent] DATABASE (default): {question[:60]}")
         return "database"
+
+    @classmethod
+    def _is_auction_action(cls, question: str) -> bool:
+        """
+        Detect if question is an auction action command.
+        
+        Examples:
+        - "Create an auction for BOPF tea" → True
+        - "Show my auctions" → False (this is a query, not action)
+        - "Update auction #127 price to 600" → True
+        """
+        # Check for action keywords
+        if any(keyword in question for keyword in cls.AUCTION_ACTION_KEYWORDS):
+            # Additional check: "show/list my auctions" is a QUERY, not action
+            if any(phrase in question for phrase in ['show my auction', 'list my auction', 'view my auction', 'display my auction']):
+                return False
+            return True
+        
+        return False
 
     @classmethod
     def _contains_hybrid_indicators(cls, question: str) -> bool:

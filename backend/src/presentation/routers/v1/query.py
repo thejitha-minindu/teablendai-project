@@ -32,6 +32,15 @@ class QueryResponse(BaseModel):
     conversation_id: Optional[int] = None
     answer: str
     source: str
+    data_type: Optional[str] = None
+    state: Optional[str] = None
+    message_type: Optional[str] = None
+    prompt_type: Optional[str] = None
+    field_metadata: Optional[Dict[str, Any]] = None
+    input_request: Optional[Dict[str, Any]] = None
+    validation_payload: Optional[Dict[str, Any]] = None
+    auction_payload: Optional[Dict[str, Any]] = None
+    result_payload: Optional[Dict[str, Any]] = None
     row_count: int = 0
     timestamp: str
     sql_query: Optional[str] = None
@@ -82,6 +91,15 @@ async def query_tea(
             conversation_id=result.get("conversation_id"),
             answer=result.get("answer", ""),
             source=result.get("source", "fallback"),
+            data_type=result.get("data_type"),
+            state=result.get("state"),
+            message_type=result.get("message_type"),
+            prompt_type=result.get("prompt_type"),
+            field_metadata=result.get("field_metadata"),
+            input_request=result.get("input_request"),
+            validation_payload=result.get("validation_payload"),
+            auction_payload=result.get("auction_payload"),
+            result_payload=result.get("result_payload"),
             row_count=int(result.get("row_count", 0) or 0),
             timestamp=result.get("timestamp", datetime.utcnow().isoformat()),
             sql_query=result.get("sql_query"),

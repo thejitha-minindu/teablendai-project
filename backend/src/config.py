@@ -1,11 +1,41 @@
 # Centralized config
 import os
+import logging
 from typing import List, Optional
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+
+
+def resolve_model_name(raw_model_name: Optional[str]) -> str:
+    """Normalize model names and handle deprecated aliases safely."""
+    if not raw_model_name:
+        return DEFAULT_GEMINI_MODEL
+
+    normalized = str(raw_model_name).strip().strip('"').strip("'").strip().rstrip(",")
+    if not normalized:
+        return DEFAULT_GEMINI_MODEL
+
+    alias_map = {
+        "gemini-1.5-flash-latest": "gemini-1.5-flash",
+        "gemini-1.5-pro-latest": "gemini-1.5-pro",
+    }
+
+    resolved = alias_map.get(normalized, normalized)
+    if resolved != normalized:
+        logger.warning(
+            "MODEL_NAME '%s' is deprecated/unsupported, using '%s' instead",
+            normalized,
+            resolved,
+        )
+
+    return resolved
 
 # Get the backend directory path
 BACKEND_DIR = Path(__file__).parent.parent
@@ -22,6 +52,8 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
+    MODEL_NAME: str = DEFAULT_GEMINI_MODEL
+    GOOGLE_API_KEY: Optional[str] = None
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
@@ -99,6 +131,9 @@ def get_settings() -> Settings:
     global _settings_instance
     if _settings_instance is None:
         _settings_instance = Settings()
+        _settings_instance.MODEL_NAME = resolve_model_name(
+            getattr(_settings_instance, "MODEL_NAME", None)
+        )
     return _settings_instance
 
 # Create default instance for backward compatibility
@@ -154,7 +189,9 @@ def get_mssql_connection_string(
 __all__ = [
     'Settings',
     'get_settings',
+    'resolve_model_name',
     'settings',
     'get_mssql_connection_string',
-    'BACKEND_DIR'
+    'BACKEND_DIR',
+    'DEFAULT_GEMINI_MODEL',
 ]

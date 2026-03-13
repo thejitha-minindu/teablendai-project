@@ -13,41 +13,57 @@ class AuctionService:
         # We can add extra business logic here later (e.g. validate seller limit)
         return self.repo.create_auction(auction_data)
 
+    @staticmethod
+    def _normalize_datetime_for_compare(dt_value: datetime) -> datetime:
+        """Normalize DB datetime to naive local datetime for fair comparisons."""
+        if dt_value.tzinfo is not None:
+            return dt_value.astimezone().replace(tzinfo=None)
+        return dt_value
+
+    @staticmethod
+    def _duration_to_minutes(duration_value: float) -> int:
+        """Support legacy hours and new minutes storage for duration."""
+        try:
+            duration = float(duration_value)
+        except (TypeError, ValueError):
+            return 0
+
+        if duration <= 0:
+            return 0
+
+        # Legacy records often use hours (e.g. 24), newer flow stores minutes (e.g. 900)
+        if duration <= 24:
+            return int(round(duration * 60))
+
+        return int(round(duration))
+
     def _update_auction_statuses(self):
         """
         1. Checks 'Scheduled' -> 'Live' (Start Time passed)
         2. Checks 'Live' -> 'History' (Duration ended)
         """
-        # Get Current UTC Time (Naive) to match Database storage
-        now_utc = datetime.utcnow() 
+        # Compare against local naive time because user-entered times are local/naive.
+        now_local = datetime.now()
 
         # --- PART 1: Scheduled -> Live ---
         scheduled = self.repo.get_by_status("Scheduled")
         for auction in scheduled:
-            # Strip timezone info from DB time to ensure fair comparison
-            db_time = auction.start_time
-            if db_time.tzinfo is not None:
-                db_time = db_time.replace(tzinfo=None)
+            db_time = self._normalize_datetime_for_compare(auction.start_time)
 
             # If start time is passed, make it LIVE
-            if db_time <= now_utc:
+            if db_time <= now_local:
                 auction.status = "Live"
                 self.repo.db.add(auction)
 
         # --- PART 2: Live -> History (NEW LOGIC) ---
         live_auctions = self.repo.get_by_status("Live")
         for auction in live_auctions:
-            # Strip timezone info
-            start_time = auction.start_time
-            if start_time.tzinfo is not None:
-                start_time = start_time.replace(tzinfo=None)
-            
-            # Calculate End Time
-            # duration is usually stored as hours (float or int)
-            end_time = start_time + timedelta(hours=auction.duration)
+            start_time = self._normalize_datetime_for_compare(auction.start_time)
+            duration_minutes = self._duration_to_minutes(auction.duration)
+            end_time = start_time + timedelta(minutes=duration_minutes)
 
             # If current time is past end time, move to History
-            if now_utc >= end_time:
+            if now_local >= end_time:
                 auction.status = "History"
                 # Optionally set a default result if no buyer exists
                 if not auction.buyer:
@@ -62,6 +78,7 @@ class AuctionService:
         return self.repo.update(auction_id, data_dict)
 
     def get_auction(self, auction_id: str):
+        self._update_auction_statuses()
         return self.repo.get_auction(auction_id)
 
     def list_auctions(self):

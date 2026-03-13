@@ -98,6 +98,15 @@ export default function ChatbotPage() {
         visualization_type: response.visualization_type,
         visualization: response.visualization,
         source: response.source,
+        data_type: response.data_type,
+        state: response.state,
+        message_type: response.message_type,
+        prompt_type: response.prompt_type,
+        field_metadata: response.field_metadata,
+        input_request: response.input_request,
+        validation_payload: response.validation_payload,
+        auction_payload: response.auction_payload,
+        result_payload: response.result_payload,
         row_count: response.row_count,
         search_results: response.search_results,
         error: response.error,
@@ -158,6 +167,12 @@ export default function ChatbotPage() {
   };
 
   const hasMessages = messages.length > 0;
+  const latestAssistantIndex = messages.reduce((latest, msg, index) => {
+    if (msg.role === "assistant") {
+      return index;
+    }
+    return latest;
+  }, -1);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -179,14 +194,22 @@ export default function ChatbotPage() {
             className="flex-1 overflow-y-auto px-6 py-4 space-y-4"
           >
             <AnimatePresence mode="popLayout">
-              {messages.map((message) => (
+              {messages.map((message, index) => (
                 <motion.div
                   key={message.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
                 >
-                  <MessageBubble message={message} />
+                  <MessageBubble
+                    message={message}
+                    onSendMessage={handleSendMessage}
+                    isActionEnabled={
+                      message.role === "assistant" &&
+                      index === latestAssistantIndex &&
+                      !message.isLoading
+                    }
+                  />
                 </motion.div>
               ))}
             </AnimatePresence>

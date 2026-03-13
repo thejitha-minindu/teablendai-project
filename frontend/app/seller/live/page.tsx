@@ -5,11 +5,43 @@ import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { LiveAuctionModal } from '@/components/features/seller/AuctionModal';
 import { apiClient } from '@/lib/apiClient';
 
+const parseBackendDateTime = (dateString: string) => {
+  if (!dateString) return null;
+
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new Date(dateString);
+  }
+
+  const normalized = dateString.replace(' ', 'T');
+  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
+  const timePart = timePartRaw.split('.')[0];
+
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
+
+  return new Date(
+    year,
+    (month || 1) - 1,
+    day || 1,
+    Number(hours),
+    Number(minutes),
+    Number(seconds)
+  );
+};
+
+const durationToMinutes = (durationValue: number) => {
+  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
+  return durationValue > 24 ? durationValue : durationValue * 60;
+};
+
 // Helper to calculate time remaining
-const calculateCountdown = (startTime: string, durationHours: number) => {
-  const safeStartTime = startTime.endsWith('Z') ? startTime : startTime + 'Z';
-  const start = new Date(safeStartTime).getTime();
-  const end = start + (durationHours * 60 * 60 * 1000);
+const calculateCountdown = (startTime: string, durationValue: number) => {
+  const startDate = parseBackendDateTime(startTime);
+  if (!startDate || Number.isNaN(startDate.getTime())) return "Closing...";
+
+  const start = startDate.getTime();
+  const durationMinutes = durationToMinutes(durationValue);
+  const end = start + (durationMinutes * 60 * 1000);
   const now = new Date().getTime();
   const diff = end - now;
 
