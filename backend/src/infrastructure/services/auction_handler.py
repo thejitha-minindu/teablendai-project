@@ -44,6 +44,17 @@ class AuctionHandler:
     ):
         self.message_repo = message_repo
         self.mcp_client = mcp_client
+
+    @staticmethod
+    def _get_flow_reference_time(state: Any) -> datetime:
+        """Get create-flow start time used for start_time minimum validation."""
+        flow_started_at = state.partial_data.get("_flow_started_at") if state else None
+        if isinstance(flow_started_at, str):
+            try:
+                return datetime.fromisoformat(flow_started_at)
+            except ValueError:
+                pass
+        return state.created_at if state else datetime.now()
     
     async def handle_auction_management(
         self,
@@ -119,10 +130,12 @@ class AuctionHandler:
         
         # Extract any parameters from initial message
         required_fields = CREATE_AUCTION_FIELDS["required"].copy()
+        flow_started_at = datetime.now()
         
         extracted = await parameter_extractor.extract_parameters(
             user_message,
-            required_fields
+            required_fields,
+            reference_time=flow_started_at,
         )
 
         # Check for validation errors
@@ -138,7 +151,10 @@ class AuctionHandler:
             action="create",
             required_fields=required_fields,
             optional_fields=CREATE_AUCTION_FIELDS["optional"],
-            initial_data=extracted
+            initial_data={
+                **extracted,
+                "_flow_started_at": flow_started_at.isoformat(),
+            }
         )
 
         if validation_errors:
@@ -244,7 +260,8 @@ class AuctionHandler:
             extracted = await parameter_extractor.extract_parameters(
                 user_message,
                 missing_fields,
-                context=state.partial_data
+                context=state.partial_data,
+                reference_time=self._get_flow_reference_time(state),
             )
 
             # Check for validation errors
@@ -432,7 +449,8 @@ Please confirm if this is correct:
             extracted = await parameter_extractor.extract_parameters(
                 user_message,
                 state.required_fields + state.optional_fields,
-                context=state.partial_data
+                context=state.partial_data,
+                reference_time=self._get_flow_reference_time(state),
             )
             
             if extracted:

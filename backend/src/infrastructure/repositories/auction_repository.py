@@ -1,10 +1,10 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import text
-from typing import List
+from typing import List, Optional
 import uuid
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
-from src.infrastructure.repositories.admin.auction_repository import AuctionRepositoryInterface
+from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 
 class AuctionRepository(AuctionRepositoryInterface):
     DEV_SELLER_ID = "12345678-1234-5678-1234-567812345678"

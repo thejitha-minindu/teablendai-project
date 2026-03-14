@@ -6,7 +6,11 @@ Exports all ORM models and configures relationships
 
 from src.infrastructure.database.base import Base
 
-# Import models first
+# Import models first (ensures SQLAlchemy class registry is fully populated)
+from .user import User, FinancialDetails, WatchList
+from .auction import Auction
+from .bid import Bid
+from .order import Order, PaymentDetails, WinsAuction
 from .conversation import Conversation
 from .message import ChatMessage
 
@@ -30,6 +34,14 @@ ChatMessage.conversation = relationship(
 # Exports
 __all__ = [
     "Base",
+    "User",
+    "FinancialDetails",
+    "WatchList",
+    "Auction",
+    "Bid",
+    "Order",
+    "PaymentDetails",
+    "WinsAuction",
     "Conversation",
     "ChatMessage",
 ]

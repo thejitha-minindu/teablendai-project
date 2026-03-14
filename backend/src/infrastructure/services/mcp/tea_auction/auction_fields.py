@@ -188,7 +188,7 @@ def parse_datetime(datetime_str: str) -> datetime:
     normalized = re.sub(r"(?i)(\d)(am|pm)\b", r"\1 \2", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
 
-    now = datetime.utcnow()
+    now = datetime.now()
 
     # Handle relative dates (today, tomorrow)
     relative_prefixes = {
@@ -248,7 +248,7 @@ def parse_datetime(datetime_str: str) -> datetime:
         "'March 14, 2026 at 9:30 AM' or 'today at 10:15 PM'"
     )
 
-def validate_field_value(field_name: str, value: Any) -> Tuple[bool, str]:
+def validate_field_value(field_name: str, value: Any, reference_time: datetime = None) -> Tuple[bool, str]:
     """
     Validate a field value.
     
@@ -322,16 +322,18 @@ def validate_field_value(field_name: str, value: Any) -> Tuple[bool, str]:
     elif field_name == "start_time":
         try:
             start_dt = parse_datetime(str(value))
-            now = datetime.utcnow()
+            now = reference_time or datetime.now()
             min_allowed_time = now + timedelta(minutes=MIN_FUTURE_TIME_MINUTES)
 
             if start_dt < min_allowed_time:
                 time_diff = (min_allowed_time - start_dt).total_seconds() / 60
                 if start_dt < now:
                     return False, "Start time cannot be in the past. Please choose a future time."
+                minutes_later = int(time_diff)
+                minute_label = "minute" if minutes_later == 1 else "minutes"
                 return False, (
-                    f"Start time must be at least {MIN_FUTURE_TIME_MINUTES} minutes from now. "
-                    f"Please choose a time at least {int(time_diff)} minutes later."
+                    f"Start time must be at least {MIN_FUTURE_TIME_MINUTES} minutes after your create request. "
+                    f"Please choose a time at least {minutes_later} {minute_label} later."
                 )
 
             max_future_days = 365

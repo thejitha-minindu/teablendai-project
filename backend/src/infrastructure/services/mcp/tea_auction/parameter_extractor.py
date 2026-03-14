@@ -314,7 +314,8 @@ class ParameterExtractor:
         self,
         user_message: str,
         expected_fields: List[str],
-        context: Dict[str, Any] = None
+        context: Dict[str, Any] = None,
+        reference_time: Optional[datetime] = None,
     ) -> Dict[str, Any]:
         """
         Extract parameters from user message.
@@ -446,7 +447,7 @@ class ParameterExtractor:
                         validation_errors.append({"field": field, "error": error_msg})
                     continue
 
-                is_valid, error_msg = validate_field_value(field, value)
+                is_valid, error_msg = validate_field_value(field, value, reference_time=reference_time)
                 if is_valid:
                     if field == "start_time":
                         try:

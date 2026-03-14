@@ -82,6 +82,49 @@ function formatPriceLkr(value: number | string | undefined): string {
   return `LKR ${numericValue.toLocaleString()}`;
 }
 
+function formatStartTimeDisplay(value: string | undefined): string {
+  if (!value) return "N/A";
+
+  const normalized = value.trim().replace(" ", "T");
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  return parsed.toLocaleString("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).replace(",", " at");
+}
+
+function extractCreatedAuctionDetails(content: string): {
+  grade?: string;
+  quantity?: string;
+  origin?: string;
+  base_price?: string;
+  start_time?: string;
+  duration?: string;
+  description?: string;
+} {
+  const extract = (label: string) => {
+    const pattern = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`, "i");
+    const match = content.match(pattern);
+    return match?.[1]?.trim();
+  };
+
+  return {
+    grade: extract("Grade"),
+    quantity: extract("Quantity"),
+    origin: extract("Origin"),
+    base_price: extract("Starting Price"),
+    start_time: extract("Start Time"),
+    duration: extract("Duration"),
+    description: extract("Description") || "None",
+  };
+}
+
 export default function MessageBubble({ message, onSendMessage, isActionEnabled = true }: MessageBubbleProps) {
   const [showSQL, setShowSQL] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
@@ -152,6 +195,17 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
     isAuctionMessage &&
     normalizedContent.includes("auction created") &&
     !!createdAuctionId;
+  const createdDetails = isAuctionCreatedMessage
+    ? extractCreatedAuctionDetails(message.content || "")
+    : null;
+  const showStructuredCreatedMessage =
+    !!createdDetails &&
+    !!createdDetails.grade &&
+    !!createdDetails.quantity &&
+    !!createdDetails.origin &&
+    !!createdDetails.base_price &&
+    !!createdDetails.start_time &&
+    !!createdDetails.duration;
 
   const isChangeHelpPrompt =
     isAuctionMessage &&
@@ -370,43 +424,57 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
           </div>
 
           <div className="text-sm text-gray-800 leading-relaxed pr-6">
-            {showStructuredAuctionConfirmation ? (
+            {showStructuredAuctionConfirmation || showStructuredCreatedMessage ? (
               <div className="space-y-2">
                 <p className="font-semibold text-gray-900">Please confirm auction details:</p>
                 <div className="rounded-xl border border-purple-200 bg-white/70 p-3">
                   <dl className="grid grid-cols-1 gap-2 text-sm">
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Tea Grade</dt>
-                      <dd>{structuredFields?.grade || "N/A"}</dd>
+                      <dd>{structuredFields?.grade || createdDetails?.grade || "N/A"}</dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Quantity</dt>
-                      <dd>{structuredFields?.quantity ?? "N/A"} kg</dd>
+                      <dd>
+                        {structuredFields?.quantity !== undefined && structuredFields?.quantity !== null
+                          ? `${structuredFields.quantity} kg`
+                          : createdDetails?.quantity || "N/A"}
+                      </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Origin</dt>
-                      <dd>{structuredFields?.origin || "N/A"}</dd>
+                      <dd>{structuredFields?.origin || createdDetails?.origin || "N/A"}</dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Starting Price</dt>
-                      <dd>{formatPriceLkr(structuredFields?.base_price)}</dd>
+                      <dd>
+                        {showStructuredCreatedMessage
+                          ? createdDetails?.base_price || "N/A"
+                          : formatPriceLkr(structuredFields?.base_price)}
+                      </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Start Time</dt>
-                      <dd>{structuredDisplay?.start_time || structuredFields?.start_time || "N/A"}</dd>
+                      <dd>
+                        {showStructuredCreatedMessage
+                          ? formatStartTimeDisplay(createdDetails?.start_time)
+                          : structuredDisplay?.start_time || structuredFields?.start_time || "N/A"}
+                      </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Duration</dt>
                       <dd>
-                        {structuredDisplay?.duration ||
-                          (structuredFields?.duration !== undefined && structuredFields?.duration !== null
-                            ? `${structuredFields.duration} hours`
-                            : "N/A")}
+                        {showStructuredCreatedMessage
+                          ? createdDetails?.duration || "N/A"
+                          : structuredDisplay?.duration ||
+                            (structuredFields?.duration !== undefined && structuredFields?.duration !== null
+                              ? `${structuredFields.duration} hours`
+                              : "N/A")}
                       </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Description</dt>
-                      <dd>{structuredFields?.description || "None"}</dd>
+                      <dd>{structuredFields?.description || createdDetails?.description || "None"}</dd>
                     </div>
                   </dl>
                 </div>

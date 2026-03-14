@@ -84,9 +84,7 @@ class ChatService:
         """
         start_time = datetime.utcnow()
 
-        # ═══════════════════════════════════════════════════════════
-        # VALIDATION 1: Message Length
-        # ═══════════════════════════════════════════════════════════
+        # Message Length
         MAX_MESSAGE_LENGTH = 2500
         if len(user_message) > MAX_MESSAGE_LENGTH:
             logger.warning(f"[Chat] Message too long: {len(user_message)} chars")
@@ -96,9 +94,7 @@ class ChatService:
                 "timestamp": datetime.utcnow().isoformat()
             }
 
-        # ═══════════════════════════════════════════════════════════
-        # VALIDATION 2: Detect Echoed AI Responses
-        # ═══════════════════════════════════════════════════════════
+        # Detect Echoed AI Responses
         if self._is_echoed_response(user_message):
             logger.warning(f"[Chat] Detected echoed AI response")
             return {
@@ -113,9 +109,7 @@ class ChatService:
             }
         
         try:
-            # ═══════════════════════════════════════════════════════════
             # CONVERSATION SETUP
-            # ═══════════════════════════════════════════════════════════
             if conversation_id:
                 conversation = self.conversation_repo.get_by_id(conversation_id)
                 if not conversation:
@@ -132,9 +126,7 @@ class ChatService:
             )
             self.message_repo.create(user_msg)
 
-            # ═══════════════════════════════════════════════════════════
             # CHECK FOR EXISTING AUCTION STATE FIRST (BEFORE VALIDATION)
-            # ═══════════════════════════════════════════════════════════
             state = state_manager.get_state(conversation.conversation_id)
 
             if state and state.state_type == "auction_management":
@@ -148,9 +140,7 @@ class ChatService:
                     user_role=user_role
                 )
 
-            # ═══════════════════════════════════════════════════════════
-            # VALIDATION 3: Topic Validation (Only if NO active state)
-            # ═══════════════════════════════════════════════════════════
+            # Topic Validation (Only if NO active state)
             has_history = conversation_id is not None
 
             logger.info(f"[Chat] Validating question: '{user_message[:60]}' (has_history={has_history})")
@@ -185,9 +175,7 @@ class ChatService:
                     "suggestions": self.validator.get_suggestions(user_message)
                 }
 
-            # ═══════════════════════════════════════════════════════════
             # INTENT CLASSIFICATION & ROUTING
-            # ═══════════════════════════════════════════════════════════
             intent: QueryIntent = intent_classifier.classify(user_message)
             logger.info(f"[Chat] Query intent: {intent}")
 
