@@ -36,7 +36,12 @@ export interface QueryResponse {
   auction_payload?: {
     type: "auction_confirmation";
     flow_id?: string;
-    subtype?: "start_time_confirmation" | "delete_confirmation" | string;
+    subtype?:
+      | "start_time_confirmation"
+      | "delete_confirmation"
+      | "description_generation_choice"
+      | "description_generated_confirmation"
+      | string;
     fields: {
       grade?: string;
       quantity?: number | string;

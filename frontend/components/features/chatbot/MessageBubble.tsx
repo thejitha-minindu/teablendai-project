@@ -89,14 +89,18 @@ function formatStartTimeDisplay(value: string | undefined): string {
   const parsed = new Date(normalized);
   if (Number.isNaN(parsed.getTime())) return value;
 
-  return parsed.toLocaleString("en-US", {
+  const datePart = parsed.toLocaleDateString("en-US", {
     month: "long",
     day: "2-digit",
     year: "numeric",
+  });
+  const timePart = parsed.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: true,
-  }).replace(",", " at");
+  });
+
+  return `${datePart} at ${timePart}`;
 }
 
 function extractCreatedAuctionDetails(content: string): {
@@ -174,11 +178,17 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
 
   const hasStructuredAuctionConfirmation =
     message.auction_payload?.type === "auction_confirmation";
+  const auctionSubtype = message.auction_payload?.subtype;
   const structuredFields = message.auction_payload?.fields;
   const structuredDisplay = message.auction_payload?.display;
+  const isFullAuctionDetailsSubtype =
+    !auctionSubtype || auctionSubtype === "create_confirmation";
   const showStructuredAuctionConfirmation =
-    hasStructuredAuctionConfirmation && !!structuredFields;
+    hasStructuredAuctionConfirmation && !!structuredFields && isFullAuctionDetailsSubtype;
   const allowedActions = message.auction_payload?.actions ?? ["confirm", "cancel", "change"];
+  const isDescriptionActionPrompt =
+    auctionSubtype === "description_generation_choice" ||
+    auctionSubtype === "description_generated_confirmation";
   const allowConfirm = allowedActions.includes("confirm");
   const allowCancel = allowedActions.includes("cancel");
   const allowChange = allowedActions.includes("change");
@@ -206,6 +216,9 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
     !!createdDetails.base_price &&
     !!createdDetails.start_time &&
     !!createdDetails.duration;
+  const structuredCardTitle = showStructuredCreatedMessage
+    ? "The auction was successfully created."
+    : "Please confirm auction details:";
 
   const isChangeHelpPrompt =
     isAuctionMessage &&
@@ -426,7 +439,7 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
           <div className="text-sm text-gray-800 leading-relaxed pr-6">
             {showStructuredAuctionConfirmation || showStructuredCreatedMessage ? (
               <div className="space-y-2">
-                <p className="font-semibold text-gray-900">Please confirm auction details:</p>
+                <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
                 <div className="rounded-xl border border-purple-200 bg-white/70 p-3">
                   <dl className="grid grid-cols-1 gap-2 text-sm">
                     <div className="grid grid-cols-[140px_1fr] gap-2">
@@ -538,12 +551,12 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
                 onClick={() => {
                   if (!isActionEnabled || actionClicked) return;
                   setActionClicked(true);
-                  onSendMessage?.("change");
+                  onSendMessage?.(isDescriptionActionPrompt ? "edit" : "change");
                 }}
                 disabled={!isActionEnabled || actionClicked}
                 className="px-4 py-2 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold hover:bg-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Change
+                {isDescriptionActionPrompt ? "Edit" : "Change"}
               </button>
             )}
           </div>

@@ -23,6 +23,10 @@ from src.infrastructure.services.mcp.tea_auction.auction_fields import (
     format_datetime_for_display
 )
 
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import SystemMessage, HumanMessage
+from src.config import get_settings, resolve_model_name
+
 logger = logging.getLogger(__name__)
 
 
@@ -55,6 +59,37 @@ class AuctionHandler:
             except ValueError:
                 pass
         return state.created_at if state else datetime.now()
+
+    def _prompt_for_custom_description(
+        self,
+        conversation: Conversation,
+        state: Any,
+        intro: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Ask the user to type a custom description."""
+        state.partial_data["_awaiting_custom_description_input"] = True
+        state_manager.set_confirmation_pending(conversation.conversation_id, False)
+
+        lead = intro.strip() + "\n\n" if intro else ""
+        answer = f"""
+        {lead}Please type the custom description you'd like to use for this auction.
+        """.strip()
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=answer,
+            source="auction_management"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "answer": answer,
+            "source": "auction_management",
+            "state": "awaiting_custom_description",
+            "message_type": "text",
+        }
     
     async def handle_auction_management(
         self,
@@ -144,6 +179,16 @@ class AuctionHandler:
         weekday_confirmation_expression = extracted.pop("_weekday_confirmation_expression", "")
         weekday_confirmation_time_12h = extracted.pop("_weekday_confirmation_time_12h", "")
 
+        # Detect whether the user signalled they want a description in their initial message
+        _desc_intent_keywords = [
+            'with a description', 'add a description', 'include a description',
+            'generate a description', 'create a description', 'with description',
+            'add description', 'want a description', 'want description',
+            'need a description', 'description please', 'please add description',
+            'i want to add a description', 'i want description',
+        ]
+        wants_description = any(kw in user_message.lower() for kw in _desc_intent_keywords)
+
         # Create state first so the flow continues even when some fields are invalid
         state = state_manager.create_state(
             conversation_id=conversation.conversation_id,
@@ -154,6 +199,7 @@ class AuctionHandler:
             initial_data={
                 **extracted,
                 "_flow_started_at": flow_started_at.isoformat(),
+                **({"_auto_generate_description": True} if wants_description else {}),
             }
         )
 
@@ -234,7 +280,7 @@ class AuctionHandler:
         
         if not missing:
             # Got everything! Show confirmation
-            return self._generate_confirmation(conversation, state)
+            return await self._generate_confirmation(conversation, state)
         else:
             # Ask for next missing field
             return self._ask_for_field(conversation, missing[0], state)
@@ -247,11 +293,35 @@ class AuctionHandler:
         user_id: Optional[str]
     ) -> Dict[str, Any]:
         """Continue an ongoing operation"""
-        
+
+        if state.partial_data.get('_awaiting_description_confirmation'):
+            return await self._handle_confirmation(user_message, conversation, state, user_id)
+
         # Check if user is confirming
         if state.confirmation_pending:
             return await self._handle_confirmation(user_message, conversation, state, user_id)
+
+        if state.partial_data.get('_awaiting_custom_description_input'):
+            state.partial_data.pop('_awaiting_custom_description_input', None)
+            custom_description = user_message.strip()
+
+            if not custom_description:
+                return self._prompt_for_custom_description(
+                    conversation,
+                    state,
+                    intro="Description cannot be empty."
+                )
+
+            state.partial_data['description'] = custom_description
+            state.partial_data['_description_decision_made'] = True
+            state_manager.update_state(conversation.conversation_id, {'description': custom_description})
+            logger.info("[AuctionHandler] Custom description captured")
+            return await self._generate_confirmation(conversation, state)
         
+        # Check if we need to handle description generation choice
+        if state.partial_data.get('_needs_description_generation'):
+            return await self._handle_description_choice(user_message, conversation, state)
+
         # Extract parameters from current message
         missing_fields = state.get_missing_required_fields()
         
@@ -273,7 +343,7 @@ class AuctionHandler:
             if validation_errors:
                 error_messages = []
                 for err in validation_errors:
-                    error_messages.append(f"❌ **{err['field'].replace('_', ' ').title()}**: {err['error']}")
+                    error_messages.append(f"**{err['field'].replace('_', ' ').title()}**: {err['error']}")
 
                 invalid_fields = [err.get("field") for err in validation_errors if err.get("field")]
                 next_field = None
@@ -349,14 +419,103 @@ class AuctionHandler:
             
             if not still_missing:
                 # Complete! Show confirmation
-                return self._generate_confirmation(conversation, state)
+                return await self._generate_confirmation(conversation, state)
             else:
                 # Still need more fields
                 return self._ask_for_field(conversation, still_missing[0], state)
         else:
             # Shouldn't reach here, but handle gracefully
-            return self._generate_confirmation(conversation, state)
+            return await self._generate_confirmation(conversation, state)
     
+    async def _handle_description_choice(
+        self,
+        user_message: str,
+        conversation: Conversation,
+        state: Any
+    ) -> Dict[str, Any]:
+        """Handle user's choice about auto-generated description"""
+
+        msg_lower = user_message.lower().strip()
+
+        # Remove the flag
+        state.partial_data.pop('_needs_description_generation', None)
+
+        # Check if user wants auto-generated description
+        if any(word in msg_lower for word in ['yes', 'y', 'generate', 'create', 'ok']):
+            # Generate description
+            logger.info("[AuctionHandler] Generating description with Gemini...")
+
+            generated_desc = await self._generate_auction_description(state.partial_data)
+        
+            # Store the generated description
+            state.partial_data['description'] = generated_desc
+            state_manager.update_state(conversation.conversation_id, {'description': generated_desc})
+            
+            # Show generated description and ask for confirmation
+            answer = f"""
+            I've prepared a description for you:
+
+            {generated_desc}
+
+            Would you like to use this description?
+            """.strip()
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="auction_management"
+            )
+            self.message_repo.create(assistant_msg)
+            
+            # Set flag for description confirmation
+            state.partial_data['_awaiting_description_confirmation'] = True
+            state_manager.set_confirmation_pending(conversation.conversation_id, True)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "auction_management",
+                "state": "awaiting_description_confirmation",
+                "message_type": "auction_confirmation",
+                "auction_payload": {
+                    "type": "auction_confirmation",
+                    "flow_id": str(conversation.conversation_id),
+                    "subtype": "description_generated_confirmation",
+                    "fields": {
+                        "description": generated_desc,
+                    },
+                    "actions": ["confirm", "cancel", "change"],
+                }
+            }
+
+        elif any(word in msg_lower for word in ['no', 'n', 'skip', 'none']):
+            # User doesn't want description
+            logger.info("[AuctionHandler] User skipped description")
+            state.partial_data['description'] = None
+            state.partial_data['_description_decision_made'] = True
+            state.partial_data.pop('_awaiting_description_confirmation', None)
+            state_manager.set_confirmation_pending(conversation.conversation_id, False)
+
+            # Proceed to final confirmation
+            return await self._generate_confirmation(conversation, state)
+
+        elif any(word in msg_lower for word in ['edit', 'change', 'modify', 'custom']):
+            logger.info("[AuctionHandler] User chose to edit description")
+            return self._prompt_for_custom_description(conversation, state)
+
+        else:
+            # User provided their own description
+            logger.info("[AuctionHandler] User provided custom description")
+            state.partial_data['description'] = user_message
+            state.partial_data['_description_decision_made'] = True
+            state.partial_data.pop('_awaiting_description_confirmation', None)
+            state_manager.set_confirmation_pending(conversation.conversation_id, False)
+            state_manager.update_state(conversation.conversation_id, {'description': user_message})
+
+            # Proceed to final confirmation
+            return await self._generate_confirmation(conversation, state)
+
     async def _handle_confirmation(
         self,
         user_message: str,
@@ -367,6 +526,30 @@ class AuctionHandler:
         """Handle user's confirmation response"""
         
         msg_lower = user_message.lower().strip()
+
+        # Check if we're confirming the generated description
+        if state.partial_data.get('_awaiting_description_confirmation'):
+            state.partial_data.pop('_awaiting_description_confirmation', None)
+            
+            if any(word in msg_lower for word in ['yes', 'y', 'use', 'ok']):
+                # Keep the generated description, proceed to confirmation
+                state.partial_data['_description_decision_made'] = True
+                return await self._generate_confirmation(conversation, state)
+            
+            elif any(word in msg_lower for word in ['no', 'n', 'skip']):
+                # Remove description, proceed to confirmation
+                state.partial_data['description'] = None
+                state.partial_data['_description_decision_made'] = True
+                state_manager.update_state(conversation.conversation_id, {'description': None})
+                return await self._generate_confirmation(conversation, state)
+            elif any(word in msg_lower for word in ['edit', 'change', 'modify', 'custom']):
+                return self._prompt_for_custom_description(conversation, state)
+            else:
+                # User provided edited description
+                state.partial_data['description'] = user_message
+                state.partial_data['_description_decision_made'] = True
+                state_manager.update_state(conversation.conversation_id, {'description': user_message})
+                return await self._generate_confirmation(conversation, state)
         
         # Check for affirmative responses
         affirmative = ["yes", "y", "confirm", "ok", "proceed", "correct", "looks good", "yep", "yeah", "create it"]
@@ -406,13 +589,13 @@ class AuctionHandler:
                 still_missing = state.get_missing_required_fields()
                 if still_missing:
                     return self._ask_for_field(conversation, still_missing[0], state)
-                return self._generate_confirmation(conversation, state)
+                return await self._generate_confirmation(conversation, state)
 
             answer = """
-Please confirm if this is correct:
-- Reply **'yes'** to confirm this start time
-- Reply **'no'** to cancel auction creation
-- Reply **'change'** to provide a different start time
+                Please confirm if this is correct:
+                - Reply **'yes'** to confirm this start time
+                - Reply **'no'** to cancel auction creation
+                - Reply **'change'** to provide a different start time
             """.strip()
 
             assistant_msg = ChatMessage.create_assistant_message(
@@ -459,18 +642,18 @@ Please confirm if this is correct:
                 logger.info(f"[AuctionHandler] User made changes: {list(extracted.keys())}")
                 
                 # Show updated confirmation
-                return self._generate_confirmation(conversation, state)
+                return await self._generate_confirmation(conversation, state)
             else:
                 # Couldn't extract, ask what they want to change
                 answer = """
-    **I can help you make changes!** Please specify what you'd like to change.
+                **I can help you make changes!** Please specify what you'd like to change.
 
-    **For example:**
-    - **"Change the price to 7500"**
-    - **"Set start time to 2026-03-06 15:00"**
-    - **"Change quantity to 500"**
+                **For example:**
+                - **"Change the price to 7500"**
+                - **"Set start time to 2026-03-06 15:00"**
+                - **"Change quantity to 500"**
 
-    Or say **'cancel'** to start over.
+                Or say **'cancel'** to start over.
                 """.strip()
                 
                 assistant_msg = ChatMessage.create_assistant_message(
@@ -518,10 +701,10 @@ Please confirm if this is correct:
         else:
             # Unclear response - ask again
             answer = """
-Please confirm:
-- Reply **'yes'** to create the auction
-- Reply **'no'** to cancel
-- Or say what you want to **change** (e.g., "change price to 7500")
+            Please confirm:
+            - Reply **'yes'** to create the auction
+            - Reply **'no'** to cancel
+            - Or say what you want to **change** (e.g., "change price to 7500")
             """.strip()
 
             assistant_msg = ChatMessage.create_assistant_message(
@@ -592,7 +775,6 @@ Please confirm if this is correct.
                 "actions": ["confirm", "cancel", "change"],
             }
         }
-
 
     def _ask_for_field(
         self,
@@ -706,10 +888,10 @@ Please confirm if this is correct.
         }
         return validation.get(field_name, {})
     
-    def _generate_confirmation(
+    async def _generate_confirmation(
         self,
         conversation: Conversation,
-        state: Any
+        state: Any,
     ) -> Dict[str, Any]:
         """Generate confirmation message with all collected data"""
         
@@ -721,6 +903,96 @@ Please confirm if this is correct.
             data.get("duration", "N/A"),
             input_unit=data.get("_duration_input_unit")
         )
+
+        # Check if description is missing
+        if not data.get('description') and not data.get('_description_decision_made'):
+            if data.get('_auto_generate_description'):
+                # User signalled they want a description — generate it immediately
+                logger.info("[AuctionHandler] User requested description - auto-generating...")
+                state.partial_data.pop('_auto_generate_description', None)
+
+                generated_desc = await self._generate_auction_description(state.partial_data)
+
+                # Store generated description and arm confirmation flow
+                state.partial_data['description'] = generated_desc
+                state.partial_data['_awaiting_description_confirmation'] = True
+                state_manager.update_state(conversation.conversation_id, {'description': generated_desc})
+                state_manager.set_confirmation_pending(conversation.conversation_id, True)
+
+                answer = f"""
+                I've prepared a description for you:
+
+                {generated_desc}
+
+                Would you like to use this description?
+                """.strip()
+
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=answer,
+                    source="auction_management"
+                )
+                self.message_repo.create(assistant_msg)
+
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": answer,
+                    "source": "auction_management",
+                    "state": "awaiting_description_confirmation",
+                    "message_type": "auction_confirmation",
+                    "auction_payload": {
+                        "type": "auction_confirmation",
+                        "flow_id": str(conversation.conversation_id),
+                        "subtype": "description_generated_confirmation",
+                        "fields": {
+                            "description": generated_desc,
+                        },
+                        "actions": ["confirm", "cancel", "change"],
+                    }
+                }
+
+            state_manager.set_confirmation_pending(conversation.conversation_id, False)
+            state.partial_data['_needs_description_generation'] = True
+
+            answer = """
+            I notice you haven't provided a description. Would you like me to generate one for you?
+                    """.strip()
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="auction_management"
+            )
+            self.message_repo.create(assistant_msg)
+            
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "auction_management",
+                "state": "awaiting_description_choice",
+                "message_type": "auction_confirmation",
+                "auction_payload": {
+                    "type": "auction_confirmation",
+                    "flow_id": str(conversation.conversation_id),
+                    "subtype": "description_generation_choice",
+                    "fields": {
+                        "grade": data.get("grade"),
+                        "quantity": data.get("quantity"),
+                        "origin": data.get("origin"),
+                        "base_price": data.get("base_price"),
+                        "start_time": data.get("start_time"),
+                        "duration": data.get("duration"),
+                        "description": None,
+                    },
+                    "display": {
+                        "start_time": start_time_display,
+                        "duration": duration_display,
+                    },
+                    "actions": ["confirm", "cancel"],
+                }
+            }
         
         # Format confirmation message
         confirmation = f"""
@@ -827,6 +1099,9 @@ Please confirm if this is correct.
                 data.get("duration", "N/A"),
                 input_unit=data.get("_duration_input_unit")
             )
+            description_line = ""
+            if data.get("description"):
+                description_line = f"\n- **Description:** {data['description']}"
 
             answer = f"""
 **Auction Created Successfully!**
@@ -840,6 +1115,7 @@ Please confirm if this is correct.
 - **Starting Price:** LKR {float(data['base_price']):,.0f}
 - **Start Time:** {data['start_time']}
 - **Duration:** {duration_display}
+{description_line}
 
 Your auction has been created and will be visible to buyers!
             """.strip()
@@ -1085,18 +1361,18 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
     def _help_response(self, conversation: Conversation) -> Dict[str, Any]:
         """Provide help for auction management"""
         answer = """
-I can help you manage auctions! Here's what you can do:
+        I can help you manage auctions! Here's what you can do:
 
-**Create an auction:**
-"Create an auction for 1000kg BOPF tea from Kandy at 17000 LKR"
+        **Create an auction:**
+        "Create an auction for 1000kg BOPF tea from Kandy at 17000 LKR"
 
-**Update an auction:** (Coming soon)
-"Update auction #127"
+        **Update an auction:** (Coming soon)
+        "Update auction #127"
 
-**Delete an auction:** (Coming soon)
-"Delete auction #127"
+        **Delete an auction:** (Coming soon)
+        "Delete auction #127"
 
-What would you like to do?
+        What would you like to do?
         """.strip()
         
         assistant_msg = ChatMessage.create_assistant_message(
@@ -1142,3 +1418,68 @@ What would you like to do?
             return " ".join(parts)
         except (TypeError, ValueError):
             return str(duration_value)
+
+    async def _generate_auction_description(
+        self,
+        auction_data: Dict[str, Any]
+    ) -> str:
+        """
+        Generate a compelling auction description using Gemini.
+        """
+
+        settings = get_settings()
+        
+        llm = ChatGoogleGenerativeAI(
+            model=resolve_model_name(getattr(settings, "MODEL_NAME", None)),
+            google_api_key=settings.GOOGLE_API_KEY,
+            temperature=0.7
+        )
+
+        grade = auction_data.get('grade', 'tea')
+        quantity = auction_data.get('quantity', 0)
+        origin = auction_data.get('origin', 'Sri Lanka')
+        price = auction_data.get('base_price', 0)
+
+        system = SystemMessage(
+            content = """ 
+            You are a professional tea auction copywriter. 
+            Create compelling, concise auction descriptions.
+
+            Rules:
+            - Keep it under 100 words
+            - Highlight the tea's origin and quality
+            - Professional but engaging tone
+            - Focus on value and characteristics
+            - No emojis or excessive adjectives
+            - Be factual and honest
+            """
+        )
+        
+        human = HumanMessage(
+            content = f""" 
+            Create a professional auction description for:
+
+            - Tea Grade: {grade}
+            - Quantity: {quantity} kg
+            - Origin: {origin}
+            - Starting Price: LKR {price:,}
+
+            Write a compelling description that would attract serious buyers:
+            """
+        )
+
+        try:
+            response = await llm.ainvoke([system, human])
+            description = response.content.strip()
+
+            if description.startswith('"') and description.endswith('"'):
+                description = description[1:-1]
+            if description.startswith("'") and description.endswith("'"):
+                description = description[1:-1]
+
+            logger.info(f"[AuctionHandler] Generated description: {description[:50]}...")
+            return description
+
+        except Exception as e:
+            logger.error(f"[AuctionHandler] Description generation failed: {e}")
+            return f"Premium {grade} tea from {origin}. High-quality {quantity}kg lot available for auction."

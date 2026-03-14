@@ -351,6 +351,29 @@ class ChatHistoryDB:
                 "actions": ["confirm", "cancel"],
             }
 
+        if "would you like me to generate one for you" in normalized:
+            return {
+                "type": "auction_confirmation",
+                "flow_id": str(conversation_id),
+                "subtype": "description_generation_choice",
+                "fields": {
+                    "description": None,
+                },
+                "actions": ["confirm", "cancel", "change"],
+            }
+
+        if "i've prepared a description for you" in normalized and "would you like to use this" in normalized:
+            generated_match = re.search(r"_([^_]+)_", content)
+            return {
+                "type": "auction_confirmation",
+                "flow_id": str(conversation_id),
+                "subtype": "description_generated_confirmation",
+                "fields": {
+                    "description": generated_match.group(1).strip() if generated_match else None,
+                },
+                "actions": ["confirm", "cancel", "change"],
+            }
+
         if "please confirm if this is correct" in normalized and "reply **'yes'**" in normalized:
             start_time_match = re.search(r"That corresponds to\s*\*\*(.+?)\*\*", content, re.IGNORECASE)
             return {
