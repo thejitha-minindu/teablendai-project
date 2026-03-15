@@ -18,9 +18,11 @@ router = APIRouter(prefix="/bids", tags=["bids"])
 def get_bid_service(db: Session = Depends(get_db)):
     return BidService(db)
 
+#  Bid Realtime Service
 def get_bid_realtime_service() -> BidRealtimeService:
     return BidRealtimeService(auction_ws_manager)
 
+# Place a new bid
 @router.post("", response_model=Bid)
 async def create_bid(
     bid_request: BidCreateRequest,

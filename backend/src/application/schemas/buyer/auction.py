@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pydantic import BaseModel, Field, ConfigDict, field_serializer, field_validator
 from uuid import UUID
 
-AuctionType = Literal["Scheduled", "Live", "History", "Closed"]
+AuctionType = Literal["Scheduled", "Live", "History"]
 
 # Base auction data model - full data representation
 class AuctionData(BaseModel):

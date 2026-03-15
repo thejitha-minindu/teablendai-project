@@ -24,7 +24,7 @@ export function createAuctionBidSocket(
   }
 
   const wsUrl = `${API_BASE_URL}/live/auction/${auctionId}?token=${encodeURIComponent(token)}`;
-  console.log("Connecting to WebSocket:", wsUrl.substring(0, wsUrl.length - 20) + "...[token]");
+  console.log("Connecting to WebSocket:");
   
   const ws = new WebSocket(wsUrl);
 
@@ -53,7 +53,7 @@ export function createAuctionBidSocket(
     // Check for error messages from server
     try {
       const data = JSON.parse(msg.data);
-      console.log("✅ Parsed WebSocket message:", data);
+      console.log("Parsed WebSocket message:", data);
       
       if (data.error) {
         console.error("Server error via WebSocket:", data.error);

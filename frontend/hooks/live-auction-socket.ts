@@ -5,11 +5,8 @@ import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 export function useAuctionBidsSocket(auctionId: string) {
   const [connected, setConnected] = useState(false);
   const [events, setEvents] = useState<BidWsEvent[]>([]);
-  const [auctionStatus, setAuctionStatus] = useState<"Live" | "Won" | "Closed">("Live");
+  const [auctionStatus, setAuctionStatus] = useState<"Live" | "Closed">("Live");
   const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [highestBid, setHighestBid] = useState<number>(0);
-  const [bidCount, setBidCount] = useState<number>(0);
-  const [isExtended, setIsExtended] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [finalPrice, setFinalPrice] = useState<number>(0);
   
@@ -31,19 +28,12 @@ export function useAuctionBidsSocket(auctionId: string) {
           setAuctionStatus("Live");
         }
         
-        if (evt.event_type === "AUCTION_WON") {
-          setWinner(evt.data?.buyer_id || null);
-          setFinalPrice(evt.data?.bid_amount || 0);
-          setAuctionStatus("Won");
-          console.log(`Auction Won: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
-        }
-        
-        if (evt.event_type === "AUCTION_ENDED") {
+        if (evt.event_type === "AUCTION_CLOSED") {
           setWinner(evt.data?.buyer_id || null);
           setFinalPrice(evt.data?.bid_amount || 0);
           setAuctionStatus("Closed");
           setTimeLeft(0);
-          console.log(`Auction Ended: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
+          console.log(`Auction Closed: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
         }
       },
       () => setConnected(true),
@@ -77,9 +67,6 @@ export function useAuctionBidsSocket(auctionId: string) {
     events, 
     auctionStatus,
     timeLeft,
-    highestBid,
-    bidCount,
-    isExtended,
     winner,
     finalPrice
   };

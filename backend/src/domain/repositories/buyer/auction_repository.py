@@ -7,12 +7,6 @@ logger = logging.getLogger(__name__)
 
 class AuctionRepositoryInterface(ABC):
     @abstractmethod
-    def create_auction(self, auction: Auction):
-        # Create a new auction
-        logger.debug("Called create_auction with auction: %s", auction)
-        pass
-
-    @abstractmethod
     def get_auction_by_id(self, auction_id: str):
         # Retrieve auction by ID
         logger.debug("Called get_auction_by_id with auction_id: %s", auction_id)

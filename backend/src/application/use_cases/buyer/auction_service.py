@@ -10,11 +10,6 @@ class AuctionService:
     def __init__(self, db: Session):
         self.repo = AuctionRepository(db)
 
-    # Create a new auction
-    def create_auction(self, auction: Auction):
-        logger.info(f"Service: Creating auction")
-        return self.repo.create_auction(auction)
-
     # Get auction by ID
     def get_auction(self, auction_id: str):
         logger.info(f"Service: Getting auction {auction_id}")

@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
+from uuid import uuid4
 from sqlalchemy.orm import Session
-from src.application.schemas.bid import Bid
+from src.application.schemas.buyer.bid import BidData
 from src.infrastructure.repositories.bid_repository import BidRepository
 from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.domain.models.auction_status import AuctionStatus
 import logging
 
 logger = logging.getLogger(__name__)
@@ -25,8 +27,8 @@ class BidService:
             raise ValueError(f"Auction {auction_id} not found")
         
         # Validation
-        if auction.status == "Closed":
-            raise ValueError("Auction has ended (Closed)")
+        if auction.status == AuctionStatus.HISTORY.value:
+            raise ValueError("Auction has ended (History)")
         
         if auction.buyer:  # If buyer is set, auction is won
             raise ValueError("Auction is won, no more bids accepted")
@@ -34,13 +36,13 @@ class BidService:
         # Calculate end_time dynamically from start_time + duration (duration is in hours)
         auction_end_time = auction.start_time + timedelta(hours=auction.duration)
         
-        if auction.status == "Scheduled" and current_time >= auction.start_time:
-            auction.status = "Live"
+        if auction.status == AuctionStatus.SCHEDULE.value and current_time >= auction.start_time:
+            auction.status = AuctionStatus.LIVE.value
             self.db.commit()
             logger.info(f"Auction LIVE: {auction_id}")
             logger.info(f"Computed End time: {auction_end_time}")
         
-        if auction.status == "Scheduled":
+        if auction.status == AuctionStatus.SCHEDULE.value:
             raise ValueError("Auction has not started yet")
         
         # Debug logging
@@ -63,7 +65,8 @@ class BidService:
             logger.info(f"Auction would extend - {time_remaining}s left (threshold: {EXTENSION_THRESHOLD}s)")
             extension_happened = True
         
-        bid_obj = Bid(
+        bid_obj = BidData(
+            bid_id=str(uuid4()),  # Generate UUID for new bid
             auction_id=auction_id,
             buyer_id=buyer_id,
             bid_amount=bid_amount,
@@ -91,7 +94,7 @@ class BidService:
         current_time = datetime.utcnow()
         remaining_seconds = 0
         
-        if auction.status == "Live":
+        if auction.status == AuctionStatus.LIVE.value:
             # Calculate end_time dynamically (duration is in hours)
             auction_end_time = auction.start_time + timedelta(hours=auction.duration)
             remaining = (auction_end_time - current_time).total_seconds()
@@ -128,7 +131,7 @@ class BidService:
             "winner": str(auction.buyer) if auction.buyer else None
         }
     
-    def create_bid(self, bid: Bid):
+    def create_bid(self, bid: BidData):
         logger.info(f"Service: Creating bid (direct)")
         return self.bid_repo.create_bid(bid)
 

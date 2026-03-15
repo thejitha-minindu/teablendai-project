@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.domain.models.auction_status import AuctionStatus
 from typing import Optional
 
 class AuctionService:
@@ -22,7 +23,7 @@ class AuctionService:
         now_utc = datetime.utcnow() 
 
         # --- PART 1: Scheduled -> Live ---
-        scheduled = self.repo.get_by_status("Scheduled")
+        scheduled = self.repo.get_by_status(AuctionStatus.SCHEDULE.value)
         for auction in scheduled:
             # Strip timezone info from DB time to ensure fair comparison
             db_time = auction.start_time
@@ -31,11 +32,11 @@ class AuctionService:
 
             # If start time is passed, make it LIVE
             if db_time <= now_utc:
-                auction.status = "Live"
+                auction.status = AuctionStatus.LIVE.value
                 self.repo.db.add(auction)
 
         # --- PART 2: Live -> History (NEW LOGIC) ---
-        live_auctions = self.repo.get_by_status("Live")
+        live_auctions = self.repo.get_by_status(AuctionStatus.LIVE.value)
         for auction in live_auctions:
             # Strip timezone info
             start_time = auction.start_time
@@ -48,7 +49,7 @@ class AuctionService:
 
             # If current time is past end time, move to History
             if now_utc >= end_time:
-                auction.status = "History"
+                auction.status = AuctionStatus.HISTORY.value
                 # Optionally set a default result if no buyer exists
                 if not auction.buyer:
                     auction.sold_price = 0 # Or mark as Unsold logic if you have it
@@ -70,15 +71,15 @@ class AuctionService:
     
     def get_scheduled_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses() # Keep your team's auto-update logic!
-        return self.repo.get_by_status("Scheduled", seller_id)
+        return self.repo.get_by_status(AuctionStatus.SCHEDULE.value, seller_id)
 
     def get_live_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("Live", seller_id)
+        return self.repo.get_by_status(AuctionStatus.LIVE.value, seller_id)
 
     def get_history_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("History", seller_id)
+        return self.repo.get_by_status(AuctionStatus.HISTORY.value, seller_id)
         
     def delete_auction(self, auction_id: str):
         return self.repo.delete(auction_id)

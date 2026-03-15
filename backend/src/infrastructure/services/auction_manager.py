@@ -6,6 +6,7 @@ from src.infrastructure.database.base import SessionLocal
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
 from src.domain.models.order import Order, OrderStatus
+from src.domain.models.auction_status import AuctionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -38,17 +39,17 @@ class AuctionManager:
             current_time = datetime.utcnow()
             
             scheduled_auctions = db.query(Auction).filter(
-                Auction.status == "Scheduled"
+                Auction.status == AuctionStatus.SCHEDULE.value
             ).all()
             
             for auction in scheduled_auctions:
                 if current_time >= auction.start_time:
-                    auction.status = "Live"
+                    auction.status = AuctionStatus.LIVE.value
                     db.commit()
                     logger.info(f"Auction activated: {auction.auction_id}")
             
             live_auctions = db.query(Auction).filter(
-                Auction.status == "Live",
+                Auction.status == AuctionStatus.LIVE.value,
                 Auction.buyer.is_(None)
             ).all()
             
@@ -70,7 +71,7 @@ class AuctionManager:
                             await self._mark_winner(auction, highest_bid, db)
             
             won_auctions = db.query(Auction).filter(
-                Auction.status == "Live",
+                Auction.status == AuctionStatus.LIVE.value,
                 Auction.buyer.isnot(None)
             ).all()
             
@@ -113,7 +114,7 @@ class AuctionManager:
     
     async def _close_auction(self, auction: Auction, db: Session):
         try:
-            auction.status = "Closed"
+            auction.status = AuctionStatus.HISTORY.value
             existing_order = db.query(Order).filter(
                 Order.auction_id == auction.auction_id
             ).first()

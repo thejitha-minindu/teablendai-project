@@ -3,6 +3,7 @@ import logging
 from uuid import uuid4
 
 from src.domain.services.buyer.connection_manager import IConnectionManager
+from src.domain.models.auction_status import AuctionStatus
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +72,7 @@ class BidRealtimeService:
             "auction_id": auction_id,
             "winner_id": str(auction.buyer),
             "final_price": auction.sold_price,
-            "status": "Closed",
+            "status": AuctionStatus.HISTORY.value,
             "timestamp": datetime.now(timezone.utc).isoformat()
         }
         

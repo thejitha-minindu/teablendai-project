@@ -4,6 +4,7 @@ import uuid
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.admin.auction_repository import AuctionRepositoryInterface
+from src.domain.models.auction_status import AuctionStatus
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
@@ -23,7 +24,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
             duration=auction_data.duration,
-            status="Scheduled"
+            status=AuctionStatus.SCHEDULE.value
         )
         
         self.db.add(db_auction)
