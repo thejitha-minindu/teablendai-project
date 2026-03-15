@@ -15,16 +15,16 @@ import type { Bid } from "@/types/buyer/bid.types";
 
 type AuctionDetailLayoutProps = {
   auction: AuctionData;
-  bids: Bid[];
+  bids?: Bid[] | undefined;
   highestBid: number;
   myHighestBid: number;
   latestBid?: Bid;
-  selectedAmount: string;
-  setSelectedAmount: (value: string) => void;
-  submitting: boolean;
+  selectedAmount?: string;
+  setSelectedAmount?: (value: string) => void;
+  submitting?: boolean;
   connected: boolean;
   error: string | null;
-  submitBid: () => Promise<void>;
+  submitBid?: () => Promise<void>;
   isBidLocked: boolean;
   statusLabel: "Live" | "Scheduled";
   imageUrl: string;
@@ -72,7 +72,7 @@ export function AuctionDetailLayout({
             <div><p className="text-muted-foreground">Estate</p><p className="font-medium">{auction.estate_name || "N/A"}</p></div>
             <div><p className="text-muted-foreground">Base Price</p><p className="font-medium">{auction.base_price} LKR</p></div>
             <div><p className="text-muted-foreground">Highest Bid</p><p className="font-medium">{highestBid} LKR</p></div>
-            <div><p className="text-muted-foreground">Total Bids</p><p className="font-medium">{bids.length}</p></div>
+            <div><p className="text-muted-foreground">Total Bids</p><p className="font-medium">{bids?.length || 0}</p></div>
             <div><p className="text-muted-foreground">My Highest</p><p className="font-medium">{myHighestBid || "-"} LKR</p></div>
             <div><p className="text-muted-foreground">Latest Bid</p><p className="font-medium">{latestBid ? `${latestBid.bid_amount} LKR` : "N/A"}</p></div>
           </div>
@@ -157,7 +157,7 @@ export function AuctionDetailLayout({
             </div>
             <ScrollArea className="h-105">
               <div className="p-4">
-                {bids.length > 0 ? (
+                {bids && bids.length > 0 ? (
                   bids.map((bid) => (
                     <div key={bid.bid_id}>
                       <div className="text-sm">
