@@ -9,11 +9,12 @@ type TrackAuctionCardProps = {
     status: string;
     buyer?: string;
     soldPrice?: number;
+    customAuctionId?: string;
 };
 
 import { Box } from "lucide-react";
 
-export function TrackAuctionCard({ auctionName, estateName, grade, quantity, basePrice, status, buyer, soldPrice }: TrackAuctionCardProps) {
+export function TrackAuctionCard({ auctionName, estateName, grade, quantity, basePrice, status, buyer, soldPrice, customAuctionId }: TrackAuctionCardProps) {
     return (
         <div className="bg-white rounded-xl shadow-md p-5  mb-5 w-full max-w-full min-w-0 block min-h-48">
             
@@ -42,6 +43,9 @@ export function TrackAuctionCard({ auctionName, estateName, grade, quantity, bas
                         )}
                         {soldPrice !== null && (
                             <p><span className="font-medium">Sold Price :</span> ${soldPrice.toFixed(2)}</p>
+                        )}
+                        {customAuctionId && (
+                            <p><span className="font-medium">Ref ID :</span> {customAuctionId}</p>
                         )}
                     </div>
                 </div>

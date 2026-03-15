@@ -111,6 +111,7 @@ function extractCreatedAuctionDetails(content: string): {
   start_time?: string;
   duration?: string;
   description?: string;
+  custom_auction_id?: string;
 } {
   const extract = (label: string) => {
     const pattern = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`, "i");
@@ -126,6 +127,7 @@ function extractCreatedAuctionDetails(content: string): {
     start_time: extract("Start Time"),
     duration: extract("Duration"),
     description: extract("Description") || "None",
+    custom_auction_id: extract("Ref ID") || extract("Custom Auction ID"),
   };
 }
 
@@ -179,7 +181,17 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
   const hasStructuredAuctionConfirmation =
     message.auction_payload?.type === "auction_confirmation";
   const auctionSubtype = message.auction_payload?.subtype;
-  const structuredFields = message.auction_payload?.fields;
+  const structuredFields: {
+    grade?: string;
+    quantity?: string | number;
+    origin?: string;
+    base_price?: string | number;
+    start_time?: string;
+    duration?: string | number;
+    description?: string;
+    custom_auction_id?: string;
+    [key: string]: unknown;
+  } | undefined = message.auction_payload?.fields;
   const structuredDisplay = message.auction_payload?.display;
   const isFullAuctionDetailsSubtype =
     !auctionSubtype || auctionSubtype === "create_confirmation";
@@ -488,6 +500,10 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Description</dt>
                       <dd>{structuredFields?.description || createdDetails?.description || "None"}</dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Ref ID:</dt>
+                      <dd>{structuredFields?.custom_auction_id || createdDetails?.custom_auction_id || "N/A"}</dd>
                     </div>
                   </dl>
                 </div>

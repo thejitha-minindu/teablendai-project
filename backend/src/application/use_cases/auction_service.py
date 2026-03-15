@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
 
 class AuctionService:
@@ -38,39 +39,7 @@ class AuctionService:
         return int(round(duration))
 
     def _update_auction_statuses(self):
-        """
-        1. Checks 'Scheduled' -> 'Live' (Start Time passed)
-        2. Checks 'Live' -> 'History' (Duration ended)
-        """
-        # Compare against local naive time because user-entered times are local/naive.
-        now_local = datetime.now()
-
-        # --- PART 1: Scheduled -> Live ---
-        scheduled = self.repo.get_by_status("Scheduled")
-        for auction in scheduled:
-            db_time = self._normalize_datetime_for_compare(auction.start_time)
-
-            # If start time is passed, make it LIVE
-            if db_time <= now_local:
-                auction.status = "Live"
-                self.repo.db.add(auction)
-
-        # --- PART 2: Live -> History (NEW LOGIC) ---
-        live_auctions = self.repo.get_by_status("Live")
-        for auction in live_auctions:
-            start_time = self._normalize_datetime_for_compare(auction.start_time)
-            duration_minutes = self._duration_to_minutes(auction.duration)
-            end_time = start_time + timedelta(minutes=duration_minutes)
-
-            # If current time is past end time, move to History
-            if now_local >= end_time:
-                auction.status = "History"
-                # Optionally set a default result if no buyer exists
-                if not auction.buyer:
-                    auction.sold_price = 0 # Or mark as Unsold logic if you have it
-                self.repo.db.add(auction)
-        
-        self.repo.db.commit()
+        sync_auction_statuses(self.repo.db)
 
     def update_auction(self, auction_id: str, update_data: AuctionCreate):
         # Convert Pydantic model to dict, excluding None values

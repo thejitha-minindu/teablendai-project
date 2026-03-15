@@ -14,6 +14,7 @@ type Auction = {
     status: string;
     buyer?: string;
     sold_price?: number;
+    custom_auction_id?: string;
 };
 
 export default function TrackAuctionPage() {
@@ -81,6 +82,7 @@ export default function TrackAuctionPage() {
                         status={auction.status}
                         buyer={auction.buyer}
                         soldPrice={auction.sold_price}
+                        customAuctionId={auction.custom_auction_id}
                     />
                 ))
 

@@ -5,6 +5,7 @@ from typing import Optional
 
 class AuctionResponse(BaseModel):
     auction_id: UUID
+    custom_auction_id: Optional[str] = None
     auction_name: str
     estate_name: str
     grade: str

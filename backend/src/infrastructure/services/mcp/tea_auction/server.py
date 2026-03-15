@@ -132,6 +132,7 @@ async def create_auction(
                 "status": "success",
                 "message": "Auction created successfully",
                 "auction_id": result.get("auction_id") or result.get("id"),
+                "custom_auction_id": result.get("custom_auction_id"),
                 "data": result,
             }
 

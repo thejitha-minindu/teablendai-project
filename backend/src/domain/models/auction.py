@@ -10,6 +10,7 @@ class Auction(Base):
     __tablename__ = "auctions"
 
     auction_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
+    custom_auction_id = Column(String(256), unique=True, nullable=True, index=True)
     auction_name = Column(String(128), nullable=False)
     seller_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False)
     seller_brand = Column(String(100), nullable=True)

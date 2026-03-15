@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from typing import Optional
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.buyer.auction import Auction
 from src.domain.models.user import User, WatchList
@@ -7,6 +8,19 @@ from src.domain.repositories.buyer.auction_repository import AuctionRepositoryIn
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _normalize_status(status: Optional[str]) -> Optional[str]:
+        if status is None:
+            return None
+        normalized = status.strip().lower()
+        if normalized == "scheduled":
+            return "Scheduled"
+        if normalized == "live":
+            return "Live"
+        if normalized == "history":
+            return "History"
+        return status
 
     # Create a new auction
     def create_auction(self, auction: Auction):
@@ -29,18 +43,19 @@ class AuctionRepository(AuctionRepositoryInterface):
                 query = query.filter(AuctionModel.buyer == user_id)
             else:
                 query = query.filter(AuctionModel.seller_id == user_id)
-        if status:
-            query = query.filter(AuctionModel.status == status)
+        normalized_status = self._normalize_status(status)
+        if normalized_status:
+            query = query.filter(AuctionModel.status == normalized_status)
         
         return query.all()
 
     # List auction history for user
     def list_auctions_history(self, user_id: str, as_buyer: bool = False):
-        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status="history")
+        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status="History")
 
     # List auctions for user as buyer with history status
     def list_auctions_order(self, user_id: str):
-        return self.list_auctions(user_id=user_id, as_buyer=True, status="history")
+        return self.list_auctions(user_id=user_id, as_buyer=True, status="History")
  
     # List auctions in user's watchlist
     def list_auctions_watchlist(self, user_id: str):
@@ -54,7 +69,7 @@ class AuctionRepository(AuctionRepositoryInterface):
 
     #  Get preview auctions for home page
     def get_home_preview_auctions(self, user_id: str):
-        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == "live").order_by(AuctionModel.created_at.desc())
+        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == "Live").order_by(AuctionModel.created_at.desc())
         return query.limit(5).all()
     
     # Add auction to watchlist

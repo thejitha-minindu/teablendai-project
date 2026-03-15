@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/apiClient';
 
 interface AuctionAPIResponse {
   auction_id: string;
+  custom_auction_id?: string;
   grade: string;
   quantity: number;
   base_price: number;
@@ -104,6 +105,7 @@ export default function ScheduledAuctionsPage() {
             time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             grade: item.grade,
             quantity: item.quantity,
+            custom_auction_id: item.custom_auction_id,
             // Calculate initial countdown
             countdown: calculateTimeUntilStart(item.start_time),
             fullData: item

@@ -64,6 +64,11 @@ export function AuctionHomePreview() {
               <p className="mb-1 text-sm">
                 <span className="font-medium">Base Price:</span> {auction.base_price ? `${auction.base_price} LKR` : "-"}
               </p>
+              {auction.custom_auction_id && (
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Ref ID:</span> {auction.custom_auction_id}
+                </p>
+              )}
             </div>
           </div>
           {imageUrl ? (

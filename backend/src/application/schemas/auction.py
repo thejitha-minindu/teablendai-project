@@ -52,6 +52,7 @@ class AuctionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     auction_id: UUID
+    custom_auction_id: Optional[str] = None
     auction_name: Optional[str] = None
     seller_id: UUID
     seller_brand: Optional[str] = None

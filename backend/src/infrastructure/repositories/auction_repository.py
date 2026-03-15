@@ -2,14 +2,19 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from typing import List, Optional
 import uuid
+import logging
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.domain.repositories.auction_repository import AuctionRepositoryInterface
+from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
+
+logger = logging.getLogger(__name__)
 
 class AuctionRepository(AuctionRepositoryInterface):
     DEV_SELLER_ID = "12345678-1234-5678-1234-567812345678"
     DEV_SELLER_EMAIL = "dev.seller@teablendai.local"
     DEV_SELLER_USERNAME = "dev_seller"
+    _custom_id_column_checked = False
 
     def __init__(self, db: Session):
         self.db = db
@@ -77,7 +82,72 @@ class AuctionRepository(AuctionRepositoryInterface):
         )
         return self.DEV_SELLER_ID
 
+    def _ensure_custom_auction_id_column(self) -> None:
+        """Ensure auctions table has custom_auction_id column for existing DBs."""
+        if AuctionRepository._custom_id_column_checked:
+            return
+
+        self.db.execute(
+            text(
+                """
+                IF COL_LENGTH('auctions', 'custom_auction_id') IS NULL
+                BEGIN
+                    ALTER TABLE auctions
+                    ADD custom_auction_id VARCHAR(256) NULL
+                END
+                """
+            )
+        )
+
+        self.db.execute(
+            text(
+                """
+                IF NOT EXISTS (
+                    SELECT 1
+                    FROM sys.indexes
+                    WHERE name = 'IX_auctions_custom_auction_id'
+                      AND object_id = OBJECT_ID('auctions')
+                )
+                BEGIN
+                    CREATE UNIQUE NONCLUSTERED INDEX IX_auctions_custom_auction_id
+                    ON auctions(custom_auction_id)
+                    WHERE custom_auction_id IS NOT NULL
+                END
+                """
+            )
+        )
+
+        self.db.commit()
+        AuctionRepository._custom_id_column_checked = True
+
+    def _generate_unique_custom_auction_id(
+        self,
+        seller_name: str,
+        grade: str,
+        origin: str,
+        max_attempts: int = 30,
+    ) -> str:
+        """Generate a unique custom auction ID in requested format."""
+        for _ in range(max_attempts):
+            candidate = build_auction_reference_id(
+                seller_name=seller_name,
+                tea_grade=grade,
+                origin=origin,
+            )
+
+            exists = (
+                self.db.query(AuctionModel.auction_id)
+                .filter(AuctionModel.custom_auction_id == candidate)
+                .first()
+            )
+            if not exists:
+                return candidate
+
+        raise RuntimeError("Unable to generate unique custom auction ID")
+
     def create_auction(self, auction_data: AuctionCreate) -> Auction:
+        self._ensure_custom_auction_id_column()
+
         new_id = str(uuid.uuid4())
         seller_id = self._resolve_seller_id(auction_data.seller_id)
         auction_name = (auction_data.auction_name or "").strip()
@@ -90,9 +160,23 @@ class AuctionRepository(AuctionRepositoryInterface):
         estate_name = (auction_data.estate_name or auction_data.seller_brand or auction_data.origin or "").strip()
         if not estate_name:
             estate_name = "Tea Estate"
+
+        seller_name_for_custom_id = (
+            (auction_data.seller_brand or "").strip()
+            or company_name
+            or estate_name
+            or "Seller"
+        )
+        custom_auction_id = self._generate_unique_custom_auction_id(
+            seller_name=seller_name_for_custom_id,
+            grade=auction_data.grade,
+            origin=auction_data.origin,
+        )
+        logger.info("Generated custom auction ID %s for auction %s", custom_auction_id, new_id)
         
         db_auction = AuctionModel(
             auction_id=new_id,
+            custom_auction_id=custom_auction_id,
             auction_name=auction_name,
             seller_id=seller_id,
             seller_brand=auction_data.seller_brand,

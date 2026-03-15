@@ -118,6 +118,19 @@ export interface ConversationSummary {
 }
 
 export const chatService = {
+  getCurrentUserId(): string | null {
+    if (typeof window === "undefined") return null;
+    const token = localStorage.getItem("teablend_token");
+    if (!token) return null;
+
+    try {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      return payload?.id ? String(payload.id) : null;
+    } catch {
+      return null;
+    }
+  },
+
   // Send message to backend
   async sendMessage(
     message: string,
@@ -125,6 +138,8 @@ export const chatService = {
   ): Promise<QueryResponse> {
     const payload: Record<string, unknown> = { message };
     if (conversationId) payload.conversation_id = conversationId;
+    const userId = this.getCurrentUserId();
+    if (userId) payload.user_id = userId;
     const response = await apiClient.post<QueryResponse>("/query", payload);
     return response.data;
   },

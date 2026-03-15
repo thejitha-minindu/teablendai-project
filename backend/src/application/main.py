@@ -23,8 +23,14 @@ from src.presentation.routers.v1 import (
     conversations, 
     query,
     #dashboard,
-    chat
+    chat,
+    auth
 )
+from src.presentation.routers.v1.admin import admin_auction
+from src.presentation.routers.v1.buyer import auction as buyer_auction
+from src.presentation.routers.v1.buyer import bid as buyer_bid
+from src.presentation.routers.v1.buyer import order as buyer_order
+from src.presentation.routers.v1.buyer import live_auction_socket
 
 # Configure logging
 logging.basicConfig(
@@ -87,6 +93,7 @@ app.add_middleware(
 
 # API v1 routers
 
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 # Register bid router
 app.include_router(bid.router, prefix="/api/v1")
 # Register auction router
@@ -103,6 +110,15 @@ app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 #app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
+
+# Admin routers
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
+
+# Buyer routers
+app.include_router(buyer_auction.router, prefix="/api/v1/buyer")
+app.include_router(buyer_bid.router, prefix="/api/v1/buyer")
+app.include_router(buyer_order.router, prefix="/api/v1/buyer")
+app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
 @app.get("/")
 async def root():

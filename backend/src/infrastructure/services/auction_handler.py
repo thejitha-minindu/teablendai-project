@@ -1095,6 +1095,7 @@ Please confirm if this is correct.
 
         if result.get("status") == "success":
             auction_id = result.get("auction_id", "Unknown")
+            custom_auction_id = result.get("custom_auction_id") or "N/A"
             duration_display = self._format_duration_hours(
                 data.get("duration", "N/A"),
                 input_unit=data.get("_duration_input_unit")
@@ -1107,6 +1108,7 @@ Please confirm if this is correct.
 **Auction Created Successfully!**
 
 **Auction ID:** {auction_id}
+**Custom Auction ID:** {custom_auction_id}
 
 **Details:**
 - **Grade:** {data['grade']}
@@ -1149,6 +1151,7 @@ Please try again or contact support if the problem persists.
                 "operation": "create_auction",
                 "status": "success" if result.get("status") == "success" else "failed",
                 "auction_id": result.get("auction_id"),
+                "custom_auction_id": result.get("custom_auction_id"),
                 "details": {
                     "grade": data.get("grade"),
                     "quantity": data.get("quantity"),

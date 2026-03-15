@@ -11,7 +11,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List, Annotated
 from datetime import datetime
 
-from src.application.dependencies import get_chat_service
+from src.application.dependencies import get_chat_service, get_optional_current_user
+from src.domain.models.user import User
 from src.infrastructure.services.chat_service import ChatService
 
 logger = logging.getLogger(__name__)
@@ -23,6 +24,7 @@ class QueryRequest(BaseModel):
     """Request model for tea queries."""
     question: Annotated[str, Field(alias="message")]
     conversation_id: Optional[int] = None
+    user_id: Optional[str] = None
     model_config = ConfigDict(populate_by_name=True)
 
 
@@ -54,7 +56,8 @@ class QueryResponse(BaseModel):
 @router.post("/query", response_model=QueryResponse)
 async def query_tea(
     request: QueryRequest,
-    chat_service: ChatService = Depends(get_chat_service)
+    chat_service: ChatService = Depends(get_chat_service),
+    current_user: User | None = Depends(get_optional_current_user),
 ) -> QueryResponse:
     """
     Process a tea-related query.
@@ -66,9 +69,12 @@ async def query_tea(
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
     try:
+        resolved_user_id = str(current_user.user_id) if current_user else request.user_id
+
         result = await chat_service.process_message(
             user_message=question,
-            conversation_id=request.conversation_id
+            conversation_id=request.conversation_id,
+            user_id=resolved_user_id,
         )
 
         # If non-tea response

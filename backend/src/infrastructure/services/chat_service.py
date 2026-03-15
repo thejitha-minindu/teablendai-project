@@ -67,7 +67,7 @@ class ChatService:
         self,
         user_message: str,
         conversation_id: Optional[int] = None,
-        user_id: Optional[int] = None,
+        user_id: Optional[str] = None,
         user_role: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -109,6 +109,9 @@ class ChatService:
             }
         
         try:
+            conversation_user_id = self._coerce_conversation_user_id(user_id)
+            auction_user_id = str(user_id) if user_id is not None else None
+
             # CONVERSATION SETUP
             if conversation_id:
                 conversation = self.conversation_repo.get_by_id(conversation_id)
@@ -116,7 +119,7 @@ class ChatService:
                     raise ValueError(f"Conversation {conversation_id} not found")
                 logger.info(f"[Chat] Using existing conversation {conversation_id}")
             else:
-                conversation = await self._create_conversation(user_message, user_id)
+                conversation = await self._create_conversation(user_message, conversation_user_id)
                 logger.info(f"[Chat] Created conversation {conversation.conversation_id}: {conversation.title}")
 
             # Save user message
@@ -136,7 +139,7 @@ class ChatService:
                 return await self.auction_handler.handle_auction_management(
                     user_message=user_message,
                     conversation=conversation,
-                    user_id=user_id,
+                    user_id=auction_user_id,
                     user_role=user_role
                 )
 
@@ -193,7 +196,7 @@ class ChatService:
                 return await self.auction_handler.handle_auction_management(
                     user_message=user_message,
                     conversation=conversation,
-                    user_id=user_id,
+                    user_id=auction_user_id,
                     user_role=user_role
                 )
 
@@ -231,6 +234,16 @@ class ChatService:
         logger.info(f"Created conversation {saved.conversation_id}: {title}")
         
         return saved
+
+    @staticmethod
+    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[int]:
+        if user_id is None:
+            return None
+
+        try:
+            return int(str(user_id))
+        except (TypeError, ValueError):
+            return None
     
     def get_conversation_history(
         self,
@@ -477,20 +490,23 @@ class ChatService:
                 "response_time_ms": response_time
             }
 
-        # Database query failed or returned no data - try web search
-        logger.info("[Chat] Database query failed, trying web search")
-
-        search_result = await self.mcp_client.search_web(user_message)
-
-        if search_result.get("success"):
+        # Database query ran successfully but returned no rows
+        # This means the data simply does not exist right now - do NOT fall back to web search,
+        # because the question is about live system data that the web cannot answer accurately.
+        if db_result.get("success"):
+            logger.info("[Chat] Database query returned no results - informing user, skipping web search")
             response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
 
-            answer = search_result.get("answer", "")
+            no_data_message = (
+                "There are currently no records in the database that match your query. "
+                "This information comes from our live system, so it may not be available at this time. "
+                "Please check back later or try a different query."
+            )
+
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
-                content=answer,
-                source="web",
-                search_results=search_result.get("results", []),
+                content=no_data_message,
+                source="database",
                 response_time_ms=response_time
             )
             self.message_repo.create(assistant_msg)
@@ -498,17 +514,21 @@ class ChatService:
             return {
                 "success": True,
                 "conversation_id": conversation.conversation_id,
-                "answer": answer,
-                "source": "web",
-                "search_results": search_result.get("results", []),
+                "answer": no_data_message,
+                "source": "database",
+                "row_count": 0,
                 "timestamp": datetime.utcnow().isoformat(),
                 "response_time_ms": response_time
             }
 
-        # Both failed - return fallback
+        # Database query actually failed (timeout, error, etc.) - do NOT web search,
+        # because the question is database-specific and the web cannot answer it reliably.
+        logger.warning("[Chat] Database query failed - returning error, not falling back to web search")
+        response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
         fallback_message = (
-            "I couldn't find information to answer your question. "
-            "Please try rephrasing or ask a different tea-related question."
+            "I was unable to retrieve data from the database at this time. "
+            "Please try again later."
         )
 
         assistant_msg = ChatMessage.create_assistant_message(
@@ -523,7 +543,8 @@ class ChatService:
             "conversation_id": conversation.conversation_id,
             "answer": fallback_message,
             "source": "error",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "response_time_ms": response_time
         }
 
     def _is_auction_query(self, query: str, columns: list) -> bool:

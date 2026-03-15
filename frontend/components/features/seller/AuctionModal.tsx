@@ -190,6 +190,10 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                 <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Package className="w-5 h-5" /> Tea Details</h3>
                 <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                   <div className="flex justify-between py-2 border-b border-gray-300">
+                    <span className="font-semibold text-gray-600">Ref ID:</span>
+                    <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Estate Name:</span>
                     <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
                   </div>
@@ -217,7 +221,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     <span className="font-semibold text-gray-600">Base Price:</span>
                     {editMode === 'details' ? (
                        <input type="number" value={formData.base_price} onChange={(e) => setFormData({...formData, base_price: parseFloat(e.target.value)})} className="border p-1 rounded w-20" />
-                    ) : <span className="text-[#588157] font-bold text-xl">${auction.base_price}</span>}
+                    ) : <span className="text-[#588157] font-bold text-xl">LKR {auction.base_price}</span>}
                   </div>
                 </div>
                 <div>
@@ -364,6 +368,10 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <div className="flex justify-between py-2 border-b border-gray-300">
+                  <span className="font-semibold text-gray-600">Ref ID:</span>
+                  <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-300">
                   <span className="font-semibold text-gray-600">Estate:</span>
                   <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
                 </div>
@@ -460,6 +468,7 @@ interface HistoryModalProps {
 export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalProps) {
   const modalDetails = {
     ...data,
+    custom_auction_id: data.custom_auction_id,
     estateName: 'Premium Estate',
     origin: 'Ratnapura',
     startTime: '10:00 AM',
@@ -522,6 +531,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Package className="w-5 h-5" /> Auction Details</h3>
+                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Ref ID:</span><span className="text-gray-800 font-medium">{modalDetails.custom_auction_id || 'N/A'}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Grade:</span><span className="text-gray-800 font-medium">{modalDetails.grade}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Quantity:</span><span className="text-gray-800 font-medium">{modalDetails.quantity} kg</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Origin:</span><span className="text-gray-800 font-medium">{modalDetails.origin}</span></div>

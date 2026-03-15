@@ -3,6 +3,7 @@ Query Intent Classifier
 """
 
 import logging
+import re
 from typing import Literal
 
 logger = logging.getLogger(__name__)
@@ -139,14 +140,32 @@ class IntentClassifier:
         - "Show my auctions" → False (this is a query, not action)
         - "Update auction #127 price to 600" → True
         """
-        # Check for action keywords
+        # Additional check: read-only requests are queries, not action commands.
+        if any(phrase in question for phrase in ['show my auction', 'list my auction', 'view my auction', 'display my auction']):
+            return False
+
+        # Backward-compatible keyword match
         if any(keyword in question for keyword in cls.AUCTION_ACTION_KEYWORDS):
-            # Additional check: "show/list my auctions" is a QUERY, not action
-            if any(phrase in question for phrase in ['show my auction', 'list my auction', 'view my auction', 'display my auction']):
-                return False
             return True
-        
-        return False
+
+        # Natural-language action phrases (e.g., "i want to create an auction")
+        action_phrase_patterns = [
+            r"\b(?:i\s+want\s+to\s+|please\s+)?create\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?add\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?start\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?post\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?schedule\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?update\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?change\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?modify\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?edit\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?delete\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?remove\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?cancel\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?close\s+(?:an?\s+)?auction\b",
+        ]
+
+        return any(re.search(pattern, question) for pattern in action_phrase_patterns)
 
     @classmethod
     def _contains_hybrid_indicators(cls, question: str) -> bool:

@@ -31,6 +31,7 @@ interface AuctionData {
   seller_brand?: string;
   estate_name?: string;
   company_name?: string;
+  custom_auction_id?: string;
 }
 
 interface AuctionCardProps {
@@ -302,9 +303,11 @@ export function AuctionCard({ auction, index }: AuctionCardProps) {
         {/* Auction ID */}
         {auction.auction_id && (
         <div className="space-y-1 text-center">
-          <p className="text-xs text-muted-foreground">
-            ID: {auction.auction_id}
-          </p>
+          {auction.custom_auction_id && (
+            <p className="text-xs text-muted-foreground">
+              <span className="font-medium">Ref ID:</span> {auction.custom_auction_id}
+            </p>
+          )}
           <Link
             href={`http://localhost:3000/seller/scheduled?auction_id=${auction.auction_id}`}
             className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline"

@@ -149,3 +149,20 @@ def get_optional_current_seller(
         )
 
     return user
+
+
+def get_optional_current_user(
+    token: str | None = Depends(optional_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+
+    payload = _decode_token(token)
+    email: str | None = payload.get("sub")
+
+    if email is None:
+        return None
+
+    user = db.query(User).filter(User.email == email).first()
+    return user

@@ -86,6 +86,7 @@ export default function LiveAuctionsPage() {
           price: item.base_price, 
           grade: item.grade,
           quantity: item.quantity,
+          custom_auction_id: item.custom_auction_id,
           buyer: item.buyer || "No Bids Yet",
           countdown: calculateCountdown(item.start_time, item.duration),
           rawStart: item.start_time,

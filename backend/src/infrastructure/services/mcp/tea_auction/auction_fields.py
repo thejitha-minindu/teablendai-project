@@ -56,6 +56,7 @@ CREATE_AUCTION_FIELDS = {
     ],
     "auto_generated": [
         "auction_id",      # UUID - backend generates
+        "custom_auction_id", # Seller+Grade+Origin+5-digit ID - backend generates
         "auction_name",    # "{grade} - {origin}" - backend generates
         "seller_id",       # From JWT token
         "seller_brand",    # From user profile (auto-filled)

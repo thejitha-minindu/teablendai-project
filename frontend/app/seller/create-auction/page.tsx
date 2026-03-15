@@ -48,7 +48,12 @@ export default function CreateAuctionPage() {
 
     try {
       const response = await apiClient.post('/auctions', payload);
-      alert('Auction created successfully!');
+      const created = response.data ?? {};
+      const auctionUuid = created.auction_id ?? 'N/A';
+      const customAuctionId = created.custom_auction_id ?? 'N/A';
+      alert(
+        `Auction created successfully!\nUUID: ${auctionUuid}\nCustom ID: ${customAuctionId}`
+      );
       router.push('/seller/dashboard'); 
     } catch (error: any) {
       console.error("Error submitting form:", error.response?.data || error);

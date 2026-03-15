@@ -6,6 +6,7 @@ class AuctionORM(Base):
     __table_args__ = {'extend_existing': True}  # prevents "table already defined" errors
 
     auction_id = Column(String, primary_key=True)
+    custom_auction_id = Column(String, nullable=True)
     seller_id = Column(String, nullable=False)
     auction_name = Column(String, nullable=False)
     estate_name = Column(String, nullable=False)
