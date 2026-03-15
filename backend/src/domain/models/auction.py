@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, ForeignKey, String, Float, DateTime, Text
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -22,7 +21,6 @@ class Auction(Base):
     base_price = Column(Float, nullable=False)
     start_time = Column(DateTime, nullable=False)
     duration = Column(Float, nullable=False)
-    end_time = Column(DateTime, nullable=False)
     status = Column(String(20), default="Scheduled")
     buyer = Column(UNIQUEIDENTIFIER, nullable=True)
     sold_price = Column(Float, nullable=True)

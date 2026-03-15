@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.buyer.bid import Bid
+from src.application.schemas.buyer.bid import BidCreateRequest, Bid
 from src.application.use_cases.buyer.bid_service import BidService
 from src.application.use_cases.buyer.bid_realtime_service import BidRealtimeService
 from src.infrastructure.database.base import get_db
@@ -23,18 +23,16 @@ def get_bid_realtime_service() -> BidRealtimeService:
 
 @router.post("", response_model=Bid)
 async def create_bid(
-    bid: Bid,
+    bid_request: BidCreateRequest,
     service: BidService = Depends(get_bid_service),
     realtime_service: BidRealtimeService = Depends(get_bid_realtime_service),
     current_user: User = Depends(get_current_buyer),
 ):
     try:
-        bid.buyer_id = str(current_user.user_id)
-        
         result = service.place_bid(
-            auction_id=str(bid.auction_id),
+            auction_id=str(bid_request.auction_id),
             buyer_id=str(current_user.user_id),
-            bid_amount=bid.bid_amount
+            bid_amount=bid_request.bid_amount
         )
         
         # Broadcast to all connected clients
@@ -42,7 +40,7 @@ async def create_bid(
             realtime_service.broadcast_bid_created(result)
         )
         
-        logger.info(f"Bid placed: ${result['bid'].bid_amount}")
+        logger.info(f"Bid placed: {result['bid'].bid_amount}")
         
         return result["bid"]
     

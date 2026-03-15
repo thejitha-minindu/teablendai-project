@@ -12,7 +12,7 @@ export function createAuctionBidSocket(
   onClose?: () => void,
 ) {
   // Get JWT token from localStorage
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const token = typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
   
   if (!token) {
     console.error("No authentication token found. User must be logged in.");
@@ -42,14 +42,18 @@ export function createAuctionBidSocket(
     console.error("WebSocket error:", {
       type: event.type,
       timeStamp: event.timeStamp,
+      readyState: ws.readyState,
+      url: ws.url,
       message: "Connection failed. Check if server is running and token is valid.",
     });
   };
   
   ws.onmessage = (msg) => {
+    console.log("Raw WebSocket message received:", msg.data);
     // Check for error messages from server
     try {
       const data = JSON.parse(msg.data);
+      console.log("✅ Parsed WebSocket message:", data);
       
       if (data.error) {
         console.error("Server error via WebSocket:", data.error);
@@ -66,9 +70,14 @@ export function createAuctionBidSocket(
           bid_time: new Date(parsed.data.bid_time),
         },
       };
+      console.log("Calling onEvent with:", normalized);
       onEvent(normalized);
     } catch (e) {
-      console.error('Failed to parse WebSocket message:', msg.data, e);
+      console.error('Failed to parse WebSocket message:', {
+        raw: msg.data,
+        error: e instanceof Error ? e.message : String(e),
+        errorStack: e instanceof Error ? e.stack : undefined
+      });
     }
   };
 

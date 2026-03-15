@@ -4,8 +4,9 @@ import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from src.presentation.routers.v1.buyer import live_auction_socket as buyer_live_auction_ws
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1 import (
@@ -41,7 +42,6 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-
 # @asynccontextmanager
 # async def lifespan(app: FastAPI):
 #     logger.info("Starting TeaBlendAI FastAPI server.")
@@ -74,23 +74,18 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """FastAPI lifespan context manager for startup/shutdown"""
-    # ---- STARTUP ----
-    logger.info("🚀 Starting TeaBlendAI FastAPI server")
+
+    logger.info("Starting TeaBlendAI FastAPI server")
     
-    # Start auction manager background task
     auction_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_task = auction_task
-    
-    logger.info("✅ All background tasks started")
+
+    logger.info("All background tasks started")
     
     try:
         yield
     finally:
-        # ---- SHUTDOWN ----
-        logger.info("🛑 Shutting down TeaBlendAI server")
-        
-        # Stop auction manager
+        logger.info("Shutting down TeaBlendAI server")
         auction_manager.stop()
         
         try:
@@ -98,16 +93,7 @@ async def lifespan(app: FastAPI):
         except asyncio.TimeoutError:
             logger.warning("Auction manager task did not complete in time")
         
-        logger.info("✅ Shutdown complete")
-
-
-# Create FastAPI application with lifespan
-app = FastAPI(
-    title="Tea Auction Platform",
-    description="Backend API for TeaBlendAI",
-    version="1.0.0",
-    lifespan=lifespan
-)
+        logger.info("Shutdown complete")
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -116,7 +102,13 @@ Base.metadata.create_all(bind=engine)
 settings = get_settings()
 allowed_origins = settings.CORS_ORIGINS
 
-# Configure CORS
+app = FastAPI(
+    title="Tea Auction Platform",
+    description="Backend API for TeaBlendAI",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -157,6 +149,17 @@ app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers={
+            "Access-Control-Allow-Origin": allowed_origins[0] if allowed_origins else "*",
+            "Access-Control-Allow-Credentials": "true" if settings.CORS_ALLOW_CREDENTIALS else "false",
+        }
+    )
 
 @app.get("/")
 async def root():

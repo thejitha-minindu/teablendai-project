@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 import logging
+from uuid import uuid4
 
 from src.domain.services.buyer.connection_manager import IConnectionManager
 
@@ -15,15 +16,20 @@ class BidRealtimeService:
         auction_id = str(bid_data["auction"].auction_id)
         bid = bid_data["bid"]
         
+        # Send in the format frontend expects
         message = {
-            "event": "BID_PLACED",
+            "event_id": str(uuid4()),
+            "event_type": "BID_CREATED",
+            "version": 1,
             "auction_id": auction_id,
-            "bid_amount": bid.bid_amount,
-            "highest_bid": bid.bid_amount,
-            "remaining_seconds": bid_data["remaining_seconds"],
-            "extended": bid_data["extended"],
-            "status": "Live",
-            "timestamp": datetime.now(timezone.utc).isoformat()
+            "occurred_at": datetime.now(timezone.utc).isoformat(),
+            "data": {
+                "auction_id": auction_id,
+                "bid_id": str(bid.bid_id),
+                "bid_amount": bid.bid_amount,
+                "bid_time": bid.bid_time.isoformat() if bid.bid_time else datetime.now(timezone.utc).isoformat(),
+                "buyer_id": str(bid.buyer_id)
+            }
         }
         
         await self.manager.broadcast(
@@ -31,7 +37,7 @@ class BidRealtimeService:
             message=message,
         )
         
-        logger.info(f"Broadcast BID_PLACED for auction {auction_id}: ${bid.bid_amount}")
+        logger.info(f"Broadcast BID_CREATED for auction {auction_id}: {bid.bid_amount}")
     
     async def broadcast_auction_won(self, auction_data: dict) -> None:
 

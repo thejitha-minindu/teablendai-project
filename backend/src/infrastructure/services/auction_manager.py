@@ -44,7 +44,6 @@ class AuctionManager:
             for auction in scheduled_auctions:
                 if current_time >= auction.start_time:
                     auction.status = "Live"
-                    auction.end_time = auction.start_time + timedelta(seconds=auction.duration)
                     db.commit()
                     logger.info(f"Auction activated: {auction.auction_id}")
             
@@ -54,7 +53,10 @@ class AuctionManager:
             ).all()
             
             for auction in live_auctions:
-                if current_time >= auction.end_time:
+                # Calculate end_time dynamically from start_time + duration (duration is in hours)
+                auction_end_time = auction.start_time + timedelta(hours=auction.duration)
+                
+                if current_time >= auction_end_time:
 
                     # Get highest bid
                     highest_bid = db.query(Bid).filter(
@@ -102,7 +104,7 @@ class AuctionManager:
             
             logger.info(f"   WINNER MARKED: {auction.auction_id}")
             logger.info(f"   Winner: {highest_bid.buyer_id}")
-            logger.info(f"   Amount: ${highest_bid.bid_amount}")
+            logger.info(f"   Amount: {highest_bid.bid_amount}")
             logger.info(f"   Grace period: 30 seconds")
         
         except Exception as e:

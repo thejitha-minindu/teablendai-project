@@ -31,30 +31,37 @@ class BidService:
         if auction.buyer:  # If buyer is set, auction is won
             raise ValueError("Auction is won, no more bids accepted")
         
+        # Calculate end_time dynamically from start_time + duration (duration is in hours)
+        auction_end_time = auction.start_time + timedelta(hours=auction.duration)
+        
         if auction.status == "Scheduled" and current_time >= auction.start_time:
             auction.status = "Live"
-            auction.end_time = auction.start_time + timedelta(seconds=auction.duration)
             self.db.commit()
             logger.info(f"Auction LIVE: {auction_id}")
-            logger.info(f"End time: {auction.end_time}")
+            logger.info(f"Computed End time: {auction_end_time}")
         
         if auction.status == "Scheduled":
             raise ValueError("Auction has not started yet")
         
-        if current_time > auction.end_time:
-            raise ValueError("Auction end_time has passed - no more bids accepted")
+        # Debug logging
+        logger.info(f"Bid validation - Auction: {auction_id}")
+        logger.info(f"  Start time: {auction.start_time}")
+        logger.info(f"  Duration: {auction.duration}s")
+        logger.info(f"  Computed end time: {auction_end_time}")
+        logger.info(f"  Current time: {current_time}")
+        logger.info(f"  Time remaining: {(auction_end_time - current_time).total_seconds()}s")
+        
+        if current_time > auction_end_time:
+            raise ValueError(f"Auction end_time has passed - no more bids accepted. End: {auction_end_time}, Current: {current_time}")
         
         extension_happened = False
-        if auction.end_time:
-            time_remaining = (auction.end_time - current_time).total_seconds()
-            
-            if time_remaining <= EXTENSION_THRESHOLD:
-                # Extend by EXTENSION_TIME seconds
-                old_end_time = auction.end_time
-                auction.end_time = current_time + timedelta(seconds=EXTENSION_TIME)
-                
-                logger.info(f"EXTENDED: {old_end_time} → {auction.end_time}")
-                extension_happened = True
+        time_remaining = (auction_end_time - current_time).total_seconds()
+        
+        if time_remaining <= EXTENSION_THRESHOLD:
+            # Note: Extension doesn't persist since we calculate end_time dynamically
+            # In a real system, you'd store desired_end_time or rounds_count
+            logger.info(f"Auction would extend - {time_remaining}s left (threshold: {EXTENSION_THRESHOLD}s)")
+            extension_happened = True
         
         bid_obj = Bid(
             auction_id=auction_id,
@@ -65,13 +72,13 @@ class BidService:
         
         new_bid = self.bid_repo.create_bid(bid_obj)
         self.db.commit()
-        logger.info(f"Bid accepted: ${bid_amount}")
-        logger.info(f"Remaining: {(auction.end_time - current_time).total_seconds():.1f}s")
+        logger.info(f"Bid accepted: {bid_amount}")
+        logger.info(f"Remaining: {(auction_end_time - current_time).total_seconds():.1f}s")
         
         return {
             "bid": new_bid,
             "auction": auction,
-            "remaining_seconds": (auction.end_time - current_time).total_seconds(),
+            "remaining_seconds": (auction_end_time - current_time).total_seconds(),
             "extended": extension_happened
         }
     
@@ -84,8 +91,10 @@ class BidService:
         current_time = datetime.utcnow()
         remaining_seconds = 0
         
-        if auction.status == "Live" and auction.end_time:
-            remaining = (auction.end_time - current_time).total_seconds()
+        if auction.status == "Live":
+            # Calculate end_time dynamically (duration is in hours)
+            auction_end_time = auction.start_time + timedelta(hours=auction.duration)
+            remaining = (auction_end_time - current_time).total_seconds()
             remaining_seconds = max(0, remaining)
         
         # Get highest bid

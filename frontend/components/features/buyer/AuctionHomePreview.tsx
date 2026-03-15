@@ -5,15 +5,22 @@ import { useEffect, useState } from "react";
 import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-
-const userId = "11111111-1111-1111-1111-111111111111";
+import { getAuthClaims } from "@/lib/auth";
 
 export function AuctionHomePreview() {
   const [auction, setAuction] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    
     setLoading(true);
     getHomePreviewAuctions(userId)
       .then((data) => {
@@ -24,7 +31,7 @@ export function AuctionHomePreview() {
         setError(err.message || "Failed to load auction preview");
         setLoading(false);
       });
-  }, []);
+  }, [userId]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;

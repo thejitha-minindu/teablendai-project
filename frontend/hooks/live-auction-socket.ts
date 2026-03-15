@@ -2,18 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { createAuctionBidSocket } from "@/services/buyer/LiveAuctionSocketService";
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 
-export interface AuctionTimerEvent {
-  event: "BID_PLACED" | "AUCTION_WON" | "AUCTION_ENDED";
-  remaining_seconds?: number;
-  extended?: boolean;
-  grace_period_seconds?: number;
-  winner_id?: string;
-  final_price?: number;
-  status?: "Live" | "Won" | "Closed";
-  highest_bid?: number;
-  bid_count?: number;
-}
-
 export function useAuctionBidsSocket(auctionId: string) {
   const [connected, setConnected] = useState(false);
   const [events, setEvents] = useState<BidWsEvent[]>([]);
@@ -33,38 +21,29 @@ export function useAuctionBidsSocket(auctionId: string) {
 
     const ws = createAuctionBidSocket(
       auctionId,
-      (evt) => {
-        // Handle different event types
-        const event = evt as AuctionTimerEvent;
+      (evt: BidWsEvent) => {
+        // Handle different event types based on event_type field
+        console.log("Received WebSocket event:", evt.event_type, evt);
         
-        if (event.event === "BID_PLACED") {
+        if (evt.event_type === "BID_CREATED") {
+          console.log("Bid created event received:", evt.data);
           setEvents((prev) => [evt, ...prev]);
-          setTimeLeft(event.remaining_seconds || 0);
-          setHighestBid(event.highest_bid || 0);
-          setBidCount(event.bid_count || 0);
           setAuctionStatus("Live");
-          
-          // Show extension animation
-          if (event.extended) {
-            setIsExtended(true);
-            setTimeout(() => setIsExtended(false), 1000);
-          }
         }
         
-        if (event.event === "AUCTION_WON") {
-          setWinner(event.winner_id || null);
-          setFinalPrice(event.final_price || 0);
+        if (evt.event_type === "AUCTION_WON") {
+          setWinner(evt.data?.buyer_id || null);
+          setFinalPrice(evt.data?.bid_amount || 0);
           setAuctionStatus("Won");
-          setTimeLeft(event.grace_period_seconds || 0);
-          console.log(`🏆 Auction Won: ${event.winner_id} - $${event.final_price}`);
+          console.log(`Auction Won: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
         }
         
-        if (event.event === "AUCTION_ENDED") {
-          setWinner(event.winner_id || null);
-          setFinalPrice(event.final_price || 0);
+        if (evt.event_type === "AUCTION_ENDED") {
+          setWinner(evt.data?.buyer_id || null);
+          setFinalPrice(evt.data?.bid_amount || 0);
           setAuctionStatus("Closed");
           setTimeLeft(0);
-          console.log(`✅ Auction Ended: ${event.winner_id} - $${event.final_price}`);
+          console.log(`Auction Ended: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
         }
       },
       () => setConnected(true),
