@@ -33,6 +33,7 @@ export default function BuyerHistoryPage() {
     }
 
     setLoading(true);
+    setError(null);
     listAuctionsHistory(userId, true)
       .then((data) => {
         setHistoryData(data || []);
@@ -84,7 +85,7 @@ export default function BuyerHistoryPage() {
     });
 
     return result;
-  }, [filters, sortBy]);
+  }, [AUCTION_DATA, filters, sortBy]);
 
   // Handle filter changes
   const handleFilterChange = (newFilters: FilterState) => {
@@ -99,82 +100,22 @@ export default function BuyerHistoryPage() {
   };
 
   const itemsPerPage = 6;
-  const totalCards = filteredAndSortedData.length;
-  const totalPages = Math.ceil(totalCards / itemsPerPage);
-  
+  const totalItems = filteredAndSortedData.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedData = filteredAndSortedData.slice(startIndex, endIndex);
 
   const initialCards = 3;
-  const expandedCards = 6;
-  const hasMoreCards = totalCards > initialCards;
+  const hasMoreCards = totalItems > initialCards;
 
-  const cardsToShow = isExpanded 
-    ? paginatedData 
-    : filteredAndSortedData.slice(0, Math.min(initialCards, totalCards));
-
-  // Show "No results" message if no auctions match filters
-  if (totalCards === 0 && !loading) {
-    return (
-      <div className="sm:px-4 lg:px-10 lg:pt-10">
-        <div className="mb-5 items-start">
-          <h1 className="text-3xl font-bold">Auction History</h1>
-        </div>
-
-        <HistoryFilterSort 
-          onFilterChange={handleFilterChange}
-          onSortChange={handleSortChange}
-          initialFilters={filters}
-          initialSort={sortBy}
-        />
-
-        <div className="text-center py-20">
-          <h3 className="text-xl font-medium mb-2">No auctions found</h3>
-          <p className="text-muted-foreground">
-            Try adjusting your filters or search terms
-          </p>
-          <Button 
-            onClick={() => {
-              handleFilterChange({ searchQuery: "" });
-              setSortBy("recent");
-            }}
-            variant="outline"
-            className="mt-4"
-          >
-            Clear all filters
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="sm:px-4 lg:px-10 lg:pt-10">
-        <div className="mb-5 items-start">
-          <h1 className="text-3xl font-bold">Auction History</h1>
-        </div>
-        <div className="text-center py-20">Loading...</div>
-      </div>
-    );
-  }
-
-  // Show error state
-  if (error) {
-    return (
-      <div className="sm:px-4 lg:px-10 lg:pt-10">
-        <div className="mb-5 items-start">
-          <h1 className="text-3xl font-bold">Auction History</h1>
-        </div>
-        <div className="text-center py-20 text-red-500">{error}</div>
-      </div>
-    );
-  }
+  const cardsToShow = isExpanded
+    ? paginatedData
+    : filteredAndSortedData.slice(0, Math.min(initialCards, totalItems));
 
   return (
-    <div className="sm:px-4 lg:px-20 lg:pt-10">
+    <div className="sm:px-4 lg:px-10 lg:pt-10">
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -193,80 +134,87 @@ export default function BuyerHistoryPage() {
 
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Auction History</h1>
-        <p className="text-muted-foreground mt-1">
-          Showing {filteredAndSortedData.length} auction{filteredAndSortedData.length !== 1 ? 's' : ''}
+        <p className="text-muted-foreground mt-2">
+          {totalItems} auction{totalItems !== 1 ? 's' : ''} found
+          {filters.searchQuery && ` for "${filters.searchQuery}"`}
         </p>
       </div>
 
-      <HistoryFilterSort 
+      <HistoryFilterSort
         onFilterChange={handleFilterChange}
         onSortChange={handleSortChange}
         initialFilters={filters}
         initialSort={sortBy}
       />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
-        {cardsToShow.map((auction, index) => (
-          <div
-            key={auction.id ?? `auction-${index}`}
-            className="flex flex-col w-full card-animate"
-            style={{
-              animationDelay: `${index * 80}ms`,
-            }}
-          >
-            <AuctionCard cardType="history" auction={auction} />
-          </div>
-        ))}
-      </div>
-
-      {/* Only show load more/show less if we have more than initial cards */}
-      {totalCards > initialCards && (
-        <div className="flex justify-center mb-10 transition-all duration-300">
-          {!isExpanded && (
-            <div style={{ animation: "fadeInUp 0.4s ease-out" }}>
-              <Button
-                onClick={() => setIsExpanded(true)}
-                size="lg"
-                variant="outline"
-                className="px-12 h-11"
-              >
-                Load More ({totalCards - initialCards} more)
-              </Button>
-            </div>
-          )}
-
-          {isExpanded && (
-            <div style={{ animation: "fadeInUp 0.4s ease-out" }}>
-              <Button
-                onClick={() => {
-                  setIsExpanded(false);
-                  setCurrentPage(1);
+      {loading ? (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Loading auction history...</h3>
+        </div>
+      ) : error ? (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Failed to load auction history</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      ) : filteredAndSortedData.length === 0 ? (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">No auctions found</h3>
+          <p className="text-muted-foreground">
+            Try adjusting your search or filters to find what you're looking for.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
+            {cardsToShow.map((auction, index) => (
+              <div
+                key={auction.id ?? `auction-${index}`}
+                className="flex flex-col w-full card-animate"
+                style={{
+                  animationDelay: `${index * 80}ms`,
                 }}
-                size="lg"
-                variant="outline"
-                className="px-12 h-11"
               >
-                Show Less
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
+                <AuctionCard cardType="history" auction={auction} />
+              </div>
+            ))}
+          </div>
 
-      {/* Only show pagination when expanded AND we have multiple pages */}
-      {isExpanded && totalPages > 1 && (
-        <div
-          className="flex flex-row justify-center sm:mt-10 mt-6"
-          style={{
-            animation: "fadeInUp 0.5s ease-out",
-          }}
-        >
-          <PaginationBuyerAuction
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-          />
-        </div>
+          <div className="flex flex-col items-center gap-4 mb-10 transition-all duration-300">
+            {hasMoreCards && (
+              <div style={{ animation: "fadeInUp 0.4s ease-out" }}>
+                <Button
+                  onClick={isExpanded ? () => {
+                    setIsExpanded(false);
+                    setCurrentPage(1);
+                  } : () => {
+                    setIsExpanded(true);
+                    setCurrentPage(1);
+                  }}
+                  size="lg"
+                  variant="outline"
+                  className="px-12 h-11"
+                >
+                  {isExpanded ? "Show Less" : `Load More (${totalItems - initialCards} more)`}
+                </Button>
+              </div>
+            )}
+
+            {isExpanded && totalPages > 1 && (
+              <div
+                className="flex flex-row justify-center"
+                style={{
+                  animation: "fadeInUp 0.5s ease-out",
+                }}
+              >
+                <PaginationBuyerAuction
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                />
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
