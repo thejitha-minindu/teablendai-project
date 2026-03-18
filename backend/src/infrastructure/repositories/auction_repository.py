@@ -4,6 +4,7 @@ from typing import List, Optional
 import uuid
 import logging
 from src.domain.models.auction import Auction as AuctionModel
+from src.domain.models.auction_status import AuctionStatus
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id

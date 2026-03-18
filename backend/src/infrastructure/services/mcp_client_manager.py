@@ -9,6 +9,7 @@ import sys
 import asyncio
 import json
 import logging
+import os
 
 from typing import Dict, List, Any
 
@@ -85,7 +86,7 @@ class MCPClientManager:
             server_params = StdioServerParameters(
                 command=sys.executable,
                 args=["-m", module_path],
-                env=None
+                env=os.environ.copy()
             )
 
             # Create stdio connection
