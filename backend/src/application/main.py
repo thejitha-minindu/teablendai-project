@@ -4,6 +4,7 @@ import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
@@ -21,6 +22,8 @@ from src.presentation.routers.v1 import (
     auth
 )
 from src.presentation.routers.v1.admin import admin_auction
+from src.presentation.routers.v1.admin import admin_csv
+from src.presentation.routers.v1.admin import admin_dashboard
 from src.presentation.routers.v1.buyer import auction as buyer_auction
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
@@ -127,7 +130,7 @@ app.include_router(buyer_order.router, prefix="/api/v1/buyer")
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
 # WebSocket routers
-app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
+app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
 
 # Admin routers
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
