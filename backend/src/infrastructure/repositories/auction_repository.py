@@ -189,7 +189,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
             duration=auction_data.duration,
-            status="Scheduled"
+            status=AuctionStatus.SCHEDULE.value
         )
         
         self.db.add(db_auction)
@@ -201,6 +201,10 @@ class AuctionRepository(AuctionRepositoryInterface):
         return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
 
     def list_auctions(self):
+        return self.db.query(AuctionModel).all()
+
+    def get_all(self):
+        """Get all auctions - required by abstract interface"""
         return self.db.query(AuctionModel).all()
 
     def get_by_status(self, status: str, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:

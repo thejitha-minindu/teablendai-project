@@ -56,15 +56,15 @@ class AuctionService:
     
     def get_scheduled_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses() # Keep your team's auto-update logic!
-        return self.repo.get_by_status("Scheduled", seller_id)
+        return self.repo.get_by_status(AuctionStatus.SCHEDULE.value, seller_id)
 
     def get_live_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("Live", seller_id)
+        return self.repo.get_by_status(AuctionStatus.LIVE.value, seller_id)
 
     def get_history_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status("History", seller_id)
+        return self.repo.get_by_status(AuctionStatus.HISTORY.value, seller_id)
         
     def delete_auction(self, auction_id: str):
         return self.repo.delete(auction_id)

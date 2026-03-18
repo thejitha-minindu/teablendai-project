@@ -3,15 +3,9 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-
-load_dotenv()
-
-if sys.platform == 'win32':
-    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
-    print("Windows event loop policy configured")
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1 import (
@@ -31,6 +25,12 @@ from src.presentation.routers.v1.buyer import auction as buyer_auction
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
 from src.presentation.routers.v1.buyer import live_auction_socket
+
+load_dotenv()
+
+if sys.platform == 'win32':
+    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+    print("Windows event loop policy configured")
 
 # Configure logging
 logging.basicConfig(
@@ -82,7 +82,13 @@ app = FastAPI(
 settings = get_settings()
 allowed_origins = settings.CORS_ORIGINS
 
-# Configure CORS
+app = FastAPI(
+    title="Tea Auction Platform",
+    description="Backend API for TeaBlendAI",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -120,6 +126,25 @@ app.include_router(buyer_bid.router, prefix="/api/v1/buyer")
 app.include_router(buyer_order.router, prefix="/api/v1/buyer")
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
+# WebSocket routers
+app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
+
+# Admin routers
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request, exc):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+        headers={
+            "Access-Control-Allow-Origin": allowed_origins[0] if allowed_origins else "*",
+            "Access-Control-Allow-Credentials": "true" if settings.CORS_ALLOW_CREDENTIALS else "false",
+        }
+    )
+
 @app.get("/")
 async def root():
     """Root endpoint."""
@@ -132,7 +157,8 @@ async def root():
             "Tea auction management",
             "AI-powered chatbot",
             "MCP tool integration",
-            "Real-time analytics"
+            "Real-time analytics",
+            "Live auction timer with dynamic extension"
         ]
     }
 
@@ -151,7 +177,11 @@ async def api_info():
             "conversations": "/api/v1/conversations",
             "dashboard": "/api/v1/dashboard"
         },
-        "documentation": "/docs"
+        "documentation": "/docs",
+        "features": {
+            "auction_timer": "Dynamic 10s extension on bid near deadline",
+            "grace_period": "30s after winner declared before closing"
+        }
     }
 
 if __name__ == "__main__":

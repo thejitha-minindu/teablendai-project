@@ -4,6 +4,7 @@ from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.buyer.auction import Auction
 from src.domain.models.user import User, WatchList
 from src.domain.repositories.buyer.auction_repository import AuctionRepositoryInterface
+from src.domain.models.auction_status import AuctionStatus
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):

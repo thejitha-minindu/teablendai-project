@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from uuid import UUID
 from datetime import datetime
 from typing import Optional
@@ -18,3 +18,10 @@ class AuctionResponse(BaseModel):
 
     class Config:
         from_attributes = True
+    
+    @field_validator('auction_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value

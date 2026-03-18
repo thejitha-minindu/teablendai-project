@@ -50,7 +50,6 @@ class AuctionCreate(BaseModel):
 # This defines what the API sends back to the React app.
 class AuctionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
     auction_id: UUID
     custom_auction_id: Optional[str] = None
     auction_name: Optional[str] = None

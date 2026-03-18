@@ -12,15 +12,6 @@ router = APIRouter(prefix="/auctions", tags=["auctions"])
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
 
-# Create a new auction
-@router.post("", response_model=AuctionData)
-def create_auction(
-    auction: Auction,
-    service: AuctionService = Depends(get_auction_service),
-    current_user: User = Depends(get_current_buyer),
-):
-    return service.create_auction(auction)
-
 # List auctions with optional filters
 @router.get("", response_model=List[AuctionData])
 def list_auctions(
