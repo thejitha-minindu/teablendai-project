@@ -43,38 +43,33 @@ class MCPClientManager:
         
         logger.info("Initializing MCP servers...")
 
-        try:
-            # Connect to database server
-            await self._connect_server(
-                "tea_database",
-                "src.infrastructure.services.mcp.tea_database.server"
-            )
-            
-            # Connect to visualization server
-            await self._connect_server(
-                "tea_visualization",
-                "src.infrastructure.services.mcp.tea_visualization.server"
-            )
-            
-            # Connect to search server
-            await self._connect_server(
-                "tea_search",
-                "src.infrastructure.services.mcp.tea_search.server"
+        targets = [
+            ("tea_database", "src.infrastructure.services.mcp.tea_database.server"),
+            ("tea_visualization", "src.infrastructure.services.mcp.tea_visualization.server"),
+            ("tea_search", "src.infrastructure.services.mcp.tea_search.server"),
+            ("tea_auction", "src.infrastructure.services.mcp.tea_auction.server"),
+        ]
+        failed_servers: List[str] = []
+
+        for server_name, module_path in targets:
+            try:
+                await self._connect_server(server_name, module_path)
+            except Exception:
+                failed_servers.append(server_name)
+                logger.exception(f"Failed to initialize MCP server: {server_name}")
+
+        self._initialized = True
+
+        if failed_servers:
+            logger.warning(
+                "MCP initialized in degraded mode. Failed servers: %s",
+                ", ".join(failed_servers),
             )
 
-            # Connect to auction server
-            await self._connect_server(
-                "tea_auction",
-                "src.infrastructure.services.mcp.tea_auction.server"
-            )
-            
-            self._initialized = True
-            logger.info("All MCP servers initialized.")
-        
-        except Exception as e:
-            logger.error(f"Failed to initialize MCP servers: {e}")
-            await self.shutdown()
-            raise
+        if self.sessions:
+            logger.info("Connected MCP servers: %s", ", ".join(self.sessions.keys()))
+        else:
+            logger.warning("No MCP servers connected. API will continue without MCP capabilities.")
 
     async def _connect_server(self, server_name: str, module_path: str):
         """Connect to a specific MCP server"""
@@ -464,14 +459,8 @@ class MCPClientManager:
 
     # HEALTH CHECK
     def is_ready(self) -> bool:
-        """Check if all MCP servers are connected and ready"""
-        return (
-            self._initialized and
-            "tea_database" in self.sessions and
-            "tea_visualization" in self.sessions and
-            "tea_search" in self.sessions and
-            "tea_auction" in self.sessions
-        )
+        """Check if MCP initialization has run at least once."""
+        return self._initialized
     
     def get_status(self) -> Dict[str, bool]:
         """Get connection status of all servers"""

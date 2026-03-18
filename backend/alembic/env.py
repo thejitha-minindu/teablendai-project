@@ -54,7 +54,30 @@ def include_object(object_, name, type_, reflected, compare_to):
 
 
 def _build_db_url() -> str:
-    return get_mssql_connection_string()
+    direct = os.getenv("DATABASE_URL")
+    if direct:
+        return direct
+
+    server = os.getenv("MSSQL_SERVER", "")
+    database = os.getenv("MSSQL_DATABASE", "")
+    username = os.getenv("MSSQL_USERNAME", "")
+    password = os.getenv("MSSQL_PASSWORD", "")
+    trusted = os.getenv("DB_TRUSTED_CONNECTION", "false").lower() == "true"
+
+    if trusted:
+        odbc = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
+            "TrustServerCertificate=yes;"
+        )
+    else:
+        odbc = (
+            "DRIVER={ODBC Driver 17 for SQL Server};"
+            f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
+            "TrustServerCertificate=yes;"
+        )
+
+    return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc)}"
 
 
 db_url = _build_db_url()

@@ -9,6 +9,7 @@ from src.application.schemas.auction import Auction, AuctionCreate
 from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
 
+
 logger = logging.getLogger(__name__)
 
 class AuctionRepository(AuctionRepositoryInterface):
@@ -205,8 +206,7 @@ class AuctionRepository(AuctionRepositoryInterface):
         return self.db.query(AuctionModel).all()
 
     def get_all(self):
-        """Get all auctions - required by abstract interface"""
-        return self.db.query(AuctionModel).all()
+        return self.list_auctions()
 
     def get_by_status(self, status: str, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
         query = self.db.query(AuctionModel).filter(AuctionModel.status == status)
