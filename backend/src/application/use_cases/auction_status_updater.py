@@ -2,6 +2,10 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from src.domain.models.auction import Auction as AuctionModel
+from src.domain.models.auction_status import AuctionStatus
+
+
+SCHEDULE_STATUS_VALUES = {AuctionStatus.SCHEDULE.value, "Scheduled"}
 
 
 def _normalize_datetime_for_compare(dt_value: datetime) -> datetime:
@@ -29,11 +33,15 @@ def sync_auction_statuses(db: Session) -> None:
     now_local = datetime.now()
     changed = False
 
-    scheduled = db.query(AuctionModel).filter(AuctionModel.status == "Scheduled").all()
+    scheduled = (
+        db.query(AuctionModel)
+        .filter(AuctionModel.status.in_(SCHEDULE_STATUS_VALUES))
+        .all()
+    )
     for auction in scheduled:
         start_time = _normalize_datetime_for_compare(auction.start_time)
         if start_time <= now_local:
-            auction.status = "Live"
+            auction.status = AuctionStatus.LIVE.value
             db.add(auction)
             changed = True
 
@@ -43,14 +51,14 @@ def sync_auction_statuses(db: Session) -> None:
     if changed:
         db.flush()
 
-    live_auctions = db.query(AuctionModel).filter(AuctionModel.status == "Live").all()
+    live_auctions = db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.LIVE.value).all()
     for auction in live_auctions:
         start_time = _normalize_datetime_for_compare(auction.start_time)
         duration_minutes = _duration_to_minutes(auction.duration)
         end_time = start_time + timedelta(minutes=duration_minutes)
 
         if now_local >= end_time:
-            auction.status = "History"
+            auction.status = AuctionStatus.HISTORY.value
             if not auction.buyer:
                 auction.sold_price = 0
             db.add(auction)

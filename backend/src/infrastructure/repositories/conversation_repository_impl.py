@@ -167,7 +167,7 @@ class ConversationRepository(ConversationRepositoryInterface):
         """Update an existing conversation"""
         try:
             merged = self.db.merge(conversation)
-            merged.updated_at = datetime.utcnow()
+            merged.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(merged)
             logger.info(f"Updated conversation {merged.conversation_id}")
@@ -205,7 +205,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = False
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = datetime.now()
 
             self.db.commit()
 
@@ -229,7 +229,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = True
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = datetime.now()
   
             self.db.commit()
             
