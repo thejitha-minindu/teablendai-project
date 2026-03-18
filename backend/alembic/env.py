@@ -4,8 +4,8 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from dotenv import load_dotenv
-from urllib.parse import quote_plus
 from src.infrastructure.database.base import Base
+from src.config import get_mssql_connection_string
 
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid

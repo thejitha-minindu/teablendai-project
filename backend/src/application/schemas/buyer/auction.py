@@ -1,6 +1,6 @@
 from typing import Optional, Literal
 from datetime import datetime, timezone
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_serializer, field_validator
 from uuid import UUID
 
 AuctionType = Literal["Scheduled", "Live", "History"]
@@ -10,6 +10,7 @@ class AuctionData(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
     auction_id: UUID
+    custom_auction_id: Optional[str] = None
     seller_id: UUID
     auction_name: str
     grade: str
@@ -24,6 +25,13 @@ class AuctionData(BaseModel):
     sold_price: Optional[float] = None
     countdown: Optional[float] = None
     image_url: Optional[str] = None
+    
+    @field_validator('buyer', mode='before')
+    @classmethod
+    def convert_buyer_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # home page preview cards
 class AuctionCardHomePreview(BaseModel):
@@ -63,6 +71,13 @@ class AuctionHistoryCard(BaseModel):
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
+    
+    @field_validator('buyer', mode='before')
+    @classmethod
+    def convert_buyer_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # order cards
 class AuctionOrderCard(BaseModel):

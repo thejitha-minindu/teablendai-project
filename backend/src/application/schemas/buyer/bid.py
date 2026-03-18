@@ -1,23 +1,37 @@
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 # Base bid data model
 class BidData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    bid_id: UUID
-    auction_id: UUID
+    bid_id: str
+    auction_id: str
     bid_amount: float
     bid_time: datetime
-    buyer_id: UUID
+    buyer_id: str
+    
+    @field_validator('bid_id', 'auction_id', 'buyer_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # For create bid requests
 class BidCreateRequest(BaseModel):
-    auction_id: UUID
+    auction_id: str
     bid_amount: float
-    buyer_id: UUID
+    buyer_id: str
+    
+    @field_validator('auction_id', 'buyer_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # For bid responses
 class BidResponse(BaseModel):

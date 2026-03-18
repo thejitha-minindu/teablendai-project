@@ -33,7 +33,10 @@ export default function CreateAuctionPage() {
     setIsSubmitting(true);
 
     const payload = {
-      seller_brand: "My Estate",
+      auction_name: `${formData.grade} - ${formData.origin}`,
+      seller_brand: "My Estate", // Hardcoded for now (or add a field)
+      company_name: "My Estate",
+      estate_name: "My Estate",
       grade: formData.grade,
       quantity: parseFloat(formData.quantity),
       origin: formData.origin,
@@ -45,7 +48,12 @@ export default function CreateAuctionPage() {
 
     try {
       const response = await apiClient.post('/auctions', payload);
-      alert('Auction created successfully!');
+      const created = response.data ?? {};
+      const auctionUuid = created.auction_id ?? 'N/A';
+      const customAuctionId = created.custom_auction_id ?? 'N/A';
+      alert(
+        `Auction created successfully!\nUUID: ${auctionUuid}\nCustom ID: ${customAuctionId}`
+      );
       router.push('/seller/dashboard'); 
     } catch (error: any) {
       console.error("Error submitting form:", error.response?.data || error);
@@ -217,4 +225,4 @@ export default function CreateAuctionPage() {
       </div>
     </div>
   );
-}
+} 

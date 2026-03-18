@@ -11,7 +11,7 @@ class ChatUseCase:
         self,
         message: str,
         conversation_id: Optional[int] = None,
-        user_id: Optional[int] = None
+        user_id: Optional[str] = None
     ) -> Dict[str, Any]:
 
         return await self.chat_service.process_message(

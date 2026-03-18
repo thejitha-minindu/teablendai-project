@@ -1,6 +1,6 @@
 from typing import Optional, Literal
 from datetime import datetime
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 from uuid import UUID
 
 # Payment details model
@@ -9,37 +9,65 @@ class PaymentDetails(BaseModel):
 
     payment_method: Literal["credit_card", "paypal", "bank_transfer"]
     payment_date: datetime
-    payment_id: UUID
-    order_id: UUID
+    payment_id: str
+    order_id: str
     amount: float
     status: Literal["successful", "failed", "pending"]
+    
+    @field_validator('payment_id', 'order_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # Wins auction model
 class WinsAuction(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    auction_id: UUID
-    user_id: UUID
-    order_id: UUID
+    auction_id: str
+    user_id: str
+    order_id: str
+    
+    @field_validator('auction_id', 'user_id', 'order_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # Base order data model
 class OrderData(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    order_id: UUID
-    user_id: UUID
-    auction_id: UUID
+    order_id: str
+    user_id: str
+    auction_id: str
     total_amount: float
     order_date: datetime
     status: Literal["pending", "completed", "canceled"]
     payment_details: Optional[PaymentDetails] = None
+    
+    @field_validator('order_id', 'user_id', 'auction_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # For create order requests
 class OrderCreateRequest(BaseModel):
-    user_id: UUID
-    auction_id: UUID
+    user_id: str
+    auction_id: str
     total_amount: float
     payment_details: Optional[PaymentDetails] = None
+    
+    @field_validator('user_id', 'auction_id', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value
 
 # For order update requests
 class OrderUpdateRequest(BaseModel):

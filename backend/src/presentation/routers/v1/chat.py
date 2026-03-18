@@ -10,7 +10,7 @@ router = APIRouter(prefix="/chat", tags=["Chatbot"])
 class ChatRequest(BaseModel):
     message: str
     conversation_id: Optional[int] = None
-    user_id: Optional[int] = None
+    user_id: Optional[str] = None
 
 @router.post("/")
 async def chat(

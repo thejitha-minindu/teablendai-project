@@ -105,10 +105,10 @@ class TopicValidator:
         # Entertainment
         'movie', 'film', 'music', 'song',
         
-        # Politics
-        'president', 'prime minister', 'election',
+        # Politics (be specific to avoid false positives)
+        'election results', 'political party', 'vote count',
         
-        # General
+        # General (very specific)
         'capital city', 'country population',
     }
 
