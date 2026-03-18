@@ -16,13 +16,15 @@ from src.infrastructure.repositories import (
     ConversationRepository,
     ChatMessageRepository
 )
+from src.infrastructure.services.auction_handler import AuctionHandler
 from src.infrastructure.services.intent_classifier import intent_classifier, QueryIntent
+from src.infrastructure.services.conversation_state_manager import state_manager
 from .mcp_client_manager import MCPClientManager
 from .topic_validator import TopicValidator
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from src.config import get_settings
+from src.config import get_settings, resolve_model_name
 import json
 
 logger = logging.getLogger(__name__)
@@ -43,20 +45,21 @@ class ChatService:
     
     def __init__(
         self,
-        db: Session,
+        conversation_repo: ConversationRepository,
+        message_repo: ChatMessageRepository,
         mcp_client: MCPClientManager
     ):
         """Initialize chat service"""
-        self.db = db
+        self.conversation_repo = conversation_repo
+        self.message_repo = message_repo
         self.mcp_client = mcp_client
-        self.conversation_repo = ConversationRepository(db)
-        self.message_repo = ChatMessageRepository(db)
         self.validator = TopicValidator()
+        self.auction_handler = AuctionHandler(message_repo, mcp_client)
 
         self.settings = get_settings()
         self.llm = ChatGoogleGenerativeAI(
-            model=getattr(self.settings, "MODEL_NAME", "gemini-2.5-flash"),
-            google_api_key=getattr(self.settings, "GOOGLE_API_KEY", None),
+            model=resolve_model_name(self.settings.MODEL_NAME),
+            google_api_key=self.settings.GOOGLE_API_KEY,
             temperature=0
         )
     
@@ -64,81 +67,108 @@ class ChatService:
         self,
         user_message: str,
         conversation_id: Optional[int] = None,
-        user_id: Optional[int] = None,
+        user_id: Optional[str] = None,
         user_role: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Process a user message and return AI response
-        
-        Main entry point for chat functionality.
+        Process a chat message with intent-based routing.
+
+        Args:
+            user_message: User's question/message
+            conversation_id: Existing conversation ID (None for new)
+            user_id: User ID (for future auth)
+            user_role: User role (for future permissions)
+
+        Returns:
+            Response dictionary with answer, data, visualizations, etc.
         """
         start_time = datetime.utcnow()
 
-        # Message length
-        MAX_MESSAGE_LENGTH = 1500
+        # Message Length
+        MAX_MESSAGE_LENGTH = 2500
         if len(user_message) > MAX_MESSAGE_LENGTH:
             logger.warning(f"[Chat] Message too long: {len(user_message)} chars")
             return {
                 "success": False,
-                "error": (
-                    f"Message too long. Please keep questions under "
-                    f"{MAX_MESSAGE_LENGTH} characters."
+                "error": f"Message too long. Please keep questions under {MAX_MESSAGE_LENGTH} characters.",
+                "timestamp": datetime.utcnow().isoformat()
+            }
+
+        # Detect Echoed AI Responses
+        if self._is_echoed_response(user_message):
+            logger.warning(f"[Chat] Detected echoed AI response")
+            return {
+                "success": True,
+                "conversation_id": conversation_id,
+                "answer": (
+                    "It looks like you may have accidentally sent my previous response. "
+                    "Could you rephrase your question?"
                 ),
+                "source": "validation",
                 "timestamp": datetime.utcnow().isoformat()
             }
         
         try:
-            # Get or Create Conversation
+            conversation_user_id = self._coerce_conversation_user_id(user_id)
+            auction_user_id = str(user_id) if user_id is not None else None
+
+            # CONVERSATION SETUP
             if conversation_id:
                 conversation = self.conversation_repo.get_by_id(conversation_id)
                 if not conversation:
-                    logger.warning(f"Conversation {conversation_id} not found, creating new")
-                    conversation = await self._create_conversation(
-                        user_message, user_id
-                    )
+                    raise ValueError(f"Conversation {conversation_id} not found")
+                logger.info(f"[Chat] Using existing conversation {conversation_id}")
             else:
-                conversation = await self._create_conversation(
-                    user_message, user_id
-                )
-            
-            logger.info(
-                f"Processing message in conversation {conversation.conversation_id}"
-            )
-            
-            # Save User Message
+                conversation = await self._create_conversation(user_message, conversation_user_id)
+                logger.info(f"[Chat] Created conversation {conversation.conversation_id}: {conversation.title}")
+
+            # Save user message
             user_msg = ChatMessage.create_user_message(
                 conversation_id=conversation.conversation_id,
                 content=user_message
             )
             self.message_repo.create(user_msg)
-            
-            # Validate Topic - MUST check before any database queries
+
+            # CHECK FOR EXISTING AUCTION STATE FIRST (BEFORE VALIDATION)
+            state = state_manager.get_state(conversation.conversation_id)
+
+            if state and state.state_type == "auction_management":
+                logger.info(
+                    f"[Chat] Continuing existing auction_management flow for conversation {conversation.conversation_id}"
+                )
+                return await self.auction_handler.handle_auction_management(
+                    user_message=user_message,
+                    conversation=conversation,
+                    user_id=auction_user_id,
+                    user_role=user_role
+                )
+
+            # Topic Validation (Only if NO active state)
             has_history = conversation_id is not None
-            logger.info(f"[Chat] Validating question: '{user_message[:80]}' (has_history={has_history})")
-            
+
+            logger.info(f"[Chat] Validating question: '{user_message[:60]}' (has_history={has_history})")
+
             is_tea_related = self.validator.is_tea_related(
-                user_message,
+                question=user_message,
                 has_conversation_history=has_history,
                 conversation_id=conversation.conversation_id
             )
-            
+
             logger.info(f"[Chat] Validation result: is_tea_related={is_tea_related}")
-            
+
             if not is_tea_related:
-                # Return rejection message BEFORE querying database
-                logger.warning(f"[Chat] REJECTING off-topic question: '{user_message[:80]}'")
+                logger.warning(f"[Chat] REJECTING off-topic question: '{user_message[:60]}'")
                 rejection = self.validator.get_rejection_message()
-                
-                # Save assistant rejection
+
                 assistant_msg = ChatMessage.create_assistant_message(
                     conversation_id=conversation.conversation_id,
                     content=rejection,
                     source="validation"
                 )
                 self.message_repo.create(assistant_msg)
-                
+
                 logger.info(f"[Chat] Saved rejection message for conversation {conversation.conversation_id}")
-                
+
                 return {
                     "success": True,
                     "conversation_id": conversation.conversation_id,
@@ -147,9 +177,8 @@ class ChatService:
                     "timestamp": datetime.utcnow().isoformat(),
                     "suggestions": self.validator.get_suggestions(user_message)
                 }
-            
 
-            # Classify query intent BEFORE querying anything
+            # INTENT CLASSIFICATION & ROUTING
             intent: QueryIntent = intent_classifier.classify(user_message)
             logger.info(f"[Chat] Query intent: {intent}")
 
@@ -157,18 +186,26 @@ class ChatService:
             if intent == "knowledge":
                 return await self._handle_knowledge_query(user_message, conversation)
 
-            if intent == "database":
-                return await self._handle_database_query(user_message, conversation)
+            elif intent == "database":
+                return await self._handle_database_query(user_message, conversation, start_time)
 
-            if intent == "hybrid":
+            elif intent == "hybrid":
                 return await self._handle_hybrid_query(user_message, conversation)
 
+            elif intent == "auction_management":
+                return await self.auction_handler.handle_auction_management(
+                    user_message=user_message,
+                    conversation=conversation,
+                    user_id=auction_user_id,
+                    user_role=user_role
+                )
+
             logger.warning(f"[Chat] Unknown intent '{intent}', defaulting to database")
-            return await self._handle_database_query(user_message, conversation)
+            return await self._handle_database_query(user_message, conversation, start_time)
         
         except Exception as e:
             logger.error(f"Error processing message: {e}", exc_info=True)
-            
+
             return {
                 "success": False,
                 "error": str(e),
@@ -197,6 +234,16 @@ class ChatService:
         logger.info(f"Created conversation {saved.conversation_id}: {title}")
         
         return saved
+
+    @staticmethod
+    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[int]:
+        if user_id is None:
+            return None
+
+        try:
+            return int(str(user_id))
+        except (TypeError, ValueError):
+            return None
     
     def get_conversation_history(
         self,
@@ -296,61 +343,102 @@ class ChatService:
     async def _handle_database_query(
         self,
         user_message: str,
-        conversation: Conversation
+        conversation: Conversation,
+        start_time: datetime
     ) -> Dict[str, Any]:
-        """Handle questions about business data (existing database flow)"""
-
-        start_time = datetime.utcnow()
+        """Handle questions about business data"""
 
         logger.info("[Chat] Handling as DATABASE query")
 
-        # Try database first
         db_result = await self.mcp_client.query_database(user_message)
 
         if db_result.get("success") and db_result.get("has_data"):
             logger.info("[Chat] Database returned data")
 
-            needs_relevance_check = self._might_be_knowledge_query(user_message)
+            q_lower = user_message.lower()
+            is_obvious_data_query = any(word in q_lower for word in [
+                "average", "compare", "total", "sum", "count",
+                "how many", "how much", "show", "list", "price", "auction", "details"
+            ])
 
-            if needs_relevance_check:
-                logger.info("[Chat] Query is ambiguous - checking data relevance")
-
+            if is_obvious_data_query:
+                logger.info("[Chat] Query is clearly data-seeking - skipping relevance check")
+                is_relevant = True
+            else:
                 is_relevant = await self._verify_data_relevance(
                     question=user_message,
                     data=db_result.get("raw_data", []),
                     columns=db_result.get("columns", [])
                 )
 
-                if not is_relevant:
-                    logger.warning("[Chat] Database data NOT relevant, trying web search")
-                    # Try web search as fallback
-                    search_result = await self.mcp_client.search_web(user_message)
+            if not is_relevant:
+                logger.warning("[Chat] Database data NOT relevant, trying web search")
+                search_result = await self.mcp_client.search_web(user_message)
 
-                    if search_result.get("success"):
-                        answer = search_result.get("answer", "")
-                        assistant_msg = ChatMessage.create_assistant_message(
-                            conversation_id=conversation.conversation_id,
-                            content=answer,
-                            source="web",
-                            search_results=search_result.get("results", [])
-                        )
-                        self.message_repo.create(assistant_msg)
+                if search_result.get("success"):
+                    answer = search_result.get("answer", "")
+                    assistant_msg = ChatMessage.create_assistant_message(
+                        conversation_id=conversation.conversation_id,
+                        content=answer,
+                        source="web",
+                        search_results=search_result.get("results", [])
+                    )
+                    self.message_repo.create(assistant_msg)
 
-                        return {
-                            "success": True,
-                            "conversation_id": conversation.conversation_id,
-                            "answer": answer,
-                            "source": "web",
-                            "search_results": search_result.get("results", [])
-                        }
-            else:
-                logger.info("[Chat] Query is clearly data-seeking - skipping relevance check")
+                    return {
+                        "success": True,
+                        "conversation_id": conversation.conversation_id,
+                        "answer": answer,
+                        "source": "web",
+                        "search_results": search_result.get("results", [])
+                    }
 
-            # Data is relevant (or not ambiguous) - continue with database flow
             logger.info("[Chat] Using database result")
 
             columns = db_result.get("columns", [])
             rows = db_result.get("raw_data", [])
+
+            is_auction_data = self._is_auction_query(user_message, columns)
+
+            if is_auction_data:
+                formatted_answer = self._format_auction_data(rows)
+
+                viz_result = await self.mcp_client.create_visualization(
+                    data=rows,
+                    query=user_message,
+                    chart_type="table"
+                )
+
+                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=formatted_answer,
+                    sql_query=db_result.get("sql_query"),
+                    data=rows,
+                    source="database",
+                    visualization_type="table",
+                    visualization_data=viz_result.get("visualization"),
+                    response_time_ms=response_time
+                )
+                self.message_repo.create(assistant_msg)
+
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": formatted_answer,
+                    "source": "database",
+                    "data_type": "auction",
+                    "columns": columns,
+                    "data": rows,
+                    "row_count": len(rows),
+                    "visualization_type": "table",
+                    "visualization": viz_result.get("visualization"),
+                    "sql_query": db_result.get("sql_query"),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "response_time_ms": response_time
+                }
+
             suggested = db_result.get("suggested_visualization", {})
             candidates = suggested.get("candidates", ["table"])
 
@@ -402,20 +490,23 @@ class ChatService:
                 "response_time_ms": response_time
             }
 
-        # Database query failed or returned no data - try web search
-        logger.info("[Chat] Database query failed, trying web search")
-
-        search_result = await self.mcp_client.search_web(user_message)
-
-        if search_result.get("success"):
+        # Database query ran successfully but returned no rows
+        # This means the data simply does not exist right now - do NOT fall back to web search,
+        # because the question is about live system data that the web cannot answer accurately.
+        if db_result.get("success"):
+            logger.info("[Chat] Database query returned no results - informing user, skipping web search")
             response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
 
-            answer = search_result.get("answer", "")
+            no_data_message = (
+                "There are currently no records in the database that match your query. "
+                "This information comes from our live system, so it may not be available at this time. "
+                "Please check back later or try a different query."
+            )
+
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
-                content=answer,
-                source="web",
-                search_results=search_result.get("results", []),
+                content=no_data_message,
+                source="database",
                 response_time_ms=response_time
             )
             self.message_repo.create(assistant_msg)
@@ -423,17 +514,21 @@ class ChatService:
             return {
                 "success": True,
                 "conversation_id": conversation.conversation_id,
-                "answer": answer,
-                "source": "web",
-                "search_results": search_result.get("results", []),
+                "answer": no_data_message,
+                "source": "database",
+                "row_count": 0,
                 "timestamp": datetime.utcnow().isoformat(),
                 "response_time_ms": response_time
             }
 
-        # Both failed - return fallback
+        # Database query actually failed (timeout, error, etc.) - do NOT web search,
+        # because the question is database-specific and the web cannot answer it reliably.
+        logger.warning("[Chat] Database query failed - returning error, not falling back to web search")
+        response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
         fallback_message = (
-            "I couldn't find information to answer your question. "
-            "Please try rephrasing or ask a different tea-related question."
+            "I was unable to retrieve data from the database at this time. "
+            "Please try again later."
         )
 
         assistant_msg = ChatMessage.create_assistant_message(
@@ -448,8 +543,73 @@ class ChatService:
             "conversation_id": conversation.conversation_id,
             "answer": fallback_message,
             "source": "error",
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": datetime.utcnow().isoformat(),
+            "response_time_ms": response_time
         }
+
+    def _is_auction_query(self, query: str, columns: list) -> bool:
+        """Detect if query results are auction data."""
+        query_lower = query.lower()
+
+        auction_keywords = ["auction", "auctions", "bid", "bidding", "live auction", "scheduled auction"]
+        has_auction_keyword = any(keyword in query_lower for keyword in auction_keywords)
+
+        auction_columns = {
+            "auction_id", "auction_name", "grade", "quantity",
+            "origin", "base_price", "status", "start_time"
+        }
+        has_auction_columns = len(auction_columns.intersection(set(columns))) >= 4
+
+        return has_auction_keyword or has_auction_columns
+
+    def _format_auction_data(self, rows: list) -> str:
+        """Format auction data for better display."""
+        if not rows:
+            return "No auctions found."
+
+        response = f"**Found {len(rows)} auction(s):**\n\n"
+
+        for idx, auction in enumerate(rows, 1):
+            status_emoji = {
+                "Live": "🔴",
+                "Scheduled": "📅",
+                "History": "✅"
+            }.get(auction.get("status", ""), "📦")
+
+            response += f"{status_emoji} **Auction #{idx}**\n"
+            response += "━━━━━━━━━━━━━━━━━━━━\n"
+
+            if "auction_name" in auction:
+                response += f"**Name:** {auction['auction_name']}\n"
+            if "grade" in auction:
+                response += f"**Grade:** {auction['grade']}\n"
+            if "quantity" in auction:
+                response += f"**Quantity:** {auction['quantity']} kg\n"
+            if "origin" in auction:
+                response += f"**Origin:** {auction['origin']}\n"
+            if "base_price" in auction and auction.get("base_price") is not None:
+                try:
+                    response += f"**Starting Price:** LKR {float(auction['base_price']):,.2f}\n"
+                except (TypeError, ValueError):
+                    response += f"**Starting Price:** LKR {auction['base_price']}\n"
+            if "status" in auction:
+                response += f"**Status:** {auction['status']}\n"
+            if "start_time" in auction:
+                response += f"**Start Time:** {auction['start_time']}\n"
+            if "duration" in auction:
+                response += f"**Duration:** {auction['duration']} minutes\n"
+            if "description" in auction and auction["description"]:
+                response += f"**Description:** {auction['description']}\n"
+            if "seller_brand" in auction:
+                response += f"**Seller:** {auction['seller_brand']}\n"
+            if "estate_name" in auction:
+                response += f"**Estate:** {auction['estate_name']}\n"
+            if "auction_id" in auction:
+                response += f"_ID: {auction['auction_id']}_\n"
+
+            response += "\n"
+
+        return response.strip()
 
     async def _handle_hybrid_query(
         self,
@@ -784,8 +944,9 @@ class ChatService:
 # HELPER FUNCTIONS
 
 def get_chat_service(
-    db: Session,
+    conversation_repo: ConversationRepository,
+    message_repo: ChatMessageRepository,
     mcp_client: MCPClientManager
 ) -> ChatService:
     """Factory function to create chat service"""
-    return ChatService(db, mcp_client)
+    return ChatService(conversation_repo, message_repo, mcp_client)

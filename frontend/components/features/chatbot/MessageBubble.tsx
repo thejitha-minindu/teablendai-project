@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
+import type { ReactNode } from "react";
 import {
   ChevronDown,
   ChevronUp,
@@ -11,6 +13,8 @@ import {
 } from "lucide-react";
 import { ChatMessage } from "@/services/chatService";
 import VisualizationRenderer from "./VisualizationRenderer";
+import { AuctionCard } from "./AuctionCard";
+import { AuctionFieldInput } from "./AuctionFieldInput";
 import {
   Tooltip,
   TooltipTrigger,
@@ -19,14 +23,220 @@ import {
 
 interface MessageBubbleProps {
   message: ChatMessage;
+  onSendMessage?: (message: string) => void;
+  isActionEnabled?: boolean;
 }
 
-export default function MessageBubble({ message }: MessageBubbleProps) {
+function renderInlineMarkdown(text: string): ReactNode[] {
+  const segments = text.split(/(\*\*[^*]+\*\*)/g);
+  return segments.map((segment, index) => {
+    if (segment.startsWith("**") && segment.endsWith("**") && segment.length > 4) {
+      return <strong key={`b-${index}`}>{segment.slice(2, -2)}</strong>;
+    }
+    return <span key={`t-${index}`}>{segment}</span>;
+  });
+}
+
+function renderMessageContent(content: string): ReactNode {
+  const lines = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  const nodes: ReactNode[] = [];
+  let bullets: string[] = [];
+
+  const flushBullets = (keySuffix: number) => {
+    if (!bullets.length) return;
+    nodes.push(
+      <ul key={`ul-${keySuffix}`} className="list-disc pl-5 space-y-1">
+        {bullets.map((item, idx) => (
+          <li key={`li-${keySuffix}-${idx}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </ul>
+    );
+    bullets = [];
+  };
+
+  lines.forEach((line, index) => {
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      bullets.push(line.slice(2).trim());
+      return;
+    }
+
+    flushBullets(index);
+    nodes.push(
+      <p key={`p-${index}`}>{renderInlineMarkdown(line)}</p>
+    );
+  });
+
+  flushBullets(lines.length + 1);
+
+  return <div className="space-y-2">{nodes}</div>;
+}
+
+function formatPriceLkr(value: number | string | undefined): string {
+  if (value === undefined || value === null || value === "") return "N/A";
+  const numericValue = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+  if (Number.isNaN(numericValue)) return String(value);
+  return `LKR ${numericValue.toLocaleString()}`;
+}
+
+function formatStartTimeDisplay(value: string | undefined): string {
+  if (!value) return "N/A";
+
+  const normalized = value.trim().replace(" ", "T");
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return value;
+
+  const datePart = parsed.toLocaleDateString("en-US", {
+    month: "long",
+    day: "2-digit",
+    year: "numeric",
+  });
+  const timePart = parsed.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  return `${datePart} at ${timePart}`;
+}
+
+function extractCreatedAuctionDetails(content: string): {
+  grade?: string;
+  quantity?: string;
+  origin?: string;
+  base_price?: string;
+  start_time?: string;
+  duration?: string;
+  description?: string;
+  custom_auction_id?: string;
+} {
+  const extract = (label: string) => {
+    const pattern = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`, "i");
+    const match = content.match(pattern);
+    return match?.[1]?.trim();
+  };
+
+  return {
+    grade: extract("Grade"),
+    quantity: extract("Quantity"),
+    origin: extract("Origin"),
+    base_price: extract("Starting Price"),
+    start_time: extract("Start Time"),
+    duration: extract("Duration"),
+    description: extract("Description") || "None",
+    custom_auction_id: extract("Ref ID") || extract("Custom Auction ID"),
+  };
+}
+
+export default function MessageBubble({ message, onSendMessage, isActionEnabled = true }: MessageBubbleProps) {
   const [showSQL, setShowSQL] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
   const [copiedSQL, setCopiedSQL] = useState(false);
+  const [actionClicked, setActionClicked] = useState(false);
 
   const isUser = message.role === "user";
+  const firstDataRow = Array.isArray(message.data) ? message.data[0] : null;
+  const auctionDataShape =
+    Array.isArray(message.data) &&
+    message.data.length > 0 &&
+    typeof firstDataRow === "object" &&
+    firstDataRow !== null &&
+    ["auction_id", "grade", "quantity", "base_price", "origin", "status", "start_time"].some(
+      (key) => key in (firstDataRow as Record<string, unknown>)
+    );
+
+  const isAuctionData =
+    !isUser &&
+    message.source === "database" &&
+    Array.isArray(message.data) &&
+    (message.data_type === "auction" || auctionDataShape);
+  const normalizedContent = (message.content || "").toLowerCase();
+  const inferredAuctionMessage =
+    normalizedContent.includes("auction") ||
+    normalizedContent.includes("tea grade:") ||
+    normalizedContent.includes("starting price:") ||
+    normalizedContent.includes("start time:") ||
+    normalizedContent.includes("duration:");
+
+  const isAuctionMessage =
+    message.source === "auction_management" || inferredAuctionMessage;
+  const inputRequest = message.input_request;
+  const validationPayload = message.validation_payload;
+  const fieldMetadata = message.field_metadata;
+  const isFieldPrompt =
+    isAuctionMessage &&
+    (message.prompt_type === "field_input" || inputRequest?.type === "input_request") &&
+    (inputRequest || fieldMetadata);
+
+  const inferredConfirmation =
+    normalizedContent.includes("please confirm auction details") ||
+    normalizedContent.includes("reply **'yes'** to create this auction") ||
+    normalizedContent.includes("reply 'yes' to create this auction") ||
+    normalizedContent.includes("please confirm if this is correct") ||
+    normalizedContent.includes("reply **'yes'** to confirm this start time");
+
+  const hasStructuredAuctionConfirmation =
+    message.auction_payload?.type === "auction_confirmation";
+  const auctionSubtype = message.auction_payload?.subtype;
+  const structuredFields: {
+    grade?: string;
+    quantity?: string | number;
+    origin?: string;
+    base_price?: string | number;
+    start_time?: string;
+    duration?: string | number;
+    description?: string;
+    custom_auction_id?: string;
+    [key: string]: unknown;
+  } | undefined = message.auction_payload?.fields;
+  const structuredDisplay = message.auction_payload?.display;
+  const isFullAuctionDetailsSubtype =
+    !auctionSubtype || auctionSubtype === "create_confirmation";
+  const showStructuredAuctionConfirmation =
+    hasStructuredAuctionConfirmation && !!structuredFields && isFullAuctionDetailsSubtype;
+  const allowedActions = message.auction_payload?.actions ?? ["confirm", "cancel", "change"];
+  const isDescriptionActionPrompt =
+    auctionSubtype === "description_generation_choice" ||
+    auctionSubtype === "description_generated_confirmation";
+  const allowConfirm = allowedActions.includes("confirm");
+  const allowCancel = allowedActions.includes("cancel");
+  const allowChange = allowedActions.includes("change");
+
+  const isAuctionConfirmation =
+    isAuctionMessage &&
+    (hasStructuredAuctionConfirmation || message.state === "awaiting_confirmation" || inferredConfirmation) &&
+    !!onSendMessage;
+
+  const explicitAuctionIdMatch = message.content?.match(/auction\s*id\s*:\s*[^A-Za-z0-9-]*([A-Za-z0-9-]+)/i);
+  const uuidFallbackMatch = message.content?.match(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i);
+  const createdAuctionId = explicitAuctionIdMatch?.[1] ?? uuidFallbackMatch?.[0] ?? null;
+  const isAuctionCreatedMessage =
+    isAuctionMessage &&
+    normalizedContent.includes("auction created") &&
+    !!createdAuctionId;
+  const createdDetails = isAuctionCreatedMessage
+    ? extractCreatedAuctionDetails(message.content || "")
+    : null;
+  const showStructuredCreatedMessage =
+    !!createdDetails &&
+    !!createdDetails.grade &&
+    !!createdDetails.quantity &&
+    !!createdDetails.origin &&
+    !!createdDetails.base_price &&
+    !!createdDetails.start_time &&
+    !!createdDetails.duration;
+  const structuredCardTitle = showStructuredCreatedMessage
+    ? "The auction was successfully created."
+    : "Please confirm auction details:";
+
+  const isChangeHelpPrompt =
+    isAuctionMessage &&
+    normalizedContent.includes("i can help you make changes") &&
+    normalizedContent.includes("cancel") &&
+    !!onSendMessage;
 
   const handleCopy = async (
     text: string,
@@ -97,6 +307,86 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
     );
   }
 
+  if (!isUser && isFieldPrompt && onSendMessage) {
+    const promptFieldName = inputRequest?.field_name || fieldMetadata?.field_name || "";
+    const promptFieldType = inputRequest?.field_type || fieldMetadata?.field_type || "text";
+    const promptOptions = inputRequest?.options || fieldMetadata?.options;
+    const promptValidation = inputRequest?.validation || fieldMetadata?.validation;
+
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center text-white shrink-0 mt-1">
+          <Brain className="w-5 h-5" />
+        </div>
+
+        <div className="max-w-[85%] space-y-2">
+          <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
+            <div className="text-sm text-gray-800 leading-relaxed">
+              {renderMessageContent(message.content)}
+            </div>
+            {validationPayload?.field_errors?.length ? (
+              <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                <p className="text-xs font-semibold text-red-700 mb-1">Please fix these fields:</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {validationPayload.field_errors.map((fieldError, index) => (
+                    <li key={`${fieldError.field}-${index}`} className="text-xs text-red-700">
+                      <span className="font-medium">{fieldError.field.replace(/_/g, " ")}</span>: {fieldError.error}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+
+          <AuctionFieldInput
+            fieldName={promptFieldName}
+            fieldType={promptFieldType}
+            options={promptOptions}
+            validation={promptValidation}
+            onSubmit={(value) => onSendMessage(String(value))}
+            onSkip={() => onSendMessage("skip")}
+            disabled={!isActionEnabled}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuctionData) {
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center text-white shrink-0 mt-1">
+          <Brain className="w-5 h-5" />
+        </div>
+
+        <div className="flex-1 max-w-[90%] space-y-3">
+          {message.data?.map((auction: Record<string, unknown>, index: number) => (
+            <AuctionCard
+              key={(auction.auction_id as string) || index}
+              auction={auction}
+              index={index + 1}
+            />
+          ))}
+
+          {message.visualization && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-sm text-blue-600 hover:underline">
+                View as table
+              </summary>
+              <div className="mt-2">
+                <VisualizationRenderer
+                  visualization={message.visualization}
+                  visualizationType={message.visualization_type}
+                  query={message.content}
+                />
+              </div>
+            </details>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   // ASSISTANT MESSAGE
   return (
     <div className="flex items-start gap-3">
@@ -106,7 +396,13 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
 
       <div className="flex-1 max-w-[85%] space-y-3">
         {/* Main Message Bubble */}
-        <div className="relative bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group">
+        <div
+          className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border ${
+            isAuctionMessage
+              ? "bg-purple-50 border-purple-200"
+              : "bg-white border-gray-200"
+          }`}
+        >
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -145,11 +441,91 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
                 Tea Only
               </span>
             )}
+            {message.source === "auction_management" && (
+              <span className="inline-flex items-center text-xs bg-purple-50 text-purple-700 border border-purple-200 rounded-full px-2 py-0.5">
+                Auction Management
+              </span>
+            )}
           </div>
 
-          <p className="text-sm text-justify text-gray-800 whitespace-pre-wrap leading-relaxed pr-6">
-            {message.content}
-          </p>
+          <div className="text-sm text-gray-800 leading-relaxed pr-6">
+            {showStructuredAuctionConfirmation || showStructuredCreatedMessage ? (
+              <div className="space-y-2">
+                <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                <div className="rounded-xl border border-purple-200 bg-white/70 p-3">
+                  <dl className="grid grid-cols-1 gap-2 text-sm">
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Tea Grade</dt>
+                      <dd>{structuredFields?.grade || createdDetails?.grade || "N/A"}</dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Quantity</dt>
+                      <dd>
+                        {structuredFields?.quantity !== undefined && structuredFields?.quantity !== null
+                          ? `${structuredFields.quantity} kg`
+                          : createdDetails?.quantity || "N/A"}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Origin</dt>
+                      <dd>{structuredFields?.origin || createdDetails?.origin || "N/A"}</dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Starting Price</dt>
+                      <dd>
+                        {showStructuredCreatedMessage
+                          ? createdDetails?.base_price || "N/A"
+                          : formatPriceLkr(structuredFields?.base_price)}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Start Time</dt>
+                      <dd>
+                        {showStructuredCreatedMessage
+                          ? formatStartTimeDisplay(createdDetails?.start_time)
+                          : structuredDisplay?.start_time || structuredFields?.start_time || "N/A"}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Duration</dt>
+                      <dd>
+                        {showStructuredCreatedMessage
+                          ? createdDetails?.duration || "N/A"
+                          : structuredDisplay?.duration ||
+                            (structuredFields?.duration !== undefined && structuredFields?.duration !== null
+                              ? `${structuredFields.duration} hours`
+                              : "N/A")}
+                      </dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Description</dt>
+                      <dd>{structuredFields?.description || createdDetails?.description || "None"}</dd>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-2">
+                      <dt className="font-medium text-gray-600">Ref ID:</dt>
+                      <dd>{structuredFields?.custom_auction_id || createdDetails?.custom_auction_id || "N/A"}</dd>
+                    </div>
+                  </dl>
+                </div>
+              </div>
+            ) : (
+              renderMessageContent(message.content)
+            )}
+          </div>
+
+          {isAuctionCreatedMessage && createdAuctionId && (
+            <div className="mt-3">
+              <p>You can view the auction details here: 
+              <Link
+                href={`http://localhost:3000/seller/scheduled`}
+                className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline"
+                target="_blank"
+              >
+                 View Auction
+              </Link>
+              </p>
+            </div>
+          )}
 
           {message.error && (
             <p className="text-xs text-red-500 mt-2 bg-red-50 rounded p-2">
@@ -157,6 +533,66 @@ export default function MessageBubble({ message }: MessageBubbleProps) {
             </p>
           )}
         </div>
+
+        {isAuctionConfirmation && (
+          <div className="flex flex-wrap gap-2">
+            {allowConfirm && (
+              <button
+                onClick={() => {
+                  if (!isActionEnabled || actionClicked) return;
+                  setActionClicked(true);
+                  onSendMessage?.("yes");
+                }}
+                disabled={!isActionEnabled || actionClicked}
+                className="px-4 py-2 rounded-lg bg-[#558332] text-white text-sm font-semibold hover:bg-[#4a722c] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Yes
+              </button>
+            )}
+            {allowCancel && (
+              <button
+                onClick={() => {
+                  if (!isActionEnabled || actionClicked) return;
+                  setActionClicked(true);
+                  onSendMessage?.("no");
+                }}
+                disabled={!isActionEnabled || actionClicked}
+                className="px-4 py-2 rounded-lg bg-gray-200 text-gray-800 text-sm font-semibold hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                No
+              </button>
+            )}
+            {allowChange && (
+              <button
+                onClick={() => {
+                  if (!isActionEnabled || actionClicked) return;
+                  setActionClicked(true);
+                  onSendMessage?.(isDescriptionActionPrompt ? "edit" : "change");
+                }}
+                disabled={!isActionEnabled || actionClicked}
+                className="px-4 py-2 rounded-lg bg-amber-100 text-amber-800 text-sm font-semibold hover:bg-amber-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDescriptionActionPrompt ? "Edit" : "Change"}
+              </button>
+            )}
+          </div>
+        )}
+
+        {isChangeHelpPrompt && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => {
+                if (!isActionEnabled || actionClicked) return;
+                setActionClicked(true);
+                onSendMessage?.("cancel");
+              }}
+              disabled={!isActionEnabled || actionClicked}
+              className="px-4 py-2 rounded-lg bg-red-100 text-red-700 text-sm font-semibold hover:bg-red-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Cancel Auction Creation
+            </button>
+          </div>
+        )}
 
         {/* Sources */}
         {message.source === "web" &&

@@ -3,31 +3,28 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
-from src.presentation.routers.v1.buyer import live_auction_socket as buyer_live_auction_ws
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1 import (
-    health,
-    bid,
-    auction,
-    user,
+    health, 
+    bid, 
+    auction, 
+    user, 
     order,
-    conversations,
+    conversations, 
     query,
     #dashboard,
-    chat
+    chat,
+    auth
 )
-
-from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
-from src.infrastructure.database.base import Base, engine
-from src.presentation.routers.v1 import auth
-from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
-from src.infrastructure.services.auction_manager import auction_manager
-
-Base.metadata.create_all(bind=engine)
+from src.presentation.routers.v1.admin import admin_auction
+from src.presentation.routers.v1.buyer import auction as buyer_auction
+from src.presentation.routers.v1.buyer import bid as buyer_bid
+from src.presentation.routers.v1.buyer import order as buyer_order
+from src.presentation.routers.v1.buyer import live_auction_socket
 
 load_dotenv()
 
@@ -42,61 +39,44 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     logger.info("Starting TeaBlendAI FastAPI server.")
-#     app.state.mcp_client = None
-
-#     try:
-#         app.state.mcp_client = await get_mcp_client()
-#         logger.info("MCP client initialized during startup.")
-#     except Exception:
-#         logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
-
-#     try:
-#         yield
-#     finally:
-#         logger.info("Shutting down TeaBlendAI server")
-#         mcp_client = getattr(app.state, "mcp_client", None)
-#         if mcp_client and mcp_client.is_ready():
-#             try:
-#                 await mcp_client.shutdown()
-#                 logger.info("MCP client shut down cleanly.")
-#             except asyncio.CancelledError:
-#                 logger.debug("MCP shutdown cancelled (expected on Windows)")
-#             except Exception as e:
-#                 # Filter out harmless scope cancellation errors common on Windows
-#                 if "cancel scope" not in str(e).lower():
-#                     logger.error(f"Error during MCP client shutdown: {e}")
-#                 else:
-#                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
-
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    logger.info("Starting TeaBlendAI FastAPI server.")
+    app.state.mcp_client = None
 
-    logger.info("Starting TeaBlendAI FastAPI server")
-    
-    auction_task = asyncio.create_task(auction_manager.start_background_task())
-    app.state.auction_task = auction_task
+    try:
+        app.state.mcp_client = await get_mcp_client()
+        logger.info("MCP client initialized during startup.")
+    except Exception:
+        logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
 
-    logger.info("All background tasks started")
-    
     try:
         yield
     finally:
         logger.info("Shutting down TeaBlendAI server")
-        auction_manager.stop()
-        
-        try:
-            await asyncio.wait_for(auction_task, timeout=5.0)
-        except asyncio.TimeoutError:
-            logger.warning("Auction manager task did not complete in time")
-        
-        logger.info("Shutdown complete")
+        mcp_client = getattr(app.state, "mcp_client", None)
+        if mcp_client and mcp_client.is_ready():
+            try:
+                await mcp_client.shutdown()
+                logger.info("MCP client shut down cleanly.")
+            except asyncio.CancelledError:
+                logger.debug("MCP shutdown cancelled (expected on Windows)")
+            except Exception as e:
+                # Filter out harmless scope cancellation errors common on Windows
+                if "cancel scope" not in str(e).lower():
+                    logger.error(f"Error during MCP client shutdown: {e}")
+                else:
+                    logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
-# Create all database tables
-Base.metadata.create_all(bind=engine)
+
+# Create FastAPI application
+app = FastAPI(
+    title="TeaBlendAI API",
+    description="Specialized AI assistant focused on tea-related topics",
+    version="1.0.0",
+    lifespan=lifespan
+)
 
 # CORS setup
 settings = get_settings()
@@ -119,6 +99,7 @@ app.add_middleware(
 
 # API v1 routers
 
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
 # Register bid router
 app.include_router(bid.router, prefix="/api/v1")
 # Register auction router
@@ -136,11 +117,14 @@ app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 #app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
-# API v1 routers - buyer
-app.include_router(buyer_auction.router, prefix="/api/v1/buyer", tags=["buyer-auctions"])
-app.include_router(buyer_bid.router, prefix="/api/v1/buyer", tags=["buyer-bids"])
-app.include_router(buyer_order.router, prefix="/api/v1/buyer", tags=["buyer-orders"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+# Admin routers
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
+
+# Buyer routers
+app.include_router(buyer_auction.router, prefix="/api/v1/buyer")
+app.include_router(buyer_bid.router, prefix="/api/v1/buyer")
+app.include_router(buyer_order.router, prefix="/api/v1/buyer")
+app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
 # WebSocket routers
 app.include_router(buyer_live_auction_ws.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
@@ -202,10 +186,12 @@ async def api_info():
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(
         app,
         host="127.0.0.1",
-        port=5000,
+        port=8000,
         log_level="info"
     )
+
+
+# to run the app: uvicorn src.application.main:app --reload

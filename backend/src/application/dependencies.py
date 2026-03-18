@@ -8,13 +8,15 @@ from fastapi import Depends, HTTPException, status
 from src.database import get_db, get_engine
 
 from src.application.use_cases.chat.chat_use_case import ChatUseCase
+from src.application.security import SECRET_KEY, ALGORITHM
+from src.domain.models.user import User
 from src.infrastructure.services.chat_service import ChatService
 from src.infrastructure.services.mcp_client_manager import MCPClientManager
 from src.infrastructure.database.chat_history import ChatHistoryDB
-from src.domain.models.user import User
-from src.application.security import SECRET_KEY, ALGORITHM
+from src.infrastructure.repositories import ConversationRepository, ChatMessageRepository
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+optional_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 # Singleton MCP Client
 @lru_cache()
@@ -36,7 +38,13 @@ def get_chat_service(
     db: Session = Depends(get_db),
     mcp_client: MCPClientManager = Depends(get_mcp_client)
 ) -> ChatService:
-    return ChatService(db=db, mcp_client=mcp_client)
+    conversation_repo = ConversationRepository(db)
+    message_repo = ChatMessageRepository(db)
+    return ChatService(
+        conversation_repo=conversation_repo,
+        message_repo=message_repo,
+        mcp_client=mcp_client
+    )
 
 def get_chat_use_case(
     chat_service: ChatService = Depends(get_chat_service)
@@ -112,3 +120,49 @@ def get_current_seller(
     _role: str = Depends(require_role("seller")),
 ) -> User:
     return current_user
+
+
+def get_optional_current_seller(
+    token: str | None = Depends(optional_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+
+    payload = _decode_token(token)
+    email: str | None = payload.get("sub")
+    role: str | None = payload.get("role")
+
+    if email is None or role != "seller":
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate seller credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    user = db.query(User).filter(User.email == email).first()
+    if user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate seller credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return user
+
+
+def get_optional_current_user(
+    token: str | None = Depends(optional_oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> User | None:
+    if not token:
+        return None
+
+    payload = _decode_token(token)
+    email: str | None = payload.get("sub")
+
+    if email is None:
+        return None
+
+    user = db.query(User).filter(User.email == email).first()
+    return user

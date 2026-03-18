@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.auction_repository import AuctionRepository
-from src.domain.models.auction_status import AuctionStatus
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
 
 class AuctionService:
@@ -14,48 +14,32 @@ class AuctionService:
         # We can add extra business logic here later (e.g. validate seller limit)
         return self.repo.create_auction(auction_data)
 
+    @staticmethod
+    def _normalize_datetime_for_compare(dt_value: datetime) -> datetime:
+        """Normalize DB datetime to naive local datetime for fair comparisons."""
+        if dt_value.tzinfo is not None:
+            return dt_value.astimezone().replace(tzinfo=None)
+        return dt_value
+
+    @staticmethod
+    def _duration_to_minutes(duration_value: float) -> int:
+        """Support legacy hours and new minutes storage for duration."""
+        try:
+            duration = float(duration_value)
+        except (TypeError, ValueError):
+            return 0
+
+        if duration <= 0:
+            return 0
+
+        # Legacy records often use hours (e.g. 24), newer flow stores minutes (e.g. 900)
+        if duration <= 24:
+            return int(round(duration * 60))
+
+        return int(round(duration))
+
     def _update_auction_statuses(self):
-        """
-        1. Checks 'Scheduled' -> 'Live' (Start Time passed)
-        2. Checks 'Live' -> 'History' (Duration ended)
-        """
-        # Get Current UTC Time (Naive) to match Database storage
-        now_utc = datetime.utcnow() 
-
-        # --- PART 1: Scheduled -> Live ---
-        scheduled = self.repo.get_by_status(AuctionStatus.SCHEDULE.value)
-        for auction in scheduled:
-            # Strip timezone info from DB time to ensure fair comparison
-            db_time = auction.start_time
-            if db_time.tzinfo is not None:
-                db_time = db_time.replace(tzinfo=None)
-
-            # If start time is passed, make it LIVE
-            if db_time <= now_utc:
-                auction.status = AuctionStatus.LIVE.value
-                self.repo.db.add(auction)
-
-        # --- PART 2: Live -> History (NEW LOGIC) ---
-        live_auctions = self.repo.get_by_status(AuctionStatus.LIVE.value)
-        for auction in live_auctions:
-            # Strip timezone info
-            start_time = auction.start_time
-            if start_time.tzinfo is not None:
-                start_time = start_time.replace(tzinfo=None)
-            
-            # Calculate End Time
-            # duration is usually stored as hours (float or int)
-            end_time = start_time + timedelta(hours=auction.duration)
-
-            # If current time is past end time, move to History
-            if now_utc >= end_time:
-                auction.status = AuctionStatus.HISTORY.value
-                # Optionally set a default result if no buyer exists
-                if not auction.buyer:
-                    auction.sold_price = 0 # Or mark as Unsold logic if you have it
-                self.repo.db.add(auction)
-        
-        self.repo.db.commit()
+        sync_auction_statuses(self.repo.db)
 
     def update_auction(self, auction_id: str, update_data: AuctionCreate):
         # Convert Pydantic model to dict, excluding None values
@@ -63,6 +47,7 @@ class AuctionService:
         return self.repo.update(auction_id, data_dict)
 
     def get_auction(self, auction_id: str):
+        self._update_auction_statuses()
         return self.repo.get_auction(auction_id)
 
     def list_auctions(self):

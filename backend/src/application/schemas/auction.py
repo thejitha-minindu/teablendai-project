@@ -21,11 +21,13 @@ class Auction(BaseModel):
 # 1. Input Schema (Frontend -> Backend)
 # This validates the JSON your React app sends when creating an auction.
 class AuctionCreate(BaseModel):
-    seller_id: Optional[UUID] = None
+    auction_name: Optional[str] = None
+    seller_id: Optional[str] = None
     seller_brand: str 
     grade: str
-    # 1. Block negative quantities
-    quantity: float = Field(gt=0, description="Quantity must be greater than 0")
+    company_name: Optional[str] = None
+    estate_name: Optional[str] = None
+    quantity: float
     origin: str
     description: Optional[str] = None
     # 2. Block negative prices
@@ -48,11 +50,14 @@ class AuctionCreate(BaseModel):
 # This defines what the API sends back to the React app.
 class AuctionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-
-    auction_id: str
-    seller_id: str
+    auction_id: UUID
+    custom_auction_id: Optional[str] = None
+    auction_name: Optional[str] = None
+    seller_id: UUID
     seller_brand: Optional[str] = None
     grade: str
+    company_name: Optional[str] = None
+    estate_name: Optional[str] = None
     quantity: float
     origin: str
     description: Optional[str] = None
@@ -63,10 +68,3 @@ class AuctionResponse(BaseModel):
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     created_at: datetime
-    
-    @field_validator('auction_id', 'seller_id', mode='before')
-    @classmethod
-    def convert_uuid_to_string(cls, value):
-        if isinstance(value, UUID):
-            return str(value)
-        return value

@@ -10,6 +10,7 @@ class AuctionData(BaseModel):
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
     
     auction_id: UUID
+    custom_auction_id: Optional[str] = None
     seller_id: UUID
     auction_name: str
     grade: str

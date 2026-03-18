@@ -215,7 +215,8 @@ class ChatMessage(Base):
         visualization_type: str = None,
         visualization_data: Dict = None,
         search_results: List[Dict] = None,
-        response_time_ms: int = None
+        response_time_ms: int = None,
+        metadata: Dict = None
     ) -> "ChatMessage":
         """Factory method for assistant messages"""
         message = cls(
@@ -236,5 +237,7 @@ class ChatMessage(Base):
             message.set_visualization_data(visualization_data)
         if search_results:
             message.set_search_results(search_results)
+        if metadata:
+            setattr(message, "_metadata", metadata)
         
         return message
