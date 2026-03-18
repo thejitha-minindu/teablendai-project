@@ -4,8 +4,8 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from dotenv import load_dotenv
-from urllib.parse import quote_plus
 from src.infrastructure.database.base import Base
+from src.config import get_mssql_connection_string
 
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
@@ -54,30 +54,7 @@ def include_object(object_, name, type_, reflected, compare_to):
 
 
 def _build_db_url() -> str:
-    direct = os.getenv("DATABASE_URL")
-    if direct:
-        return direct
-
-    server = os.getenv("MSSQL_SERVER", "")
-    database = os.getenv("MSSQL_DATABASE", "")
-    username = os.getenv("MSSQL_USERNAME", "")
-    password = os.getenv("MSSQL_PASSWORD", "")
-    trusted = os.getenv("DB_TRUSTED_CONNECTION", "false").lower() == "true"
-
-    if trusted:
-        odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
-            f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
-            "TrustServerCertificate=yes;"
-        )
-    else:
-        odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
-            f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
-            "TrustServerCertificate=yes;"
-        )
-
-    return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc)}"
+    return get_mssql_connection_string()
 
 
 db_url = _build_db_url()

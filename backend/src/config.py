@@ -2,6 +2,7 @@
 import os
 import logging
 from typing import List, Optional
+from urllib.parse import quote_plus
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
@@ -66,11 +67,16 @@ class Settings(BaseSettings):
     CORS_ALLOW_HEADERS: List[str] = ["*"] 
 
     # Database Configuration
-    MSSQL_SERVER: str
-    MSSQL_DATABASE: str
+    MSSQL_SERVER: str = ""
+    MSSQL_DATABASE: str = ""
     MSSQL_USERNAME: Optional[str] = None
     MSSQL_PASSWORD: Optional[str] = None
+    MSSQL_PORT: Optional[int] = None
+    MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
+    MSSQL_ENCRYPT: bool = True
+    MSSQL_TRUST_SERVER_CERTIFICATE: bool = False
     DB_TRUSTED_CONNECTION: bool = True
+    DATABASE_URL: Optional[str] = None
 
     CHAT_DATABASE_URL: bool = True
 
@@ -145,7 +151,11 @@ def get_mssql_connection_string(
     database: str = None,
     username: str = None,
     password: str = None,
-    trusted: bool = True
+    trusted: Optional[bool] = None,
+    driver: str = None,
+    encrypt: Optional[bool] = None,
+    trust_server_certificate: Optional[bool] = None,
+    database_url: str = None,
 ) -> str:
     """
     Generate MSSQL connection string
@@ -160,28 +170,49 @@ def get_mssql_connection_string(
     Returns:
         str: MSSQL connection string
     """
+    direct_connection = (database_url or os.getenv("DATABASE_URL", "")).strip()
+    if direct_connection:
+        return direct_connection
+
     settings = get_settings()
+    direct_connection = (settings.DATABASE_URL or "").strip()
+    if direct_connection:
+        return direct_connection
     
     server = server or settings.MSSQL_SERVER
     database = database or settings.MSSQL_DATABASE
     username = username or settings.MSSQL_USERNAME
     password = password or settings.MSSQL_PASSWORD
-    trusted = trusted if trusted is not None else settings.DB_TRUSTED_CONNECTION
-    
-    driver = "ODBC Driver 18 for SQL Server"
+    trusted = settings.DB_TRUSTED_CONNECTION if trusted is None else trusted
+    driver = driver or settings.MSSQL_DRIVER
+    encrypt = settings.MSSQL_ENCRYPT if encrypt is None else encrypt
+    trust_server_certificate = (
+        settings.MSSQL_TRUST_SERVER_CERTIFICATE
+        if trust_server_certificate is None
+        else trust_server_certificate
+    )
+
+    if settings.MSSQL_PORT and server and "," not in server and ":" not in server:
+        server = f"{server},{settings.MSSQL_PORT}"
+
+    params = [
+        f"driver={quote_plus(driver)}",
+        f"Encrypt={'yes' if encrypt else 'no'}",
+        f"TrustServerCertificate={'yes' if trust_server_certificate else 'no'}",
+    ]
     
     if trusted or (not username and not password):
+        params.append("trusted_connection=yes")
         connection_string = (
             f"mssql+pyodbc://{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&trusted_connection=yes"
-            f"&TrustServerCertificate=yes"
+            f"?{'&'.join(params)}"
         )
     else:
+        encoded_username = quote_plus(username or "")
+        encoded_password = quote_plus(password or "")
         connection_string = (
-            f"mssql+pyodbc://{username}:{password}@{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&TrustServerCertificate=yes"
+            f"mssql+pyodbc://{encoded_username}:{encoded_password}@{server}/{database}"
+            f"?{'&'.join(params)}"
         )
     
     return connection_string
