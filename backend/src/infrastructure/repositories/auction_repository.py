@@ -3,7 +3,7 @@ from typing import List, Optional
 import uuid
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.auction import Auction, AuctionCreate
-from src.infrastructure.repositories.admin.auction_repository import AuctionRepositoryInterface
+from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
@@ -36,6 +36,9 @@ class AuctionRepository(AuctionRepositoryInterface):
 
     def list_auctions(self):
         return self.db.query(AuctionModel).all()
+
+    def get_all(self):
+        return self.list_auctions()
 
     def get_by_status(self, status: str, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
         query = self.db.query(AuctionModel).filter(AuctionModel.status == status)

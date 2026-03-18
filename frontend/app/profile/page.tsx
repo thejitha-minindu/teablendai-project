@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   User, MapPin, Camera, Save, Edit2, 
   ShoppingBag, TrendingUp, CreditCard, ShieldCheck, LayoutDashboard,
@@ -8,11 +8,57 @@ import {
   Wallet, ListOrdered, History, Truck, X
 } from 'lucide-react';
 import Link from 'next/link';
+import { apiClient } from '@/lib/apiClient';
+
+type ProfileFormState = {
+  role: 'buyer' | 'seller';
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_num: string;
+  profile_image_url: string;
+  nic: string;
+  shipping_address: string;
+  payment_method: string;
+  brand: string;
+  sellerRating: number;
+  totalReviews: number;
+  totalRevenue: number;
+  ordersReceived: number;
+  activeLots: number;
+  payoutBank: string;
+  totalSpent: number;
+  totalOrders: number;
+  disputes: number;
+};
+
+const defaultProfileState: ProfileFormState = {
+  role: 'buyer',
+  first_name: "John",
+  last_name: "Wickramasinghe",
+  email: "john.w@kenmare.com",
+  phone_num: "+94 77 123 4567",
+  profile_image_url: "",
+  nic: "952314578V",
+  shipping_address: "No. 10, Colombo 03, Western Province",
+  payment_method: "Visa ending in 4242",
+  brand: "Kenmare Estate",
+  sellerRating: 4.8,
+  totalReviews: 124,
+  totalRevenue: 125000,
+  ordersReceived: 86,
+  activeLots: 12,
+  payoutBank: "Bank of Ceylon - **** 8829",
+  totalSpent: 4500,
+  totalOrders: 28,
+  disputes: 0,
+};
 
 export default function UserProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
   const [activeTab, setActiveTab] = useState<'personal' | 'seller' | 'buyer'>('personal');
   const [isLoading, setIsLoading] = useState(false);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
 
   // Security States
   const [showChangePassword, setShowChangePassword] = useState(false);
@@ -30,27 +76,69 @@ export default function UserProfilePage() {
     { day: "Sun", value: 50, amount: "$1,500" },
   ];
 
-  const [user, setUser] = useState({
-    name: "John Wickramasinghe",
-    email: "john.w@kenmare.com",
-    phone: "+94 77 123 4567",
-    nic: "952314578V",
-    address: "No. 20, Kandy Road, Matale",
-    isSeller: true,
-    isBuyer: true,
-    brand: "Kenmare Estate",
-    sellerRating: 4.8,
-    totalReviews: 124,
-    totalRevenue: 125000,
-    ordersReceived: 86,
-    activeLots: 12,
-    payoutBank: "Bank of Ceylon - **** 8829",
-    totalSpent: 4500,
-    totalOrders: 28,
-    shippingAddress: "No. 10, Colombo 03, Western Province",
-    paymentMethod: "Visa ending in 4242",
-    disputes: 0
-  });
+  const [user, setUser] = useState<ProfileFormState>(defaultProfileState);
+
+  const displayName = `${user.first_name} ${user.last_name}`.trim();
+  const availableTabs = user.role === 'seller'
+    ? [
+        { id: 'personal' as const, label: 'Personal Profile' },
+        { id: 'seller' as const, label: 'Seller Insights' },
+      ]
+    : [
+        { id: 'personal' as const, label: 'Personal Profile' },
+        { id: 'buyer' as const, label: 'Buyer Activity' },
+      ];
+
+  const handlePhotoEdit = () => {
+    const imageUrl = window.prompt('Enter profile image URL');
+    if (imageUrl === null) return;
+    setUser((prev) => ({ ...prev, profile_image_url: imageUrl.trim() }));
+  };
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        setIsProfileLoading(true);
+        const response = await apiClient.get('/profile/me');
+        const profile = response.data;
+        const accountNum = profile.financial_details?.account_num;
+        const maskedAccount = accountNum && accountNum.length > 4
+          ? `**** ${accountNum.slice(-4)}`
+          : accountNum || 'Not set';
+
+        setUser((prev) => ({
+          ...prev,
+          role: profile.default_role === 'seller' ? 'seller' : 'buyer',
+          first_name: profile.first_name || prev.first_name,
+          last_name: profile.last_name || prev.last_name,
+          email: profile.email || prev.email,
+          phone_num: profile.phone_num || prev.phone_num,
+          profile_image_url: profile.profile_image_url || prev.profile_image_url,
+          shipping_address: profile.shipping_address || prev.shipping_address,
+          payment_method: profile.payment_method || prev.payment_method,
+          payoutBank: profile.financial_details?.bank_name
+            ? `${profile.financial_details.bank_name} - ${maskedAccount}`
+            : prev.payoutBank,
+        }));
+      } catch (error) {
+        console.error('Failed to load profile:', error);
+        alert('Failed to load profile details from server.');
+      } finally {
+        setIsProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
+
+  useEffect(() => {
+    if (user.role === 'buyer' && activeTab === 'seller') {
+      setActiveTab('personal');
+    }
+    if (user.role === 'seller' && activeTab === 'buyer') {
+      setActiveTab('personal');
+    }
+  }, [user.role, activeTab]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -58,23 +146,57 @@ export default function UserProfilePage() {
   };
 
   const handleSave = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsEditing(false);
-      alert("Profile updated successfully!");
-    }, 800);
+    const saveProfile = async () => {
+      setIsLoading(true);
+      try {
+        await apiClient.put('/profile/me', {
+          first_name: user.first_name,
+          last_name: user.last_name,
+          email: user.email,
+          phone_num: user.phone_num,
+          profile_image_url: user.profile_image_url || null,
+          shipping_address: user.shipping_address,
+          payment_method: user.payment_method,
+        });
+        setIsEditing(false);
+        alert("Profile updated successfully!");
+      } catch (error: any) {
+        const message = error?.response?.data?.detail || "Failed to update profile.";
+        alert(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    saveProfile();
   };
 
-  const handlePasswordUpdate = () => {
-    if (!passwords.current || !passwords.new) return alert('Please fill all fields');
+  const handlePasswordUpdate = async () => {
+    if (!passwords.current || !passwords.new || !passwords.confirm) {
+      alert('Please fill all password fields');
+      return;
+    }
+
+    if (passwords.new !== passwords.confirm) {
+      alert('New password and confirm password do not match');
+      return;
+    }
+
     setPwdLoading(true);
-    setTimeout(() => {
-      setPwdLoading(false);
+    try {
+      await apiClient.put('/profile/change-password', {
+        current_password: passwords.current,
+        new_password: passwords.new,
+      });
       setShowChangePassword(false);
       setPasswords({ current: "", new: "", confirm: "" });
-      alert('Password updated!');
-    }, 1000);
+      alert('Password updated successfully! Please log in again with your new password.');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || 'Failed to update password';
+      alert(message);
+    } finally {
+      setPwdLoading(false);
+    }
   };
 
   return (
@@ -86,24 +208,35 @@ export default function UserProfilePage() {
           <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 pb-6">
             <div className="relative group">
               <div className="w-28 h-28 md:w-32 md:h-32 rounded-full border-4 border-white bg-gray-100 shadow-lg overflow-hidden flex items-center justify-center">
-                <User className="w-14 h-14 text-gray-400" />
+                {user.profile_image_url ? (
+                  <img
+                    src={user.profile_image_url}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-14 h-14 text-gray-400" />
+                )}
               </div>
               {isEditing && (
-                <button className="absolute bottom-1 right-1 bg-[#588157] p-2 rounded-full text-white shadow-md hover:bg-[#4a6d49] transition-colors">
+                <button
+                  onClick={handlePhotoEdit}
+                  className="absolute bottom-1 right-1 bg-[#588157] p-2 rounded-full text-white shadow-md hover:bg-[#4a6d49] transition-colors"
+                >
                   <Camera className="w-4 h-4" />
                 </button>
               )}
             </div>
 
             <div className="text-center md:text-left flex-1">
-              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{user.name}</h1>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900">{displayName}</h1>
               <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-3">
-                {user.isSeller && (
+                {user.role === 'seller' && (
                   <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-bold border border-green-200 flex items-center gap-1">
                     <ShieldCheck className="w-3 h-3" /> Seller Account
                   </span>
                 )}
-                {user.isBuyer && (
+                {user.role === 'buyer' && (
                   <span className="px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-bold border border-blue-200 flex items-center gap-1">
                     <ShoppingBag className="w-3 h-3" /> Verified Buyer
                   </span>
@@ -112,7 +245,7 @@ export default function UserProfilePage() {
             </div>
 
             <div className="flex gap-3 w-full md:w-auto">
-              <Link href="http://localhost:3000/seller/dashboard" className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
+              <Link href={user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard'} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
                 <LayoutDashboard className="w-4 h-4" /> Dashboard
               </Link>
             </div>
@@ -120,11 +253,7 @@ export default function UserProfilePage() {
 
           {/* TABS - Scrollable on Mobile */}
           <div className="flex items-center gap-6 md:gap-8 border-b border-gray-200 overflow-x-auto no-scrollbar">
-            {[
-              { id: 'personal', label: 'Personal Profile' },
-              { id: 'seller', label: 'Seller Insights' },
-              { id: 'buyer', label: 'Buyer Activity' }
-            ].map((tab) => (
+            {availableTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
@@ -141,6 +270,11 @@ export default function UserProfilePage() {
 
       <div className="max-w-5xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+          {isProfileLoading && (
+            <div className="px-6 py-4 text-sm font-semibold text-gray-600 bg-[#F5F7EB] border-b border-gray-100">
+              Loading profile details...
+            </div>
+          )}
           
           {/* CONTENT HEADER */}
           <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-gray-50/50 gap-4">
@@ -171,10 +305,13 @@ export default function UserProfilePage() {
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {[
-                    { label: 'Full Name', name: 'name', val: user.name },
+                    { label: 'First Name', name: 'first_name', val: user.first_name },
+                    { label: 'Last Name', name: 'last_name', val: user.last_name },
                     { label: 'Email Address', name: 'email', val: user.email },
                     { label: 'NIC Number', name: 'nic', val: user.nic },
-                    { label: 'Phone', name: 'phone', val: user.phone },
+                    { label: 'Phone', name: 'phone_num', val: user.phone_num },
+                    { label: 'Address', name: 'shipping_address', val: user.shipping_address },
+                    { label: 'Payment Method', name: 'payment_method', val: user.payment_method },
                   ].map((field) => (
                     <div key={field.name} className="space-y-1">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{field.label}</label>
@@ -218,10 +355,16 @@ export default function UserProfilePage() {
                         className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]" 
                         onChange={(e) => setPasswords({...passwords, new: e.target.value})}
                       />
+                      <input 
+                        type="password" 
+                        placeholder="Confirm Password" 
+                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]" 
+                        onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                      />
                       <button 
                         onClick={handlePasswordUpdate} 
                         disabled={pwdLoading}
-                        className="bg-[#588157] text-white rounded-lg font-bold hover:bg-[#4a6d49] transition-colors disabled:bg-gray-400"
+                        className="bg-[#588157] text-white rounded-lg font-bold hover:bg-[#4a6d49] transition-colors disabled:bg-gray-400 md:col-span-3"
                       >
                         {pwdLoading ? 'Updating...' : 'Update Password'}
                       </button>
@@ -340,12 +483,12 @@ export default function UserProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
                     <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><MapPin className="w-4 h-4 text-[#588157]" /> Shipping Address</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">{user.shippingAddress}</p>
+                    <p className="text-sm text-gray-600 leading-relaxed">{user.shipping_address || 'Not set'}</p>
                     <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Change Address</button>
                   </div>
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
                     <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><CreditCard className="w-4 h-4 text-[#588157]" /> Payment Method</h3>
-                    <p className="text-sm text-gray-600">{user.paymentMethod}</p>
+                    <p className="text-sm text-gray-600">{user.payment_method || 'Not set'}</p>
                     <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Manage Cards</button>
                   </div>
                 </div>
