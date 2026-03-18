@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-from sqlalchemy import text
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import secrets
@@ -17,24 +16,8 @@ router = APIRouter()
 
 GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" # Replace this
 
-
-def _ensure_auth_password_column(db: Session) -> None:
-    """Ensure users table has a hashed_password column used by ORM/auth flows."""
-    has_hashed = db.execute(text("SELECT COL_LENGTH('users', 'hashed_password')")).scalar()
-    if has_hashed is not None:
-        return
-
-    has_password = db.execute(text("SELECT COL_LENGTH('users', 'password')")).scalar()
-    if has_password is not None:
-        db.execute(text("EXEC sp_rename 'users.password', 'hashed_password', 'COLUMN'"))
-    else:
-        db.execute(text("ALTER TABLE users ADD hashed_password VARCHAR(256) NULL"))
-
-    db.commit()
-
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
-    _ensure_auth_password_column(db)
     # 1. Check if the email is already registered
     existing_email = db.query(User).filter(User.email == user_data.email).first()
     if existing_email:
@@ -70,7 +53,6 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
 
 @router.post("/login", response_model=Token)
 def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    _ensure_auth_password_column(db)
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
         raise HTTPException(
@@ -97,7 +79,6 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 
 @router.post("/google", response_model=Token)
 def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
-    _ensure_auth_password_column(db)
     try:
         id_info = id_token.verify_oauth2_token(request.token, requests.Request(), GOOGLE_CLIENT_ID)
         email = id_info.get("email")

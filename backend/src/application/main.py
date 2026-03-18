@@ -148,6 +148,21 @@ async def http_exception_handler(request, exc):
         }
     )
 
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request, exc):
+    logger.exception("Unhandled server error", exc_info=exc)
+    origin = request.headers.get("origin")
+    allow_origin = origin if origin in allowed_origins else (allowed_origins[0] if allowed_origins else "*")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Internal server error"},
+        headers={
+            "Access-Control-Allow-Origin": allow_origin,
+            "Access-Control-Allow-Credentials": "true" if settings.CORS_ALLOW_CREDENTIALS else "false",
+        },
+    )
+
 @app.get("/")
 async def root():
     """Root endpoint."""

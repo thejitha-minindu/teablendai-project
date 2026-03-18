@@ -21,8 +21,8 @@ class ProfileService:
             last_name=user.last_name,
             default_role=user.default_role,
             profile_image_url=user.profile_image_url,
-            shipping_address=user.shipping_address,
-            payment_method=user.payment_method,
+            shipping_address=getattr(user, "shipping_address", None),
+            payment_method=getattr(user, "payment_method", None),
             financial_details=user.financial_details,
             watch_list=watch_list_ids,
         )
@@ -66,7 +66,8 @@ class ProfileService:
 
         for field in ("phone_num", "first_name", "last_name", "profile_image_url", "shipping_address", "payment_method"):
             if field in update_data:
-                setattr(current_user, field, update_data[field])
+                if hasattr(current_user, field):
+                    setattr(current_user, field, update_data[field])
 
         if "financial_details" in update_data:
             details_update = payload.financial_details.model_dump(exclude_unset=True)

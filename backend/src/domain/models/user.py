@@ -16,8 +16,6 @@ class User(Base):
     last_name = Column(String(64), nullable=False)
     default_role = Column(String(16), nullable=False)
     profile_image_url = Column(String(256))
-    shipping_address = Column(String(256))
-    payment_method = Column(String(128))
     
     financial_details = relationship("FinancialDetails", back_populates="user", uselist=False)
     watch_list = relationship("WatchList", back_populates="user")
