@@ -5,6 +5,7 @@ Topic Validator - Structure-based validation.
 import re
 import logging
 from typing import List, Set, Optional
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +139,7 @@ class TopicValidator:
         self,
         question: str,
         has_conversation_history: bool = False,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None
     ) -> bool:
         """Validate question relevance"""
         q = question.lower().strip()
