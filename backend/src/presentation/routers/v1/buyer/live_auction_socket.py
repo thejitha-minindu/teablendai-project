@@ -26,7 +26,7 @@ async def create_bid(
     
     try:
         # Verify token
-        logger.debug(f"Verifying WebSocket token for auction {auction_id}")
+        logger.debug(f"WebSocket connection attempt for auction {auction_id}")
         
         if not token:
             await websocket.accept()
@@ -72,7 +72,7 @@ async def create_bid(
     except Exception as e:
         logger.error(f"WebSocket error for auction {auction_id}: {e}", exc_info=True)
         try:
-            if websocket.client_state.value < 2:  # Not already closing/closed
+            if websocket.client_state.value < 2:
                 await websocket.accept()
             await websocket.send_json({"error": "Internal server error"})
             await websocket.close(code=status.WS_1011_SERVER_ERROR, reason="Internal error")

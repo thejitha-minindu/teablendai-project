@@ -25,7 +25,7 @@ from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as b
 from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
-from src.infrastructure.services.auction_manager import auction_manager
+from src.application.services.buyer.auction_manager import auction_manager
 
 Base.metadata.create_all(bind=engine)
 
