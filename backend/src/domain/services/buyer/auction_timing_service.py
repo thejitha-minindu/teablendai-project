@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from src.domain.models.auction import Auction
 from src.domain.constants.auction_constants import AuctionTimingConstants
@@ -18,7 +18,7 @@ class AuctionTimingService:
     def get_remaining_time(auction: Auction, current_time: Optional[datetime] = None) -> timedelta:
         """Get time remaining until auction ends"""
         if current_time is None:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
         
         end_time = AuctionTimingService.calculate_auction_end_time(auction)
         remaining = end_time - current_time
@@ -28,7 +28,7 @@ class AuctionTimingService:
     def is_auction_expired(auction: Auction, current_time: Optional[datetime] = None) -> bool:
         """Check if auction has passed its end time"""
         if current_time is None:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
         
         end_time = AuctionTimingService.calculate_auction_end_time(auction)
         return current_time > end_time
@@ -47,7 +47,7 @@ class AuctionTimingService:
     def is_grace_period_expired(last_bid_time: datetime, current_time: Optional[datetime] = None) -> bool:
         """Check if grace period has expired"""
         if current_time is None:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
         
         grace_end = AuctionTimingService.calculate_grace_period_end(last_bid_time)
         return current_time >= grace_end

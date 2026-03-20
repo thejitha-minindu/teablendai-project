@@ -1,5 +1,5 @@
 """Bid service - facade for all bid operations."""
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from src.application.schemas.bid import Bid as BidSchema
 from src.infrastructure.repositories.bid_repository import BidRepository
@@ -33,7 +33,7 @@ class BidService:
         # Calculate remaining time
         remaining_seconds = AuctionTimingService.get_remaining_time(
             auction, 
-            datetime.utcnow()
+            datetime.now(timezone.utc)
         ).total_seconds()
         
         return {
@@ -49,7 +49,7 @@ class BidService:
         if not auction:
             raise ValueError(f"Auction {auction_id} not found")
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         remaining_seconds = 0
         
         if auction.status == AuctionStatus.LIVE.value:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from src.application.schemas.bid import Bid as BidSchema
@@ -26,7 +26,7 @@ class BidPlacementUseCase:
         Returns: (bid, auction_event)
         Raises: BidValidationException if bid is invalid
         """
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Get auction with FOR UPDATE to prevent race conditions
         auction = self.auction_repo.get_auction_by_id(auction_id)
@@ -35,6 +35,17 @@ class BidPlacementUseCase:
         
         # Check if auction time has expired
         is_expired = AuctionTimingService.is_auction_expired(auction, current_time)
+        
+        # Log auction timing details for debugging
+        end_time = AuctionTimingService.calculate_auction_end_time(auction)
+        logger.info(f"Auction {auction_id} timing check:")
+        logger.info(f"  Current time: {current_time}")
+        logger.info(f"  Start time: {auction.start_time}")
+        logger.info(f"  Duration (hours): {auction.duration}")
+        logger.info(f"  End time: {end_time}")
+        logger.info(f"  Is expired: {is_expired}")
+        logger.info(f"  Status: {auction.status}")
+        logger.info(f"  Buyer: {auction.buyer}")
         
         # Validate auction can accept bids
         BidValidationService.validate_auction_accepts_bids(auction, is_expired)
@@ -48,6 +59,7 @@ class BidPlacementUseCase:
         # Update auction status if transitioning from SCHEDULE to LIVE
         if auction.status == AuctionStatus.SCHEDULE.value and current_time >= auction.start_time:
             auction.status = AuctionStatus.LIVE.value
+            auction.start_time = current_time  # Reset to actual LIVE start time for duration calculation
             self.db.commit()
             logger.info(f"Auction transitioned to LIVE: {auction_id}")
         

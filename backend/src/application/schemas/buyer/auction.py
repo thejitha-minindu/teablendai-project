@@ -18,12 +18,38 @@ class AuctionData(BaseModel):
     quantity: float
     base_price: float
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
-    duration: float
+    start_time: Optional[datetime] = Field(default=None, alias="start_time")  # For LIVE auctions
+    duration: float  # Will be converted to seconds via field_serializer
     status: AuctionType
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[float] = None
     image_url: Optional[str] = None
+    
+    @field_serializer('duration')
+    def serialize_duration(self, value: float, _info) -> float:
+        """Convert duration from hours (database) to seconds (frontend)"""
+        return value * 3600 if value is not None else 0
+    
+    @field_serializer('date')
+    def serialize_date(self, value: datetime, _info) -> str:
+        """Serialize datetime to ISO format string with timezone"""
+        if value is None:
+            return None
+        # Ensure timezone awareness - if naive, assume UTC
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
+    
+    @field_serializer('start_time')
+    def serialize_start_time(self, value: datetime, _info) -> str:
+        """Serialize datetime to ISO format string with timezone"""
+        if value is None:
+            return None
+        # Ensure timezone awareness - if naive, assume UTC
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
     
     @field_validator('buyer', mode='before')
     @classmethod

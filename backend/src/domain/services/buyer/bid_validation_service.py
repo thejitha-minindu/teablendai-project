@@ -50,8 +50,5 @@ class BidValidationService:
         if status == AuctionStatus.HISTORY.value:
             raise BidValidationException("Auction has ended")
         
-        if is_expired and not auction.buyer:
-            raise BidValidationException("Auction time has expired")
-        
-        if auction.buyer:
+        if is_expired and auction.buyer:
             raise BidValidationException("Auction has been won - no more bids accepted")

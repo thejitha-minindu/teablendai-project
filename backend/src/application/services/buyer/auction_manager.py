@@ -1,7 +1,7 @@
 """Auction manager - orchestrates background auction state transitions."""
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy.orm import Session
 from src.infrastructure.database.base import SessionLocal
 from src.domain.models.auction import Auction
@@ -36,7 +36,7 @@ class AuctionManager:
         """Process all auctions for state transitions"""
         db = SessionLocal()
         try:
-            current_time = datetime.utcnow()
+            current_time = datetime.now(timezone.utc)
             
             # Process SCHEDULE -> LIVE transition
             await self._process_scheduled_auctions(db, current_time)
@@ -61,6 +61,7 @@ class AuctionManager:
         for auction in scheduled_auctions:
             if current_time >= auction.start_time:
                 auction.status = AuctionStatus.LIVE.value
+                auction.start_time = current_time  # Reset to actual LIVE start time for duration calculation
                 db.commit()
                 logger.info(f"Auction transitioned to LIVE: {auction.auction_id}")
     
@@ -135,7 +136,7 @@ class AuctionManager:
                     user_id=auction.buyer,
                     auction_id=auction.auction_id,
                     total_amount=auction.sold_price,
-                    order_date=datetime.utcnow(),
+                    order_date=datetime.now(timezone.utc),
                     status=OrderStatus.completed
                 )
                 db.add(order)

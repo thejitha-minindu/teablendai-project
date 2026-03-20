@@ -10,6 +10,8 @@ export type BidData = {
   bid_amount: number;
   bid_time: Date;
   buyer_id: string;
+  winner_id?: string;
+  final_price?: number;
 };
 
 export type BidWsEvent = {

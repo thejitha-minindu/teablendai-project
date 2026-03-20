@@ -12,6 +12,7 @@ export interface AuctionData {
   quantity: number;
   base_price: number;
   date: Date;
+  start_time?: Date;
   duration: number;
   status: AuctionType;
   buyer?: string;

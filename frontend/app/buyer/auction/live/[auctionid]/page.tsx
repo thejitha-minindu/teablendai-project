@@ -1,6 +1,8 @@
 "use client";
 
 import { AuctionDetailLayout } from "@/components/features/buyer/liveauction/AuctionDetailLayout";
+import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
+import { WinnerModal } from "@/components/features/buyer/liveauction/WinnerModal";
 import { getAuction } from "@/services/buyer/auctionService";
 import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
 import type { AuctionData } from "@/types/buyer/auction.types";
@@ -24,6 +26,8 @@ export default function BuyerAuctionLivePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [imageFailed, setImageFailed] = useState(false);
+  const [showWinnerModal, setShowWinnerModal] = useState(false);
+  const [winner, setWinner] = useState<{ winnerId: string; finalPrice: number } | null>(null);
 
   const { connected, events } = useAuctionBidsSocket(auctionId);
 
@@ -72,37 +76,52 @@ export default function BuyerAuctionLivePage() {
   useEffect(() => {
     if (!events.length) return;
 
+    // Handle BID_CREATED events
     const createdEvents = events.filter((event) => event.event_type === "BID_CREATED");
-    if (!createdEvents.length) return;
+    if (createdEvents.length) {
+      setBids((previous) => {
+        const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
 
-    setBids((previous) => {
-      const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
+        createdEvents.forEach((event) => {
+          const isMyBid = event.data.buyer_id === userId;
 
-      createdEvents.forEach((event) => {
-        const isMyBid = event.data.buyer_id === userId;
+          map.set(event.data.bid_id, {
+            bid_id: event.data.bid_id,
+            auction_id: event.data.auction_id,
+            bid_amount: event.data.bid_amount,
+            bid_time: new Date(event.data.bid_time),
+            buyer_id: event.data.buyer_id,
+          });
 
-        map.set(event.data.bid_id, {
-          bid_id: event.data.bid_id,
-          auction_id: event.data.auction_id,
-          bid_amount: event.data.bid_amount,
-          bid_time: new Date(event.data.bid_time),
-          buyer_id: event.data.buyer_id,
+          toast.success(
+            isMyBid ? "Your bid placed!" : "New bid!",
+            {
+              description: `LKR ${event.data.bid_amount} · ${new Date(event.data.bid_time).toLocaleTimeString()}`,
+              position: "top-right",
+            }
+          );
         });
 
-        toast.success(
-          isMyBid ? "Your bid placed!" : "New bid!",
-          {
-            description: `$${event.data.bid_amount} · ${new Date(event.data.bid_time).toLocaleTimeString()}`,
-            position: "top-right",
-          }
+        return Array.from(map.values()).sort(
+          (a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime()
         );
       });
+    }
 
-      return Array.from(map.values()).sort(
-        (a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime()
-      );
-    });
-  }, [events]);
+    // Handle AUCTION_CLOSED events (contains winner info)
+    const closedEvents = events.filter((event) => event.event_type === "AUCTION_CLOSED");
+    if (closedEvents.length) {
+      const closedEvent = closedEvents[0];
+      if (closedEvent.data.winner_id && closedEvent.data.final_price) {
+        setWinner({
+          winnerId: closedEvent.data.winner_id,
+          finalPrice: closedEvent.data.final_price,
+        });
+        setShowWinnerModal(true);
+        toast.success("Auction ended! Winner has been determined.", { position: "top-right" });
+      }
+    }
+  }, [events, userId]);
 
   const highestBid = useMemo(() => {
     return bids.reduce((current, next) => (next.bid_amount > current ? next.bid_amount : current), auction?.base_price ?? 0);
@@ -147,11 +166,8 @@ export default function BuyerAuctionLivePage() {
       setError(null);
 
       await createBid({
-        bid_id: crypto.randomUUID(),
         auction_id: auctionId,
         bid_amount: amount,
-        bid_time: new Date(),
-        buyer_id: userId,
       });
 
       setSelectedAmount("");
@@ -175,23 +191,44 @@ export default function BuyerAuctionLivePage() {
   const showImage = Boolean(imageUrl) && !imageFailed;
 
   return (
-    <AuctionDetailLayout
-      auction={auction}
-      bids={bids}
-      highestBid={highestBid}
-      myHighestBid={myHighestBid}
-      latestBid={latestBid}
-      selectedAmount={selectedAmount}
-      setSelectedAmount={setSelectedAmount}
-      submitting={submitting}
-      connected={connected}
-      error={error}
-      submitBid={submitBid}
-      isBidLocked={false}
-      statusLabel="Live"
-      imageUrl={imageUrl}
-      showImage={showImage}
-      onImageError={() => setImageFailed(true)}
-    />
+    <>
+      <AuctionDetailLayout
+        auction={auction}
+        bids={bids}
+        highestBid={highestBid}
+        myHighestBid={myHighestBid}
+        latestBid={latestBid}
+        selectedAmount={selectedAmount}
+        setSelectedAmount={setSelectedAmount}
+        submitting={submitting}
+        connected={connected}
+        error={error}
+        submitBid={submitBid}
+        isBidLocked={false}
+        statusLabel="Live"
+        imageUrl={imageUrl}
+        showImage={showImage}
+        onImageError={() => setImageFailed(true)}
+        startTime={auction.date}
+        duration={auction.duration}
+        onAuctionEnd={() => {
+          toast.info("Auction time has elapsed", { position: "top-right" });
+        }}
+      />
+
+      {winner && (
+        <WinnerModal
+          isOpen={showWinnerModal}
+          winnerId={winner.winnerId}
+          finalPrice={winner.finalPrice}
+          auctionName={auction.auction_name}
+          onClose={() => setShowWinnerModal(false)}
+          onViewOrder={() => {
+            setShowWinnerModal(false);
+            router.push("/buyer/orders");
+          }}
+        />
+      )}
+    </>
   );
 }

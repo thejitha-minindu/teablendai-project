@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from uuid import UUID
 from datetime import datetime, timezone
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 
 AuctionType = Literal["scheduled", "live", "history"]
 
@@ -63,6 +63,16 @@ class AuctionResponse(BaseModel):
     buyer: Optional[str] = None
     sold_price: Optional[float] = None
     created_at: datetime
+    
+    @field_serializer('start_time', 'created_at')
+    def serialize_datetime(self, value: datetime, _info) -> str:
+        """Serialize datetime to ISO format string with timezone"""
+        if value is None:
+            return None
+        # Ensure timezone awareness - if naive, assume UTC
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
     
     @field_validator('auction_id', 'seller_id', mode='before')
     @classmethod
