@@ -1,9 +1,10 @@
 from typing import Optional, List, Any
 from pydantic import BaseModel
 from datetime import datetime
+from uuid import UUID
 
 class ChatMessage(BaseModel):
-    id: int
+    id: UUID
     role: str
     content: str
     timestamp: datetime
@@ -18,11 +19,11 @@ class ChatMessage(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    conversation_id: Optional[int] = None
+    conversation_id: Optional[UUID] = None
 
 class ChatResponse(BaseModel):
     success: bool
-    conversation_id: int
+    conversation_id: UUID
     answer: str
     timestamp: datetime
     sql_query: Optional[str] = None

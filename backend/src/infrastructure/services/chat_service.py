@@ -9,6 +9,7 @@ import asyncio
 import logging
 from typing import Dict, Any, Optional
 from datetime import datetime
+from uuid import UUID
 from sqlalchemy.orm import Session
 
 from src.domain.models import Conversation, ChatMessage
@@ -66,7 +67,7 @@ class ChatService:
     async def process_message(
         self,
         user_message: str,
-        conversation_id: Optional[int] = None,
+        conversation_id: Optional[UUID] = None,
         user_id: Optional[str] = None,
         user_role: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -247,7 +248,7 @@ class ChatService:
     
     def get_conversation_history(
         self,
-        conversation_id: int,
+        conversation_id: UUID,
         limit: int = 50
     ) -> Dict[str, Any]:
         """Get conversation with message history"""

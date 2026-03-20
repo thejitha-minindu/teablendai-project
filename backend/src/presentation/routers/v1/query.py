@@ -10,6 +10,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List, Annotated
 from datetime import datetime
+from uuid import UUID
 
 from src.application.dependencies import get_chat_service, get_optional_current_user
 from src.domain.models.user import User
@@ -23,7 +24,7 @@ router = APIRouter()
 class QueryRequest(BaseModel):
     """Request model for tea queries."""
     question: Annotated[str, Field(alias="message")]
-    conversation_id: Optional[int] = None
+    conversation_id: Optional[UUID] = None
     user_id: Optional[str] = None
     model_config = ConfigDict(populate_by_name=True)
 
@@ -31,7 +32,7 @@ class QueryRequest(BaseModel):
 class QueryResponse(BaseModel):
     """Response model for tea queries."""
     success: bool
-    conversation_id: Optional[int] = None
+    conversation_id: Optional[UUID] = None
     answer: str
     source: str
     data_type: Optional[str] = None

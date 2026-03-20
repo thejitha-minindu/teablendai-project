@@ -14,6 +14,8 @@ from src.domain.models.order import Order, PaymentDetails, WinsAuction
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
 
+from urllib.parse import quote_plus
+
 # Load environment variables from .env file
 load_dotenv()
 

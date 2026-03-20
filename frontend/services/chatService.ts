@@ -2,7 +2,7 @@ import { apiClient } from "@/lib/apiClient";
 
 export interface QueryResponse {
   success: boolean;
-  conversation_id: number | null;
+  conversation_id: string | null;
   answer: string;
   source: "database" | "web" | "validation" | "error" | "fallback" | "auction_management";
   data_type?: string;
@@ -110,7 +110,7 @@ export interface ChatMessage {
 }
 
 export interface ConversationSummary {
-  conversation_id: number;
+  conversation_id: string;
   title: string;
   created_at: string;
   updated_at: string;
@@ -134,7 +134,7 @@ export const chatService = {
   // Send message to backend
   async sendMessage(
     message: string,
-    conversationId?: number | null
+    conversationId?: string | null
   ): Promise<QueryResponse> {
     const payload: Record<string, unknown> = { message };
     if (conversationId) payload.conversation_id = conversationId;
@@ -155,7 +155,7 @@ export const chatService = {
   },
 
   // Get messages for a specific conversation
-  async getConversationMessages(conversationId: number): Promise<ChatMessage[]> {
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
     try {
       const response = await apiClient.get(`/conversations/${conversationId}`);
       const raw = response.data?.messages || [];
@@ -204,7 +204,7 @@ export const chatService = {
   },
 
   // Delete a conversation
-  async deleteConversation(conversationId: number): Promise<void> {
+  async deleteConversation(conversationId: string): Promise<void> {
     await apiClient.delete(`/conversations/${conversationId}`);
   },
 };

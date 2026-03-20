@@ -12,7 +12,7 @@ import { ArrowDownIcon } from "@/components/ui/arrow-down";
 export default function ChatbotPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<number | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   
@@ -140,13 +140,12 @@ export default function ChatbotPage() {
 
   // Load a past conversation from sidebar
   const handleSelectChat = async (chatId: string) => {
-    const id = parseInt(chatId);
-    if (isNaN(id)) return;
+    if (!chatId) return;
 
-    setConversationId(id);
+    setConversationId(chatId);
     setMessages([]);
 
-    const history = await chatService.getConversationMessages(id);
+    const history = await chatService.getConversationMessages(chatId);
     setMessages(history);
     
     // Scroll to bottom after loading history
@@ -155,10 +154,9 @@ export default function ChatbotPage() {
 
   // Delete conversation
   const handleDeleteChat = async (chatId: string) => {
-    const id = parseInt(chatId);
-    if (!isNaN(id)) {
-      await chatService.deleteConversation(id);
-      if (conversationId === id) {
+    if (chatId) {
+      await chatService.deleteConversation(chatId);
+      if (conversationId === chatId) {
         setMessages([]);
         setConversationId(null);
       }

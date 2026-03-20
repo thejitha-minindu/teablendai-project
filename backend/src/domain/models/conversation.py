@@ -4,13 +4,15 @@ NO imports from application or services layers.
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import UUID, uuid4
 from src.infrastructure.database.base import Base
 
 
 class Conversation(Base):
     __tablename__ = "Conversations"
 
-    conversation_id = Column("ConversationID", Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column("ConversationID", UNIQUEIDENTIFIER, primary_key=True, default=uuid4)
     title           = Column("Title", String(500), nullable=True)
     user_id         = Column("UserID", Integer, nullable=True)
     created_at      = Column("CreatedAt", DateTime, default=datetime.now)
