@@ -194,10 +194,6 @@ async def api_info():
             "dashboard": "/api/v1/dashboard"
         },
         "documentation": "/docs",
-        "features": {
-            "auction_timer": "Dynamic 10s extension on bid near deadline",
-            "grace_period": "30s after winner declared before closing"
-        }
     }
 
 if __name__ == "__main__":

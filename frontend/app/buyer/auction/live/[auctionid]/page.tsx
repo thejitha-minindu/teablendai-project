@@ -27,7 +27,7 @@ export default function BuyerAuctionLivePage() {
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [imageFailed, setImageFailed] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [winner, setWinner] = useState<{ winnerId: string; finalPrice: number } | null>(null);
+  const [winner, setWinner] = useState<{ winnerId: string | null; finalPrice: number } | null>(null);
 
   const { connected, events } = useAuctionBidsSocket(auctionId);
 
@@ -74,10 +74,18 @@ export default function BuyerAuctionLivePage() {
   }, [auctionId, router]);
 
   useEffect(() => {
-    if (!events.length) return;
+    console.log("WebSocket connected:", connected);
+    console.log("All events received:", events);
+    
+    if (!events.length) {
+      console.log("No events in the array");
+      return;
+    }
 
     // Handle BID_CREATED events
     const createdEvents = events.filter((event) => event.event_type === "BID_CREATED");
+    console.log("BID_CREATED events:", createdEvents);
+    
     if (createdEvents.length) {
       setBids((previous) => {
         const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
@@ -108,17 +116,27 @@ export default function BuyerAuctionLivePage() {
       });
     }
 
-    // Handle AUCTION_CLOSED events (contains winner info)
-    const closedEvents = events.filter((event) => event.event_type === "AUCTION_CLOSED");
+    // Handle AUCTION_WON events (contains winner info)
+    const closedEvents = events.filter((event) => {
+      const eventType = String(event.event_type);
+      return eventType === "AUCTION_WON";
+    });
+    console.log("AUCTION_WON events:", closedEvents);
+    
     if (closedEvents.length) {
       const closedEvent = closedEvents[0];
-      if (closedEvent.data.winner_id && closedEvent.data.final_price) {
-        setWinner({
-          winnerId: closedEvent.data.winner_id,
-          finalPrice: closedEvent.data.final_price,
-        });
-        setShowWinnerModal(true);
+      console.log("AUCTION_WON received:", closedEvent.data);
+
+      setWinner({
+        winnerId: closedEvent.data.winner_id || null,
+        finalPrice: closedEvent.data.final_price ?? 0,
+      });
+      setShowWinnerModal(true);
+
+      if (closedEvent.data.winner_id) {
         toast.success("Auction ended! Winner has been determined.", { position: "top-right" });
+      } else {
+        toast.info("Auction ended - No winner", { position: "top-right" });
       }
     }
   }, [events, userId]);
@@ -226,6 +244,10 @@ export default function BuyerAuctionLivePage() {
           onViewOrder={() => {
             setShowWinnerModal(false);
             router.push("/buyer/orders");
+          }}
+          onViewHistory={() => {
+            setShowWinnerModal(false);
+            router.push("/buyer/history");
           }}
         />
       )}

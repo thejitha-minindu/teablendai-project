@@ -20,15 +20,25 @@ export function useAuctionBidsSocket(auctionId: string) {
       auctionId,
       (evt: BidWsEvent) => {
         // Handle different event types based on event_type field
-        console.log("Received WebSocket event:", evt.event_type, evt);
+        const eventType = String(evt.event_type);
+        console.log("Received WebSocket event:", eventType, evt);
         
-        if (evt.event_type === "BID_CREATED") {
+        if (eventType === "BID_CREATED") {
           console.log("Bid created event received:", evt.data);
           setEvents((prev) => [evt, ...prev]);
           setAuctionStatus("Live");
         }
         
-        if (evt.event_type === "AUCTION_CLOSED") {
+        if (eventType === "AUCTION_WON") {
+          console.log("Auction won event received:", evt.data);
+          setEvents((prev) => [evt, ...prev]);
+          setWinner(evt.data?.winner_id || null);
+          setFinalPrice(evt.data?.final_price || 0);
+          setAuctionStatus("Closed");
+          setTimeLeft(0);
+        }
+        
+        if (eventType === "AUCTION_CLOSED") {
           setWinner(evt.data?.buyer_id || null);
           setFinalPrice(evt.data?.bid_amount || 0);
           setAuctionStatus("Closed");

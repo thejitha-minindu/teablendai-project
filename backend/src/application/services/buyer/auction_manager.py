@@ -1,15 +1,18 @@
-"""Auction manager - orchestrates background auction state transitions."""
 import asyncio
 import logging
+from uuid import uuid4
 from datetime import datetime, timezone
 from sqlalchemy.orm import Session
+from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager as connection_manager
+from src.domain.events.auction_event import AuctionEvent
 from src.infrastructure.database.base import SessionLocal
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
 from src.domain.models.order import Order, OrderStatus
 from src.domain.models.auction_status import AuctionStatus
-from src.domain.constants.auction_constants import AuctionTimingConstants
+from src.domain.constants.auction_constants import AuctionTimingConstants, AuctionEventType
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
+from src.application.services.buyer.live_auction_event_service import LiveAuctionEventService
 
 logger = logging.getLogger(__name__)
 
@@ -72,8 +75,12 @@ class AuctionManager:
             Auction.buyer.is_(None)
         ).all()
         
+        logger.info(f"Found {len(live_auctions)} live auctions without buyer")
+        
         for auction in live_auctions:
+            logger.info(f"Processing auction {auction.auction_id}")
             is_expired = AuctionTimingService.is_auction_expired(auction, current_time)
+            logger.info(f"Auction {auction.auction_id} expired: {is_expired}")
             
             if is_expired:
                 # Get highest bid
@@ -81,11 +88,15 @@ class AuctionManager:
                     Bid.auction_id == auction.auction_id
                 ).order_by(Bid.bid_amount.desc()).first()
                 
+                logger.info(f"Highest bid for {auction.auction_id}: {highest_bid.bid_amount if highest_bid else None}")
+                
                 if highest_bid:
                     time_since_last_bid = (current_time - highest_bid.bid_time).total_seconds()
                     wait_threshold = AuctionTimingConstants.WAIT_BEFORE_WIN.total_seconds()
+                    logger.info(f"Time since last bid: {time_since_last_bid}s, Threshold: {wait_threshold}s")
                     
                     if time_since_last_bid >= wait_threshold:
+                        logger.info(f"Calling _mark_winner for auction {auction.auction_id}")
                         await self._mark_winner(auction, highest_bid, db)
     
     async def _process_won_auctions(self, db: Session, current_time: datetime):
@@ -117,8 +128,22 @@ class AuctionManager:
             logger.info(f"Auction winner marked: {auction.auction_id}")
             logger.info(f"  Winner: {highest_bid.buyer_id}, Amount: {highest_bid.bid_amount}")
             
+            event_service = LiveAuctionEventService(connection_manager)
+            event = AuctionEvent(
+                event_id=str(uuid4()),
+                event_type=AuctionEventType.AUCTION_WON,
+                auction_id=str(auction.auction_id),
+                occurred_at=datetime.now(timezone.utc),
+                data={
+                    "winner_id": str(highest_bid.buyer_id),
+                    "final_price": highest_bid.bid_amount,
+                }
+            )
+            await event_service.publish_event(event)
+            logger.info(f"AUCTION_WON event published for {auction.auction_id}")
+            
         except Exception as e:
-            logger.error(f"Error marking winner for {auction.auction_id}: {e}")
+            logger.error(f"Error marking winner for {auction.auction_id}: {e}", exc_info=True)
             db.rollback()
     
     async def _close_auction(self, auction: Auction, db: Session):
@@ -143,6 +168,21 @@ class AuctionManager:
             
             db.commit()
             logger.info(f"Auction closed: {auction.auction_id}")
+            
+            if not auction.buyer:
+                
+                event_service = LiveAuctionEventService(connection_manager)
+                event = AuctionEvent(
+                    event_type="AUCTION_CLOSED",
+                    auction_id=auction.auction_id,
+                    data={
+                        "winner_id": None,
+                        "final_price": 0,
+                        "status": "ended_no_winner"
+                    }
+                )
+                await event_service.publish_event(event)
+                logger.info(f"AUCTION_CLOSED event published (no winner) for {auction.auction_id}")
             
         except Exception as e:
             logger.error(f"Error closing auction {auction.auction_id}: {e}")
