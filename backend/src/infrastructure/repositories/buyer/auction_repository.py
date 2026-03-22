@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.buyer.auction import Auction
 from src.domain.models.user import User, WatchList
@@ -8,13 +9,33 @@ from src.domain.models.auction_status import AuctionStatus
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
         self.db = db
+    
+    def _attach_buyer_names(self, auctions):
+        if not auctions:
+            return auctions
+        
+        auction_list = auctions if isinstance(auctions, list) else [auctions]
+        buyer_ids = [a.buyer for a in auction_list if a.buyer]
+        
+        if not buyer_ids:
+            return auctions
+        
+        buyer_names = {
+            user.user_id: user.user_name 
+            for user in self.db.query(User).filter(User.user_id.in_(buyer_ids)).all()
+        }
+        
+        for auction in auction_list:
+            if auction.buyer and auction.buyer in buyer_names:
+                auction.buyer_name = buyer_names[auction.buyer]
+        
+        return auctions
 
-    # Get auction by ID
     def get_auction_by_id(self, auction_id: str):
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+        auction = self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+        return self._attach_buyer_names(auction)
 
 
-    # List auctions with optional filters
     def list_auctions(self, user_id: str = None, as_buyer: bool = False, status: str = None):
         query = self.db.query(AuctionModel)
         if user_id:
@@ -25,7 +46,8 @@ class AuctionRepository(AuctionRepositoryInterface):
         if status:
             query = query.filter(AuctionModel.status == status)
         
-        return query.all()
+        auctions = query.all()
+        return self._attach_buyer_names(auctions)
 
     # List auction history for user
     def list_auctions_history(self, user_id: str, as_buyer: bool = False):
@@ -35,7 +57,6 @@ class AuctionRepository(AuctionRepositoryInterface):
     def list_auctions_order(self, user_id: str):
         return self.list_auctions(user_id=user_id, as_buyer=True, status=AuctionStatus.HISTORY.value)
  
-    # List auctions in user's watchlist
     def list_auctions_watchlist(self, user_id: str):
         user = self.db.query(User).filter(User.user_id == user_id).first()
         if not user or not user.watch_list:
@@ -43,12 +64,13 @@ class AuctionRepository(AuctionRepositoryInterface):
         auction_ids = [entry.auction_id for entry in user.watch_list]
         if not auction_ids:
             return []
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
+        auctions = self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
+        return self._attach_buyer_names(auctions)
 
-    #  Get preview auctions for home page
     def get_home_preview_auctions(self, user_id: str):
         query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
-        return query.limit(5).all()
+        auctions = query.limit(5).all()
+        return self._attach_buyer_names(auctions)
     
     # Add auction to watchlist
     def add_to_watchlist(self, user_id: str, auction_id: str):

@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 interface WinnerModalProps {
   isOpen: boolean;
   winnerId: string | null;
+  winnerName?: string | null;
   userId?: string | null;
   finalPrice: number;
   auctionName: string;
@@ -24,6 +25,7 @@ interface WinnerModalProps {
 export function WinnerModal({
   isOpen,
   winnerId,
+  winnerName,
   userId,
   finalPrice,
   auctionName,
@@ -60,8 +62,8 @@ export function WinnerModal({
 
             {hasWinner && !isMyWin && (
               <div className="rounded-lg bg-amber-50 p-4">
-                <p className="text-sm text-muted-foreground">Winner ID</p>
-                <p className="text-sm font-mono text-amber-700 break-all">{winnerId}</p>
+                <p className="text-sm text-muted-foreground">Winner</p>
+                <p className="text-sm font-semibold text-amber-700">{winnerName || "Unknown"}</p>
                 <p className="mt-2 text-sm text-muted-foreground">Final Price: LKR {finalPrice}</p>
               </div>
             )}

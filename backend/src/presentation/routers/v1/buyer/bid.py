@@ -34,7 +34,8 @@ async def create_bid(
         result = service.place_bid(
             auction_id=str(bid_request.auction_id),
             buyer_id=str(current_user.user_id),
-            bid_amount=bid_request.bid_amount
+            bid_amount=bid_request.bid_amount,
+            buyer_name=current_user.user_name
         )
         
         bid_data = result["bid"]

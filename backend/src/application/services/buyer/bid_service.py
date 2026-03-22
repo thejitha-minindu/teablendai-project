@@ -19,13 +19,13 @@ class BidService:
         self.bid_repo = BidRepository(db)
         self.auction_repo = AuctionRepository(db)
     
-    def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float) -> dict:
+    def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> dict:
         """
         Place a bid using the dedicated use case.
         Returns dict with bid and event for broadcasting.
         """
         use_case = BidPlacementUseCase(self.db)
-        bid, event = use_case.execute(auction_id, buyer_id, bid_amount)
+        bid, event = use_case.execute(auction_id, buyer_id, bid_amount, buyer_name)
         
         # Get updated auction state
         auction = self.auction_repo.get_auction_by_id(auction_id)

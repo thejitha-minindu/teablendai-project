@@ -18,7 +18,7 @@ class AuctionEvent(BaseModel):
     
     @staticmethod
     def bid_created(event_id: str, auction_id: str, bid_id: str, 
-                   amount: float, buyer_id: str, bid_time: datetime) -> "AuctionEvent":
+                   amount: float, buyer_id: str, bid_time: datetime, buyer_name: str = None) -> "AuctionEvent":
         """Factory method for BID_CREATED events."""
         return AuctionEvent(
             event_id=event_id,
@@ -29,6 +29,7 @@ class AuctionEvent(BaseModel):
                 "bid_id": str(bid_id),
                 "bid_amount": amount,
                 "buyer_id": str(buyer_id),
+                "buyer_name": buyer_name,
                 "bid_time": bid_time.isoformat()
             }
         )

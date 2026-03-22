@@ -27,7 +27,7 @@ export default function BuyerAuctionLivePage() {
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [imageFailed, setImageFailed] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
-  const [winner, setWinner] = useState<{ winnerId: string | null; finalPrice: number } | null>(null);
+  const [winner, setWinner] = useState<{ winnerId: string | null; winnerName?: string; finalPrice: number } | null>(null);
 
   const { connected, events } = useAuctionBidsSocket(auctionId);
 
@@ -99,6 +99,7 @@ export default function BuyerAuctionLivePage() {
             bid_amount: event.data.bid_amount,
             bid_time: new Date(event.data.bid_time),
             buyer_id: event.data.buyer_id,
+            buyer_name: event.data.buyer_name,
           });
 
           toast.success(
@@ -129,6 +130,7 @@ export default function BuyerAuctionLivePage() {
 
       setWinner({
         winnerId: closedEvent.data.winner_id || null,
+        winnerName: closedEvent.data.winner_name,
         finalPrice: closedEvent.data.final_price ?? 0,
       });
       setShowWinnerModal(true);
@@ -238,6 +240,8 @@ export default function BuyerAuctionLivePage() {
         <WinnerModal
           isOpen={showWinnerModal}
           winnerId={winner.winnerId}
+          winnerName={winner.winnerName}
+          userId={userId}
           finalPrice={winner.finalPrice}
           auctionName={auction.auction_name}
           onClose={() => setShowWinnerModal(false)}

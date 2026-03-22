@@ -8,6 +8,7 @@ from src.domain.events.auction_event import AuctionEvent
 from src.infrastructure.database.base import SessionLocal
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
+from src.domain.models.user import User
 from src.domain.models.order import Order, OrderStatus
 from src.domain.models.auction_status import AuctionStatus
 from src.domain.constants.auction_constants import AuctionTimingConstants, AuctionEventType
@@ -128,6 +129,9 @@ class AuctionManager:
             logger.info(f"Auction winner marked: {auction.auction_id}")
             logger.info(f"  Winner: {highest_bid.buyer_id}, Amount: {highest_bid.bid_amount}")
             
+            buyer_user = db.query(User).filter(User.user_id == highest_bid.buyer_id).first()
+            buyer_name = buyer_user.user_name if buyer_user else None
+            
             event_service = LiveAuctionEventService(connection_manager)
             event = AuctionEvent(
                 event_id=str(uuid4()),
@@ -136,6 +140,7 @@ class AuctionManager:
                 occurred_at=datetime.now(timezone.utc),
                 data={
                     "winner_id": str(highest_bid.buyer_id),
+                    "winner_name": buyer_name,
                     "final_price": highest_bid.bid_amount,
                 }
             )

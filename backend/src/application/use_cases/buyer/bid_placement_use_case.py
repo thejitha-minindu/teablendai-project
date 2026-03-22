@@ -20,7 +20,7 @@ class BidPlacementUseCase:
         self.bid_repo = BidRepository(db)
         self.auction_repo = AuctionRepository(db)
     
-    def execute(self, auction_id: str, buyer_id: str, bid_amount: float) -> tuple[BidSchema, AuctionEvent]:
+    def execute(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> tuple[BidSchema, AuctionEvent]:
         """
         Place a bid with validation and return the bid and associated event.
         Returns: (bid, auction_event)
@@ -85,7 +85,8 @@ class BidPlacementUseCase:
             bid_id=bid_id,
             amount=bid_amount,
             buyer_id=buyer_id,
-            bid_time=current_time
+            bid_time=current_time,
+            buyer_name=buyer_name
         )
         
         return created_bid, event

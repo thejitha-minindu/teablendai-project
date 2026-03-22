@@ -12,6 +12,7 @@ class BidData(BaseModel):
     bid_amount: float
     bid_time: datetime
     buyer_id: str
+    buyer_name: Optional[str] = None
     
     @field_validator('bid_id', 'auction_id', 'buyer_id', mode='before')
     @classmethod

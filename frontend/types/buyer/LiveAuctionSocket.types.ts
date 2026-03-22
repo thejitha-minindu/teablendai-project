@@ -5,6 +5,8 @@ export type BidEventType =
   | "AUCTION_CLOSED";
 
 export type BidData = {
+  winner_name: string | undefined;
+  buyer_name: string | undefined;
   auction_id: string;
   bid_id: string;
   bid_amount: number;

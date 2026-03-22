@@ -22,6 +22,7 @@ class AuctionData(BaseModel):
     duration: float  # Will be converted to seconds via field_serializer
     status: AuctionType
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[float] = None
     image_url: Optional[str] = None
@@ -95,6 +96,7 @@ class AuctionHistoryCard(BaseModel):
     quantity: float
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     
     @field_validator('buyer', mode='before')
@@ -116,6 +118,7 @@ class AuctionOrderCard(BaseModel):
     quantity: float
     sold_price: Optional[float] = None
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
+    buyer_name: Optional[str] = None
 
 # create/update requests
 class AuctionCreateRequest(BaseModel):

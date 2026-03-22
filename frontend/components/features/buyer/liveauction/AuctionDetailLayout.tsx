@@ -182,7 +182,7 @@ export function AuctionDetailLayout({
                     <div key={bid.bid_id}>
                       <div className="text-sm">
                         <p>Amount: {bid.bid_amount} LKR</p>
-                        <p>Buyer: {bid.buyer_id.slice(0, 8)}...</p>
+                        <p>Buyer: {bid.buyer_name || "Unknown"}</p>
                         <p>Time: {new Date(bid.bid_time).toLocaleDateString()} {new Date(bid.bid_time).toLocaleTimeString()}</p>
                       </div>
                       <Separator className="my-3" />
