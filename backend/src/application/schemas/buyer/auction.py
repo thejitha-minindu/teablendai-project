@@ -12,43 +12,42 @@ class AuctionData(BaseModel):
     auction_id: UUID
     custom_auction_id: Optional[str] = None
     seller_id: UUID
+    seller_brand: Optional[str] = None
     auction_name: str
     grade: str
     company_name: str
     estate_name: str
     quantity: float
     base_price: float
+    origin: Optional[str] = None
+    description: Optional[str] = None
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
-    start_time: Optional[datetime] = Field(default=None, alias="start_time")  # For LIVE auctions
-    duration: float  # Will be converted to seconds via field_serializer
+    start_time: Optional[datetime] = Field(default=None, alias="start_time")
+    duration: float
     status: AuctionType
     buyer: Optional[str] = None
     buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[float] = None
     image_url: Optional[str] = None
+    created_at: Optional[datetime] = None
     
     @field_serializer('duration')
     def serialize_duration(self, value: float, _info) -> float:
-        """Convert duration from hours (database) to seconds (frontend)"""
         return value * 3600 if value is not None else 0
     
     @field_serializer('date')
     def serialize_date(self, value: datetime, _info) -> str:
-        """Serialize datetime to ISO format string with timezone"""
         if value is None:
             return None
-        # Ensure timezone awareness - if naive, assume UTC
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
     
-    @field_serializer('start_time')
-    def serialize_start_time(self, value: datetime, _info) -> str:
-        """Serialize datetime to ISO format string with timezone"""
+    @field_serializer('start_time', 'created_at')
+    def serialize_datetime(self, value: datetime, _info) -> str:
         if value is None:
             return None
-        # Ensure timezone awareness - if naive, assume UTC
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
@@ -156,3 +155,4 @@ class AuctionListResponse(BaseModel):
 
 # Backward compatibility alias
 Auction = AuctionData
+AuctionCreate = AuctionCreateRequest

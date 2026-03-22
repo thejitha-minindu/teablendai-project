@@ -24,8 +24,9 @@ from src.presentation.routers.v1 import (
 from src.presentation.routers.v1.admin import admin_auction
 from src.presentation.routers.v1.admin import admin_csv
 from src.presentation.routers.v1.admin import admin_dashboard
-from src.presentation.routers.v1.buyer import auction as buyer_auction
-from src.presentation.routers.v1.buyer import auction as buyer_auction, bid as buyer_bid, order as buyer_order
+from src.presentation.routers.v1.buyer import auction as buyer_auction 
+from src.presentation.routers.v1.buyer import bid as buyer_bid
+from src.presentation.routers.v1.buyer import order as buyer_order
 from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard

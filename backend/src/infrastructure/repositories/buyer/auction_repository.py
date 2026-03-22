@@ -43,20 +43,19 @@ class AuctionRepository(AuctionRepositoryInterface):
                 query = query.filter(AuctionModel.buyer == user_id)
             else:
                 query = query.filter(AuctionModel.seller_id == user_id)
-        normalized_status = self._normalize_status(status)
-        if normalized_status:
-            query = query.filter(AuctionModel.status == normalized_status)
+        if status:
+            query = query.filter(AuctionModel.status == status)
         
         auctions = query.all()
         return self._attach_buyer_names(auctions)
 
     # List auction history for user
     def list_auctions_history(self, user_id: str, as_buyer: bool = False):
-        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status="History")
+        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status=AuctionStatus.HISTORY.value)
 
     # List auctions for user as buyer with history status
     def list_auctions_order(self, user_id: str):
-        return self.list_auctions(user_id=user_id, as_buyer=True, status="History")
+        return self.list_auctions(user_id=user_id, as_buyer=True, status=AuctionStatus.HISTORY.value)
  
     def list_auctions_watchlist(self, user_id: str):
         user = self.db.query(User).filter(User.user_id == user_id).first()

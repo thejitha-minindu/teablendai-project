@@ -4,13 +4,17 @@ export type AuctionType = "scheduled" | "live" | "history";
 
 export interface AuctionData {
   auction_id: string;
+  custom_auction_id?: string;
   auction_name: string;
   company_name: string;
   estate_name: string;
   seller_id: string;
+  seller_brand?: string;
   grade: string;
   quantity: number;
   base_price: number;
+  origin?: string;
+  description?: string;
   date: Date;
   start_time?: Date;
   duration: number;
@@ -20,6 +24,7 @@ export interface AuctionData {
   sold_price?: number;
   countdown?: string;
   image_url?: string;
+  created_at?: Date;
 }
 
 export interface AuctionCardProps {
@@ -51,7 +56,7 @@ export type AuctionOrderCard = Pick<
 
 export type AuctionHistoryDialog = Pick<
   AuctionData,
-  "auction_id" | "auction_name" | "estate_name" | "grade" | "quantity" | "base_price" | "date" | "buyer" | "buyer_name" | "sold_price"
+  "auction_id" | "auction_name" | "estate_name" | "grade" | "quantity" | "base_price" | "date" | "buyer" | "buyer_name" | "sold_price" | "origin" | "description"
 > & {
   bids: Bid[];
 };

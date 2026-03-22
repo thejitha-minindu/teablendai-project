@@ -87,6 +87,8 @@ export async function getAuctionHistoryDialog(auctionId: string): Promise<Auctio
         buyer: auction.buyer,
         buyer_name: auction.buyer_name,
         sold_price: auction.sold_price,
+        origin: auction.origin,
+        description: auction.description,
         bids,
     };
 }

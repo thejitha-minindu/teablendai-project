@@ -15,6 +15,7 @@ class Auction(BaseModel):
     duration: int
     status: AuctionType
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     countdown: Optional[str] = None
 
@@ -30,18 +31,13 @@ class AuctionCreate(BaseModel):
     quantity: float
     origin: str
     description: Optional[str] = None
-    # 2. Block negative prices
     base_price: float = Field(ge=0, description="Base price cannot be negative")
     start_time: datetime
-    # 3. Block negative durations
     duration: float = Field(gt=0, description="Duration must be greater than 0")
-    # 4. Block past dates
+    
     @field_validator('start_time')
     def validate_start_time(cls, v: datetime):
-        # We give a 5-minute grace period to account for network delays or slow typing
         now = datetime.now(timezone.utc) if v.tzinfo else datetime.now()
-        
-        # If the start time is strictly earlier than right now, reject it
         if v < now:
             raise ValueError("Scheduled start time cannot be in the past.")
         return v
@@ -66,15 +62,14 @@ class AuctionResponse(BaseModel):
     duration: float
     status: str
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     created_at: datetime
     
     @field_serializer('start_time', 'created_at')
     def serialize_datetime(self, value: datetime, _info) -> str:
-        """Serialize datetime to ISO format string with timezone"""
         if value is None:
             return None
-        # Ensure timezone awareness - if naive, assume UTC
         if value.tzinfo is None:
             value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
