@@ -1,12 +1,14 @@
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, SystemMessage
+from src.config import get_settings, resolve_model_name
 
 
 class SQLGenerator:
 
     def __init__(self, api_key: str):
+        settings = get_settings()
         self.llm = ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
+            model=resolve_model_name(getattr(settings, "MODEL_NAME", None)),
             google_api_key=api_key,
             temperature=0
         )

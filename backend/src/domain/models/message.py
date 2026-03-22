@@ -6,8 +6,10 @@ Purpose: Represents an individual message in a conversation
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import relationship
 from datetime import datetime
+from uuid import UUID, uuid4
 import json
 from typing import Optional, List, Dict, Any
 
@@ -29,15 +31,15 @@ class ChatMessage(Base):
     
     message_id = Column(
         "MessageID",
-        Integer,
+        UNIQUEIDENTIFIER,
         primary_key=True,
-        autoincrement=True,
+        default=uuid4,
         index=True
     )
     
     conversation_id = Column(
         "ConversationID",
-        Integer,
+        UNIQUEIDENTIFIER,
         ForeignKey("Conversations.ConversationID", ondelete="CASCADE"),
         nullable=False,
         index=True
@@ -193,7 +195,7 @@ class ChatMessage(Base):
     @classmethod
     def create_user_message(
         cls,
-        conversation_id: int,
+        conversation_id: UUID,
         content: str
     ) -> "ChatMessage":
         """Factory method for user messages"""
@@ -207,7 +209,7 @@ class ChatMessage(Base):
     @classmethod
     def create_assistant_message(
         cls,
-        conversation_id: int,
+        conversation_id: UUID,
         content: str,
         sql_query: str = None,
         data: List[Dict] = None,
@@ -215,7 +217,8 @@ class ChatMessage(Base):
         visualization_type: str = None,
         visualization_data: Dict = None,
         search_results: List[Dict] = None,
-        response_time_ms: int = None
+        response_time_ms: int = None,
+        metadata: Dict = None
     ) -> "ChatMessage":
         """Factory method for assistant messages"""
         message = cls(
@@ -236,5 +239,7 @@ class ChatMessage(Base):
             message.set_visualization_data(visualization_data)
         if search_results:
             message.set_search_results(search_results)
+        if metadata:
+            setattr(message, "_metadata", metadata)
         
         return message

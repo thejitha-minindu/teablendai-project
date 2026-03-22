@@ -30,7 +30,7 @@ export interface ChatHistoryItem {
 
 export interface ConversationResponse {
   success: boolean;
-  conversation_id?: number;
+  conversation_id?: string;
   answer?: string;
   sql_query?: string;
   //data?: any[];

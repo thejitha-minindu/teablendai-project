@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from src.application.schemas.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.auction_repository import AuctionRepository
 from src.domain.models.auction_status import AuctionStatus
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
 
 class AuctionService:
@@ -13,6 +14,30 @@ class AuctionService:
     def create_auction(self, auction_data: AuctionCreate):
         # We can add extra business logic here later (e.g. validate seller limit)
         return self.repo.create_auction(auction_data)
+
+    @staticmethod
+    def _normalize_datetime_for_compare(dt_value: datetime) -> datetime:
+        """Normalize DB datetime to naive local datetime for fair comparisons."""
+        if dt_value.tzinfo is not None:
+            return dt_value.astimezone().replace(tzinfo=None)
+        return dt_value
+
+    @staticmethod
+    def _duration_to_minutes(duration_value: float) -> int:
+        """Support legacy hours and new minutes storage for duration."""
+        try:
+            duration = float(duration_value)
+        except (TypeError, ValueError):
+            return 0
+
+        if duration <= 0:
+            return 0
+
+        # Legacy records often use hours (e.g. 24), newer flow stores minutes (e.g. 900)
+        if duration <= 24:
+            return int(round(duration * 60))
+
+        return int(round(duration))
 
     def _update_auction_statuses(self):
         """
@@ -54,6 +79,7 @@ class AuctionService:
         return self.repo.update(auction_id, data_dict)
 
     def get_auction(self, auction_id: str):
+        self._update_auction_statuses()
         return self.repo.get_auction(auction_id)
 
     def list_auctions(self):

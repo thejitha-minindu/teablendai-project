@@ -7,6 +7,7 @@ SQLAlchemy-based implementation of ChatMessageRepositoryInterface.
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from uuid import UUID
 from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, func, and_, or_
 
@@ -25,7 +26,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     # QUERY METHODS
     
-    def get_by_id(self, message_id: int) -> Optional[ChatMessage]:
+    def get_by_id(self, message_id: UUID) -> Optional[ChatMessage]:
         """Retrieve a message by its unique ID"""
         try:
             message = self.db.query(ChatMessage).filter(
@@ -42,7 +43,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_by_conversation(
         self,
-        conversation_id: int,
+        conversation_id: UUID,
         limit: Optional[int] = None,
         offset: int = 0
     ) -> List[ChatMessage]:
@@ -71,7 +72,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_recent_by_conversation(
         self,
-        conversation_id: int,
+        conversation_id: UUID,
         limit: int = 10
     ) -> List[ChatMessage]:
         """Get the most recent messages in a conversation"""
@@ -91,7 +92,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
             logger.error(f"Error getting recent messages: {e}")
             return []
     
-    def count_by_conversation(self, conversation_id: int) -> int:
+    def count_by_conversation(self, conversation_id: UUID) -> int:
         """Count total messages in a conversation""" 
         try:
             count = self.db.query(func.count(ChatMessage.message_id)).filter(
@@ -105,7 +106,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_user_messages(
         self,
-        conversation_id: int
+        conversation_id: UUID
     ) -> List[ChatMessage]:
         """Get all user messages in a conversation"""
         try:
@@ -129,7 +130,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_assistant_messages(
         self,
-        conversation_id: int
+        conversation_id: UUID
     ) -> List[ChatMessage]:
         """Get all assistant messages in a conversation"""
         try:
@@ -201,7 +202,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
             self.db.rollback()
             raise
     
-    def delete(self, message_id: int) -> bool:
+    def delete(self, message_id: UUID) -> bool:
         """Delete a message permanently"""
         try:
             message = self.get_by_id(message_id)
@@ -219,7 +220,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
             self.db.rollback()
             return False
     
-    def delete_by_conversation(self, conversation_id: int) -> int:
+    def delete_by_conversation(self, conversation_id: UUID) -> int:
         """Delete all messages in a conversation"""
         try:
             count = self.count_by_conversation(conversation_id)
@@ -240,7 +241,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     def search_content(
         self,
         search_term: str,
-        conversation_id: Optional[int] = None,
+        conversation_id: Optional[UUID] = None,
         limit: int = 20
     ) -> List[ChatMessage]:
         """Search message content (case-insensitive)"""
@@ -262,7 +263,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_messages_with_sql(
         self,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None
     ) -> List[ChatMessage]:
         """Get messages that contain SQL queries"""
         try:
@@ -281,7 +282,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     def get_messages_by_source(
         self,
         source: str,
-        conversation_id: Optional[int] = None,
+        conversation_id: Optional[UUID] = None,
         limit: int = 100
     ) -> List[ChatMessage]:
         """Get messages filtered by source"""
@@ -302,7 +303,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_average_response_time(
         self,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None
     ) -> float:
         """Calculate average response time for assistant messages"""
         try:
@@ -325,7 +326,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_messages_with_visualizations(
         self,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None
     ) -> List[ChatMessage]:
         """Get messages that include visualizations"""
         try:
@@ -343,7 +344,7 @@ class ChatMessageRepository(ChatMessageRepositoryInterface):
     
     def get_statistics(
         self,
-        conversation_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None
     ) -> Dict[str, Any]:
         """Get various statistics about messages"""
         try:

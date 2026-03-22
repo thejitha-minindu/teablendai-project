@@ -12,6 +12,7 @@ export interface AuctionData {
   buyer?: string;
   sold_price?: number;
   countdown?: string;
+  custom_auction_id?: string;
 }
 
 export interface AuctionCardProps {

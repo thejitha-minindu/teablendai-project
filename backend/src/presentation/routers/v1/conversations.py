@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime
+from uuid import UUID
 import logging
 
 from src.application.dependencies import get_history_db
@@ -16,7 +17,7 @@ router = APIRouter()
 
 class Conversation(BaseModel):
     """Conversation model."""
-    id: int
+    id: UUID
     title: str
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
@@ -25,8 +26,8 @@ class Conversation(BaseModel):
 
 class Message(BaseModel):
     """Message model with visualization support."""
-    id: int
-    conversation_id: int
+    id: UUID
+    conversation_id: UUID
     role: str  # "user" or "assistant"
     content: str
     timestamp: Optional[str] = None
@@ -57,7 +58,7 @@ async def list_conversations(limit: int = Query(default=50, ge=1, le=200), offse
 
 
 @router.get("/conversations/{conversation_id}")
-async def get_conversation(conversation_id: int) -> Dict[str, Any]:
+async def get_conversation(conversation_id: UUID) -> Dict[str, Any]:
     """Get a specific conversation with its messages from MSSQL."""
     try:
         history = get_history_db()
@@ -99,7 +100,7 @@ async def create_conversation_compat(payload: Optional[Dict[str, Any]] = None) -
 
 
 @router.delete("/conversations/{conversation_id}")
-async def delete_conversation(conversation_id: int) -> Dict[str, Any]:
+async def delete_conversation(conversation_id: UUID) -> Dict[str, Any]:
     """Delete a conversation from MSSQL."""
     try:
         history = get_history_db()
@@ -112,7 +113,7 @@ async def delete_conversation(conversation_id: int) -> Dict[str, Any]:
 
 @router.post("/conversations/{conversation_id}/messages")
 async def add_message(
-    conversation_id: int,
+    conversation_id: UUID,
     role: str,
     content: str
 ) -> Dict[str, Any]:

@@ -47,8 +47,27 @@ engine = create_engine(
 # Initialize AI components
 sql_generator = SQLGenerator(api_key=settings.GOOGLE_API_KEY)
 
-# Initialize schema extractor
-schema_extractor.initialize(engine)
+_schema_initialized = False
+_schema_init_error = None
+
+
+def _ensure_schema_initialized() -> bool:
+    """Initialize schema extractor lazily; keep server alive on transient DB errors."""
+    global _schema_initialized, _schema_init_error
+
+    if _schema_initialized:
+        return True
+
+    try:
+        schema_extractor.initialize(engine)
+        _schema_initialized = True
+        _schema_init_error = None
+        logger.info("Schema extractor initialized")
+        return True
+    except Exception as e:
+        _schema_init_error = str(e)
+        logger.warning("Schema extractor initialization failed: %s", e)
+        return False
 
 
 # Schema cache - extracted once at startup
@@ -58,6 +77,12 @@ _schema_cache: str = None
 def get_schema() -> str:
     """Get DB schema, cached after first extraction"""
     global _schema_cache
+    if not _ensure_schema_initialized():
+        raise RuntimeError(
+            "Database schema is currently unavailable. "
+            f"Last initialization error: {_schema_init_error}"
+        )
+
     if _schema_cache is None:
         logger.info("Extracting database schema...")
         _schema_cache = schema_extractor.extract_schema()

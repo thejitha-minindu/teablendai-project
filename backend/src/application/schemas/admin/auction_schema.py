@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 from typing import Optional
 
 class AuctionResponse(BaseModel):
-    auction_id: str
+    auction_id: UUID
+    custom_auction_id: Optional[str] = None
     auction_name: str
     estate_name: str
     grade: str

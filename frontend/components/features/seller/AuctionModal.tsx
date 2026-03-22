@@ -6,38 +6,92 @@ import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle,
 // HELPER FUNCTIONS
 // ==========================================
 
+const parseBackendDateTime = (dateString: string) => {
+  if (!dateString) return null;
+
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new Date(dateString);
+  }
+
+  const normalized = dateString.replace(' ', 'T');
+  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
+  const timePart = timePartRaw.split('.')[0];
+
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
+
+  return new Date(
+    year,
+    (month || 1) - 1,
+    day || 1,
+    Number(hours),
+    Number(minutes),
+    Number(seconds)
+  );
+};
+
+const formatDateTimeLocalValue = (date: Date) => {
+  const pad = (num: number) => String(num).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const formatStartTimeForBackend = (localDateTime: string) => {
+  if (!localDateTime) return '';
+  const normalized = localDateTime.replace('T', ' ');
+  return normalized.length === 16 ? `${normalized}:00` : normalized;
+};
+
+const durationToMinutes = (durationValue: number) => {
+  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
+  return durationValue > 24 ? durationValue : durationValue * 60;
+};
+
+const durationToHoursForInput = (durationValue: number) => {
+  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
+  return durationValue > 24 ? durationValue / 60 : durationValue;
+};
+
+const formatDuration = (durationValue: number) => {
+  const totalMinutes = Math.round(durationToMinutes(durationValue));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (minutes === 0) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  if (hours === 0) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  return `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}`;
+};
+
 // 1. Helper for Input Field (Edit Mode)
 const toLocalISOString = (dateString: string) => {
   if (!dateString) return '';
-  const safeDateString = dateString.endsWith('Z') ? dateString : dateString + 'Z';
-  const date = new Date(safeDateString);
-  const pad = (num: number) => String(num).padStart(2, '0');
-  const year = date.getFullYear();
-  const month = pad(date.getMonth() + 1);
-  const day = pad(date.getDate());
-  const hours = pad(date.getHours());
-  const minutes = pad(date.getMinutes());
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+  const date = parseBackendDateTime(dateString);
+  if (!date || Number.isNaN(date.getTime())) return '';
+  return formatDateTimeLocalValue(date);
 };
 
 // 2. Helpers for Display Text (View Mode)
 const formatDate = (isoString: string) => {
   if (!isoString) return 'N/A';
-  const safeDateString = isoString.endsWith('Z') ? isoString : isoString + 'Z';
-  return new Date(safeDateString).toLocaleDateString();
+  const date = parseBackendDateTime(isoString);
+  if (!date || Number.isNaN(date.getTime())) return 'N/A';
+  return date.toLocaleDateString();
 };
 
 const formatTime = (isoString: string) => {
   if (!isoString) return 'N/A';
-  const safeDateString = isoString.endsWith('Z') ? isoString : isoString + 'Z';
-  return new Date(safeDateString).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const date = parseBackendDateTime(isoString);
+  if (!date || Number.isNaN(date.getTime())) return 'N/A';
+  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
 // 3. Helper for Live Countdown
-const calculateLiveCountdown = (startTime: string, durationHours: number) => {
-  const safeStartTime = startTime.endsWith('Z') ? startTime : startTime + 'Z';
-  const start = new Date(safeStartTime).getTime();
-  const end = start + (durationHours * 60 * 60 * 1000);
+const calculateLiveCountdown = (startTime: string, durationValue: number) => {
+  const startDate = parseBackendDateTime(startTime);
+  if (!startDate || Number.isNaN(startDate.getTime())) return "00:00:00";
+
+  const start = startDate.getTime();
+  const durationMinutes = durationToMinutes(durationValue);
+  const end = start + (durationMinutes * 60 * 1000);
   const now = new Date().getTime();
   const diff = end - now;
 
@@ -75,7 +129,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
           origin: data.origin,
           description: data.description || '',
           start_time: toLocalISOString(data.start_time),
-          duration: data.duration
+          duration: durationToHoursForInput(data.duration)
         });
       } catch (error) {
         console.error(error);
@@ -91,7 +145,8 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
       const payload = {
         ...formData,
         seller_brand: auction.seller_brand || 'My Estate', 
-        start_time: new Date(formData.start_time).toISOString(),
+        start_time: formatStartTimeForBackend(formData.start_time),
+        duration: Math.round(formData.duration * 60),
       };
       const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`, {
         method: 'PUT',
@@ -135,6 +190,10 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                 <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Package className="w-5 h-5" /> Tea Details</h3>
                 <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                   <div className="flex justify-between py-2 border-b border-gray-300">
+                    <span className="font-semibold text-gray-600">Ref ID:</span>
+                    <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Estate Name:</span>
                     <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
                   </div>
@@ -162,7 +221,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     <span className="font-semibold text-gray-600">Base Price:</span>
                     {editMode === 'details' ? (
                        <input type="number" value={formData.base_price} onChange={(e) => setFormData({...formData, base_price: parseFloat(e.target.value)})} className="border p-1 rounded w-20" />
-                    ) : <span className="text-[#588157] font-bold text-xl">${auction.base_price}</span>}
+                    ) : <span className="text-[#588157] font-bold text-xl">LKR {auction.base_price}</span>}
                   </div>
                 </div>
                 <div>
@@ -192,7 +251,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     <span className="font-semibold text-gray-700">Duration:</span>
                     {editMode === 'schedule' ? (
                         <input type="number" value={formData.duration} onChange={(e) => setFormData({...formData, duration: parseFloat(e.target.value)})} className="border p-1 rounded w-16" />
-                    ) : <span>{auction.duration} hrs</span>}
+                    ) : <span>{formatDuration(auction.duration)}</span>}
                   </div>
                 </div>
               </div>
@@ -309,6 +368,10 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <div className="flex justify-between py-2 border-b border-gray-300">
+                  <span className="font-semibold text-gray-600">Ref ID:</span>
+                  <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
+                </div>
+                <div className="flex justify-between py-2 border-b border-gray-300">
                   <span className="font-semibold text-gray-600">Estate:</span>
                   <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
                 </div>
@@ -337,7 +400,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                 </div>
                 <div className="flex justify-between">
                   <span>Duration:</span>
-                  <span className="font-medium">{auction.duration} Hours</span>
+                  <span className="font-medium">{formatDuration(auction.duration)}</span>
                 </div>
               </div>
             </div>
@@ -405,6 +468,7 @@ interface HistoryModalProps {
 export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalProps) {
   const modalDetails = {
     ...data,
+    custom_auction_id: data.custom_auction_id,
     estateName: 'Premium Estate',
     origin: 'Ratnapura',
     startTime: '10:00 AM',
@@ -467,6 +531,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Package className="w-5 h-5" /> Auction Details</h3>
+                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Ref ID:</span><span className="text-gray-800 font-medium">{modalDetails.custom_auction_id || 'N/A'}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Grade:</span><span className="text-gray-800 font-medium">{modalDetails.grade}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Quantity:</span><span className="text-gray-800 font-medium">{modalDetails.quantity} kg</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Origin:</span><span className="text-gray-800 font-medium">{modalDetails.origin}</span></div>

@@ -1,11 +1,10 @@
-import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.pool import NullPool
 from langchain_community.utilities import SQLDatabase
-from typing import Tuple
 from sqlalchemy.orm import sessionmaker, Session
 
 from src.infrastructure.database.base import Base
+from src.config import get_mssql_connection_string, get_settings
 
 # Create a session factory (singleton)
 _ENGINE = None
@@ -21,48 +20,23 @@ def _init_session_factory():
             bind=_ENGINE
         )
 
-def _get_db_config() -> Tuple[str, str, str, str, bool]:
-    server = os.getenv('MSSQL_SERVER')
-    database = os.getenv('MSSQL_DATABASE')
-    username = os.getenv('MSSQL_USERNAME') or ''
-    password = os.getenv('MSSQL_PASSWORD') or ''
-    trusted_env = os.getenv('DB_TRUSTED_CONNECTION')
-
-    if trusted_env is None:
-        trusted_env = os.getenv('MSSQL_TRUSTED_CONNECTION')
-    trusted = False if trusted_env is None else str(trusted_env).lower() in ('1','true','yes','y')
-    return server, database, username, password, trusted
-
 def create_database_connection():
     """Create SQLAlchemy engine for MSSQL using pyodbc driver.
 
     Supports both Trusted Connection (Windows auth) and SQL auth.
     """
-    server, database, username, password, trusted = _get_db_config()
-
-    driver = "ODBC Driver 17 for SQL Server"
-    if trusted or (not username and not password):
-        connection_string = (
-            f"mssql+pyodbc://{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&trusted_connection=yes"
-            f"&TrustServerCertificate=yes"
-        )
-    else:
-        connection_string = (
-            f"mssql+pyodbc://{username}:{password}@{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&TrustServerCertificate=yes"
-        )
+    connection_string = get_mssql_connection_string()
 
     try:
         engine = create_engine(connection_string, poolclass=NullPool, echo=False)
         return engine
     except Exception as e:
+        settings = get_settings()
         raise RuntimeError(
-            "Failed to create MSSQL engine. Ensure 'ODBC Driver 18 for SQL Server' is installed "
-            "and DB_* (or MSSQL_*) environment variables are set correctly. "
-            f"Attempted server='{server}', database='{database}', trusted={trusted}. "
+            "Failed to create MSSQL engine. Ensure the configured ODBC driver is installed "
+            "and MSSQL_* / DATABASE_URL environment variables are set correctly. "
+            f"Attempted server='{settings.MSSQL_SERVER}', database='{settings.MSSQL_DATABASE}', "
+            f"trusted={settings.DB_TRUSTED_CONNECTION}. "
             f"Original error: {e}"
         )
     

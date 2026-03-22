@@ -14,9 +14,14 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 
-import { Expand } from "lucide-react";
+function formatDataDay(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
 
 function Calendar({
   className,
@@ -48,7 +53,7 @@ function Calendar({
         captionLayout={captionLayout}
         formatters={{
           formatMonthDropdown: (date) =>
-            date.toLocaleString("default", { month: "short" }),
+            date.toLocaleString("en-US", { month: "short" }),
           ...formatters,
         }}
         classNames={{
@@ -208,7 +213,7 @@ function CalendarDayButton({
       ref={ref}
       variant="ghost"
       size="icon"
-      data-day={day.date.toLocaleDateString()}
+      data-day={formatDataDay(day.date)}
       data-selected-single={
         modifiers.selected &&
         !modifiers.range_start &&

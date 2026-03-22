@@ -109,6 +109,7 @@ export default function SellerDashboardPage() {
                 grade: item.grade,
                 quantity: item.quantity,
                 price: item.base_price,
+                custom_auction_id: item.custom_auction_id,
                 sellerBrand: item.seller_brand || "My Estate",
                 dateObj: dateObj,
                 date: dateObj.toLocaleDateString(),

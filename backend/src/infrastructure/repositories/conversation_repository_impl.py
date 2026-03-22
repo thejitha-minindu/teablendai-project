@@ -7,6 +7,7 @@ This class contains the actual database operations using SQLAlchemy ORM.
 
 from typing import List, Optional
 from datetime import datetime, timedelta
+from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc, func, and_
 
@@ -29,7 +30,7 @@ class ConversationRepository(ConversationRepositoryInterface):
         
     # QUERY METHODS
 
-    def get_by_id(self, conversation_id: int) -> Optional[Conversation]:
+    def get_by_id(self, conversation_id: UUID) -> Optional[Conversation]:
         """Retrieve a conversation by its unique ID"""
         try:
             conversation = self.db.query(Conversation).filter(
@@ -127,7 +128,7 @@ class ConversationRepository(ConversationRepositoryInterface):
             logger.error(f"Error counting conversations: {e}")
             return 0
         
-    def exists(self, conversation_id: int) -> bool:
+    def exists(self, conversation_id: UUID) -> bool:
         """Check if a conversation exists"""
 
         try:
@@ -167,7 +168,7 @@ class ConversationRepository(ConversationRepositoryInterface):
         """Update an existing conversation"""
         try:
             merged = self.db.merge(conversation)
-            merged.updated_at = datetime.utcnow()
+            merged.updated_at = datetime.now()
             self.db.commit()
             self.db.refresh(merged)
             logger.info(f"Updated conversation {merged.conversation_id}")
@@ -177,7 +178,7 @@ class ConversationRepository(ConversationRepositoryInterface):
             logger.error(f"Error updating conversation: {e}")
             raise
 
-    def delete(self, conversation_id: int) -> bool:
+    def delete(self, conversation_id: UUID) -> bool:
         """Permanently delete a conversation"""
         try:
             conversation = self.get_by_id(conversation_id)
@@ -196,7 +197,7 @@ class ConversationRepository(ConversationRepositoryInterface):
             self.db.rollback()
             return False
         
-    def soft_delete(self, conversation_id: int) -> bool:
+    def soft_delete(self, conversation_id: UUID) -> bool:
         """Soft delete a conversation (set is_active = False)"""
         try:
             conversation = self.get_by_id(conversation_id)
@@ -205,7 +206,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = False
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = datetime.now()
 
             self.db.commit()
 
@@ -217,7 +218,7 @@ class ConversationRepository(ConversationRepositoryInterface):
             self.db.rollback()
             return False
         
-    def restore(self, conversation_id: int) -> bool:
+    def restore(self, conversation_id: UUID) -> bool:
         """Restore a soft-deleted conversation"""
         try:
             conversation = self.db.query(Conversation).filter(
@@ -229,7 +230,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = True
-            conversation.updated_at = datetime.utcnow()
+            conversation.updated_at = datetime.now()
   
             self.db.commit()
             
@@ -298,7 +299,7 @@ class ConversationRepository(ConversationRepositoryInterface):
         
     def get_with_messages(
         self,
-        conversation_id: int
+        conversation_id: UUID
     ) -> Optional[Conversation]:
         """Get conversation with all messages eagerly loaded"""
         try:

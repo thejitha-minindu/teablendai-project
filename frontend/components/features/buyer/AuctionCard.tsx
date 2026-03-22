@@ -84,6 +84,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
       winner: rawWinner,
       winnerName: rawWinnerName,
       time: rawTime,
+      customAuctionId: auction.custom_auction_id,
     };
   }, [auction, cardType]);
 
@@ -111,6 +112,11 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
       {cardType === "history" && (
         <p className="mb-1 text-sm">
           <span className="font-medium">Winner:</span> {safeAuction.winnerName}
+        </p>
+      )}
+      {safeAuction.customAuctionId && (
+        <p className="mb-1 text-sm">
+          <span className="font-medium">Ref ID:</span> {safeAuction.customAuctionId}
         </p>
       )}
     </div>

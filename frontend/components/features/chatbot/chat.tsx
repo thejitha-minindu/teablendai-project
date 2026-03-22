@@ -118,7 +118,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             {showWelcome && (
                 <div className="w-full max-w-6xl text-center space-y-1 pb-8">
                     <p className="text-xl text-gray-500 pt-2 cursor-default">
-                        Chat with our Tea AI to discover blends, rituals, and flavors made just for you.
+                        Chat with Tea AI to discover blends, rituals, and flavors, and use the auction management function.
                     </p>
                 </div>
             )}

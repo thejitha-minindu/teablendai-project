@@ -15,7 +15,7 @@ from mcp.server import Server
 from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
-from src.config import get_settings
+from src.config import get_settings, resolve_model_name
 
 settings = get_settings()
 
@@ -40,7 +40,7 @@ def get_gemini_llm():
     """Get Gemini LLM for answer generation"""
     from langchain_google_genai import ChatGoogleGenerativeAI
     return ChatGoogleGenerativeAI(
-        model=getattr(settings, "MODEL_NAME", "gemini-2.0-flash"),
+        model=resolve_model_name(getattr(settings, "MODEL_NAME", None)),
         google_api_key=getattr(settings, "GOOGLE_API_KEY", None),
         temperature=0
     )

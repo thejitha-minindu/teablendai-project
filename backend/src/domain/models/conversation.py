@@ -4,17 +4,19 @@ NO imports from application or services layers.
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, DateTime, Boolean
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import UUID, uuid4
 from src.infrastructure.database.base import Base
 
 
 class Conversation(Base):
     __tablename__ = "Conversations"
 
-    conversation_id = Column("ConversationID", Integer, primary_key=True, autoincrement=True)
+    conversation_id = Column("ConversationID", UNIQUEIDENTIFIER, primary_key=True, default=uuid4)
     title           = Column("Title", String(500), nullable=True)
     user_id         = Column("UserID", Integer, nullable=True)
-    created_at      = Column("CreatedAt", DateTime, default=datetime.utcnow)
-    updated_at      = Column("UpdatedAt", DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at      = Column("CreatedAt", DateTime, default=datetime.now)
+    updated_at      = Column("UpdatedAt", DateTime, default=datetime.now, onupdate=datetime.now)
     message_count   = Column("MessageCount", Integer, default=0)
     is_active       = Column("IsActive", Boolean, default=True)
 
@@ -22,10 +24,10 @@ class Conversation(Base):
     def create_new(cls, title: str = None, user_id: int = None) -> "Conversation":
         """Factory method to create a new Conversation instance"""
         return cls(
-            title=title or f"Conversation - {datetime.utcnow().strftime('%Y-%m-%d %H:%M')}",
+            title=title or f"Conversation - {datetime.now().strftime('%Y-%m-%d %H:%M')}",
             user_id=user_id,
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
             message_count=0,
             is_active=True,
         )
