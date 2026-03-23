@@ -2,7 +2,7 @@ from enum import Enum
 
 class AuctionStatus(str, Enum):
 
-    SCHEDULE = "Schedule"
+    SCHEDULE = "Scheduled"
     LIVE = "Live"
     HISTORY = "History"
 

@@ -31,6 +31,7 @@ from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
 from src.application.services.buyer.auction_manager import auction_manager
+from src.presentation.routers.v1.buyer import live_auction_socket
 
 Base.metadata.create_all(bind=engine)
 
