@@ -131,7 +131,7 @@ export default function SellerDashboardPage() {
             ...histData.map((i: any) => normalize(i, 'history'))
         ];
 
-        setAllAuctions(combined);
+        setAllAuctions(combined.filter(a => a !== null && a !== undefined));
       } catch (error) {
         console.error("Failed to load dashboard data", error);
       } finally {
@@ -296,7 +296,8 @@ export default function SellerDashboardPage() {
                     {displayedAuctions.map((auction, idx) => (
                         <AuctionCard 
                             key={idx}
-                            id={`Auction`} // This is just for visual display
+                            auctionId={auction.id}
+                            id={`Auction`}
                             type={auction.type} 
                             data={auction}
                             onViewClick={() => setSelectedAuction(auction)} 

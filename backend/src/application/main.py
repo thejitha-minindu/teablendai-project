@@ -9,10 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
 from src.config import get_settings
+from src.presentation.routers.v1.seller.auction import router as auction
 from src.presentation.routers.v1 import (
     health, 
     bid, 
-    auction, 
     user, 
     order,
     conversations, 

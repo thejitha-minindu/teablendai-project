@@ -1,8 +1,8 @@
 "use client";
-import React, { useState } from 'react';
-import { Calendar, Clock } from 'lucide-react'; 
-import { AuctionCardProps } from '@/types/auction.types';
+import React, { useState, useEffect } from 'react';
+import { Calendar, Clock, TrendingUp } from 'lucide-react'; 
 import '../../../app/globals.css';
+import { useAuctionBidsSocket } from '@/hooks/live-auction-socket'; 
 
 import {
   Card,
@@ -15,8 +15,36 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge"; 
 
-export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
+// We define exactly what the component should accept here, using 'any' for data to bypass the TS errors
+interface ExtendedAuctionCardProps {
+  type: string;
+  id: string;
+  data: any; 
+  onViewClick?: (id: string) => void;
+  auctionId?: string;
+}
+
+export function AuctionCard({ type, id, data, onViewClick, auctionId }: ExtendedAuctionCardProps) {
   const [isHovered, setIsHovered] = useState(false);
+  
+  // --- REAL-TIME WEBSOCKET STATE ---
+  const { connected, events } = useAuctionBidsSocket(type === 'live' && auctionId ? auctionId : "");
+  
+  const [livePrice, setLivePrice] = useState<number>(data.price);
+  const [isFlashing, setIsFlashing] = useState(false);
+
+  useEffect(() => {
+    if (events.length > 0) {
+      const latestEvent = events[0];
+      if (latestEvent.event_type === "BID_CREATED") {
+        setLivePrice(latestEvent.data.bid_amount);
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 800);
+      }
+    }
+  }, [events]);
+
+  const displayPrice = events.length > 0 ? livePrice : data.price;
   
   // --- EXISTING LOGIC PRESERVED ---
   const getPriceLabel = () => {
@@ -30,56 +58,47 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
     if (type === 'live') return 'text-blue-600';
     return 'text-muted-foreground';
   };
-  // -------------------------------
 
   return (
     <Card 
-      className="w-full mx-auto hover:shadow-lg transition-all duration-300"
+      className={`w-full mx-auto hover:shadow-lg transition-all duration-300 ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* 1. HEADER: Title (ID) & Date/Time */}
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            {/* Title / ID */}
             <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>
-            
-            {/* LIVE Badge (Preserved Logic) */}
             {type === 'live' && (
-              <Badge variant="destructive" className="animate-pulse">LIVE</Badge>
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center">
+                LIVE {connected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
+              </Badge>
             )}
           </div>
-          <CardDescription>
-             {/* Using Grade as subtitle since Estate is usually implied in Seller Dashboard */}
-             {data.grade} Grade
-          </CardDescription>
+          <CardDescription>{data.grade} Grade</CardDescription>
         </div>
 
-        {/* Date & Time (Moved from bottom to top-right to match Buyer Card) */}
         <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
-          <p>{data.date || "Date N/A"}</p>
-          {data.time && <p>{data.time}</p>}
+          {/* Ensure date is rendered as a string safely */}
+          <p>{String(data.date || "Date N/A")}</p>
+          {data.time && <p>{String(data.time)}</p>}
         </div>
       </CardHeader>
 
-      {/* 2. CONTENT: Data Fields */}
       <CardContent>
         <div className="flex flex-col gap-2">
-            
-            {/* Price (Highlighted) */}
             <div className="flex justify-between items-center mb-1">
                  <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
-                 <span className="text-lg font-bold text-[#1A2F1C]">LKR {data.price}</span>
+                 <span className={`text-lg font-bold transition-colors duration-300 ${isFlashing ? 'text-green-600 scale-110 transform' : 'text-[#1A2F1C]'}`}>
+                    LKR {displayPrice}
+                 </span>
             </div>
 
-            {/* Quantity */}
             <p className="flex justify-between text-sm">
                 <span className="font-medium text-muted-foreground">Quantity:</span>
                 <span>{data.quantity} kg</span>
             </p>
 
-            {/* Status (History only) */}
             {type === 'history' && (
                 <p className="flex justify-between text-sm">
                     <span className="font-medium text-muted-foreground">Status:</span>
@@ -87,20 +106,18 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
                 </p>
             )}
 
-            {/* Buyer (Live/History only) */}
-            {(type === 'live' || type === 'history') && data.buyer && (
+            {(type === 'live' || type === 'history') && (events.length > 0 || data.buyer) && (
                 <p className="flex justify-between text-sm">
                     <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
-                    <span className="text-blue-600 font-medium">{data.buyer}</span>
+                    <span className="text-blue-600 font-medium">
+                      {events.length > 0 ? events[0].data.buyer_id.substring(0, 8) + "..." : data.buyer}
+                    </span>
                 </p>
             )}
 
-            {/* Countdown (Live OR Scheduled) - UPDATED SECTION */}
             {(type === 'live' || type === 'scheduled') && data.countdown && (
                 <div className={`mt-2 p-2 rounded-md flex justify-between items-center ${
-                    type === 'live' 
-                        ? 'bg-red-50 text-red-600' // Red for LIVE urgency
-                        : 'bg-blue-50 text-blue-600' // Blue for Scheduled countdown
+                    type === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                 }`}>
                     <span className="text-xs font-bold uppercase">
                         {type === 'live' ? 'Ending In' : 'Starts In'}
@@ -113,11 +130,10 @@ export function AuctionCard({ type, id, data, onViewClick }: AuctionCardProps) {
         </div>
       </CardContent>
 
-      {/* 3. FOOTER: Action Button */}
       <CardFooter className="flex justify-end pt-2">
         <Button 
             onClick={() => onViewClick?.(id)}
-            className="bg-[var(--color1)] hover:bg-[var(--color3)] hover:text-white text-black font-bold"
+            className="bg-[#E5F7CB] hover:bg-[#3A5A40] text-[#3A5A40] hover:text-white font-bold transition-colors"
         >
             View Details
         </Button>

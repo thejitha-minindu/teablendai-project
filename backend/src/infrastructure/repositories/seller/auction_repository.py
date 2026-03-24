@@ -5,12 +5,11 @@ import uuid
 import logging
 from src.domain.models.auction import Auction as AuctionModel
 from src.domain.models.auction_status import AuctionStatus
-from src.application.schemas.auction import Auction, AuctionCreate
-from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
-
-
 logger = logging.getLogger(__name__)
+from src.application.schemas.seller.auction import Auction, AuctionCreate
+from src.domain.repositories.seller.auction_repository import AuctionRepositoryInterface
+from sqlalchemy.orm import joinedload
 
 class AuctionRepository(AuctionRepositoryInterface):
     DEV_SELLER_ID = "12345678-1234-5678-1234-567812345678"
@@ -217,8 +216,23 @@ class AuctionRepository(AuctionRepositoryInterface):
             
         return query.all()
     
-    def get_by_id(self, auction_id: str) -> Auction:
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+    def get_by_id(self, auction_id: str) -> AuctionModel: # Note: return AuctionModel, not Auction schema
+        auction = self.db.query(AuctionModel)\
+            .options(joinedload(AuctionModel.bids))\
+            .filter(AuctionModel.auction_id == auction_id)\
+            .first()
+            
+        if auction:
+            # Dynamically attach highest bid info before returning
+            if auction.bids:
+                highest_bid = max(auction.bids, key=lambda b: b.bid_amount)
+                auction.highest_bid = highest_bid.bid_amount
+                auction.highest_bidder = str(highest_bid.buyer_id)
+            else:
+                auction.highest_bid = None
+                auction.highest_bidder = None
+                
+        return auction
 
     def delete(self, auction_id: str) -> bool:
         auction = self.get_by_id(auction_id)

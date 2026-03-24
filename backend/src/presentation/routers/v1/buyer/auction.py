@@ -8,6 +8,7 @@ from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
 
 router = APIRouter(prefix="/auctions", tags=["auctions"])
+router.router = router
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
