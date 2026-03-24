@@ -57,10 +57,16 @@ async def _request_with_base_url_fallback(
     path: str,
     timeout: float,
     json_body: Dict[str, Any] = None,
+    headers: Dict[str, str] = None,
 ):
     """Try request against multiple local API URLs until one is reachable."""
     last_error: Exception | None = None
     base_urls = _candidate_base_urls()
+    
+    # Merge headers with default content-type
+    request_headers = {"Content-Type": "application/json"}
+    if headers:
+        request_headers.update(headers)
 
     for base_url in base_urls:
         url = f"{base_url}{path}"
@@ -70,7 +76,7 @@ async def _request_with_base_url_fallback(
                     method,
                     url,
                     json=json_body,
-                    headers={"Content-Type": "application/json"},
+                    headers=request_headers,
                 )
                 logger.info("[Auction] %s %s -> %s", method, url, response.status_code)
                 return response
@@ -94,10 +100,26 @@ async def create_auction(
     duration: int,
     description: str = None,
 ) -> Dict[str, Any]:
-    """Create a new auction via auction API."""
+    """
+    Create a new auction via auction API.
+    
+    Args:
+        user_id: Seller's user ID from authentication (JWT)
+        grade: Tea grade (BOPF, Pekoe, etc.)
+        quantity: Quantity in kg
+        origin: Tea origin region
+        base_price: Starting price for entire lot (LKR)
+        start_time: Auction start datetime (YYYY-MM-DD HH:MM)
+        duration: Auction duration in minutes
+        description: Optional description
+    
+    Returns:
+        Result dictionary with status and auction_id
+    """
     try:
-        logger.info("[Auction] Creating auction: %s %skg from %s", grade, quantity, origin)
+        logger.info("[Auction] Creating auction: %s %skg from %s (seller: %s)", grade, quantity, origin, user_id)
 
+        # Core auction details only - backend will fetch seller info from user profile
         payload = {
             "auction_name": f"{grade} - {origin}",
             "seller_id": user_id,
@@ -117,11 +139,17 @@ async def create_auction(
 
         logger.info("[Auction] Payload: %s", json.dumps(payload, indent=2, default=str))
 
+        # Pass user_id via X-User-ID header for backend to extract seller profile
+        headers = {
+            "X-User-ID": user_id
+        }
+
         response = await _request_with_base_url_fallback(
             method="POST",
             path=f"{API_PREFIX}/auctions",
             timeout=30.0,
             json_body=payload,
+            headers=headers,
         )
 
         logger.info("[Auction] API response status: %s", response.status_code)
@@ -276,7 +304,7 @@ async def list_tools() -> List[Tool]:
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "user_id": {"type": "string", "description": "Seller's user ID"},
+                    "user_id": {"type": "string", "description": "Seller's user ID from authentication"},
                     "grade": {"type": "string", "description": "Tea grade (BOP, BOPF, OP, Pekoe, etc.)"},
                     "quantity": {"type": "integer", "description": "Quantity in kilograms"},
                     "origin": {"type": "string", "description": "Tea origin region"},
@@ -285,7 +313,7 @@ async def list_tools() -> List[Tool]:
                     "duration": {"type": "integer", "description": "Duration in minutes"},
                     "description": {"type": "string", "description": "Optional description"},
                 },
-                "required": ["grade", "quantity", "origin", "base_price", "start_time", "duration"],
+                "required": ["user_id", "grade", "quantity", "origin", "base_price", "start_time", "duration"],
             },
         ),
         Tool(
@@ -333,8 +361,16 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
     """Handle tool calls."""
     try:
         if name == "create_auction":
+            # user_id is required and must come from JWT authentication
+            if "user_id" not in arguments:
+                return [
+                    TextContent(
+                        type="text",
+                        text=json.dumps({"status": "error", "message": "user_id is required for auction creation"}),
+                    )
+                ]
             result = await create_auction(
-                user_id=arguments.get("user_id", "temp_seller_id"),
+                user_id=arguments["user_id"],
                 grade=arguments["grade"],
                 quantity=arguments["quantity"],
                 origin=arguments["origin"],

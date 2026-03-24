@@ -1,14 +1,15 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     MessageSquarePlus,
     History,
-    Settings,
     User,
-    HelpCircle,
+    User2,
+    ChevronUp,
     LogOut,
+    ShoppingBag,
     Menu,
     X,
     PanelLeft,
@@ -16,10 +17,53 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ConversationSummary } from "@/services/chatService";
 import { DeleteIcon } from "@/components/ui/delete";
+import { apiClient } from "@/lib/apiClient";
+import {
+    clearStoredAuthToken,
+    getAuthClaims,
+    getAuthClaimsFromToken,
+    getDisplayNameFromEmail,
+    getHomePathByRole,
+    setStoredAuthToken,
+    type UserRole,
+} from "@/lib/auth";
+
+const getSwitchInfo = (
+    currentRole: UserRole
+): { role: UserRole; path: string } => {
+    switch (currentRole) {
+        case "seller":
+            return { role: "buyer", path: "/buyer/dashboard" };
+        case "buyer":
+            return { role: "seller", path: "/seller/dashboard" };
+        default:
+            return { role: "buyer", path: "/buyer/dashboard" };
+    }
+};
+
+const getRoleDisplayName = (role: UserRole): string => {
+    switch (role) {
+        case "seller":
+            return "Seller";
+        case "buyer":
+            return "Buyer";
+        default:
+            return "User";
+    }
+};
 
 interface ChatHistoryItem {
     id: string;
@@ -48,19 +92,20 @@ export function ChatSidebar({
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
     const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
-    const [showProfileMenu, setShowProfileMenu] = useState(false);
-    const [showSettingsModal, setShowSettingsModal] = useState(false);
-    const [showHelpModal, setShowHelpModal] = useState(false);
+    const [activeUserRole, setActiveUserRole] = useState<UserRole>("seller");
+    const [isSwitchingRole, setIsSwitchingRole] = useState(false);
+    const [userEmail, setUserEmail] = useState("Loading...");
+    const [userName, setUserName] = useState("User");
     const [isMounted, setIsMounted] = useState(false);
-    const profileMenuRef = useRef<HTMLDivElement>(null);
+    const role: UserRole = activeUserRole;
 
     // Map real conversation data to chat history format
     const chatHistory: ChatHistoryItem[] = conversations
         .map((c) => ({
-            id: String(c.conversation_id || (c as Record<string, unknown>).id || ""),
+            id: String(c.conversation_id || ((c as unknown as Record<string, unknown>).id as string) || ""),
             title: c.title || "New Conversation",
             timestamp: new Date(c.updated_at || c.created_at || Date.now()),
-            preview: (c as Record<string, unknown>).preview as string || `${c.message_count || 0} messages`,
+            preview: ((c as unknown as Record<string, unknown>).preview as string),
         }))
         .filter((item) => item.id !== "");
 
@@ -69,14 +114,14 @@ export function ChatSidebar({
     }, []);
 
     useEffect(() => {
-        function handleClickOutside(event: MouseEvent) {
-            if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-                setShowProfileMenu(false);
-            }
+        const claims = getAuthClaims();
+        if (claims?.sub) {
+            setUserEmail(claims.sub);
+            setUserName(getDisplayNameFromEmail(claims.sub));
         }
-
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        if (claims?.role) {
+            setActiveUserRole(claims.role);
+        }
     }, []);
 
     useEffect(() => {
@@ -116,6 +161,39 @@ export function ChatSidebar({
             router.back();
         } else {
             router.push("/");
+        }
+    };
+
+    const switchInfo = useMemo(() => getSwitchInfo(role), [role]);
+
+    const handleLogout = () => {
+        clearStoredAuthToken();
+        window.location.href = "/auth/login";
+    };
+
+    const handleSwitchRole = async () => {
+        const targetRole = switchInfo.role;
+        try {
+            setIsSwitchingRole(true);
+            const response = await apiClient.post("/auth/switch-role", { role: targetRole });
+
+            const newToken = response?.data?.access_token;
+            if (!newToken || typeof newToken !== "string") {
+                throw new Error("Role switch did not return a valid access token");
+            }
+
+            const newClaims = getAuthClaimsFromToken(newToken);
+            if (!newClaims || newClaims.role !== targetRole) {
+                throw new Error("Role switch returned a token with unexpected role");
+            }
+
+            setStoredAuthToken(newToken);
+            setActiveUserRole(targetRole);
+            window.location.href = getHomePathByRole(targetRole);
+        } catch (error) {
+            console.error("Failed to switch role", error);
+        } finally {
+            setIsSwitchingRole(false);
         }
     };
 
@@ -328,330 +406,90 @@ export function ChatSidebar({
                 </div>
 
                 {/* FOOTER */}
-                <div className="p-4 border-t border-gray-200 relative" ref={profileMenuRef}>
-                    <AnimatePresence mode="wait">
-                        {!isCollapsed ? (
-                            <motion.div
-                                key="expanded-footer"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="space-y-2"
-                            >
-                                <button 
-                                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700 hover:text-gray-900 group" 
-                                    title="Profile menu"
-                                    aria-label="Profile menu"
-                                >
-                                    <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center">
-                                        <User className="w-5 h-5 text-white" />
+                <div className="p-4 border-t border-gray-200 bg-white">
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <button className="w-full hover:bg-gray-50 rounded-lg p-2">
+                                <div className="flex items-center gap-3 w-full">
+                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                                        <User2 className="w-5 h-5" />
                                     </div>
-                                    <div className="flex-1 text-left">
-                                        <p className="text-sm font-medium">User</p>
-                                        <p className="text-xs text-gray-500 truncate">user@example.com</p>
-                                    </div>
-                                </button>
-                            </motion.div>
-                        ) : (
-                            <motion.div
-                                key="collapsed-footer"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
-                                className="flex flex-col gap-1 items-center"
-                            >
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            onClick={() => setShowProfileMenu(!showProfileMenu)}
-                                            className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                                        >
-                                            <div className="w-8 h-8 rounded-full bg-[#558332] flex items-center justify-center">
-                                                <User className="w-5 h-5 text-white" />
+                                    {!isCollapsed && (
+                                        <>
+                                            <div className="grid flex-1 text-left text-sm leading-tight">
+                                                <span className="truncate font-semibold text-gray-800">
+                                                    {userName}
+                                                </span>
+                                                <span className="truncate text-xs text-gray-500 capitalize">
+                                                    {getRoleDisplayName(role)} Account
+                                                </span>
                                             </div>
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" sideOffset={8}>
-                                        Profile
-                                    </TooltipContent>
-                                </Tooltip>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                            <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
+                                        </>
+                                    )}
+                                </div>
+                            </button>
+                        </DropdownMenuTrigger>
 
-                    {/* Profile Dropdown Menu */}
-                    <AnimatePresence>
-                        {showProfileMenu && !isCollapsed && (
-                            <motion.div
-                                key="profile-menu-expanded"
-                                initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="absolute bottom-full left-4 right-4 mb-2 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50"
-                            >
-                                <div className="p-3 border-b border-gray-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center">
-                                            <User className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">User</p>
-                                            <p className="text-xs text-gray-500">user@example.com</p>
-                                        </div>
+                        <DropdownMenuContent
+                            side="top"
+                            align={isCollapsed ? "start" : "end"}
+                            className="min-w-72 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+                        >
+                            <DropdownMenuLabel className="p-0 font-normal">
+                                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
+                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                                        <User2 className="w-6 h-6" />
+                                    </div>
+                                    <div className="grid flex-1 text-left text-sm leading-tight">
+                                        <span className="truncate font-semibold">{userName}</span>
+                                        <span className="truncate text-xs text-gray-500">{userEmail}</span>
                                     </div>
                                 </div>
+                            </DropdownMenuLabel>
 
-                                <div className="p-2">
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                            setShowSettingsModal(true);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                        <span>Settings</span>
-                                    </button>
+                            <DropdownMenuSeparator />
 
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                            setShowHelpModal(true);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <HelpCircle className="w-4 h-4" />
-                                        <span>Help & Support</span>
-                                    </button>
-                                </div>
+                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                                <Link href="/profile" className="flex items-center w-full">
+                                    <User className="mr-2 h-4 w-4 text-gray-500" />
+                                    <span>My Profile</span>
+                                </Link>
+                            </DropdownMenuItem>
 
-                                <div className="p-2 border-t border-gray-200">
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        <span>Logout</span>
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                        {showProfileMenu && isCollapsed && (
-                            <motion.div
-                                key="profile-menu-collapsed"
-                                initial={{ opacity: 0, x: -10, scale: 0.95 }}
-                                animate={{ opacity: 1, x: 0, scale: 1 }}
-                                exit={{ opacity: 0, x: -10, scale: 0.95 }}
-                                transition={{ duration: 0.2 }}
-                                className="absolute bottom-0 left-full ml-2 w-56 bg-white border border-gray-200 rounded-xl shadow-2xl overflow-hidden z-50"
+                            <DropdownMenuItem
+                                className="cursor-pointer hover:bg-gray-50"
+                                disabled={isSwitchingRole}
+                                onClick={handleSwitchRole}
                             >
-                                <div className="p-3 border-b border-gray-200">
-                                    <div className="flex items-center gap-3">
-                                        <div className="w-12 h-12 rounded-full bg-[#558332] flex items-center justify-center">
-                                            <User className="w-7 h-7 text-white" />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-900">User</p>
-                                            <p className="text-xs text-gray-500">user@example.com</p>
-                                        </div>
-                                    </div>
-                                </div>
+                                <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                                <span>
+                                    {isSwitchingRole
+                                        ? "Switching role..."
+                                        : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                                </span>
+                            </DropdownMenuItem>
 
-                                <div className="p-2">
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                            setShowSettingsModal(true);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <Settings className="w-4 h-4" />
-                                        <span>Settings</span>
-                                    </button>
+                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                                <Link href="/analytics-dashboard" className="flex items-center w-full">
+                                    <History className="mr-2 h-4 w-4 text-gray-500" />
+                                    <span>Analytics Dashboard</span>
+                                </Link>
+                            </DropdownMenuItem>
 
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                            setShowHelpModal(true);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-                                    >
-                                        <HelpCircle className="w-4 h-4" />
-                                        <span>Help & Support</span>
-                                    </button>
-                                </div>
+                            <DropdownMenuSeparator />
 
-                                <div className="p-2 border-t border-gray-200">
-                                    <button
-                                        onClick={() => {
-                                            setShowProfileMenu(false);
-                                        }}
-                                        className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                    >
-                                        <LogOut className="w-4 h-4" />
-                                        <span>Logout</span>
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                            <DropdownMenuItem
+                                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+                                onClick={handleLogout}
+                            >
+                                <LogOut className="mr-2 h-4 w-4" />
+                                <span>Log out</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </motion.div>
-
-            {/* Settings Modal */}
-            <AnimatePresence>
-                {showSettingsModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-                        onClick={() => setShowSettingsModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-xl shadow-xl w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto p-6 cursor-default"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
-                                <button
-                                    onClick={() => setShowSettingsModal(false)}
-                                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Theme
-                                    </label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#558332] focus:border-transparent">
-                                        <option>Light</option>
-                                        <option>Dark</option>
-                                        <option>System</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Language
-                                    </label>
-                                    <select className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#558332] focus:border-transparent">
-                                        <option>English</option>
-                                        <option>Spanish</option>
-                                        <option>French</option>
-                                        <option>German</option>
-                                    </select>
-                                </div>
-                                
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Notifications
-                                    </label>
-                                    <div className="flex items-center gap-2">
-                                        <input type="checkbox" className="rounded border-gray-300 text-[#558332] focus:ring-[#558332]" />
-                                        <span className="text-sm text-gray-600">Enable notifications</span>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-6 flex justify-end gap-3">
-                                <button
-                                    onClick={() => setShowSettingsModal(false)}
-                                    className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={() => setShowSettingsModal(false)}
-                                    className="px-4 py-2 text-sm rounded-lg bg-[#558332] text-white hover:bg-[#446a28] transition"
-                                >
-                                    Save Changes
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            {/* Help & Support Modal */}
-            <AnimatePresence>
-                {showHelpModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
-                        onClick={() => setShowHelpModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            transition={{ duration: 0.2 }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-xl shadow-xl w-[500px] max-w-[90vw] max-h-[80vh] overflow-y-auto p-6 cursor-default"
-                        >
-                            <div className="flex items-center justify-between mb-4">
-                                <h2 className="text-xl font-semibold text-gray-900">Help & Support</h2>
-                                <button
-                                    onClick={() => setShowHelpModal(false)}
-                                    className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-                                >
-                                    <X className="w-5 h-5 text-gray-500" />
-                                </button>
-                            </div>
-                            
-                            <div className="space-y-4">
-                                <div className="p-4 bg-gray-50 rounded-lg">
-                                    <h3 className="font-medium text-gray-900 mb-2">Frequently Asked Questions</h3>
-                                    <div className="space-y-3">
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-700">How do I start a new chat?</p>
-                                            <p className="text-sm text-gray-500">Click the "New Chat" button in the sidebar to start a new conversation.</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-700">Can I delete old conversations?</p>
-                                            <p className="text-sm text-gray-500">Yes, hover over any chat in the history and click the delete icon.</p>
-                                        </div>
-                                        <div>
-                                            <p className="text-sm font-medium text-gray-700">Is my data secure?</p>
-                                            <p className="text-sm text-gray-500">We take data security seriously. All conversations are encrypted and stored securely.</p>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div>
-                                    <h3 className="font-medium text-gray-900 mb-2">Contact Support</h3>
-                                    <p className="text-sm text-gray-500 mb-3">Need more help? Reach out to our support team.</p>
-                                    <a href="mailto:support@teablend.ai" className="text-[#558332] hover:underline text-sm">
-                                        support@teablend.ai
-                                    </a>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-6 flex justify-end">
-                                <button
-                                    onClick={() => setShowHelpModal(false)}
-                                    className="px-4 py-2 text-sm rounded-lg bg-[#558332] text-white hover:bg-[#446a28] transition"
-                                >
-                                    Close
-                                </button>
-                            </div>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </>
     );
 }

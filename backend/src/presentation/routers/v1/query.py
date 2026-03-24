@@ -6,13 +6,17 @@ Implements tea-only policy, MCP-first DB search, and web fallback with visuals.
 import logging
 import json
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional, Dict, Any, List, Annotated
 from datetime import datetime
 from uuid import UUID
 
-from src.application.dependencies import get_chat_service, get_optional_current_user
+from src.application.dependencies import (
+    get_chat_service,
+    get_optional_current_user,
+    get_optional_token_payload,
+)
 from src.domain.models.user import User
 from src.infrastructure.services.chat_service import ChatService
 
@@ -58,7 +62,8 @@ class QueryResponse(BaseModel):
 async def query_tea(
     request: QueryRequest,
     chat_service: ChatService = Depends(get_chat_service),
-    current_user: User | None = Depends(get_optional_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[Dict[str, Any]] = Depends(get_optional_token_payload),
 ) -> QueryResponse:
     """
     Process a tea-related query.
@@ -69,13 +74,23 @@ async def query_tea(
     if not question:
         raise HTTPException(status_code=400, detail="Question cannot be empty")
 
-    try:
-        resolved_user_id = str(current_user.user_id) if current_user else request.user_id
+    if current_user is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required. Please log in.",
+        )
 
+    user_id = str(current_user.user_id)
+    role_from_token = (token_payload or {}).get("role") if token_payload else None
+    fallback_role = getattr(current_user, "default_role", None)
+    user_role = str(role_from_token or fallback_role or "").lower() or None
+
+    try:
         result = await chat_service.process_message(
             user_message=question,
             conversation_id=request.conversation_id,
-            user_id=resolved_user_id,
+            user_id=user_id,
+            user_role=user_role,
         )
 
         # If non-tea response

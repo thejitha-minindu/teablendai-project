@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/apiClient";
+import { AxiosError } from "axios";
 
 export interface QueryResponse {
   success: boolean;
@@ -118,9 +119,17 @@ export interface ConversationSummary {
 }
 
 export const chatService = {
+  getAuthToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return (
+      localStorage.getItem("teablend_token") ||
+      localStorage.getItem("access_token")
+    );
+  },
+
   getCurrentUserId(): string | null {
     if (typeof window === "undefined") return null;
-    const token = localStorage.getItem("teablend_token");
+    const token = this.getAuthToken();
     if (!token) return null;
 
     try {
@@ -136,12 +145,30 @@ export const chatService = {
     message: string,
     conversationId?: string | null
   ): Promise<QueryResponse> {
+    const token = this.getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in.");
+    }
+
     const payload: Record<string, unknown> = { message };
     if (conversationId) payload.conversation_id = conversationId;
     const userId = this.getCurrentUserId();
     if (userId) payload.user_id = userId;
-    const response = await apiClient.post<QueryResponse>("/query", payload);
-    return response.data;
+
+    try {
+      const response = await apiClient.post<QueryResponse>("/query", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw error;
+    }
   },
 
   // Get all conversations for sidebar
