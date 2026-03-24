@@ -1,5 +1,6 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
+from src.application.schemas.seller.auction import Auction
 from datetime import datetime, timedelta, timezone
 from src.application.schemas.buyer.auction import Auction, AuctionCreate
 from src.infrastructure.repositories.buyer.auction_repository import AuctionRepository

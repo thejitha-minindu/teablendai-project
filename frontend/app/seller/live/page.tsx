@@ -65,9 +65,9 @@ export default function LiveAuctionsPage() {
       // Decode the token to get YOUR specific user ID
       const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
       if (!token) return;
-      
+
       const payload = JSON.parse(atob(token.split('.')[1]));
-      const myUserId = payload.id; 
+      const myUserId = payload.id;
 
       // Use apiClient and attach the seller_id to the URL
       const res = await apiClient.get(`/auctions/status/live?seller_id=${myUserId}`, {
@@ -76,14 +76,14 @@ export default function LiveAuctionsPage() {
           'Cache-Control': 'no-cache'
         }
       });
-      
+
       const data = res.data; // Axios puts the JSON in .data
 
       const formattedData = data.map((item: any) => ({
         id: item.auction_id,
         displayId: `${item.grade} - ${item.origin}`,
         data: {
-          price: item.base_price, 
+          price: item.base_price,
           grade: item.grade,
           quantity: item.quantity,
           custom_auction_id: item.custom_auction_id,
@@ -111,16 +111,16 @@ export default function LiveAuctionsPage() {
   useEffect(() => {
     const timer = setInterval(() => {
       setAuctions(prevAuctions => {
-        
+
         // --- NEW LOGIC: Check for expired auctions ---
         const shouldReload = prevAuctions.some(auc => {
-            const status = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
-            return status === "Closing...";
+          const status = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
+          return status === "Closing...";
         });
 
         if (shouldReload) {
-            console.log("Auction ended. Refreshing list...");
-            fetchLiveAuctions(); // Reload from backend to remove the expired item
+          console.log("Auction ended. Refreshing list...");
+          fetchLiveAuctions(); // Reload from backend to remove the expired item
         }
         // ---------------------------------------------
 
@@ -142,17 +142,18 @@ export default function LiveAuctionsPage() {
       <h1 className="text-[#1A2F1C] text-3xl font-bold text-left mb-12">
         Live Auctions
       </h1>
-      
+
       {loading ? (
         <p className="text-gray-500">Loading live auctions...</p>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {auctions.length > 0 ? (
             auctions.map((auction) => (
-              <AuctionCard 
-                key={auction.id} 
-                type="live" 
-                id={auction.displayId} 
+              <AuctionCard
+                key={auction.id}
+                auctionId={auction.id}
+                type="live"
+                id={auction.displayId}
                 data={auction.data}
                 onViewClick={() => setSelectedAuctionId(auction.id)}
               />
@@ -165,9 +166,9 @@ export default function LiveAuctionsPage() {
 
       {/* Live Auction Modal */}
       {selectedAuctionId && (
-        <LiveAuctionModal 
-          auctionId={selectedAuctionId} 
-          onClose={() => setSelectedAuctionId(null)} 
+        <LiveAuctionModal
+          auctionId={selectedAuctionId}
+          onClose={() => setSelectedAuctionId(null)}
         />
       )}
     </div>

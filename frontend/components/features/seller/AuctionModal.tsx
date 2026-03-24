@@ -279,14 +279,20 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 }
 
 // ==========================================
-// 2. LIVE AUCTION MODAL (Connected to Backend)
+// 2. LIVE AUCTION MODAL (Connected to Backend & WebSockets)
 // ==========================================
+
+import { useAuctionBidsSocket } from '@/hooks/live-auction-socket'; 
+
 export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; onClose: () => void }) {
   const [auction, setAuction] = useState<any>(null);
   const [countdown, setCountdown] = useState("Loading...");
   const [loading, setLoading] = useState(true);
 
-  // 1. Fetch Real Data
+  // --- CONNECT TO WEBSOCKET ---
+  const { connected, events } = useAuctionBidsSocket(auctionId);
+
+  // 1. Fetch Real Initial Data
   useEffect(() => {
     const fetchLiveDetails = async () => {
       try {
@@ -315,20 +321,28 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"><div className="bg-white p-6 rounded">Loading Live Data...</div></div>;
   if (!auction) return null;
 
-  // 3. Determine Real Price & Buyer
-  const currentPrice = auction.sold_price || auction.base_price;
-  const currentBuyer = auction.buyer;
+  // 3. Determine Real-Time Price & Buyer
+  // If we have WS events, use the newest event. Otherwise, fall back to DB data.
+  const latestWsBid = events.length > 0 ? events[0].data : null;
+  const currentPrice = latestWsBid 
+    ? latestWsBid.bid_amount 
+    : (auction.highest_bid || auction.sold_price || auction.base_price);
+    
+  const currentBuyer = latestWsBid 
+    ? latestWsBid.buyer_id 
+    : (auction.highest_bidder || auction.buyer);
 
   return (
-    // FIX: Changed bg-black bg-opacity-50 -> bg-black/60 backdrop-blur-sm
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-[#1A2F1C]">{auction.grade} - {auction.origin}...</h2>
-              <span className="animate-pulse bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold">LIVE</span>
+              <h2 className="text-2xl font-bold text-[#1A2F1C]">{auction.grade} - {auction.origin}</h2>
+              <span className="animate-pulse bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+                LIVE {connected && <div className="w-2 h-2 bg-white rounded-full animate-bounce" />}
+              </span>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6" /></button>
           </div>
@@ -338,7 +352,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
             <div className="flex items-center gap-3">
               <Clock className="w-6 h-6 text-red-600" />
               <div>
-                <p className="font-bold text-red-600">Auction Ending Soon!</p>
+                <p className="font-bold text-red-600">Auction in Progress</p>
                 <p className="text-sm text-red-500">Time Remaining</p>
               </div>
             </div>
@@ -348,24 +362,21 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Left Column - Real Auction Info */}
             <div className="space-y-6">
-              <div className="bg-gray-100 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200">
-                <Package className="w-20 h-20 text-gray-400" />
-              </div>
-
-              <div className="bg-green-50 border-2 border-green-300 rounded-lg p-5">
+              <div className="bg-green-50 border-2 border-green-400 rounded-xl p-6 shadow-inner transition-colors duration-500">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-700 font-semibold">
+                  <span className="text-gray-700 font-semibold uppercase tracking-wider text-sm">
                     {currentBuyer ? "Current Highest Bid" : "Starting Price"}
                   </span>
-                  <TrendingUp className="w-5 h-5 text-green-600" />
+                  <TrendingUp className="w-6 h-6 text-green-600" />
                 </div>
-                <div className="text-4xl font-bold text-green-600 mb-2">${currentPrice}</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <User className="w-4 h-4" />
-                  <span className="font-medium">{currentBuyer || "No Bids Yet"}</span>
+                <div className="text-5xl font-bold text-green-700 mb-3">LKR {currentPrice}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 bg-white/60 w-max px-3 py-1.5 rounded-full">
+                  <User className="w-4 h-4 text-green-600" />
+                  <span className="font-medium">{currentBuyer || "Waiting for bids..."}</span>
                 </div>
               </div>
 
+              {/* Keep existing details logic */}
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <div className="flex justify-between py-2 border-b border-gray-300">
                   <span className="font-semibold text-gray-600">Ref ID:</span>
@@ -406,47 +417,52 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
             </div>
 
             {/* Right Column - REAL Bidding Activity */}
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                  <DollarSign className="w-5 h-5" /> Live Bidding Activity
-                </h3>
-              </div>
+            <div className="space-y-4 flex flex-col h-full">
+              <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <DollarSign className="w-5 h-5" /> Live Activity Feed
+              </h3>
 
-              {/* LIST: Only show real data from DB */}
-              <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2">
-                {currentBuyer ? (
-                  // SHOW CURRENT LEADING BID
-                  <div className="p-4 rounded-lg bg-green-50 border-2 border-green-400 shadow-md transition-all duration-300">
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <User className="w-4 h-4 text-gray-600" />
-                        <span className="font-semibold text-gray-800">{currentBuyer}</span>
+              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-y-auto max-h-[400px] space-y-3 shadow-inner">
+                
+                {/* Dynamically render WebSocket Events */}
+                {events.length > 0 ? (
+                  events.map((evt, idx) => (
+                    <div key={evt.event_id} className={`p-4 rounded-lg transition-all duration-500 animate-slide-in-right ${
+                      idx === 0 ? 'bg-green-100 border-2 border-green-500 shadow-md' : 'bg-white border border-gray-200'
+                    }`}>
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <User className={`w-4 h-4 ${idx === 0 ? 'text-green-700' : 'text-gray-500'}`} />
+                          <span className={`font-semibold ${idx === 0 ? 'text-green-800' : 'text-gray-700'}`}>
+                            {evt.data.buyer_id.substring(0, 8)}...
+                          </span>
+                        </div>
+                        {idx === 0 && <span className="bg-green-600 text-white text-[10px] px-2 py-1 rounded-full font-bold tracking-widest">NEW LEADER</span>}
                       </div>
-                      <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full font-bold">LEADING</span>
+                      <div className="flex justify-between items-end">
+                        <span className={`text-2xl font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>LKR {evt.data.bid_amount}</span>
+                        <span className="text-xs text-gray-400">
+                          {evt.data.bid_time.toLocaleTimeString()}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-2xl font-bold text-green-600">${currentPrice}</span>
-                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                        <Clock className="w-3 h-3" /> Just now
-                      </span>
-                    </div>
-                  </div>
+                  ))
                 ) : (
-                  // SHOW EMPTY STATE
-                  <div className="p-8 text-center bg-gray-50 border border-gray-200 rounded-lg">
-                    <p className="text-gray-500 italic">No bids placed yet.</p>
-                    <p className="text-xs text-gray-400 mt-1">Waiting for buyers to join...</p>
-                  </div>
+                  // Initial DB State
+                  currentBuyer ? (
+                    <div className="p-4 rounded-lg bg-white border border-gray-200">
+                      <p className="text-sm text-gray-500 mb-1">Previous Leading Bid</p>
+                      <p className="text-xl font-bold text-gray-800">LKR {currentPrice}</p>
+                      <p className="text-xs text-gray-400 mt-1">by {currentBuyer}</p>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-10">
+                      <Clock className="w-8 h-8 mb-2 opacity-50" />
+                      <p className="italic">No bids placed yet.</p>
+                      <p className="text-xs mt-1">Updates will appear here instantly.</p>
+                    </div>
+                  )
                 )}
-              </div>
-
-              <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 flex items-start gap-3 mt-4">
-                <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800">
-                  <p className="font-semibold mb-1">Auction in Progress</p>
-                  <p className="text-xs">Bids update automatically when a buyer places a higher offer.</p>
-                </div>
               </div>
             </div>
           </div>

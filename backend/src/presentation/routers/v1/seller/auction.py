@@ -1,14 +1,15 @@
 from fastapi import APIRouter, HTTPException, Depends, status
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.auction import Auction, AuctionCreate, AuctionResponse
-from src.application.use_cases.auction_service import AuctionService
+from src.application.schemas.seller.auction import Auction, AuctionCreate, AuctionResponse
+from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_optional_current_seller
 from src.domain.models.user import User
 from uuid import UUID
 
 router = APIRouter()
+router.router = router
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)

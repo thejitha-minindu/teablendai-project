@@ -17,6 +17,8 @@ class Auction(BaseModel):
     buyer: Optional[str] = None
     buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
+    highest_bid: Optional[float] = None
+    highest_bidder: Optional[str] = None
     countdown: Optional[str] = None
 
 # 1. Input Schema (Frontend -> Backend)

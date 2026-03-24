@@ -1,8 +1,8 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from src.application.schemas.auction import Auction, AuctionCreate
-from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.application.schemas.seller.auction import Auction, AuctionCreate
+from src.infrastructure.repositories.seller.auction_repository import AuctionRepository
 from src.domain.models.auction_status import AuctionStatus
 from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
