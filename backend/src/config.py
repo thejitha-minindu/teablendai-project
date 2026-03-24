@@ -77,6 +77,7 @@ class Settings(BaseSettings):
     MSSQL_TRUST_SERVER_CERTIFICATE: bool = False
     DB_TRUSTED_CONNECTION: bool = True
     DATABASE_URL: Optional[str] = None
+    INIT_DB_ON_STARTUP: bool = False
 
     CHAT_DATABASE_URL: bool = True
 

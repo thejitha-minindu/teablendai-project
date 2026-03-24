@@ -351,6 +351,64 @@ class ChatService:
 
         logger.info("[Chat] Handling as DATABASE query")
 
+        followup_context = self._get_followup_visualization_context(
+            user_message=user_message,
+            conversation_id=conversation.conversation_id,
+        )
+
+        if followup_context:
+            logger.info("[Chat] Using previous query data for follow-up visualization")
+
+            rows = followup_context.get("rows", [])
+            columns = followup_context.get("columns", [])
+
+            llm_out = await self._summarize_and_choose_viz(
+                question=user_message,
+                columns=columns,
+                rows=rows,
+                candidates=["bar", "line", "pie", "table"],
+            )
+
+            chosen_type = llm_out["visualization_type"]
+
+            viz_result = await self.mcp_client.create_visualization(
+                data=rows,
+                query=user_message,
+                chart_type=chosen_type,
+            )
+
+            if not viz_result.get("success"):
+                viz_result = {"visualization": None, "visualization_type": chosen_type}
+
+            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=llm_out["summary"],
+                sql_query=followup_context.get("sql_query"),
+                data=rows,
+                source="database",
+                visualization_type=chosen_type,
+                visualization_data=viz_result.get("visualization"),
+                response_time_ms=response_time,
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": llm_out["summary"],
+                "source": "database",
+                "columns": columns,
+                "data": rows,
+                "row_count": len(rows),
+                "visualization_type": chosen_type,
+                "visualization": viz_result.get("visualization"),
+                "sql_query": followup_context.get("sql_query"),
+                "timestamp": datetime.utcnow().isoformat(),
+                "response_time_ms": response_time,
+            }
+
         db_result = await self.mcp_client.query_database(user_message)
 
         if db_result.get("success") and db_result.get("has_data"):
@@ -547,6 +605,50 @@ class ChatService:
             "timestamp": datetime.utcnow().isoformat(),
             "response_time_ms": response_time
         }
+
+    def _get_followup_visualization_context(
+        self,
+        user_message: str,
+        conversation_id: UUID,
+    ) -> Optional[Dict[str, Any]]:
+        question = user_message.lower().strip()
+
+        chart_terms = ["chart", "graph", "plot", "visual", "pie", "bar", "line", "table"]
+        if not any(term in question for term in chart_terms):
+            return None
+
+        reference_terms = [
+            "above",
+            "previous",
+            "earlier",
+            "same",
+            "that",
+            "this",
+            "comparison",
+            "result",
+        ]
+        if not any(term in question for term in reference_terms):
+            return None
+
+        recent_messages = self.message_repo.get_recent_by_conversation(conversation_id, limit=15)
+        for msg in recent_messages:
+            if msg.role != "assistant":
+                continue
+            if msg.source not in {"database", "hybrid"}:
+                continue
+
+            data_rows = msg.get_data()
+            if not data_rows:
+                continue
+
+            columns = list(data_rows[0].keys()) if isinstance(data_rows[0], dict) else []
+            return {
+                "rows": data_rows,
+                "columns": columns,
+                "sql_query": msg.sql_query,
+            }
+
+        return None
 
     def _is_auction_query(self, query: str, columns: list) -> bool:
         """Detect if query results are auction data."""

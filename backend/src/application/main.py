@@ -33,8 +33,6 @@ from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_da
 from src.application.services.buyer.auction_manager import auction_manager
 from src.presentation.routers.v1.buyer import live_auction_socket
 
-Base.metadata.create_all(bind=engine)
-
 load_dotenv()
 
 if sys.platform == 'win32':
@@ -53,6 +51,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
+
+    if settings.INIT_DB_ON_STARTUP:
+        try:
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database schema initialization completed on startup.")
+        except Exception:
+            logger.exception("Database schema initialization failed; continuing startup.")
 
     try:
         app.state.mcp_client = await get_mcp_client()
@@ -214,4 +219,4 @@ if __name__ == "__main__":
     )
 
 
-# to run the app: uvicorn src.application.main:app --reload
+# to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
