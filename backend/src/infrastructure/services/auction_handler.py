@@ -111,16 +111,26 @@ class AuctionHandler:
             Response dictionary
         """
         start_time = datetime.utcnow()
-        
-        # Role validation (when auth is ready)
-        # if user_role != "seller":
-        #     return self._rejection_response(
-        #         conversation,
-        #         "Only sellers can manage auctions. Please contact support if you need seller access."
-        #     )
-        
-        # Check if we have ongoing state
+        action = parameter_extractor.detect_action_type(user_message)
         state = state_manager.get_state(conversation.conversation_id)
+
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to manage auctions."
+            )
+
+        normalized_role = (user_role or "").strip().lower()
+
+        # Seller-only role validation for chatbot auction operations.
+        # For create requests, reject immediately with explicit message and do not continue any flow.
+        if normalized_role != "seller":
+            if action == "create" and state is not None:
+                state_manager.delete_state(conversation.conversation_id)
+            return self._rejection_response(
+                conversation,
+                "Only sellers can create auctions."
+            )
         
         if state is None:
             # New auction operation - detect action
@@ -1080,8 +1090,14 @@ Please confirm if this is correct.
         logger.info("[AuctionHandler] Creating auction via MCP")
         logger.info(f"[AuctionHandler] Data: {data}")
 
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to create auctions."
+            )
+
         result = await self.mcp_client.create_auction(
-            user_id=str(user_id) if user_id else "temp_seller_id",
+            user_id=str(user_id),
             grade=data["grade"],
             quantity=int(data["quantity"]),
             origin=data["origin"],
@@ -1178,9 +1194,15 @@ Please try again or contact support if the problem persists.
 
         logger.info(f"[AuctionHandler] Deleting auction {auction_id} via MCP")
 
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to delete auctions."
+            )
+
         result = await self.mcp_client.delete_auction(
             auction_id=auction_id,
-            user_id=str(user_id) if user_id else "temp_seller_id"
+            user_id=str(user_id)
         )
 
         state_manager.delete_state(conversation.conversation_id)

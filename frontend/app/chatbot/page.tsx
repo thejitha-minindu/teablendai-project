@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedAIChat } from "../../components/features/chatbot/chat";
 import { ChatSidebar } from "../../components/features/chatbot/chatSidebar";
@@ -10,11 +11,13 @@ import { ArrowDownIcon } from "@/components/ui/arrow-down";
 
 
 export default function ChatbotPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isManualNewChat, setIsManualNewChat] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -52,8 +55,40 @@ export default function ChatbotPage() {
   }, []);
 
   useEffect(() => {
+    const token =
+      typeof window !== "undefined"
+        ? (localStorage.getItem("teablend_token") || localStorage.getItem("access_token"))
+        : null;
+    
+    if (!token) {
+      // Redirect to login if no token is found
+      router.push("/auth/login?redirect=/chatbot");
+      return;
+    }
+  }, [router]);
+
+  useEffect(() => {
     loadConversations();
   }, [loadConversations]);
+
+  useEffect(() => {
+    const restoreLatestConversation = async () => {
+      if (isManualNewChat || conversationId || messages.length > 0 || conversations.length === 0) {
+        return;
+      }
+
+      const firstConversation = conversations[0] as unknown as Record<string, unknown>;
+      const firstId = String(firstConversation.conversation_id || firstConversation.id || "");
+      if (!firstId) return;
+
+      setConversationId(firstId);
+      const history = await chatService.getConversationMessages(firstId);
+      setMessages(history);
+      setTimeout(scrollToBottom, 100);
+    };
+
+    restoreLatestConversation();
+  }, [conversations, conversationId, isManualNewChat, messages.length, scrollToBottom]);
 
   const handleSendMessage = async (message: string) => {
     if (!message.trim() || isLoading) return;
@@ -84,6 +119,7 @@ export default function ChatbotPage() {
 
       if (response.conversation_id) {
         setConversationId(response.conversation_id);
+        setIsManualNewChat(false);
         // Refresh sidebar to show new conversation
         loadConversations();
       }
@@ -116,13 +152,22 @@ export default function ChatbotPage() {
         prev.map((m) => (m.isLoading ? assistantMsg : m))
       );
     } catch (error) {
+      const errorText = error instanceof Error ? error.message : String(error);
+      if (
+        errorText.includes("Authentication required") ||
+        errorText.includes("Session expired")
+      ) {
+        router.push("/auth/login?redirect=/chatbot");
+        return;
+      }
+
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
         role: "assistant",
         content: "Sorry, I couldn't connect to the server. Please try again.",
         timestamp: new Date().toISOString(),
         source: "error",
-        error: String(error),
+        error: errorText,
       };
       setMessages((prev) =>
         prev.map((m) => (m.isLoading ? errorMsg : m))
@@ -134,6 +179,7 @@ export default function ChatbotPage() {
 
   // New chat - clear everything
   const handleNewChat = () => {
+    setIsManualNewChat(true);
     setMessages([]);
     setConversationId(null);
   };
@@ -142,6 +188,7 @@ export default function ChatbotPage() {
   const handleSelectChat = async (chatId: string) => {
     if (!chatId) return;
 
+    setIsManualNewChat(false);
     setConversationId(chatId);
     setMessages([]);
 

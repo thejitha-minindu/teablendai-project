@@ -14,14 +14,14 @@ class Conversation(Base):
 
     conversation_id = Column("ConversationID", UNIQUEIDENTIFIER, primary_key=True, default=uuid4)
     title           = Column("Title", String(500), nullable=True)
-    user_id         = Column("UserID", Integer, nullable=True)
+    user_id         = Column("UserID", UNIQUEIDENTIFIER, nullable=True)
     created_at      = Column("CreatedAt", DateTime, default=datetime.now)
     updated_at      = Column("UpdatedAt", DateTime, default=datetime.now, onupdate=datetime.now)
     message_count   = Column("MessageCount", Integer, default=0)
     is_active       = Column("IsActive", Boolean, default=True)
 
     @classmethod
-    def create_new(cls, title: str = None, user_id: int = None) -> "Conversation":
+    def create_new(cls, title: str = None, user_id: UUID = None) -> "Conversation":
         """Factory method to create a new Conversation instance"""
         return cls(
             title=title or f"Conversation - {datetime.now().strftime('%Y-%m-%d %H:%M')}",

@@ -118,6 +118,8 @@ class ChatService:
                 conversation = self.conversation_repo.get_by_id(conversation_id)
                 if not conversation:
                     raise ValueError(f"Conversation {conversation_id} not found")
+                if user_id and conversation.user_id and str(conversation.user_id) != str(user_id):
+                    raise ValueError("Conversation not found")
                 logger.info(f"[Chat] Using existing conversation {conversation_id}")
             else:
                 conversation = await self._create_conversation(user_message, conversation_user_id)
@@ -197,7 +199,7 @@ class ChatService:
                 return await self.auction_handler.handle_auction_management(
                     user_message=user_message,
                     conversation=conversation,
-                    user_id=auction_user_id,
+                    user_id=str(user_id) if user_id else None,
                     user_role=user_role
                 )
 
@@ -216,7 +218,7 @@ class ChatService:
     async def _create_conversation(
         self,
         first_message: str,
-        user_id: Optional[int] = None
+        user_id: Optional[UUID] = None
     ) -> Conversation:
         """Create a new conversation with auto-generated title"""
         # Generate title from first message (first 50 chars)
@@ -237,12 +239,12 @@ class ChatService:
         return saved
 
     @staticmethod
-    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[int]:
+    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[UUID]:
         if user_id is None:
             return None
 
         try:
-            return int(str(user_id))
+            return UUID(str(user_id))
         except (TypeError, ValueError):
             return None
     
@@ -580,9 +582,61 @@ class ChatService:
                 "response_time_ms": response_time
             }
 
-        # Database query actually failed (timeout, error, etc.) - do NOT web search,
-        # because the question is database-specific and the web cannot answer it reliably.
-        logger.warning("[Chat] Database query failed - returning error, not falling back to web search")
+        # Database query failed (timeout, SQL generation failure, etc.).
+        # For knowledge-style tea questions, fall back to web search.
+        db_error_text = " ".join([
+            str(db_result.get("error", "")),
+            str(db_result.get("message", "")),
+        ]).lower()
+        is_empty_sql_generation = (
+            "empty query" in db_error_text
+            or "generated an empty" in db_error_text
+            or (not str(db_result.get("generated_sql", "")).strip())
+        )
+
+        question_lower = user_message.lower()
+        knowledge_markers = [
+            "tell me",
+            "what is",
+            "about",
+            "industry",
+            "history",
+            "market",
+            "global",
+            "export",
+            "overview",
+            "explain",
+        ]
+        looks_like_knowledge_query = any(marker in question_lower for marker in knowledge_markers)
+
+        if is_empty_sql_generation or looks_like_knowledge_query:
+            logger.warning("[Chat] Database failed; falling back to web search for knowledge-style query")
+            search_result = await self.mcp_client.search_web(user_message)
+
+            if search_result.get("success"):
+                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                answer = search_result.get("answer", "")
+
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=answer,
+                    source="web",
+                    search_results=search_result.get("results", []),
+                    response_time_ms=response_time,
+                )
+                self.message_repo.create(assistant_msg)
+
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": answer,
+                    "source": "web",
+                    "search_results": search_result.get("results", []),
+                    "timestamp": datetime.utcnow().isoformat(),
+                    "response_time_ms": response_time,
+                }
+
+        logger.warning("[Chat] Database query failed - returning error response")
         response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
 
         fallback_message = (

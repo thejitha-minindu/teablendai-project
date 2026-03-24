@@ -1,5 +1,5 @@
 from functools import lru_cache
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional, Dict, Any
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -166,3 +166,11 @@ def get_optional_current_user(
 
     user = db.query(User).filter(User.email == email).first()
     return user
+
+
+def get_optional_token_payload(
+    token: str | None = Depends(optional_oauth2_scheme),
+) -> Optional[Dict[str, Any]]:
+    if not token:
+        return None
+    return _decode_token(token)
