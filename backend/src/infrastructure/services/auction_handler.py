@@ -129,7 +129,7 @@ class AuctionHandler:
                 state_manager.delete_state(conversation.conversation_id)
             return self._rejection_response(
                 conversation,
-                "Only sellers can create auctions."
+                "Only sellers can create auctions.If you want to create an auction, please log in with a seller account."
             )
         
         if state is None:
