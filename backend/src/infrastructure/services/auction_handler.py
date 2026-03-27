@@ -1121,7 +1121,7 @@ Please confirm if this is correct.
                 description_line = f"\n- **Description:** {data['description']}"
 
             answer = f"""
-**Auction Created Successfully!**
+**The auction was successfully created.**
 
 **Auction ID:** {auction_id}
 **Custom Auction ID:** {custom_auction_id}

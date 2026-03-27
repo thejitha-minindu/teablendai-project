@@ -131,6 +131,34 @@ function extractCreatedAuctionDetails(content: string): {
   };
 }
 
+function extractAuctionDetailsFromPlainText(content: string): {
+  grade?: string;
+  quantity?: string;
+  origin?: string;
+  base_price?: string;
+  start_time?: string;
+  duration?: string;
+  description?: string;
+  custom_auction_id?: string;
+} {
+  const extract = (label: string) => {
+    const pattern = new RegExp(`\\*\\*${label}:\\*\\*\\s*(.+)`, "i");
+    const match = content.match(pattern);
+    return match?.[1]?.trim();
+  };
+
+  return {
+    grade: extract("Tea Grade") || extract("Grade"),
+    quantity: extract("Quantity"),
+    origin: extract("Origin"),
+    base_price: extract("Starting Price"),
+    start_time: extract("Start Time"),
+    duration: extract("Duration"),
+    description: extract("Description") || "None",
+    custom_auction_id: extract("Ref ID") || extract("Custom Auction ID"),
+  };
+}
+
 export default function MessageBubble({ message, onSendMessage, isActionEnabled = true }: MessageBubbleProps) {
   const [showSQL, setShowSQL] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState(false);
@@ -180,6 +208,10 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
 
   const hasStructuredAuctionConfirmation =
     message.auction_payload?.type === "auction_confirmation";
+  const isCreateAuctionSuccess =
+    message.result_payload?.type === "result" &&
+    message.result_payload?.operation === "create_auction" &&
+    message.result_payload?.status === "success";
   const auctionSubtype = message.auction_payload?.subtype;
   const structuredFields: {
     grade?: string;
@@ -188,7 +220,7 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
     base_price?: string | number;
     start_time?: string;
     duration?: string | number;
-    description?: string;
+    description?: string | null;
     custom_auction_id?: string;
     [key: string]: unknown;
   } | undefined = message.auction_payload?.fields;
@@ -212,14 +244,26 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
 
   const explicitAuctionIdMatch = message.content?.match(/auction\s*id\s*:\s*[^A-Za-z0-9-]*([A-Za-z0-9-]+)/i);
   const uuidFallbackMatch = message.content?.match(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i);
-  const createdAuctionId = explicitAuctionIdMatch?.[1] ?? uuidFallbackMatch?.[0] ?? null;
+  const payloadAuctionId = message.result_payload?.auction_id;
+  const createdAuctionId =
+    (payloadAuctionId !== undefined && payloadAuctionId !== null
+      ? String(payloadAuctionId)
+      : null) ??
+    explicitAuctionIdMatch?.[1] ??
+    uuidFallbackMatch?.[0] ??
+    null;
+  const hasCreateSuccessText =
+    normalizedContent.includes("auction created") ||
+    normalizedContent.includes("auction was successfully created") ||
+    normalizedContent.includes("created successfully");
   const isAuctionCreatedMessage =
     isAuctionMessage &&
-    normalizedContent.includes("auction created") &&
+    (isCreateAuctionSuccess || hasCreateSuccessText) &&
     !!createdAuctionId;
   const createdDetails = isAuctionCreatedMessage
     ? extractCreatedAuctionDetails(message.content || "")
     : null;
+  const parsedAuctionDetails = extractAuctionDetailsFromPlainText(message.content || "");
   const showStructuredCreatedMessage =
     !!createdDetails &&
     !!createdDetails.grade &&
@@ -228,11 +272,17 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
     !!createdDetails.base_price &&
     !!createdDetails.start_time &&
     !!createdDetails.duration;
-  const structuredCardTitle = showStructuredCreatedMessage
+  const showParsedConfirmationMessage =
+    !showStructuredAuctionConfirmation &&
+    inferredConfirmation &&
+    !!parsedAuctionDetails.grade &&
+    !!parsedAuctionDetails.quantity &&
+    !!parsedAuctionDetails.origin;
+  const structuredCardTitle = isAuctionCreatedMessage || showStructuredCreatedMessage
     ? "The auction was successfully created."
     : "Please confirm the auction details below";
   const showConfirmationHeader =
-    showStructuredAuctionConfirmation && !showStructuredCreatedMessage;
+    (showStructuredAuctionConfirmation || showParsedConfirmationMessage) && !showStructuredCreatedMessage;
 
   const isChangeHelpPrompt =
     isAuctionMessage &&
@@ -451,42 +501,46 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
           </div>
 
           <div className="text-sm text-gray-800 leading-relaxed pr-6">
-            {showStructuredAuctionConfirmation || showStructuredCreatedMessage ? (
+            {showStructuredAuctionConfirmation || showStructuredCreatedMessage || showParsedConfirmationMessage ? (
               <div className="space-y-2">
                 {showConfirmationHeader ? (
                   <div className="rounded-lg border border-purple-200 bg-purple-100/60 px-3 py-2">
-                    <p className="font-semibold text-purple-900">{structuredCardTitle}</p>
-                    <p className="text-xs text-purple-800 mt-1">
+                    <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                    <p className="text-xs text-gray-800 mt-1">
                       Use Yes to confirm, No to cancel, or Change to edit details.
                     </p>
                   </div>
                 ) : (
-                  <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                  <div className="rounded-lg border border-purple-200 bg-purple-100/60 px-3 py-2">
+                    <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                  </div>
                 )}
                 <div className="rounded-xl border border-purple-200 bg-white/70 p-3">
                   <dl className="grid grid-cols-1 gap-2 text-sm">
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Tea Grade</dt>
-                      <dd>{structuredFields?.grade || createdDetails?.grade || "N/A"}</dd>
+                      <dd>{structuredFields?.grade || createdDetails?.grade || parsedAuctionDetails?.grade || "N/A"}</dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Quantity</dt>
                       <dd>
                         {structuredFields?.quantity !== undefined && structuredFields?.quantity !== null
                           ? `${structuredFields.quantity} kg`
-                          : createdDetails?.quantity || "N/A"}
+                          : createdDetails?.quantity || parsedAuctionDetails?.quantity || "N/A"}
                       </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Origin</dt>
-                      <dd>{structuredFields?.origin || createdDetails?.origin || "N/A"}</dd>
+                      <dd>{structuredFields?.origin || createdDetails?.origin || parsedAuctionDetails?.origin || "N/A"}</dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Starting Price</dt>
                       <dd>
                         {showStructuredCreatedMessage
                           ? createdDetails?.base_price || "N/A"
-                          : formatPriceLkr(structuredFields?.base_price)}
+                          : structuredFields?.base_price !== undefined && structuredFields?.base_price !== null
+                            ? formatPriceLkr(structuredFields?.base_price)
+                            : parsedAuctionDetails?.base_price || "N/A"}
                       </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
@@ -494,7 +548,7 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
                       <dd>
                         {showStructuredCreatedMessage
                           ? formatStartTimeDisplay(createdDetails?.start_time)
-                          : structuredDisplay?.start_time || structuredFields?.start_time || "N/A"}
+                          : structuredDisplay?.start_time || structuredFields?.start_time || parsedAuctionDetails?.start_time || "N/A"}
                       </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
@@ -505,17 +559,19 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
                           : structuredDisplay?.duration ||
                             (structuredFields?.duration !== undefined && structuredFields?.duration !== null
                               ? `${structuredFields.duration} hours`
-                              : "N/A")}
+                              : parsedAuctionDetails?.duration || "N/A")}
                       </dd>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-2">
                       <dt className="font-medium text-gray-600">Description</dt>
-                      <dd>{structuredFields?.description || createdDetails?.description || "None"}</dd>
+                      <dd>{structuredFields?.description || createdDetails?.description || parsedAuctionDetails?.description || "None"}</dd>
                     </div>
-                    <div className="grid grid-cols-[140px_1fr] gap-2">
-                      <dt className="font-medium text-gray-600">Ref ID:</dt>
-                      <dd>{structuredFields?.custom_auction_id || createdDetails?.custom_auction_id || "N/A"}</dd>
-                    </div>
+                    {(structuredFields?.custom_auction_id || createdDetails?.custom_auction_id || parsedAuctionDetails?.custom_auction_id) && (
+                      <div className="grid grid-cols-[140px_1fr] gap-2">
+                        <dt className="font-medium text-gray-600">Ref ID:</dt>
+                        <dd>{structuredFields?.custom_auction_id || createdDetails?.custom_auction_id || parsedAuctionDetails?.custom_auction_id}</dd>
+                      </div>
+                    )}
                   </dl>
                 </div>
               </div>
