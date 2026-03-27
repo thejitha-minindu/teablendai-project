@@ -230,7 +230,9 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
     !!createdDetails.duration;
   const structuredCardTitle = showStructuredCreatedMessage
     ? "The auction was successfully created."
-    : "Please confirm auction details:";
+    : "Please confirm the auction details below";
+  const showConfirmationHeader =
+    showStructuredAuctionConfirmation && !showStructuredCreatedMessage;
 
   const isChangeHelpPrompt =
     isAuctionMessage &&
@@ -451,7 +453,16 @@ export default function MessageBubble({ message, onSendMessage, isActionEnabled 
           <div className="text-sm text-gray-800 leading-relaxed pr-6">
             {showStructuredAuctionConfirmation || showStructuredCreatedMessage ? (
               <div className="space-y-2">
-                <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                {showConfirmationHeader ? (
+                  <div className="rounded-lg border border-purple-200 bg-purple-100/60 px-3 py-2">
+                    <p className="font-semibold text-purple-900">{structuredCardTitle}</p>
+                    <p className="text-xs text-purple-800 mt-1">
+                      Use Yes to confirm, No to cancel, or Change to edit details.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="font-semibold text-gray-900">{structuredCardTitle}</p>
+                )}
                 <div className="rounded-xl border border-purple-200 bg-white/70 p-3">
                   <dl className="grid grid-cols-1 gap-2 text-sm">
                     <div className="grid grid-cols-[140px_1fr] gap-2">
