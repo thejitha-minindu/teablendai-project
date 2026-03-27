@@ -206,6 +206,37 @@ export default function ChatbotConversationPage({
     }
   };
 
+  const handlePinChat = async (chatId: string, shouldPin: boolean) => {
+    if (!chatId) return;
+
+    const nowIso = new Date().toISOString();
+
+    // Optimistic UI update so the conversation moves immediately.
+    setConversations((prev) =>
+      prev.map((conversation) =>
+        String(conversation.conversation_id) === chatId
+          ? {
+              ...conversation,
+              is_pinned: shouldPin,
+              pinned_at: shouldPin ? nowIso : null,
+            }
+          : conversation
+      )
+    );
+
+    try {
+      if (shouldPin) {
+        await chatService.pinConversation(chatId);
+      } else {
+        await chatService.unpinConversation(chatId);
+      }
+      await loadConversations();
+    } catch (error) {
+      console.error("Failed to update pin status", error);
+      await loadConversations();
+    }
+  };
+
   const hasMessages = messages.length > 0;
   const latestAssistantIndex = messages.reduce((latest, msg, index) => {
     if (msg.role === "assistant") {
@@ -221,6 +252,7 @@ export default function ChatbotConversationPage({
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         onDeleteChat={handleDeleteChat}
+        onPinChat={handlePinChat}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">

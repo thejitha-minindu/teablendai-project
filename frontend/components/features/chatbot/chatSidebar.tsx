@@ -14,6 +14,11 @@ import {
     X,
     PanelLeft,
     ArrowLeft,
+    MoreVertical,
+    Pin,
+    PinOff,
+    Clock,
+    Trash2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -29,7 +34,6 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ConversationSummary } from "@/services/chatService";
-import { DeleteIcon } from "@/components/ui/delete";
 import { apiClient } from "@/lib/apiClient";
 import {
     clearStoredAuthToken,
@@ -69,7 +73,9 @@ interface ChatHistoryItem {
     id: string;
     title: string;
     timestamp: Date;
+    pinnedAt?: Date | null;
     preview: string;
+    isPinned?: boolean;
 }
 
 interface ChatSidebarProps {
@@ -77,6 +83,7 @@ interface ChatSidebarProps {
     onNewChat?: () => void;
     onSelectChat?: (chatId: string) => void;
     onDeleteChat?: (chatId: string) => void;
+    onPinChat?: (chatId: string, isPinned: boolean) => void;
     className?: string;
 }
 
@@ -85,18 +92,19 @@ export function ChatSidebar({
     onNewChat,
     onSelectChat,
     onDeleteChat,
+    onPinChat,
     className,
 }: ChatSidebarProps) {
     const router = useRouter();
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isMobileOpen, setIsMobileOpen] = useState(false);
     const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
-    const [hoveredChatId, setHoveredChatId] = useState<string | null>(null);
     const [activeUserRole, setActiveUserRole] = useState<UserRole>("seller");
     const [isSwitchingRole, setIsSwitchingRole] = useState(false);
     const [userEmail, setUserEmail] = useState("Loading...");
     const [userName, setUserName] = useState("User");
     const [isMounted, setIsMounted] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
     const role: UserRole = activeUserRole;
 
     // Map real conversation data to chat history format
@@ -105,9 +113,37 @@ export function ChatSidebar({
             id: String(c.conversation_id || ((c as unknown as Record<string, unknown>).id as string) || ""),
             title: c.title || "New Conversation",
             timestamp: new Date(c.updated_at || c.created_at || Date.now()),
+            pinnedAt: (c as unknown as Record<string, unknown>).pinned_at
+                ? new Date(String((c as unknown as Record<string, unknown>).pinned_at))
+                : null,
             preview: ((c as unknown as Record<string, unknown>).preview as string),
+            isPinned: ((c as unknown as Record<string, unknown>).is_pinned as boolean) || false,
         }))
-        .filter((item) => item.id !== "");
+        .filter((item) => item.id !== "")
+        .sort((a, b) => {
+            if (a.isPinned && !b.isPinned) return -1;
+            if (!a.isPinned && b.isPinned) return 1;
+
+            if (a.isPinned && b.isPinned) {
+                const aPinned = a.pinnedAt?.getTime() ?? a.timestamp.getTime();
+                const bPinned = b.pinnedAt?.getTime() ?? b.timestamp.getTime();
+                return bPinned - aPinned;
+            }
+
+            return b.timestamp.getTime() - a.timestamp.getTime();
+        });
+
+    // Filter chats based on search query
+    const filteredChats = useMemo(() => {
+        if (!searchQuery.trim()) return chatHistory;
+        return chatHistory.filter(chat =>
+            chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            chat.preview.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }, [chatHistory, searchQuery]);
+
+    const pinnedChats = filteredChats.filter(chat => chat.isPinned);
+    const unpinnedChats = filteredChats.filter(chat => !chat.isPinned);
 
     useEffect(() => {
         setIsMounted(true);
@@ -127,8 +163,8 @@ export function ChatSidebar({
     useEffect(() => {
         function handleClickOutsideMobile(event: MouseEvent) {
             const target = event.target as HTMLElement;
-            if (window.innerWidth < 768 && 
-                !target.closest('.chat-sidebar') && 
+            if (window.innerWidth < 768 &&
+                !target.closest('.chat-sidebar') &&
                 !target.closest('.mobile-menu-toggle')) {
                 setIsMobileOpen(false);
             }
@@ -154,6 +190,11 @@ export function ChatSidebar({
         e.stopPropagation();
         if (selectedChatId === chatId) setSelectedChatId(null);
         onDeleteChat?.(chatId);
+    };
+
+    const handlePinChat = (chatId: string, isPinned: boolean, e: React.MouseEvent) => {
+        e.stopPropagation();
+        onPinChat?.(chatId, isPinned);
     };
 
     const handleBack = () => {
@@ -215,21 +256,24 @@ export function ChatSidebar({
             {isMounted && (
                 <button
                     onClick={() => setIsMobileOpen(!isMobileOpen)}
-                    className="mobile-menu-toggle fixed top-4 left-4 z-50 md:hidden p-2 bg-white rounded-lg shadow-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+                    className="mobile-menu-toggle fixed top-4 left-4 z-50 md:hidden p-2 bg-white rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200"
                     aria-label={isMobileOpen ? "Close menu" : "Open menu"}
                 >
                     {isMobileOpen ? (
-                        <X className="w-6 h-6 text-gray-700" />
+                        <X className="w-5 h-5 text-gray-700" />
                     ) : (
-                        <Menu className="w-6 h-6 text-gray-700" />
+                        <Menu className="w-5 h-5 text-gray-700" />
                     )}
                 </button>
             )}
 
             {/* Overlay for mobile */}
             {isMounted && isMobileOpen && (
-                <div 
-                    className="fixed inset-0 bg-black/20 z-30 md:hidden"
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="fixed inset-0 bg-black/20 backdrop-blur-sm z-30 md:hidden"
                     onClick={() => setIsMobileOpen(false)}
                 />
             )}
@@ -245,24 +289,24 @@ export function ChatSidebar({
                     className
                 )}
                 initial={{ x: -320 }}
-                animate={{ 
-                    x: shouldShowOnMobile || (isMounted && isDesktop) ? 0 : -320 
+                animate={{
+                    x: shouldShowOnMobile || (isMounted && isDesktop) ? 0 : -320
                 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
             >
                 {/* HEADER */}
-                <div className="p-4 border-b border-gray-200">
+                <div className="p-4 border-b border-gray-200 bg-gradient-to-b from-white to-[#F9FAFB]">
                     <AnimatePresence mode="wait">
                         {!isCollapsed ? (
                             <motion.div
                                 key="expanded"
-                                initial={{ opacity: 0 }}
-                                animate={{ opacity: 1 }}
-                                exit={{ opacity: 0 }}
+                                initial={{ opacity: 0, y: -10 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -10 }}
                                 className="space-y-4"
                             >
-                                <div className="flex items-center justify-between relative">
-                                    <div className="relative w-35 h-20">
+                                <div className="flex items-center justify-between">
+                                    <div className="relative w-32 h-16">
                                         <Image
                                             src="/TeaLogo.png"
                                             alt="TeaBlend AI Logo"
@@ -276,10 +320,10 @@ export function ChatSidebar({
                                         <TooltipTrigger asChild>
                                             <button
                                                 onClick={() => setIsCollapsed(true)}
-                                                className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                                className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
                                                 aria-label="Collapse sidebar"
                                             >
-                                                <PanelLeft className="w-5 h-5 text-gray-600 hover:text-gray-900" />
+                                                <PanelLeft className="w-4 h-4 text-gray-600" />
                                             </button>
                                         </TooltipTrigger>
                                         <TooltipContent side="right" sideOffset={8}>
@@ -290,7 +334,9 @@ export function ChatSidebar({
 
                                 <motion.button
                                     onClick={handleNewChat}
-                                    className="w-full flex items-center gap-3 px-4 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-900 border border-gray-200 shadow-sm transition-colors"
+                                    whileHover={{ scale: 1.02 }}
+                                    whileTap={{ scale: 0.98 }}
+                                    className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-[#E5F7CB] to-[#D4E8B8] hover:from-[#D4E8B8] hover:to-[#C4D8A8] rounded-xl text-gray-900 border border-gray-200 shadow-sm transition-all duration-200"
                                 >
                                     <MessageSquarePlus className="w-5 h-5" />
                                     <span className="font-medium">New Chat</span>
@@ -308,10 +354,10 @@ export function ChatSidebar({
                                     <TooltipTrigger asChild>
                                         <button
                                             onClick={handleBack}
-                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
                                             aria-label="Go back"
                                         >
-                                            <ArrowLeft className="w-5 h-5 text-gray-700 hover:text-gray-900" />
+                                            <ArrowLeft className="w-5 h-5 text-gray-700" />
                                         </button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" sideOffset={8}>
@@ -323,10 +369,10 @@ export function ChatSidebar({
                                     <TooltipTrigger asChild>
                                         <button
                                             onClick={() => setIsCollapsed(false)}
-                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
                                             aria-label="Expand sidebar"
                                         >
-                                            <PanelLeft className="w-5 h-5 text-gray-700 hover:text-gray-900 transform rotate-180" />
+                                            <PanelLeft className="w-5 h-5 text-gray-700 transform rotate-180" />
                                         </button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" sideOffset={8}>
@@ -338,10 +384,10 @@ export function ChatSidebar({
                                     <TooltipTrigger asChild>
                                         <button
                                             onClick={handleNewChat}
-                                            className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                                            className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
                                             aria-label="New chat"
                                         >
-                                            <MessageSquarePlus className="w-5 h-5 text-gray-700 hover:text-gray-900" />
+                                            <MessageSquarePlus className="w-5 h-5 text-gray-700" />
                                         </button>
                                     </TooltipTrigger>
                                     <TooltipContent side="right" sideOffset={8}>
@@ -364,30 +410,71 @@ export function ChatSidebar({
                                 exit={{ opacity: 0 }}
                                 className="p-4 h-full"
                             >
-                                <div className="flex items-center justify-between mb-4 cursor-default">
-                                    <h2 className="text-lg font-semibold text-gray-900">
-                                        Chat History
-                                    </h2>
-                                    <span className="text-xs text-gray-500 bg-gray-200 px-2 py-1 rounded-full">
-                                        {chatHistory.length} chats
+                                <div className="flex items-center justify-between mb-4">
+                                    <div className="flex items-center gap-2">
+                                        <History className="w-4 h-4 text-gray-500" />
+                                        <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
+                                            Chat History
+                                        </h2>
+                                    </div>
+                                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                        {filteredChats.length} chats
                                     </span>
                                 </div>
 
-                                {chatHistory.length > 0 ? (
-                                    <div className="space-y-1">
-                                        {chatHistory.map((chat) => (
-                                            <ChatHistoryCard
-                                                key={`chat-${chat.id}`} 
-                                                chat={chat}
-                                                isSelected={selectedChatId === chat.id}
-                                                isHovered={hoveredChatId === chat.id}
-                                                onSelect={() => handleSelectChat(chat.id)}
-                                                onDelete={(e) => handleDeleteChat(chat.id, e)}
-                                                onHover={() => setHoveredChatId(chat.id)}
-                                                onLeave={() => setHoveredChatId(null)}
-                                                getTimeAgo={getTimeAgo}
-                                            />
-                                        ))}
+                                {filteredChats.length > 0 ? (
+                                    <div className="space-y-4">
+                                        {/* Pinned Chats Section */}
+                                        {pinnedChats.length > 0 && (
+                                            <div>
+                                                <div className="flex items-center gap-2 mb-2 px-2">
+                                                    <Pin className="w-3 h-3 text-gray-400" />
+                                                    <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                                        Pinned
+                                                    </h3>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {pinnedChats.map((chat) => (
+                                                        <ChatHistoryCard
+                                                            key={`chat-${chat.id}`}
+                                                            chat={chat}
+                                                            isSelected={selectedChatId === chat.id}
+                                                            onSelect={() => handleSelectChat(chat.id)}
+                                                            onDelete={(e) => handleDeleteChat(chat.id, e)}
+                                                            onPin={(e) => handlePinChat(chat.id, false, e)}
+                                                            getTimeAgo={getTimeAgo}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Unpinned Chats Section */}
+                                        {unpinnedChats.length > 0 && (
+                                            <div>
+                                                {pinnedChats.length > 0 && (
+                                                    <div className="flex items-center gap-2 mb-2 px-2">
+                                                        <Clock className="w-3 h-3 text-gray-400" />
+                                                        <h3 className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                                                            Recent
+                                                        </h3>
+                                                    </div>
+                                                )}
+                                                <div className="space-y-1">
+                                                    {unpinnedChats.map((chat) => (
+                                                        <ChatHistoryCard
+                                                            key={`chat-${chat.id}`}
+                                                            chat={chat}
+                                                            isSelected={selectedChatId === chat.id}
+                                                            onSelect={() => handleSelectChat(chat.id)}
+                                                            onDelete={(e) => handleDeleteChat(chat.id, e)}
+                                                            onPin={(e) => handlePinChat(chat.id, true, e)}
+                                                            getTimeAgo={getTimeAgo}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ) : (
                                     <motion.div
@@ -395,9 +482,11 @@ export function ChatSidebar({
                                         animate={{ opacity: 1, y: 0 }}
                                         className="text-center py-12"
                                     >
-                                        <History className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500 text-sm mb-2">No chat history yet</p>
-                                        <p className="text-gray-400 text-xs">Start a new chat to begin</p>
+                                        <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                            <History className="w-8 h-8 text-gray-400" />
+                                        </div>
+                                        <p className="text-gray-500 text-sm font-medium mb-1">No chat history yet</p>
+                                        <p className="text-gray-400 text-xs">Start a new conversation to begin</p>
                                     </motion.div>
                                 )}
                             </motion.div>
@@ -409,9 +498,9 @@ export function ChatSidebar({
                 <div className="p-4 border-t border-gray-200 bg-white">
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                            <button className="w-full hover:bg-gray-50 rounded-lg p-2">
+                            <button className="w-full hover:bg-gray-50 rounded-xl p-2 transition-all duration-200">
                                 <div className="flex items-center gap-3 w-full">
-                                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                                    <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[#E5F7CB] to-[#D4E8B8] text-[#3A5A40]">
                                         <User2 className="w-5 h-5" />
                                     </div>
                                     {!isCollapsed && (
@@ -424,7 +513,7 @@ export function ChatSidebar({
                                                     {getRoleDisplayName(role)} Account
                                                 </span>
                                             </div>
-                                            <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
+                                            <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform group-hover:rotate-180" />
                                         </>
                                     )}
                                 </div>
@@ -434,15 +523,15 @@ export function ChatSidebar({
                         <DropdownMenuContent
                             side="top"
                             align={isCollapsed ? "start" : "end"}
-                            className="min-w-72 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+                            className="min-w-72 rounded-xl bg-white shadow-xl border border-gray-100 mb-2"
                         >
                             <DropdownMenuLabel className="p-0 font-normal">
-                                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
-                                    <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                                <div className="flex items-center gap-3 px-3 py-3 text-left">
+                                    <div className="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-br from-[#E5F7CB] to-[#D4E8B8] text-[#3A5A40]">
                                         <User2 className="w-6 h-6" />
                                     </div>
                                     <div className="grid flex-1 text-left text-sm leading-tight">
-                                        <span className="truncate font-semibold">{userName}</span>
+                                        <span className="truncate font-semibold text-gray-900">{userName}</span>
                                         <span className="truncate text-xs text-gray-500">{userEmail}</span>
                                     </div>
                                 </div>
@@ -450,7 +539,7 @@ export function ChatSidebar({
 
                             <DropdownMenuSeparator />
 
-                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
                                 <Link href="/profile" className="flex items-center w-full">
                                     <User className="mr-2 h-4 w-4 text-gray-500" />
                                     <span>My Profile</span>
@@ -458,7 +547,7 @@ export function ChatSidebar({
                             </DropdownMenuItem>
 
                             <DropdownMenuItem
-                                className="cursor-pointer hover:bg-gray-50"
+                                className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
                                 disabled={isSwitchingRole}
                                 onClick={handleSwitchRole}
                             >
@@ -470,17 +559,14 @@ export function ChatSidebar({
                                 </span>
                             </DropdownMenuItem>
 
-                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
                                 <Link href="/analytics-dashboard" className="flex items-center w-full">
                                     <History className="mr-2 h-4 w-4 text-gray-500" />
                                     <span>Analytics Dashboard</span>
                                 </Link>
                             </DropdownMenuItem>
-
-                            <DropdownMenuSeparator />
-
                             <DropdownMenuItem
-                                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+                                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700 rounded-lg m-1"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="mr-2 h-4 w-4" />
@@ -498,26 +584,27 @@ export function ChatSidebar({
 interface ChatHistoryCardProps {
     chat: ChatHistoryItem;
     isSelected: boolean;
-    isHovered: boolean;
     onSelect: () => void;
     onDelete: (e: React.MouseEvent) => void;
-    onHover: () => void;
-    onLeave: () => void;
+    onPin: (e: React.MouseEvent) => void;
     getTimeAgo: (date: Date) => string;
 }
 
 function ChatHistoryCard({
     chat,
     isSelected,
-    isHovered,
     onSelect,
     onDelete,
-    onHover,
-    onLeave,
+    onPin,
     getTimeAgo,
 }: ChatHistoryCardProps) {
-    const [showActions, setShowActions] = useState(false);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showConfirm, setShowConfirm] = useState(false);
+
+    const handleMenuClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        setIsMenuOpen(!isMenuOpen);
+    };
 
     return (
         <>
@@ -527,29 +614,26 @@ function ChatHistoryCard({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2 }}
-                onMouseEnter={() => {
-                    onHover();
-                    setShowActions(true);
-                }}
-                onMouseLeave={() => {
-                    onLeave();
-                    setShowActions(false);
-                }}
                 onClick={onSelect}
                 className={cn(
-                    "group relative p-1 rounded-xl cursor-pointer transition-all",
-                    "border border-transparent",
+                    "group relative rounded-xl cursor-pointer transition-all duration-200",
+                    "border",
                     isSelected
-                        ? "bg-gray-100 border-gray-200 shadow-sm"
-                        : "hover:bg-gray-50 hover:border-gray-200"
+                        ? "bg-gray-100 border-gray-300 shadow-sm"
+                        : "bg-white border-transparent hover:bg-gray-50 hover:border-gray-200"
                 )}
             >
-                <div className="flex items-start justify-between p-2">
+                <div className="flex items-start justify-between p-3">
                     <div className="flex-1 min-w-0">
-                        <h4 className="text-sm font-medium text-gray-900 truncate mb-1">
-                            {chat.title}
-                        </h4>
-                        <p className="text-xs text-gray-500 truncate mb-1">
+                        <div className="flex items-center gap-2 mb-1.5">
+                            {chat.isPinned && (
+                                <Pin className="w-3 h-3 text-gray-400" />
+                            )}
+                            <h4 className="text-sm font-medium text-gray-900 truncate">
+                                {chat.title}
+                            </h4>
+                        </div>
+                        <p className="text-xs text-gray-500 line-clamp-2 mb-1.5">
                             {chat.preview}
                         </p>
                         <span className="text-xs text-gray-400">
@@ -557,34 +641,55 @@ function ChatHistoryCard({
                         </span>
                     </div>
 
-                    <AnimatePresence>
-                        {(showActions || isSelected || isHovered) && (
-                            <motion.div
-                                initial={{ opacity: 0, scale: 0.8 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.8 }}
-                                className="flex items-center gap-1"
+                    {/* Action Menu */}
+                    <DropdownMenu open={isMenuOpen} onOpenChange={setIsMenuOpen}>
+                        <DropdownMenuTrigger asChild>
+                            <button
+                                onClick={handleMenuClick}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-lg hover:bg-gray-200"
+                                aria-label="Chat options"
                             >
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setShowConfirm(true);
-                                            }}
-                                            className="p-1.5 rounded-lg hover:bg-gray-200 transition-colors"
-                                            aria-label="Delete chat"
-                                        >
-                                            <DeleteIcon className="w- h-5 text-gray-500 hover:text-red-500 cursor-pointer" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent side="right" sideOffset={8}>
-                                        Delete
-                                    </TooltipContent>
-                                </Tooltip>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                                <MoreVertical className="w-4 h-4 text-gray-500" />
+                            </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                            align="end"
+                            sideOffset={8}
+                            className="min-w-36 bg-white shadow-lg border border-gray-100 rounded-xl"
+                        >
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onPin(e);
+                                    setIsMenuOpen(false);
+                                }}
+                                className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
+                            >
+                                {chat.isPinned ? (
+                                    <>
+                                        <PinOff className="mr-2 h-4 w-4 text-gray-500" />
+                                        <span>Unpin</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Pin className="mr-2 h-4 w-4 text-gray-500" />
+                                        <span>Pin</span>
+                                    </>
+                                )}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowConfirm(true);
+                                    setIsMenuOpen(false);
+                                }}
+                                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700 rounded-lg m-1"
+                            >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                <span>Delete</span>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </motion.div>
 
@@ -595,28 +700,31 @@ function ChatHistoryCard({
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black/30 flex items-center justify-center z-50"
+                        className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
                         onClick={() => setShowConfirm(false)}
                     >
                         <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
+                            initial={{ scale: 0.95, opacity: 0 }}
                             animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
+                            exit={{ scale: 0.95, opacity: 0 }}
                             transition={{ duration: 0.2 }}
                             onClick={(e) => e.stopPropagation()}
-                            className="bg-white rounded-xl shadow-xl w-80 p-6 cursor-default"
+                            className="bg-white rounded-2xl shadow-2xl w-80 p-6 cursor-default"
                         >
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Trash2 className="w-6 h-6 text-red-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900 text-center mb-2">
                                 Delete chat?
                             </h3>
-                            <p className="text-sm text-gray-500 mb-6">
-                                This action cannot be undone.
+                            <p className="text-sm text-gray-500 text-center mb-6">
+                                This action cannot be undone. The conversation will be permanently removed.
                             </p>
 
                             <div className="flex justify-end gap-3">
                                 <button
                                     onClick={() => setShowConfirm(false)}
-                                    className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-100 transition"
+                                    className="flex-1 px-4 py-2 text-sm font-medium rounded-xl border border-gray-300 hover:bg-gray-50 transition-all duration-200"
                                 >
                                     Cancel
                                 </button>
@@ -625,7 +733,7 @@ function ChatHistoryCard({
                                         onDelete(e);
                                         setShowConfirm(false);
                                     }}
-                                    className="px-4 py-2 text-sm rounded-lg bg-red-500 text-white hover:bg-red-600 transition"
+                                    className="flex-1 px-4 py-2 text-sm font-medium rounded-xl bg-red-500 text-white hover:bg-red-600 transition-all duration-200"
                                 >
                                     Delete
                                 </button>

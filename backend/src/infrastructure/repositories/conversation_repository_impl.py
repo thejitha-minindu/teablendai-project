@@ -9,7 +9,7 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, asc, func, and_
+from sqlalchemy import desc, asc, func, and_, case
 
 from src.domain.models.conversation import Conversation
 from src.domain.repositories.conversation_repository import ConversationRepositoryInterface
@@ -63,8 +63,19 @@ class ConversationRepository(ConversationRepositoryInterface):
             
             if active_only:
                 query = query.filter(Conversation.is_active == True)
-            
-            query = query.order_by(desc(Conversation.updated_at))
+
+            # Keep pinned conversations at the top. Pinned items are ordered by pin time,
+            # and unpinned items are ordered by last update time.
+            sort_ts = case(
+                (Conversation.is_pinned == True, Conversation.pinned_at),
+                else_=Conversation.updated_at,
+            )
+
+            query = query.order_by(
+                desc(Conversation.is_pinned),
+                desc(sort_ts),
+                desc(Conversation.updated_at),
+            )
             conversations = query.limit(limit).offset(offset).all()
             logger.debug(
                 f"Retrieved {len(conversations)} conversations "
@@ -321,6 +332,44 @@ class ConversationRepository(ConversationRepositoryInterface):
                 f"Error getting conversation {conversation_id} with messages: {e}"
             )
             return None
+
+    def pin(self, conversation_id: int) -> bool:
+        """Pin a conversation and record pin timestamp."""
+        try:
+            conversation = self.get_by_id(conversation_id)
+            if not conversation:
+                logger.warning(f"Cannot pin - conversation {conversation_id} not found")
+                return False
+
+            conversation.pin()
+            conversation.updated_at = datetime.utcnow()
+            self.db.commit()
+
+            logger.info(f"Pinned conversation {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error pinning conversation {conversation_id}: {e}")
+            self.db.rollback()
+            return False
+
+    def unpin(self, conversation_id: int) -> bool:
+        """Unpin a conversation and clear pin timestamp."""
+        try:
+            conversation = self.get_by_id(conversation_id)
+            if not conversation:
+                logger.warning(f"Cannot unpin - conversation {conversation_id} not found")
+                return False
+
+            conversation.unpin()
+            conversation.updated_at = datetime.utcnow()
+            self.db.commit()
+
+            logger.info(f"Unpinned conversation {conversation_id}")
+            return True
+        except Exception as e:
+            logger.error(f"Error unpinning conversation {conversation_id}: {e}")
+            self.db.rollback()
+            return False
         
 # HELPER FUNCTIONS
 def get_conversation_repository(db: Session) -> ConversationRepository:

@@ -2,7 +2,7 @@
 Conversations route for TeaBlendAI API.
 Authenticated endpoints scoped to the current user's conversations.
 """
-from fastapi import APIRouter, HTTPException, Query, Depends
+from fastapi import APIRouter, HTTPException, Query, Depends, status
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from uuid import UUID
@@ -51,6 +51,8 @@ def _serialize_conversation(conversation: ConversationModel) -> Dict[str, Any]:
         "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
         "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
         "message_count": int(conversation.message_count or 0),
+        "is_pinned": bool(getattr(conversation, "is_pinned", False)),
+        "pinned_at": conversation.pinned_at.isoformat() if getattr(conversation, "pinned_at", None) else None,
     }
 
 
@@ -112,6 +114,105 @@ async def get_conversation(
     except Exception as e:
         logger.error(f"Error fetching conversation: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/conversations/{conversation_id}/pin")
+async def pin_conversation(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Pin a conversation for the authenticated user."""
+    try:
+        repo = ConversationRepository(db)
+
+        # Verify conversation exists and belongs to user
+        conversation = repo.get_by_id(conversation_id)
+
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        if conversation.user_id != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+        
+        # Pin the conversation
+        success = repo.pin(conversation_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to pin conversation"
+            )
+        
+        return {
+            "success": True,
+            "message": "Conversation pinned successfully",
+            "conversation_id": conversation_id
+        }
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to pin conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to pin conversation"
+        )
+
+@router.post("/conversations/{conversation_id}/unpin")
+async def unpin_conversation(
+    conversation_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Unpin a conversation"""
+    try:
+        repo = ConversationRepository(db)
+        
+        # Verify conversation exists and belongs to user
+        conversation = repo.get_by_id(conversation_id)
+        
+        if not conversation:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Conversation not found"
+            )
+        
+        if conversation.user_id != current_user.user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Access denied"
+            )
+        
+        # Unpin the conversation
+        success = repo.unpin(conversation_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to unpin conversation"
+            )
+        
+        return {
+            "success": True,
+            "message": "Conversation unpinned successfully",
+            "conversation_id": conversation_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to unpin conversation: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unpin conversation"
+        )
 
 
 @router.post("/conversations")
