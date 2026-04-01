@@ -7,6 +7,7 @@ from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_user, get_optional_current_user
 from src.domain.models.user import User
+from src.domain.models.auction_status import AuctionStatus
 from uuid import UUID
 
 logger = logging.getLogger(__name__)
@@ -85,7 +86,7 @@ def create_auction(
             detail=f"Failed to create auction: {str(e)}"
         )
 
-@router.get("/auctions", response_model=List[Auction])
+@router.get("/auctions", response_model=List[AuctionResponse])
 def read_auctions(service: AuctionService = Depends(get_auction_service)):
     return service.list_auctions()
 
@@ -112,24 +113,40 @@ def get_history_auctions(seller_id: Optional[UUID] = None, service: AuctionServi
 def delete_auction(
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    x_user_id: Optional[str] = Header(None),
 ):
     """
     Delete an auction.
     
     Requires seller authentication. Ownership validation is handled by service.
     """
-    if not current_user:
+    resolved_user_id = None
+    if current_user:
+        resolved_user_id = str(current_user.user_id)
+    elif x_user_id:
+        resolved_user_id = x_user_id
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to delete auctions"
+            detail="Authentication required to delete auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user.default_role.lower() not in ["seller", "admin"]:
+    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only sellers can delete auctions"
         )
+
+    auction = service.get_auction(auction_id)
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    if str(auction.seller_id) != str(resolved_user_id):
+        raise HTTPException(status_code=403, detail="Access denied: this auction does not belong to you")
+
+    if str(auction.status).lower() != str(AuctionStatus.SCHEDULE.value).lower():
+        raise HTTPException(status_code=403, detail="Only scheduled auctions can be deleted")
     
     success = service.delete_auction(auction_id)
     if not success:
@@ -141,24 +158,40 @@ def update_auction(
     auction_id: str, 
     auction_update: AuctionCreate,
     service: AuctionService = Depends(get_auction_service),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    x_user_id: Optional[str] = Header(None),
 ):
     """
     Update an existing auction.
     
     Requires seller authentication. Ownership validation is handled by service.
     """
-    if not current_user:
+    resolved_user_id = None
+    if current_user:
+        resolved_user_id = str(current_user.user_id)
+    elif x_user_id:
+        resolved_user_id = x_user_id
+    else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Authentication required to update auctions"
+            detail="Authentication required to update auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user.default_role.lower() not in ["seller", "admin"]:
+    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Only sellers can update auctions"
         )
+
+    existing = service.get_auction(auction_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    if str(existing.seller_id) != str(resolved_user_id):
+        raise HTTPException(status_code=403, detail="Access denied: this auction does not belong to you")
+
+    if str(existing.status).lower() != str(AuctionStatus.SCHEDULE.value).lower():
+        raise HTTPException(status_code=403, detail="Only scheduled auctions can be updated")
     
     updated_auction = service.update_auction(auction_id, auction_update)
     if not updated_auction:

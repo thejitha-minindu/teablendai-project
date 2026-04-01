@@ -20,6 +20,14 @@ class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
         self.db = db
 
+    @staticmethod
+    def _is_uuid(value: str) -> bool:
+        try:
+            uuid.UUID(str(value))
+            return True
+        except (ValueError, TypeError):
+            return False
+
     def _resolve_seller_id(self, requested_seller_id: str | None) -> str:
         """
         Resolve a seller_id that satisfies the FK to users.user_id.
@@ -199,7 +207,18 @@ class AuctionRepository(AuctionRepositoryInterface):
         return db_auction
     
     def get_auction(self, auction_id: str):
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+        identifier = str(auction_id).strip()
+        if self._is_uuid(identifier):
+            return (
+                self.db.query(AuctionModel)
+                .filter(AuctionModel.auction_id == identifier)
+                .first()
+            )
+        return (
+            self.db.query(AuctionModel)
+            .filter(AuctionModel.custom_auction_id == identifier)
+            .first()
+        )
 
     def list_auctions(self):
         return self.db.query(AuctionModel).all()
