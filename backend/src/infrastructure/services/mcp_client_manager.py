@@ -11,7 +11,7 @@ import json
 import logging
 import os
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -452,6 +452,63 @@ class MCPClientManager:
             }
         except Exception as e:
             logger.error(f"[AUCTION] Error deleting: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    async def update_auction(
+        self,
+        auction_id: str,
+        user_id: str,
+        grade: Optional[str] = None,
+        quantity: Optional[int] = None,
+        origin: Optional[str] = None,
+        base_price: Optional[float] = None,
+        start_time: Optional[str] = None,
+        duration: Optional[int] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update auction via MCP auction server."""
+        try:
+            session = self.sessions.get("tea_auction")
+            if not session:
+                raise RuntimeError("Auction server not connected")
+
+            arguments: Dict[str, Any] = {
+                "auction_id": auction_id,
+                "user_id": user_id,
+            }
+
+            if grade is not None:
+                arguments["grade"] = grade
+            if quantity is not None:
+                arguments["quantity"] = quantity
+            if origin is not None:
+                arguments["origin"] = origin
+            if base_price is not None:
+                arguments["base_price"] = base_price
+            if start_time is not None:
+                arguments["start_time"] = start_time
+            if duration is not None:
+                arguments["duration"] = duration
+            if description is not None:
+                arguments["description"] = description
+
+            result = await asyncio.wait_for(
+                session.call_tool("update_auction", arguments=arguments),
+                timeout=30.0
+            )
+
+            if result.content:
+                return json.loads(result.content[0].text)
+
+            return {
+                "status": "error",
+                "message": "No response"
+            }
+        except Exception as e:
+            logger.error(f"[AUCTION] Error updating: {e}")
             return {
                 "status": "error",
                 "message": str(e)

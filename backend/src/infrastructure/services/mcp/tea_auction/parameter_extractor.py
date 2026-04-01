@@ -521,6 +521,17 @@ class ParameterExtractor:
         if uuid_match:
             return uuid_match.group(0).upper()
         
+        # Try explicit custom/ref ID phrases first.
+        custom_patterns = [
+            r'(?:ref\s*id|reference\s*id|custom\s*auction\s*id)\s*[:#]?\s*([A-Za-z][A-Za-z0-9\-_]{5,})',
+            r'auction\s*id\s*[:#]?\s*([A-Za-z][A-Za-z0-9\-_]{5,})',
+        ]
+
+        for pattern in custom_patterns:
+            match = re.search(pattern, user_message, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
         # Try number after "auction #" or "auction"
         number_patterns = [
             r'auction\s*#\s*(\d+)',
@@ -533,6 +544,15 @@ class ParameterExtractor:
             match = re.search(pattern, msg)
             if match:
                 return match.group(1)
+
+        # Fallback: detect long alphanumeric token (likely custom auction ref id).
+        token_match = re.search(r'\b([A-Za-z][A-Za-z0-9\-_]{8,})\b', user_message)
+        if token_match:
+            token = token_match.group(1)
+            if token.lower() not in {
+                "auction", "update", "delete", "remove", "cancel", "scheduled", "schedule", "live", "history"
+            }:
+                return token
         
         return None
 

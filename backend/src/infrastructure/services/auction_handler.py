@@ -123,13 +123,13 @@ class AuctionHandler:
         normalized_role = (user_role or "").strip().lower()
 
         # Seller-only role validation for chatbot auction operations.
-        # For create requests, reject immediately with explicit message and do not continue any flow.
+        # Reject all auction management actions for non-seller users.
         if normalized_role != "seller":
-            if action == "create" and state is not None:
+            if state is not None:
                 state_manager.delete_state(conversation.conversation_id)
             return self._rejection_response(
                 conversation,
-                "Only sellers can create auctions.If you want to create an auction, please log in with a seller account."
+                "Only sellers can create, update, or delete auctions. Please log in with a seller account."
             )
         
         if state is None:
@@ -303,6 +303,48 @@ class AuctionHandler:
         user_id: Optional[str]
     ) -> Dict[str, Any]:
         """Continue an ongoing operation"""
+
+        if state.action == "update" and not state.confirmation_pending:
+            extracted = await parameter_extractor.extract_parameters(
+                user_message,
+                UPDATE_AUCTION_FIELDS["optional"],
+                context=state.partial_data,
+                reference_time=self._get_flow_reference_time(state),
+            )
+
+            extracted.pop("_validation_errors", None)
+            extracted.pop("_weekday_confirmation_required", None)
+            extracted.pop("_weekday_confirmation_expression", None)
+            extracted.pop("_weekday_confirmation_time_12h", None)
+
+            updates = {
+                key: value
+                for key, value in extracted.items()
+                if key in set(UPDATE_AUCTION_FIELDS["optional"])
+            }
+
+            if not updates:
+                answer = (
+                    "Please tell me what to update (price, quantity, origin, start time, duration, description, or grade)."
+                )
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=answer,
+                    source="auction_management"
+                )
+                self.message_repo.create(assistant_msg)
+
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": answer,
+                    "source": "auction_management",
+                    "state": "collecting_update_parameters",
+                    "message_type": "text",
+                }
+
+            state_manager.update_state(conversation.conversation_id, updates)
+            return await self._generate_update_confirmation(conversation, state)
 
         if state.partial_data.get('_awaiting_description_confirmation'):
             return await self._handle_confirmation(user_message, conversation, state, user_id)
@@ -652,6 +694,8 @@ class AuctionHandler:
                 logger.info(f"[AuctionHandler] User made changes: {list(extracted.keys())}")
                 
                 # Show updated confirmation
+                if state.action == "update":
+                    return await self._generate_update_confirmation(conversation, state)
                 return await self._generate_confirmation(conversation, state)
             else:
                 # Couldn't extract, ask what they want to change
@@ -1069,6 +1113,8 @@ Please confirm if this is correct.
 
         if state.action == "create":
             return await self._execute_create_auction(conversation, state, user_id)
+        if state.action == "update":
+            return await self._execute_update_auction(conversation, state, user_id)
         if state.action == "delete":
             return await self._execute_delete_auction(conversation, state, user_id)
 
@@ -1191,6 +1237,7 @@ Please try again or contact support if the problem persists.
         """Execute auction deletion via MCP"""
 
         auction_id = state.partial_data.get("auction_id")
+        auction_ref_id = state.partial_data.get("auction_ref_id") or auction_id
 
         logger.info(f"[AuctionHandler] Deleting auction {auction_id} via MCP")
 
@@ -1208,10 +1255,10 @@ Please try again or contact support if the problem persists.
         state_manager.delete_state(conversation.conversation_id)
 
         if result.get("status") == "success":
-            answer = f"Auction #{auction_id} has been deleted successfully."
+            answer = f"Auction **{auction_ref_id}** has been deleted successfully."
         else:
             error_msg = result.get("message", "Unknown error")
-            answer = f"Failed to delete auction #{auction_id}: {error_msg}"
+            answer = f"Failed to delete auction **{auction_ref_id}**: {error_msg}"
 
         assistant_msg = ChatMessage.create_assistant_message(
             conversation_id=conversation.conversation_id,
@@ -1243,12 +1290,16 @@ Please try again or contact support if the problem persists.
         conversation: Conversation,
         user_id: Optional[str]
     ) -> Dict[str, Any]:
-        """Handle update auction"""
+        """Handle update auction flow with seller/schedule checks."""
 
-        auction_id = parameter_extractor.extract_auction_id(user_message)
+        auction_identifier = parameter_extractor.extract_auction_id(user_message)
 
-        if not auction_id:
-            answer = "Please specify which auction you want to update. For example: 'Update auction #127'"
+        if not auction_identifier:
+            answer = (
+                "Please specify which auction you want to update. "
+                "You can use Auction ID or Ref ID, for example: "
+                "'Update auction Ref ID TeaBlendSellerOP1Ratnapura21314 and change price to 18000'."
+            )
 
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
@@ -1265,11 +1316,80 @@ Please try again or contact support if the problem persists.
                 "message_type": "text",
             }
 
-        answer = (
-            f"Update auction #{auction_id} functionality coming soon! "
-            "Live auctions will be protected from edits."
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to update auctions."
+            )
+
+        lookup = await self.mcp_client.get_auction_details(
+            auction_id=auction_identifier,
+            user_id=str(user_id),
         )
-        
+
+        if lookup.get("status") != "success":
+            return self._rejection_response(
+                conversation,
+                f"I couldn't find an auction matching '{auction_identifier}' for your seller account."
+            )
+
+        auction_data = lookup.get("data") or {}
+        resolved_auction_id = str(lookup.get("resolved_auction_id") or auction_data.get("auction_id") or auction_identifier)
+        ref_id = auction_data.get("custom_auction_id") or resolved_auction_id
+        status_value = str(auction_data.get("status") or "").strip().lower()
+
+        if status_value != "scheduled":
+            return self._rejection_response(
+                conversation,
+                (
+                    f"Auction **{ref_id}** is currently **{auction_data.get('status', 'Unknown')}**. "
+                    "Only scheduled auctions can be updated."
+                )
+            )
+
+        extracted_updates = await parameter_extractor.extract_parameters(
+            user_message,
+            UPDATE_AUCTION_FIELDS["optional"],
+            context={"auction_id": resolved_auction_id},
+        )
+        extracted_updates.pop("_validation_errors", None)
+        extracted_updates.pop("_weekday_confirmation_required", None)
+        extracted_updates.pop("_weekday_confirmation_expression", None)
+        extracted_updates.pop("_weekday_confirmation_time_12h", None)
+
+        # Only allow updateable fields and ignore helper/meta keys.
+        allowed_update_fields = set(UPDATE_AUCTION_FIELDS["optional"])
+        updates = {
+            key: value
+            for key, value in extracted_updates.items()
+            if key in allowed_update_fields
+        }
+
+        state = state_manager.create_state(
+            conversation_id=conversation.conversation_id,
+            state_type="auction_management",
+            action="update",
+            required_fields=[],
+            optional_fields=UPDATE_AUCTION_FIELDS["optional"],
+            initial_data={
+                "auction_id": resolved_auction_id,
+                "auction_ref_id": ref_id,
+                "current_status": auction_data.get("status"),
+                **updates,
+            }
+        )
+
+        if updates:
+            return await self._generate_update_confirmation(conversation, state)
+
+        answer = (
+            f"I found auction **{ref_id}** (status: {auction_data.get('status')}). "
+            "Tell me what you want to change, for example:\n"
+            "- Change price to 18000\n"
+            "- Change quantity to 25 kg\n"
+            "- Change start time to 2026-04-01 15:00"
+        )
+
         assistant_msg = ChatMessage.create_assistant_message(
             conversation_id=conversation.conversation_id,
             content=answer,
@@ -1282,6 +1402,7 @@ Please try again or contact support if the problem persists.
             "conversation_id": conversation.conversation_id,
             "answer": answer,
             "source": "auction_management",
+            "state": "collecting_update_parameters",
             "message_type": "text",
         }
     
@@ -1293,10 +1414,13 @@ Please try again or contact support if the problem persists.
     ) -> Dict[str, Any]:
         """Handle delete auction with status validation"""
 
-        auction_id = parameter_extractor.extract_auction_id(user_message)
+        auction_identifier = parameter_extractor.extract_auction_id(user_message)
 
-        if not auction_id:
-            answer = "Please specify which auction you want to delete. For example: 'Delete auction #127'"
+        if not auction_identifier:
+            answer = (
+                "Please specify which auction you want to delete. "
+                "You can use Auction ID or Ref ID, for example: 'Delete auction Ref ID TeaBlendSellerOP1Ratnapura21314'."
+            )
 
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
@@ -1313,10 +1437,41 @@ Please try again or contact support if the problem persists.
                 "message_type": "text",
             }
 
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to delete auctions."
+            )
+
+        lookup = await self.mcp_client.get_auction_details(
+            auction_id=auction_identifier,
+            user_id=str(user_id),
+        )
+
+        if lookup.get("status") != "success":
+            return self._rejection_response(
+                conversation,
+                f"I couldn't find an auction matching '{auction_identifier}' for your seller account."
+            )
+
+        auction_data = lookup.get("data") or {}
+        resolved_auction_id = str(lookup.get("resolved_auction_id") or auction_data.get("auction_id") or auction_identifier)
+        ref_id = auction_data.get("custom_auction_id") or resolved_auction_id
+        status_value = str(auction_data.get("status") or "").strip().lower()
+
+        if status_value != "scheduled":
+            return self._rejection_response(
+                conversation,
+                (
+                    f"Auction **{ref_id}** is currently **{auction_data.get('status', 'Unknown')}**. "
+                    "Only scheduled auctions can be deleted."
+                )
+            )
+
         answer = f"""
 **Confirm Deletion**
 
-Are you sure you want to delete auction **#{auction_id}**?
+Are you sure you want to delete auction **{ref_id}**?
 
 This action cannot be undone.
 
@@ -1331,7 +1486,10 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
             action="delete",
             required_fields=[],
             optional_fields=[],
-            initial_data={"auction_id": auction_id}
+            initial_data={
+                "auction_id": resolved_auction_id,
+                "auction_ref_id": ref_id,
+            }
         )
 
         state_manager.set_confirmation_pending(conversation.conversation_id, True)
@@ -1355,10 +1513,163 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
                 "flow_id": str(conversation.conversation_id),
                 "subtype": "delete_confirmation",
                 "fields": {
-                    "auction_id": auction_id,
+                    "auction_id": resolved_auction_id,
+                    "custom_auction_id": ref_id,
                 },
                 "actions": ["confirm", "cancel"],
             }
+        }
+
+    async def _generate_update_confirmation(
+        self,
+        conversation: Conversation,
+        state: Any,
+    ) -> Dict[str, Any]:
+        """Generate confirmation for update auction flow."""
+
+        data = state.partial_data
+        ref_id = data.get("auction_ref_id") or data.get("auction_id")
+
+        update_lines = []
+        if data.get("grade") is not None:
+            update_lines.append(f"- **Tea Grade:** {data.get('grade')}")
+        if data.get("quantity") is not None:
+            update_lines.append(f"- **Quantity:** {data.get('quantity')} kg")
+        if data.get("origin") is not None:
+            update_lines.append(f"- **Origin:** {data.get('origin')}")
+        if data.get("base_price") is not None:
+            update_lines.append(f"- **Starting Price:** LKR {float(data.get('base_price')):,.0f}")
+        if data.get("start_time") is not None:
+            update_lines.append(f"- **Start Time:** {format_datetime_for_display(str(data.get('start_time')))}")
+        if data.get("duration") is not None:
+            update_lines.append(
+                f"- **Duration:** {self._format_duration_hours(data.get('duration'), input_unit=data.get('_duration_input_unit'))}"
+            )
+        if data.get("description") is not None:
+            update_lines.append(f"- **Description:** {data.get('description')}")
+
+        if not update_lines:
+            answer = (
+                f"I found auction **{ref_id}**. "
+                "Tell me what to change (price, quantity, origin, start time, duration, description, or grade)."
+            )
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="auction_management"
+            )
+            self.message_repo.create(assistant_msg)
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "auction_management",
+                "state": "collecting_update_parameters",
+                "message_type": "text",
+            }
+
+        answer = (
+            f"**Please confirm update for auction {ref_id}:**\n\n"
+            + "\n".join(update_lines)
+            + "\n\nReply **'yes'** to apply these changes, **'no'** to cancel, or say **'change ...'** to edit again."
+        )
+
+        state_manager.set_confirmation_pending(conversation.conversation_id, True)
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=answer,
+            source="auction_management"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "answer": answer,
+            "source": "auction_management",
+            "state": "awaiting_confirmation",
+            "message_type": "auction_confirmation",
+            "auction_payload": {
+                "type": "auction_confirmation",
+                "flow_id": str(conversation.conversation_id),
+                "subtype": "update_confirmation",
+                "fields": {
+                    "auction_id": data.get("auction_id"),
+                    "custom_auction_id": ref_id,
+                    "grade": data.get("grade"),
+                    "quantity": data.get("quantity"),
+                    "origin": data.get("origin"),
+                    "base_price": data.get("base_price"),
+                    "start_time": data.get("start_time"),
+                    "duration": data.get("duration"),
+                    "description": data.get("description"),
+                },
+                "actions": ["confirm", "cancel", "change"],
+            },
+        }
+
+    async def _execute_update_auction(
+        self,
+        conversation: Conversation,
+        state: Any,
+        user_id: Optional[str]
+    ) -> Dict[str, Any]:
+        """Execute auction update via MCP."""
+
+        data = state.partial_data
+        auction_id = data.get("auction_id")
+        ref_id = data.get("auction_ref_id") or auction_id
+
+        if not user_id:
+            return self._rejection_response(
+                conversation,
+                "Authentication required. Please log in to update auctions."
+            )
+
+        result = await self.mcp_client.update_auction(
+            auction_id=str(auction_id),
+            user_id=str(user_id),
+            grade=data.get("grade"),
+            quantity=int(data.get("quantity")) if data.get("quantity") is not None else None,
+            origin=data.get("origin"),
+            base_price=float(data.get("base_price")) if data.get("base_price") is not None else None,
+            start_time=data.get("start_time"),
+            duration=int(data.get("duration")) if data.get("duration") is not None else None,
+            description=data.get("description"),
+        )
+
+        state_manager.delete_state(conversation.conversation_id)
+
+        if result.get("status") == "success":
+            answer = f"Auction **{ref_id}** has been updated successfully."
+        else:
+            error_msg = result.get("message", "Unknown error")
+            answer = f"Failed to update auction **{ref_id}**: {error_msg}"
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=answer,
+            source="auction_management"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": result.get("status") == "success",
+            "conversation_id": conversation.conversation_id,
+            "answer": answer,
+            "source": "auction_management",
+            "message_type": "result",
+            "result_payload": {
+                "type": "result",
+                "flow_id": str(conversation.conversation_id),
+                "operation": "update_auction",
+                "status": "success" if result.get("status") == "success" else "failed",
+                "auction_id": auction_id,
+                "custom_auction_id": ref_id,
+                "error": None if result.get("status") == "success" else result.get("message"),
+            },
+            "api_result": result
         }
 
     def _rejection_response(
@@ -1391,11 +1702,11 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
         **Create an auction:**
         "Create an auction for 1000kg BOPF tea from Kandy at 17000 LKR"
 
-        **Update an auction:** (Coming soon)
-        "Update auction #127"
+        **Update a scheduled auction:**
+        "Update auction Ref ID TeaBlendSellerOP1Ratnapura21314 and change price to 18000"
 
-        **Delete an auction:** (Coming soon)
-        "Delete auction #127"
+        **Delete a scheduled auction:**
+        "Delete auction Ref ID TeaBlendSellerOP1Ratnapura21314"
 
         What would you like to do?
         """.strip()

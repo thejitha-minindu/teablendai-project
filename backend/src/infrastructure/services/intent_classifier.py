@@ -141,7 +141,14 @@ class IntentClassifier:
         - "Update auction #127 price to 600" → True
         """
         # Additional check: read-only requests are queries, not action commands.
-        if any(phrase in question for phrase in ['show my auction', 'list my auction', 'view my auction', 'display my auction']):
+        read_only_phrases = [
+            'show my auction', 'list my auction', 'view my auction', 'display my auction',
+            'show me my auction', 'give me my auction', 'tell me my auction',
+            'details about', 'information about', 'show details',
+            'scheduled auction', 'live auction', 'history auction',
+            'auction history', 'scheduled auction', 'active auction',
+        ]
+        if any(phrase in question for phrase in read_only_phrases):
             return False
 
         # Backward-compatible keyword match
