@@ -115,6 +115,13 @@ const formatStartTimeDisplay = (value: string | undefined): string => {
   return `${datePart} at ${timePart}`;
 };
 
+const toDisplayValue = (value: unknown): string | number | undefined => {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string" || typeof value === "number") return value;
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return undefined;
+};
+
 const extractCreatedAuctionDetails = (content: string): {
   grade?: string;
   quantity?: string;
@@ -213,12 +220,18 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
   structuredCardTitle,
   structuredDisplay,
 }: AuctionConfirmationContentProps) {
-  const grade = structuredFields?.grade || createdDetails?.grade || parsedAuctionDetails?.grade;
+  const grade =
+    toDisplayValue(structuredFields?.grade) ||
+    createdDetails?.grade ||
+    parsedAuctionDetails?.grade;
   const quantity =
     structuredFields?.quantity !== undefined && structuredFields?.quantity !== null
       ? `${structuredFields.quantity} kg`
       : createdDetails?.quantity || parsedAuctionDetails?.quantity;
-  const origin = structuredFields?.origin || createdDetails?.origin || parsedAuctionDetails?.origin;
+  const origin =
+    toDisplayValue(structuredFields?.origin) ||
+    createdDetails?.origin ||
+    parsedAuctionDetails?.origin;
   const basePrice = formatPriceLkr(
     (structuredFields?.base_price as string | number | undefined) || parsedAuctionDetails?.base_price
   );
@@ -232,9 +245,12 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
       ? `${structuredFields.duration} hours`
       : parsedAuctionDetails?.duration);
   const description =
-    structuredFields?.description || createdDetails?.description || parsedAuctionDetails?.description || "None";
+    toDisplayValue(structuredFields?.description) ||
+    createdDetails?.description ||
+    parsedAuctionDetails?.description ||
+    "None";
   const customAuctionId =
-    structuredFields?.custom_auction_id ||
+    toDisplayValue(structuredFields?.custom_auction_id) ||
     createdDetails?.custom_auction_id ||
     parsedAuctionDetails?.custom_auction_id;
 
@@ -516,7 +532,9 @@ export default function MessageBubble({
   const hasCreateSuccessText = AUCTION_CREATION_PHRASES.some((phrase) => normalizedContent.includes(phrase));
   const isAuctionCreatedMessage =
     isAuctionMessage && (isCreateAuctionSuccess || hasCreateSuccessText) && !!createdAuctionId;
-  const createdDetails = isAuctionCreatedMessage ? extractCreatedAuctionDetails(message.content || "") : null;
+  const createdDetails = isAuctionCreatedMessage
+    ? extractCreatedAuctionDetails(message.content || "")
+    : undefined;
   const parsedAuctionDetails = extractAuctionDetailsFromPlainText(message.content || "");
   const showStructuredCreatedMessage =
     !!createdDetails &&

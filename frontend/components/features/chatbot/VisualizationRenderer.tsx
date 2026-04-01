@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useEffect, useRef, useCallback, memo } from "react";
+import type { Chart as ChartJS } from "chart.js";
 import { DownloadIcon } from "@/components/ui/download";
 import {
   Tooltip,
@@ -146,7 +147,7 @@ const TableRenderer = memo(function TableRenderer({ data }: { data: TableData })
 // Chart Renderer Component (memoized)
 const ChartRenderer = memo(function ChartRenderer({ config }: { config: ChartConfig }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+  const chartRef = useRef<ChartJS | null>(null);
 
   const downloadChart = useCallback(() => {
     if (!canvasRef.current) return;
@@ -174,7 +175,20 @@ const ChartRenderer = memo(function ChartRenderer({ config }: { config: ChartCon
         chartRef.current.destroy();
       }
 
-      const existingScales = (config.options?.scales || {}) as Record<string, any>;
+      const optionsObj = (config.options ?? {}) as Record<string, unknown>;
+      const pluginsObj =
+        typeof optionsObj.plugins === "object" && optionsObj.plugins !== null
+          ? (optionsObj.plugins as Record<string, unknown>)
+          : {};
+      const legendObj =
+        typeof pluginsObj.legend === "object" && pluginsObj.legend !== null
+          ? (pluginsObj.legend as Record<string, unknown>)
+          : {};
+
+      const existingScales =
+        typeof optionsObj.scales === "object" && optionsObj.scales !== null
+          ? (optionsObj.scales as Record<string, any>)
+          : {};
       const hasYAxis = Object.keys(existingScales).some((key) => key.startsWith("y"));
 
       const mergedScales: Record<string, any> = {
@@ -214,13 +228,13 @@ const ChartRenderer = memo(function ChartRenderer({ config }: { config: ChartCon
       const chartConfig = {
         ...config,
         options: {
-          ...config.options,
+          ...optionsObj,
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            ...config.options?.plugins,
+            ...pluginsObj,
             legend: {
-              ...config.options?.plugins?.legend,
+              ...legendObj,
               position: "top",
               labels: {
                 padding: 15,
