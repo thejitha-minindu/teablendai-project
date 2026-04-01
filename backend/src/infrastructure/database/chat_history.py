@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import text
 import json
 import logging
@@ -512,9 +512,13 @@ class ChatHistoryDB:
         if value is None:
             return None
         if hasattr(value, "isoformat"):
+            if getattr(value, "tzinfo", None) is None:
+                value = value.replace(tzinfo=timezone.utc)
+            else:
+                value = value.astimezone(timezone.utc)
             return value.isoformat()
         if isinstance(value, (int, float)):
             # Unix timestamp - handle seconds or milliseconds
             ts = value / 1000 if value > 1e10 else value
-            return datetime.fromtimestamp(ts).isoformat()
+            return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
         return str(value)

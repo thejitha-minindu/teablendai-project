@@ -37,8 +37,26 @@ const formatDateTimeLocalValue = (date: Date) => {
 
 const formatStartTimeForBackend = (localDateTime: string) => {
   if (!localDateTime) return '';
-  const normalized = localDateTime.replace('T', ' ');
-  return normalized.length === 16 ? `${normalized}:00` : normalized;
+  // localDateTime is in format: YYYY-MM-DDTHH:MM (from datetime-local input)
+  // This represents the user's local time, preserve it with timezone offset
+  const date = new Date(localDateTime);
+  
+  // Get timezone offset and format as ISO string with offset
+  // e.g., "2026-03-29T16:00:00+05:30"
+  const pad = (num: number) => String(num).padStart(2, '0');
+  const year = date.getFullYear();
+  const month = pad(date.getMonth() + 1);
+  const day = pad(date.getDate());
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+  const seconds = '00';
+  
+  const offset = date.getTimezoneOffset();
+  const offsetHours = pad(Math.abs(Math.floor(offset / 60)));
+  const offsetMinutes = pad(Math.abs(offset % 60));
+  const offsetSign = offset <= 0 ? '+' : '-';
+  
+  return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
 };
 
 const durationToMinutes = (durationValue: number) => {

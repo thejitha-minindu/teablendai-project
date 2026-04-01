@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 
 from src.domain.models.auction import Auction as AuctionModel
@@ -6,12 +6,6 @@ from src.domain.models.auction_status import AuctionStatus
 
 
 SCHEDULE_STATUS_VALUES = {AuctionStatus.SCHEDULE.value, "Scheduled"}
-
-
-def _normalize_datetime_for_compare(dt_value: datetime) -> datetime:
-    if dt_value.tzinfo is not None:
-        return dt_value.astimezone().replace(tzinfo=None)
-    return dt_value
 
 
 def _duration_to_minutes(duration_value: float) -> int:
@@ -30,7 +24,7 @@ def _duration_to_minutes(duration_value: float) -> int:
 
 
 def sync_auction_statuses(db: Session) -> None:
-    now_local = datetime.now()
+    now_utc = datetime.now(timezone.utc)
     changed = False
 
     scheduled = (
@@ -39,8 +33,11 @@ def sync_auction_statuses(db: Session) -> None:
         .all()
     )
     for auction in scheduled:
-        start_time = _normalize_datetime_for_compare(auction.start_time)
-        if start_time <= now_local:
+        start_time = auction.start_time
+        # Ensure start_time is timezone-aware
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+        if start_time <= now_utc:
             auction.status = AuctionStatus.LIVE.value
             db.add(auction)
             changed = True
@@ -53,11 +50,11 @@ def sync_auction_statuses(db: Session) -> None:
 
     live_auctions = db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.LIVE.value).all()
     for auction in live_auctions:
-        start_time = _normalize_datetime_for_compare(auction.start_time)
+        start_time = auction.start_time
         duration_minutes = _duration_to_minutes(auction.duration)
         end_time = start_time + timedelta(minutes=duration_minutes)
 
-        if now_local >= end_time:
+        if now_utc >= end_time:
             auction.status = AuctionStatus.HISTORY.value
             if not auction.buyer:
                 auction.sold_price = 0

@@ -4,7 +4,7 @@ Auction Field Definitions
 
 from typing import Dict, Any, List, Tuple
 from enum import Enum
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 
 
@@ -166,7 +166,7 @@ def normalize_field_name(user_input: str) -> str:
 
 def parse_datetime(datetime_str: str) -> datetime:
     """
-    Parse datetime string to datetime object.
+    Parse datetime string to timezone-aware datetime object.
 
     Supported formats:
     - "YYYY-MM-DD HH:MM"
@@ -176,6 +176,8 @@ def parse_datetime(datetime_str: str) -> datetime:
     - "today at HH:MM AM/PM"
     - "tomorrow at HH:MM AM/PM"
     - Many more natural formats via dateutil
+    
+    Returns: timezone-aware datetime in UTC
     """
 
     from dateutil import parser as dateutil_parser
@@ -189,7 +191,7 @@ def parse_datetime(datetime_str: str) -> datetime:
     normalized = re.sub(r"(?i)(\d)(am|pm)\b", r"\1 \2", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
 
-    now = datetime.now()
+    now = datetime.now(timezone.utc)
 
     # Handle relative dates (today, tomorrow)
     relative_prefixes = {
@@ -214,7 +216,10 @@ def parse_datetime(datetime_str: str) -> datetime:
             for time_fmt in time_formats:
                 try:
                     parsed_time = datetime.strptime(time_part.upper(), time_fmt).time()
-                    return datetime.combine(base_date, parsed_time)
+                    # Combine with timezone-aware date
+                    naive_dt = datetime.combine(base_date, parsed_time)
+                    aware_dt = naive_dt.replace(tzinfo=timezone.utc)
+                    return aware_dt
                 except ValueError:
                     continue
 
@@ -222,6 +227,11 @@ def parse_datetime(datetime_str: str) -> datetime:
         
     try:
         parsed = dateutil_parser.parse(datetime_str, fuzzy=False)
+        # If parsed datetime is naive, assume UTC; otherwise normalize to UTC.
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        else:
+            parsed = parsed.astimezone(timezone.utc)
         return parsed
     except Exception:
         pass
@@ -240,7 +250,10 @@ def parse_datetime(datetime_str: str) -> datetime:
 
     for fmt in formats:
         try:
-            return datetime.strptime(normalized.upper(), fmt)
+            naive_dt = datetime.strptime(normalized.upper(), fmt)
+            # Make it timezone-aware (UTC)
+            aware_dt = naive_dt.replace(tzinfo=timezone.utc)
+            return aware_dt
         except ValueError:
             continue
 
@@ -323,7 +336,12 @@ def validate_field_value(field_name: str, value: Any, reference_time: datetime =
     elif field_name == "start_time":
         try:
             start_dt = parse_datetime(str(value))
-            now = reference_time or datetime.now()
+            if reference_time is None:
+                now = datetime.now(timezone.utc)
+            elif reference_time.tzinfo is None:
+                now = reference_time.replace(tzinfo=timezone.utc)
+            else:
+                now = reference_time.astimezone(timezone.utc)
             min_allowed_time = now + timedelta(minutes=MIN_FUTURE_TIME_MINUTES)
 
             if start_dt < min_allowed_time:

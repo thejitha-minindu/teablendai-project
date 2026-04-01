@@ -6,7 +6,7 @@ This class contains the actual database operations using SQLAlchemy ORM.
 """
 
 from typing import List, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc, func, and_, case
@@ -179,7 +179,7 @@ class ConversationRepository(ConversationRepositoryInterface):
         """Update an existing conversation"""
         try:
             merged = self.db.merge(conversation)
-            merged.updated_at = datetime.now()
+            merged.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             self.db.commit()
             self.db.refresh(merged)
             logger.info(f"Updated conversation {merged.conversation_id}")
@@ -217,7 +217,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = False
-            conversation.updated_at = datetime.now()
+            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
             self.db.commit()
 
@@ -241,7 +241,7 @@ class ConversationRepository(ConversationRepositoryInterface):
                 return False
             
             conversation.is_active = True
-            conversation.updated_at = datetime.now()
+            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
   
             self.db.commit()
             

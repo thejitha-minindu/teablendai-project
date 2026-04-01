@@ -1,6 +1,6 @@
 """Auction domain events - represent domain facts about auctions."""
 from pydantic import BaseModel, Field, ConfigDict
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
 from src.domain.constants.auction_constants import AuctionEventType

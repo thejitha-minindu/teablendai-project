@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends, status
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from uuid import UUID
+from datetime import timezone
 from sqlalchemy.orm import Session
 import logging
 
@@ -45,14 +46,23 @@ class Message(BaseModel):
 
 
 def _serialize_conversation(conversation: ConversationModel) -> Dict[str, Any]:
+    def _to_iso_utc(dt: Any) -> Optional[str]:
+        if not dt:
+            return None
+        if getattr(dt, "tzinfo", None) is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.isoformat()
+
     return {
         "conversation_id": str(conversation.conversation_id),
         "title": conversation.title,
-        "created_at": conversation.created_at.isoformat() if conversation.created_at else None,
-        "updated_at": conversation.updated_at.isoformat() if conversation.updated_at else None,
+        "created_at": _to_iso_utc(conversation.created_at),
+        "updated_at": _to_iso_utc(conversation.updated_at),
         "message_count": int(conversation.message_count or 0),
         "is_pinned": bool(getattr(conversation, "is_pinned", False)),
-        "pinned_at": conversation.pinned_at.isoformat() if getattr(conversation, "pinned_at", None) else None,
+        "pinned_at": _to_iso_utc(getattr(conversation, "pinned_at", None)),
     }
 
 
