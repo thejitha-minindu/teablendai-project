@@ -39,8 +39,16 @@ class AuctionCreate(BaseModel):
     
     @field_validator('start_time')
     def validate_start_time(cls, v: datetime):
-        now = datetime.now(timezone.utc) if v.tzinfo else datetime.now()
-        if v < now:
+        # Always use UTC for comparison
+        now_utc = datetime.now(timezone.utc)
+        
+        # Ensure the value is timezone-aware (convert to UTC if naive)
+        if v.tzinfo is None:
+            v_utc = v.replace(tzinfo=timezone.utc)
+        else:
+            v_utc = v.astimezone(timezone.utc)
+        
+        if v_utc < now_utc:
             raise ValueError("Scheduled start time cannot be in the past.")
         return v
 

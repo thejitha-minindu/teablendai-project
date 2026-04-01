@@ -8,7 +8,7 @@ import logging
 import json
 import re
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -452,7 +452,8 @@ class ParameterExtractor:
                     if field == "start_time":
                         try:
                             parsed_start = parse_datetime(str(value))
-                            validated[field] = parsed_start.strftime("%Y-%m-%d %H:%M")
+                            # Keep timezone information so frontend can convert UTC to local time correctly.
+                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat()
                             if natural_start_time and natural_start_time.get("requires_weekday_confirmation"):
                                 validated["_weekday_confirmation_required"] = True
                                 validated["_weekday_confirmation_expression"] = natural_start_time.get("expression")

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedAIChat } from "./chat";
@@ -8,6 +8,9 @@ import { ChatSidebar } from "./chatSidebar";
 import MessageBubble from "./MessageBubble";
 import { chatService, ChatMessage, ConversationSummary } from "@/services/chatService";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
+
+// Constants
+const SCROLL_THRESHOLD = 100;
 
 interface ChatbotConversationPageProps {
   routeConversationId?: string | null;
@@ -18,11 +21,10 @@ export default function ChatbotConversationPage({
 }: ChatbotConversationPageProps) {
   const router = useRouter();
   const pathname = usePathname();
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [conversationId, setConversationId] = useState<string | null>(
-    routeConversationId
-  );
+  const [conversationId, setConversationId] = useState<string | null>(routeConversationId);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isManualNewChat, setIsManualNewChat] = useState(false);
@@ -30,34 +32,38 @@ export default function ChatbotConversationPage({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
-  const handleScroll = useCallback(() => {
-    if (!messagesContainerRef.current) return;
-
+  // Memoized scroll check
+  const isNearBottom = useCallback(() => {
+    if (!messagesContainerRef.current) return true;
     const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-    setShowScrollButton(!isNearBottom);
+    return scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD;
   }, []);
+
+  const handleScroll = useCallback(() => {
+    setShowScrollButton(!isNearBottom());
+  }, [isNearBottom]);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
+  // Auto-scroll when messages change if near bottom
   useEffect(() => {
-    if (!messagesContainerRef.current) return;
-
-    const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
-    const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-
-    if (isNearBottom) {
+    if (isNearBottom()) {
       scrollToBottom();
     }
-  }, [messages, scrollToBottom]);
+  }, [messages, isNearBottom, scrollToBottom]);
 
   const loadConversations = useCallback(async () => {
-    const data = await chatService.getConversations();
-    setConversations(data);
+    try {
+      const data = await chatService.getConversations();
+      setConversations(data);
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+    }
   }, []);
 
+  // Auth check
   useEffect(() => {
     const token =
       typeof window !== "undefined"
@@ -70,10 +76,12 @@ export default function ChatbotConversationPage({
     }
   }, [pathname, router]);
 
+  // Load conversations on mount
   useEffect(() => {
     loadConversations();
   }, [loadConversations]);
 
+  // Load conversation from route
   useEffect(() => {
     const loadFromRoute = async () => {
       if (!routeConversationId) {
@@ -86,133 +94,191 @@ export default function ChatbotConversationPage({
 
       setIsManualNewChat(false);
       setConversationId(routeConversationId);
-      const history = await chatService.getConversationMessages(routeConversationId);
-      setMessages(history);
-      setTimeout(scrollToBottom, 100);
+
+      try {
+        const history = await chatService.getConversationMessages(routeConversationId);
+        setMessages(history);
+        setTimeout(scrollToBottom, 100);
+      } catch (error) {
+        console.error("Failed to load conversation:", error);
+      }
     };
 
     loadFromRoute();
-  }, [routeConversationId, scrollToBottom]);
+  }, [routeConversationId, conversationId, isManualNewChat, scrollToBottom]);
 
-  const handleSendMessage = async (message: string) => {
-    if (!message.trim() || isLoading) return;
+  const handleSendMessage = useCallback(
+    async (message: string) => {
+      const trimmedMessage = message.trim();
+      if (!trimmedMessage || isLoading) return;
 
-    setIsLoading(true);
+      setIsLoading(true);
 
-    const userMsg: ChatMessage = {
-      id: `user-${Date.now()}`,
-      role: "user",
-      content: message,
-      timestamp: new Date().toISOString(),
-    };
-
-    const loadingMsg: ChatMessage = {
-      id: `loading-${Date.now()}`,
-      role: "assistant",
-      content: "",
-      timestamp: new Date().toISOString(),
-      isLoading: true,
-    };
-
-    setMessages((prev) => [...prev, userMsg, loadingMsg]);
-
-    try {
-      const response = await chatService.sendMessage(message, conversationId);
-
-      if (response.conversation_id) {
-        const newConversationId = response.conversation_id;
-        setConversationId(newConversationId);
-        setIsManualNewChat(false);
-        loadConversations();
-
-        const currentPathConversationId = pathname?.split("/")[3] || null;
-        if (currentPathConversationId !== newConversationId) {
-          router.push(`/chatbot/conversation/${newConversationId}`);
-        }
-      }
-
-      const assistantMsg: ChatMessage = {
-        id: `assistant-${Date.now()}`,
-        role: "assistant",
-        content: response.answer || "I couldn't find an answer.",
-        timestamp: response.timestamp,
-        sql_query: response.sql_query,
-        data: response.data,
-        visualization_type: response.visualization_type,
-        visualization: response.visualization,
-        source: response.source,
-        data_type: response.data_type,
-        state: response.state,
-        message_type: response.message_type,
-        prompt_type: response.prompt_type,
-        field_metadata: response.field_metadata,
-        input_request: response.input_request,
-        validation_payload: response.validation_payload,
-        auction_payload: response.auction_payload,
-        result_payload: response.result_payload,
-        row_count: response.row_count,
-        search_results: response.search_results,
-        error: response.error,
-      };
-
-      setMessages((prev) => prev.map((m) => (m.isLoading ? assistantMsg : m)));
-    } catch (error) {
-      const errorText = error instanceof Error ? error.message : String(error);
-      if (
-        errorText.includes("Authentication required") ||
-        errorText.includes("Session expired")
-      ) {
-        const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
-        router.push(`/auth/login?redirect=${redirectPath}`);
-        return;
-      }
-
-      const errorMsg: ChatMessage = {
-        id: `error-${Date.now()}`,
-        role: "assistant",
-        content: "Sorry, I couldn't connect to the server. Please try again.",
+      const userMsg: ChatMessage = {
+        id: `user-${Date.now()}`,
+        role: "user",
+        content: trimmedMessage,
         timestamp: new Date().toISOString(),
-        source: "error",
-        error: errorText,
       };
-      setMessages((prev) => prev.map((m) => (m.isLoading ? errorMsg : m)));
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
-  const handleNewChat = () => {
+      const loadingMsg: ChatMessage = {
+        id: `loading-${Date.now()}`,
+        role: "assistant",
+        content: "",
+        timestamp: new Date().toISOString(),
+        isLoading: true,
+      };
+
+      setMessages((prev) => [...prev, userMsg, loadingMsg]);
+
+      try {
+        const response = await chatService.sendMessage(trimmedMessage, conversationId);
+
+        if (response.conversation_id) {
+          const newConversationId = response.conversation_id;
+          setConversationId(newConversationId);
+          setIsManualNewChat(false);
+          loadConversations();
+
+          const currentPathConversationId = pathname?.split("/")[3] || null;
+          if (currentPathConversationId !== newConversationId) {
+            router.push(`/chatbot/conversation/${newConversationId}`);
+          }
+        }
+
+        const assistantMsg: ChatMessage = {
+          id: `assistant-${Date.now()}`,
+          role: "assistant",
+          content: response.answer || "I couldn't find an answer.",
+          timestamp: response.timestamp,
+          sql_query: response.sql_query,
+          data: response.data,
+          visualization_type: response.visualization_type,
+          visualization: response.visualization,
+          source: response.source,
+          data_type: response.data_type,
+          state: response.state,
+          message_type: response.message_type,
+          prompt_type: response.prompt_type,
+          field_metadata: response.field_metadata,
+          input_request: response.input_request,
+          validation_payload: response.validation_payload,
+          auction_payload: response.auction_payload,
+          result_payload: response.result_payload,
+          row_count: response.row_count,
+          search_results: response.search_results,
+          error: response.error,
+        };
+
+        setMessages((prev) => prev.map((m) => (m.isLoading ? assistantMsg : m)));
+      } catch (error) {
+        const errorText = error instanceof Error ? error.message : String(error);
+
+        // Handle auth errors
+        if (
+          errorText.includes("Authentication required") ||
+          errorText.includes("Session expired")
+        ) {
+          const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
+          router.push(`/auth/login?redirect=${redirectPath}`);
+          return;
+        }
+
+        const errorMsg: ChatMessage = {
+          id: `error-${Date.now()}`,
+          role: "assistant",
+          content: "Sorry, I couldn't connect to the server. Please try again.",
+          timestamp: new Date().toISOString(),
+          source: "error",
+          error: errorText,
+        };
+        setMessages((prev) => prev.map((m) => (m.isLoading ? errorMsg : m)));
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [isLoading, conversationId, pathname, router, loadConversations]
+  );
+
+  const handleNewChat = useCallback(() => {
     setIsManualNewChat(true);
     setMessages([]);
     setConversationId(null);
     router.push("/chatbot/conversation");
-  };
+  }, [router]);
 
-  const handleSelectChat = (chatId: string) => {
-    if (!chatId) return;
-    setIsManualNewChat(false);
-    router.push(`/chatbot/conversation/${chatId}`);
-  };
+  const handleSelectChat = useCallback(
+    (chatId: string) => {
+      if (!chatId) return;
+      setIsManualNewChat(false);
+      router.push(`/chatbot/conversation/${chatId}`);
+    },
+    [router]
+  );
 
-  const handleDeleteChat = async (chatId: string) => {
-    if (chatId) {
-      await chatService.deleteConversation(chatId);
-      if (conversationId === chatId) {
-        setMessages([]);
-        setConversationId(null);
-        router.push("/chatbot/conversation");
+  const handleDeleteChat = useCallback(
+    async (chatId: string) => {
+      if (!chatId) return;
+
+      try {
+        await chatService.deleteConversation(chatId);
+        if (conversationId === chatId) {
+          setMessages([]);
+          setConversationId(null);
+          router.push("/chatbot/conversation");
+        }
+        loadConversations();
+      } catch (error) {
+        console.error("Failed to delete chat:", error);
       }
-      loadConversations();
-    }
-  };
+    },
+    [conversationId, router, loadConversations]
+  );
+
+  const handlePinChat = useCallback(
+    async (chatId: string, shouldPin: boolean) => {
+      if (!chatId) return;
+
+      const nowIso = new Date().toISOString();
+
+      // Optimistic UI update
+      setConversations((prev) =>
+        prev.map((conversation) =>
+          String(conversation.conversation_id) === chatId
+            ? {
+                ...conversation,
+                is_pinned: shouldPin,
+                pinned_at: shouldPin ? nowIso : null,
+              }
+            : conversation
+        )
+      );
+
+      try {
+        if (shouldPin) {
+          await chatService.pinConversation(chatId);
+        } else {
+          await chatService.unpinConversation(chatId);
+        }
+        await loadConversations();
+      } catch (error) {
+        console.error("Failed to update pin status", error);
+        await loadConversations(); // Refresh to correct state
+      }
+    },
+    [loadConversations]
+  );
 
   const hasMessages = messages.length > 0;
-  const latestAssistantIndex = messages.reduce((latest, msg, index) => {
-    if (msg.role === "assistant") {
-      return index;
+  const latestAssistantIndex = useMemo(() => {
+    let latestIndex = -1;
+    for (let i = 0; i < messages.length; i++) {
+      if (messages[i].role === "assistant") {
+        latestIndex = i;
+      }
     }
-    return latest;
-  }, -1);
+    return latestIndex;
+  }, [messages]);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden">
@@ -221,6 +287,7 @@ export default function ChatbotConversationPage({
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         onDeleteChat={handleDeleteChat}
+        onPinChat={handlePinChat}
       />
 
       <div className="flex-1 flex flex-col overflow-hidden relative">
