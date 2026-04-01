@@ -2,6 +2,7 @@ export type BidEventType =
   | "BID_CREATED"
   | "BID_UPDATED"
   | "BID_RETRACTED"
+  | "AUCTION_WON"
   | "AUCTION_CLOSED";
 
 export type BidData = {
