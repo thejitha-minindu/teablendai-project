@@ -1,10 +1,19 @@
 import { ConnectionPool } from "mssql";
+import type { config as MSSQLConfig } from "mssql";
 
-const config = {
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    server: process.env.DB_SERVER,
-    database: process.env.DB_NAME,
+const requireEnv = (name: "DB_USER" | "DB_PASSWORD" | "DB_SERVER" | "DB_NAME"): string => {
+    const value = process.env[name];
+    if (!value) {
+        throw new Error(`Missing required environment variable: ${name}`);
+    }
+    return value;
+};
+
+const config: MSSQLConfig = {
+    user: requireEnv("DB_USER"),
+    password: requireEnv("DB_PASSWORD"),
+    server: requireEnv("DB_SERVER"),
+    database: requireEnv("DB_NAME"),
     options: {
         encrypt: true,
         trustServerCertificate: process.env.DB_TRUST_SERVER_CERTIFICATE === "true",

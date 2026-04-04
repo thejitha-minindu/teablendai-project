@@ -131,6 +131,16 @@ class ConversationRepositoryInterface(ABC):
         """Get conversation with all messages eagerly loaded"""
         pass
 
+    @abstractmethod
+    def pin(self, conversation_id: int) -> bool:
+        """Pin a conversation"""
+        pass
+
+    @abstractmethod
+    def unpin(self, conversation_id: int) -> bool:
+        """Unpin a conversation"""
+        pass
+
 __all__ = [
     "ConversationRepositoryInterface",
 ]

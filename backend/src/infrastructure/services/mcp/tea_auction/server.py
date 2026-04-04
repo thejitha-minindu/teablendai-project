@@ -8,7 +8,8 @@ Acts as a thin adapter between chat service and existing REST APIs.
 import anyio
 import json
 import logging
-from typing import Dict, Any, List
+import re
+from typing import Dict, Any, List, Optional
 
 import httpx
 from anyio import get_cancelled_exc_class
@@ -182,116 +183,311 @@ async def get_auction_details(auction_id: str, user_id: str = None) -> Dict[str,
     """Get auction details by ID."""
     try:
         logger.info("[Auction] Fetching auction %s", auction_id)
+        resolved = await _resolve_auction_identifier(auction_id)
+        if not resolved:
+            return {
+                "status": "error",
+                "message": "Auction not found or access denied",
+                "status_code": 404,
+            }
 
-        response = await _request_with_base_url_fallback(
-            method="GET",
-            path=f"{API_PREFIX}/auctions/{auction_id}",
-            timeout=10.0,
-        )
+        data = resolved
 
-        if response.status_code == 200:
-            data = response.json()
-
-            if user_id and str(data.get("seller_id", "")) != str(user_id):
-                return {
-                    "status": "error",
-                    "message": "Auction not found or access denied",
-                    "status_code": 403,
-                }
-
-            return {"status": "success", "data": data}
+        if user_id and str(data.get("seller_id", "")) != str(user_id):
+            return {
+                "status": "error",
+                "message": "Auction not found or access denied",
+                "status_code": 403,
+            }
 
         return {
-            "status": "error",
-            "message": "Auction not found or access denied",
-            "status_code": response.status_code,
+            "status": "success",
+            "data": data,
+            "resolved_auction_id": str(data.get("auction_id") or auction_id),
         }
     except Exception as e:
         logger.error("[Auction] Error fetching auction: %s", e)
         return {"status": "error", "message": str(e)}
 
 
-async def update_auction(auction_id: str, user_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-    """Update an existing auction."""
+def _looks_like_uuid(value: str) -> bool:
+    if not value:
+        return False
+    return bool(re.match(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$", value))
+
+
+async def _resolve_auction_identifier(identifier: str) -> Optional[Dict[str, Any]]:
+    """
+    Resolve auction by UUID or custom Ref ID.
+
+    Returns the full auction object when found, otherwise None.
+    """
+    if not identifier:
+        return None
+
+    normalized = str(identifier).strip()
+
+    # For non-UUID inputs (custom Ref IDs), resolve from list first to avoid
+    # triggering UUID conversion errors in /auctions/{auction_id} endpoint.
+    if not _looks_like_uuid(normalized):
+        list_response = await _request_with_base_url_fallback(
+            method="GET",
+            path=f"{API_PREFIX}/auctions",
+            timeout=10.0,
+        )
+        if list_response.status_code == 200:
+            auctions = list_response.json() or []
+            needle = normalized.lower()
+            for auction in auctions:
+                auction_uuid = str(auction.get("auction_id") or "")
+                custom_id = str(auction.get("custom_auction_id") or "")
+                if auction_uuid.lower() == needle or custom_id.lower() == needle:
+                    return auction
+
+        return None
+
+    # UUID input: direct fetch path.
+    direct_response = await _request_with_base_url_fallback(
+        method="GET",
+        path=f"{API_PREFIX}/auctions/{normalized}",
+        timeout=10.0,
+    )
+    if direct_response.status_code == 200:
+        return direct_response.json()
+
+    return None
+
+
+async def update_auction(
+    auction_id: str,
+    user_id: str,
+    grade: Optional[str] = None,
+    quantity: Optional[int] = None,
+    origin: Optional[str] = None,
+    base_price: Optional[float] = None,
+    start_time: Optional[str] = None,
+    duration: Optional[int] = None,
+    description: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Update an existing auction.
+
+    Args:
+        auction_id: Auction ID to update
+        user_id: Seller's user ID from authentication
+        grade: Tea grade (optional)
+        quantity: Quantity in kg (optional)
+        origin: Tea origin region (optional)
+        base_price: Starting price (optional)
+        start_time: Auction start datetime (optional)
+        duration: Auction duration in minutes (optional)
+        description: Description (optional)
+
+    Returns:
+        Result dictionary with status
+    """
     try:
-        auction = await get_auction_details(auction_id, user_id)
-        if auction["status"] != "success":
-            return auction
+        logger.info("[Auction] Updating auction %s", auction_id)
 
-        auction_data = auction["data"]
-        if auction_data.get("status") == "Live":
-            return {"status": "error", "message": "Cannot update a Live auction"}
+        lookup = await get_auction_details(auction_id=auction_id, user_id=user_id)
+        if lookup.get("status") != "success":
+            return {
+                "status": "error",
+                "message": lookup.get("message", "Auction not found"),
+                "auction_id": auction_id,
+            }
 
-        merged_payload = {
-            "auction_name": auction_data.get("auction_name") or f"{auction_data.get('grade')} - {auction_data.get('origin')}",
-            "seller_id": str(auction_data.get("seller_id") or user_id),
-            "seller_brand": auction_data.get("seller_brand") or "TeaBlend Seller",
-            "company_name": auction_data.get("company_name") or "TeaBlend Seller",
-            "estate_name": auction_data.get("estate_name") or auction_data.get("origin"),
-            "grade": auction_data.get("grade"),
-            "quantity": auction_data.get("quantity"),
-            "origin": auction_data.get("origin"),
-            "description": auction_data.get("description"),
-            "base_price": auction_data.get("base_price"),
-            "start_time": auction_data.get("start_time"),
-            "duration": auction_data.get("duration"),
+        existing = lookup.get("data") or {}
+        resolved_auction_id = str(lookup.get("resolved_auction_id") or existing.get("auction_id") or auction_id)
+
+        status_value = str(existing.get("status") or "").strip().lower()
+        if status_value != "scheduled":
+            return {
+                "status": "error",
+                "message": "Cannot update live auctions. Only scheduled auctions can be modified.",
+                "auction_id": resolved_auction_id,
+            }
+
+        payload: Dict[str, Any] = {
+            "auction_name": existing.get("auction_name") or f"{existing.get('grade')} - {existing.get('origin')}",
+            "seller_id": str(existing.get("seller_id") or user_id),
+            "seller_brand": existing.get("seller_brand") or "TeaBlend Seller",
+            "company_name": existing.get("company_name") or "TeaBlend Seller",
+            "estate_name": existing.get("estate_name") or existing.get("origin"),
+            "grade": existing.get("grade"),
+            "quantity": existing.get("quantity"),
+            "origin": existing.get("origin"),
+            "base_price": existing.get("base_price"),
+            "start_time": existing.get("start_time"),
+            "duration": existing.get("duration"),
+            "description": existing.get("description"),
         }
-        merged_payload.update(updates or {})
+
+        update_payload: Dict[str, Any] = {}
+        if grade is not None:
+            update_payload["grade"] = grade
+        if quantity is not None:
+            update_payload["quantity"] = quantity
+        if origin is not None:
+            update_payload["origin"] = origin
+        if base_price is not None:
+            update_payload["base_price"] = base_price
+        if start_time is not None:
+            update_payload["start_time"] = start_time
+        if duration is not None:
+            update_payload["duration"] = duration
+        if description is not None:
+            update_payload["description"] = description
+
+        if not update_payload:
+            return {
+                "status": "error",
+                "message": "No fields to update",
+                "auction_id": resolved_auction_id,
+            }
+
+        payload.update(update_payload)
+
+        logger.info("[Auction] Update payload: %s", json.dumps(payload, indent=2, default=str))
+
+        headers = {
+            "X-User-ID": user_id,
+        }
 
         response = await _request_with_base_url_fallback(
             method="PUT",
-            path=f"{API_PREFIX}/auctions/{auction_id}",
+            path=f"{API_PREFIX}/auctions/{resolved_auction_id}",
             timeout=30.0,
-            json_body=merged_payload,
+            json_body=payload,
+            headers=headers,
         )
 
         if response.status_code == 200:
             return {
                 "status": "success",
                 "message": "Auction updated successfully",
+                "auction_id": resolved_auction_id,
                 "data": response.json(),
+            }
+        if response.status_code == 403:
+            return {
+                "status": "error",
+                "message": "Cannot update live auctions. Only scheduled auctions can be modified.",
+                "auction_id": resolved_auction_id,
+            }
+        if response.status_code == 404:
+            return {
+                "status": "error",
+                "message": "Auction not found",
+                "auction_id": resolved_auction_id,
             }
 
         return {
             "status": "error",
             "message": f"Failed to update auction: {response.text}",
             "status_code": response.status_code,
+            "auction_id": resolved_auction_id,
+        }
+
+    except httpx.TimeoutException:
+        logger.error("[Auction] Update timeout")
+        return {
+            "status": "error",
+            "message": "Request timed out. Please try again.",
+            "auction_id": auction_id,
         }
     except Exception as e:
-        logger.error("[Auction] Error updating auction: %s", e)
-        return {"status": "error", "message": str(e)}
+        logger.error("[Auction] Error updating auction: %s", e, exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Unexpected error: {str(e)}",
+            "auction_id": auction_id,
+        }
 
 
 async def delete_auction(auction_id: str, user_id: str) -> Dict[str, Any]:
-    """Delete an auction."""
+    """
+    Delete an auction.
+
+    Args:
+        auction_id: Auction ID to delete
+        user_id: Seller's user ID from authentication
+
+    Returns:
+        Result dictionary with status
+    """
     try:
-        auction = await get_auction_details(auction_id, user_id)
-        if auction["status"] != "success":
-            return auction
-
-        auction_data = auction["data"]
-        if auction_data.get("status") == "Live":
-            return {"status": "error", "message": "Cannot delete a Live auction"}
-
         logger.info("[Auction] Deleting auction %s", auction_id)
+
+        lookup = await get_auction_details(auction_id=auction_id, user_id=user_id)
+        if lookup.get("status") != "success":
+            return {
+                "status": "error",
+                "message": lookup.get("message", "Auction not found"),
+                "auction_id": auction_id,
+            }
+
+        existing = lookup.get("data") or {}
+        resolved_auction_id = str(lookup.get("resolved_auction_id") or existing.get("auction_id") or auction_id)
+
+        status_value = str(existing.get("status") or "").strip().lower()
+        if status_value != "scheduled":
+            return {
+                "status": "error",
+                "message": "Cannot delete live auctions. Only scheduled auctions can be deleted.",
+                "auction_id": resolved_auction_id,
+            }
+
+        headers = {
+            "X-User-ID": user_id,
+        }
 
         response = await _request_with_base_url_fallback(
             method="DELETE",
-            path=f"{API_PREFIX}/auctions/{auction_id}",
+            path=f"{API_PREFIX}/auctions/{resolved_auction_id}",
             timeout=30.0,
+            headers=headers,
         )
 
         if response.status_code in (200, 204):
-            return {"status": "success", "message": "Auction deleted successfully"}
+            return {
+                "status": "success",
+                "message": "Auction deleted successfully",
+                "auction_id": resolved_auction_id,
+            }
+        if response.status_code == 403:
+            return {
+                "status": "error",
+                "message": "Cannot delete live auctions. Only scheduled auctions can be deleted.",
+                "auction_id": resolved_auction_id,
+            }
+        if response.status_code == 404:
+            return {
+                "status": "error",
+                "message": "Auction not found",
+                "auction_id": resolved_auction_id,
+            }
 
         return {
             "status": "error",
             "message": f"Failed to delete auction: {response.text}",
             "status_code": response.status_code,
+            "auction_id": resolved_auction_id,
+        }
+    except httpx.TimeoutException:
+        logger.error("[Auction] Delete timeout")
+        return {
+            "status": "error",
+            "message": "Request timed out. Please try again.",
+            "auction_id": auction_id,
         }
     except Exception as e:
-        logger.error("[Auction] Error deleting auction: %s", e)
-        return {"status": "error", "message": str(e)}
+        logger.error("[Auction] Error deleting auction: %s", e, exc_info=True)
+        return {
+            "status": "error",
+            "message": f"Unexpected error: {str(e)}",
+            "auction_id": auction_id,
+        }
 
 
 @server.list_tools()
@@ -335,10 +531,16 @@ async def list_tools() -> List[Tool]:
                 "type": "object",
                 "properties": {
                     "auction_id": {"type": "string", "description": "Auction ID to update"},
-                    "user_id": {"type": "string", "description": "User ID for ownership validation"},
-                    "updates": {"type": "object", "description": "Fields to update"},
+                    "user_id": {"type": "string", "description": "Seller's user ID from authentication"},
+                    "grade": {"type": "string", "description": "Tea grade (optional)"},
+                    "quantity": {"type": "integer", "description": "Quantity in kg (optional)"},
+                    "origin": {"type": "string", "description": "Tea origin region (optional)"},
+                    "base_price": {"type": "number", "description": "Starting price (optional)"},
+                    "start_time": {"type": "string", "description": "Auction start datetime (optional)"},
+                    "duration": {"type": "integer", "description": "Auction duration in minutes (optional)"},
+                    "description": {"type": "string", "description": "Description (optional)"},
                 },
-                "required": ["auction_id", "user_id", "updates"],
+                "required": ["auction_id", "user_id"],
             },
         ),
         Tool(
@@ -388,7 +590,13 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
             result = await update_auction(
                 auction_id=arguments["auction_id"],
                 user_id=arguments["user_id"],
-                updates=arguments["updates"],
+                grade=arguments.get("grade"),
+                quantity=arguments.get("quantity"),
+                origin=arguments.get("origin"),
+                base_price=arguments.get("base_price"),
+                start_time=arguments.get("start_time"),
+                duration=arguments.get("duration"),
+                description=arguments.get("description"),
             )
         elif name == "delete_auction":
             result = await delete_auction(
@@ -408,7 +616,6 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 text=json.dumps({"status": "error", "message": str(e)}),
             )
         ]
-
 
 async def main():
     """Run the MCP auction server."""

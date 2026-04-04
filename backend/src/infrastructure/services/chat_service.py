@@ -8,7 +8,7 @@ Coordinates between repositories, MCP servers, and validation.
 import asyncio
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID
 from sqlalchemy.orm import Session
 
@@ -83,7 +83,7 @@ class ChatService:
         Returns:
             Response dictionary with answer, data, visualizations, etc.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Message Length
         MAX_MESSAGE_LENGTH = 2500
@@ -92,7 +92,7 @@ class ChatService:
             return {
                 "success": False,
                 "error": f"Message too long. Please keep questions under {MAX_MESSAGE_LENGTH} characters.",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         # Detect Echoed AI Responses
@@ -106,7 +106,7 @@ class ChatService:
                     "Could you rephrase your question?"
                 ),
                 "source": "validation",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         
         try:
@@ -177,7 +177,7 @@ class ChatService:
                     "conversation_id": conversation.conversation_id,
                     "answer": rejection,
                     "source": "validation",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "suggestions": self.validator.get_suggestions(user_message)
                 }
 
@@ -212,7 +212,7 @@ class ChatService:
             return {
                 "success": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
       
     async def _create_conversation(
@@ -291,7 +291,7 @@ class ChatService:
     ) -> Dict[str, Any]:
         """Handle questions that need general knowledge (web search)"""
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         logger.info("[Chat] Handling as KNOWLEDGE query - skipping database")
 
@@ -299,7 +299,7 @@ class ChatService:
         search_result = await self.mcp_client.search_web(user_message)
 
         if search_result.get("success"):
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             answer = search_result.get("answer", "")
 
@@ -319,7 +319,7 @@ class ChatService:
                 "answer": answer,
                 "source": "web",
                 "search_results": search_result.get("results", []),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
@@ -382,7 +382,7 @@ class ChatService:
             if not viz_result.get("success"):
                 viz_result = {"visualization": None, "visualization_type": chosen_type}
 
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
@@ -407,7 +407,7 @@ class ChatService:
                 "visualization_type": chosen_type,
                 "visualization": viz_result.get("visualization"),
                 "sql_query": followup_context.get("sql_query"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time,
             }
 
@@ -470,7 +470,7 @@ class ChatService:
                     chart_type="table"
                 )
 
-                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
                 assistant_msg = ChatMessage.create_assistant_message(
                     conversation_id=conversation.conversation_id,
@@ -496,7 +496,7 @@ class ChatService:
                     "visualization_type": "table",
                     "visualization": viz_result.get("visualization"),
                     "sql_query": db_result.get("sql_query"),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "response_time_ms": response_time
                 }
 
@@ -521,7 +521,7 @@ class ChatService:
             if not viz_result.get("success"):
                 viz_result = {"visualization": None, "visualization_type": chosen_type}
 
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
@@ -547,7 +547,7 @@ class ChatService:
                 "visualization_type": chosen_type,
                 "visualization": viz_result.get("visualization"),
                 "sql_query": db_result.get("sql_query"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
@@ -556,7 +556,7 @@ class ChatService:
         # because the question is about live system data that the web cannot answer accurately.
         if db_result.get("success"):
             logger.info("[Chat] Database query returned no results - informing user, skipping web search")
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             no_data_message = (
                 "There are currently no records in the database that match your query. "
@@ -578,7 +578,7 @@ class ChatService:
                 "answer": no_data_message,
                 "source": "database",
                 "row_count": 0,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
@@ -614,7 +614,7 @@ class ChatService:
             search_result = await self.mcp_client.search_web(user_message)
 
             if search_result.get("success"):
-                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
                 answer = search_result.get("answer", "")
 
                 assistant_msg = ChatMessage.create_assistant_message(
@@ -632,12 +632,12 @@ class ChatService:
                     "answer": answer,
                     "source": "web",
                     "search_results": search_result.get("results", []),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "response_time_ms": response_time,
                 }
 
         logger.warning("[Chat] Database query failed - returning error response")
-        response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
         fallback_message = (
             "I was unable to retrieve data from the database at this time. "
@@ -656,7 +656,7 @@ class ChatService:
             "conversation_id": conversation.conversation_id,
             "answer": fallback_message,
             "source": "error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "response_time_ms": response_time
         }
 

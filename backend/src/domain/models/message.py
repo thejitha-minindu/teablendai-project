@@ -8,7 +8,7 @@ Purpose: Represents an individual message in a conversation
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 from uuid import UUID, uuid4
 import json
 from typing import Optional, List, Dict, Any
@@ -97,7 +97,7 @@ class ChatMessage(Base):
         "Timestamp",
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         server_default=func.getdate(),
         index=True
     )
@@ -203,7 +203,7 @@ class ChatMessage(Base):
             conversation_id=conversation_id,
             role="user",
             content=content,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
         )
     
     @classmethod
@@ -229,7 +229,7 @@ class ChatMessage(Base):
             source=source,
             visualization_type=visualization_type,
             response_time_ms=response_time_ms,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         
         # Set JSON fields using helpers
