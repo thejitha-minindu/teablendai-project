@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     MODEL_NAME: str = DEFAULT_GEMINI_MODEL
     GOOGLE_API_KEY: Optional[str] = None
 
+    TAVILY_API_KEY: Optional[str] = None
+    AUCTION_API_BASE_URL: Optional[str] = None
+
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
         "http://localhost:3000",

@@ -136,7 +136,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`);
+        const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`);
         if (!res.ok) throw new Error("Failed to load");
         const data = await res.json();
         setAuction(data);
@@ -166,7 +166,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
         start_time: formatStartTimeForBackend(formData.start_time),
         duration: Math.round(formData.duration * 60),
       };
-      const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`, {
+      const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -178,7 +178,7 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
   const handleCancelAuction = async () => {
     if (!confirm("Cancel this auction?")) return;
     try {
-      const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`, { method: 'DELETE' });
+      const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`, { method: 'DELETE' });
       if (res.ok) { alert("Cancelled."); onClose(); }
     } catch (error) { alert("Cancel failed."); }
   };
@@ -315,7 +315,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   useEffect(() => {
     const fetchLiveDetails = async () => {
       try {
-        const res = await fetch(`http://localhost:8000/api/v1/auctions/${auctionId}`);
+        const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`);
         if (!res.ok) throw new Error("Failed to load");
         const data = await res.json();
         setAuction(data);
@@ -333,7 +333,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
       try {
         const token = typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
         const res = await fetch(
-          `http://localhost:8000/api/v1/buyer/bids/auction/${auctionId}/bids`,
+          `https://teablendai-project.onrender.com/api/v1/buyer/bids/auction/${auctionId}/bids`,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         if (!res.ok) return;

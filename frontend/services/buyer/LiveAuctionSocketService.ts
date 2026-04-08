@@ -1,7 +1,7 @@
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 
 const API_BASE_URL = (() => {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1").replace(/\/$/, "");
+  const baseUrl = (process.env.NEXT_PUBLIC_API_WS_URL || "wss://teablendai-project.onrender.com/api/v1").replace(/\/$/, "");
   return `${baseUrl}/buyer`;
 })();
 
