@@ -177,6 +177,7 @@ export default function ScheduledAuctionsPage() {
           {auctions.map((auction) => (
             <AuctionCard
               key={auction.id}
+              auctionId={auction.id}
               type="scheduled" // You might need to check if AuctionCard supports displaying countdown for 'scheduled' type
               id={auction.displayId}
               data={auction.data} // data.countdown is now populated
