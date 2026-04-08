@@ -1,11 +1,14 @@
 # backend/Dockerfile
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
-# Install system dependencies and Microsoft ODBC Driver 18 for Azure SQL
+# 2. Install system dependencies
 RUN apt-get update && apt-get install -y curl apt-transport-https gnupg2 unixodbc-dev g++ \
-    && curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add - \
-    && curl https://packages.microsoft.com/config/debian/11/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    # 3. Use the modern GPG method to add Microsoft's security key (replaces apt-key)
+    && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /usr/share/keyrings/microsoft-prod.gpg \
+    # 4. Add the Microsoft Debian 12 repository
+    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list > /etc/apt/sources.list.d/mssql-release.list \
+    # 5. Update and install the ODBC Driver 18
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y msodbcsql18
 
