@@ -2,6 +2,7 @@ import sys
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from src.presentation.routers.v1.admin import admin_users
 from dotenv import load_dotenv
 from src.presentation.routers.v1.buyer import live_auction_socket as buyer_live_auction_ws
 from fastapi import FastAPI
@@ -181,3 +182,8 @@ app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Au
 
 # Register admin dashboard router
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
+# Register admin user management router
+# app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
+# Backwards-compatible routes used by frontend (legacy path)
+app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])

@@ -7,6 +7,10 @@ import Link from "next/link";
 export default function AdminDashboard() {
 
   const [totalAuctions, setTotalAuctions] = useState(0);
+  const [totalSellers, setTotalSellers] = useState(0);
+  const [totalBuyers, setTotalBuyers] = useState(0);
+  const [pendingSellers, setPendingSellers] = useState(0);
+  const [pendingBuyers, setPendingBuyers] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -14,7 +18,11 @@ export default function AdminDashboard() {
         const res = await fetch("http://localhost:8000/api/v1/admin/dashboard-stats");
         const data = await res.json();
 
-        setTotalAuctions(data.total_auctions);
+        setTotalAuctions(data.total_auctions || 0);
+        setTotalSellers(data.total_sellers || 0);
+        setTotalBuyers(data.total_buyers || 0);
+        setPendingSellers(data.pending_sellers || 0);
+        setPendingBuyers(data.pending_buyers || 0);
 
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -35,9 +43,9 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Buyers" value="234" sub="Pending 27" />
-        <StatCard title="Total Sellers" value="156" sub="Pending 12" />
-        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Pending 0" />
+        <StatCard title="Total Buyers" value={String(totalBuyers)} sub={String(pendingBuyers)} />
+        <StatCard title="Total Sellers" value={String(totalSellers)} sub={String(pendingSellers)} />
+        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
         <ViolationCard />
       </div>
 
