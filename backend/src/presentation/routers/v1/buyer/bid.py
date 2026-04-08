@@ -6,7 +6,7 @@ from src.application.services.buyer.bid_service import BidService
 from src.application.services.buyer.live_auction_event_service import LiveAuctionEventService
 from src.infrastructure.database.base import get_db
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
-from src.application.dependencies import get_current_buyer
+from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
 from src.domain.services.buyer.bid_validation_service import BidValidationException
 import asyncio
@@ -93,7 +93,7 @@ def get_bid(
 def get_bids_by_auction(
     auction_id: str,
     service: BidService = Depends(get_bid_service),
-    current_user: User = Depends(get_current_buyer),
+    current_user: User = Depends(get_current_user),
 ):
     """List all bids for an auction"""
     try:
@@ -120,7 +120,7 @@ def get_bids_by_user_auction(
 def get_highest_bid(
     auction_id: str,
     service: BidService = Depends(get_bid_service),
-    current_user: User = Depends(get_current_buyer),
+    current_user: User = Depends(get_current_user),
 ):
     """Get the highest bid for an auction"""
     try:

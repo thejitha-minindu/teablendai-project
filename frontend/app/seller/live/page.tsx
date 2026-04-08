@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { LiveAuctionModal } from '@/components/features/seller/AuctionModal';
 import { apiClient } from '@/lib/apiClient';
@@ -79,20 +79,28 @@ export default function LiveAuctionsPage() {
 
       const data = res.data; // Axios puts the JSON in .data
 
-      const formattedData = data.map((item: any) => ({
-        id: item.auction_id,
-        displayId: `${item.grade} - ${item.origin}`,
-        data: {
-          price: item.base_price,
-          grade: item.grade,
-          quantity: item.quantity,
-          custom_auction_id: item.custom_auction_id,
-          buyer: item.buyer || "No Bids Yet",
-          countdown: calculateCountdown(item.start_time, item.duration),
-          rawStart: item.start_time,
-          rawDuration: item.duration
-        }
-      }));
+      const formattedData = data.map((item: any) => {
+        // Parse the date just like the dashboard does
+        const dateObj = parseBackendDateTime(item.start_time) || new Date();
+
+        return {
+          id: item.auction_id,
+          displayId: `${item.grade} - ${item.origin}`,
+          data: {
+            price: item.highest_bid ?? item.base_price,
+            grade: item.grade,
+            quantity: item.quantity,
+            custom_auction_id: item.custom_auction_id,
+            buyer: item.buyer || "No Bids Yet",
+            countdown: calculateCountdown(item.start_time, item.duration),
+            rawStart: item.start_time,
+            rawDuration: item.duration,
+            // ADD THESE TWO LINES:
+            date: dateObj.toLocaleDateString(),
+            time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        };
+      });
 
       setAuctions(formattedData);
     } catch (error) {
@@ -124,17 +132,32 @@ export default function LiveAuctionsPage() {
         }
         // ---------------------------------------------
 
-        return prevAuctions.map(auc => ({
-          ...auc,
-          data: {
-            ...auc.data,
-            countdown: calculateCountdown(auc.data.rawStart, auc.data.rawDuration)
+        // CRITICAL: Only create new objects if countdown actually changed
+        return prevAuctions.map(auc => {
+          const newCountdown = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
+          if (newCountdown === auc.data.countdown) {
+            // No change, return same object reference to prevent React.memo re-render
+            return auc;
           }
-        }));
+          // Only update countdown, keep everything else the same
+          return {
+            ...auc,
+            data: {
+              ...auc.data,
+              countdown: newCountdown
+            }
+          };
+        });
       });
     }, 1000);
 
     return () => clearInterval(timer);
+  }, []);
+
+  // Memoize click handler to prevent new function reference on every render  
+  const handleViewClick = useCallback((auctionId: string) => {
+    console.log(`[LiveAuctionsPage] Opening modal for auction ${auctionId}`);
+    setSelectedAuctionId(auctionId);
   }, []);
 
   return (
