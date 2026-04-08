@@ -43,8 +43,8 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Buyers" value={String(totalBuyers)} sub={String(pendingBuyers)} />
-        <StatCard title="Total Sellers" value={String(totalSellers)} sub={String(pendingSellers)} />
+        <StatCard title="Total Buyers" value={String(totalBuyers)} sub={`Pending    : ${pendingBuyers}`} />
+        <StatCard title="Total Sellers" value={String(totalSellers)} sub={`Pending    : ${pendingSellers}`} />
         <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
         <ViolationCard />
       </div>
