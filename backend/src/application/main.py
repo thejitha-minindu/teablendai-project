@@ -96,13 +96,6 @@ app = FastAPI(
 settings = get_settings()
 allowed_origins = settings.CORS_ORIGINS
 
-app = FastAPI(
-    title="Tea Auction Platform",
-    description="Backend API for TeaBlendAI",
-    version="1.0.0",
-    lifespan=lifespan
-)
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
