@@ -1,15 +1,22 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Webpack configuration for Docker hot reload
+  images: {
+    qualities: [75, 90],
+  },
+  turbopack: {},
   webpack: (config, { dev, isServer }) => {
-    // Enable polling for file changes in development
-    if (dev && !isServer) {
+    if (dev && !isServer && process.env.DOCKER === "true") {
       config.watchOptions = {
         poll: 1000,
         aggregateTimeout: 300,
       };
     }
+
+    config.cache = {
+      type: "filesystem",
+    };
+
     return config;
   },
 };

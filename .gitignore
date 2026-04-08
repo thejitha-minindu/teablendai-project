@@ -159,6 +159,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+__init__.py
 
 # Virtual environment
 venv/
@@ -178,3 +179,6 @@ env/
 
 # Docker
 docker-compose.override.yml
+
+.history/
+env.development

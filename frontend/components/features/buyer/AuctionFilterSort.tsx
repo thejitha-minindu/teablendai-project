@@ -30,9 +30,10 @@ export interface FilterState {
 }
 
 const GRADE_OPTIONS = [
-  { value: "A", label: "Grade A" },
-  { value: "B", label: "Grade B" },
-  { value: "C", label: "Grade C" },
+  { value: "all", label: "All Grades" },
+  { value: "A", label: "Premium (FTGFOP1, SFTGFOP, Silver Needle)" },
+  { value: "B", label: "Standard (BOP, OP, FBOP, TGFOP)" },
+  { value: "C", label: "Specialty (Herbal)" },
 ];
 
 const STATUS_OPTIONS = [
@@ -91,9 +92,13 @@ export function AuctionFilterSort({
     onSortChange?.("recent");
   };
 
-  const activeFiltersCount =
-    [searchQuery, priceMin, priceMax, grade, status !== "all"].filter(Boolean)
-      .length;
+  const activeFiltersCount = [
+    searchQuery,
+    priceMin,
+    priceMax,
+    grade !== "all",
+    status !== "all",
+  ].filter(Boolean).length;
 
   return (
     <div className="w-full bg-card rounded-lg border border-border p-4 md:p-6 mb-6">
@@ -204,7 +209,8 @@ export function AuctionFilterSort({
             <div className="flex items-end gap-2">
               <Button
                 onClick={handleFilterApply}
-                className="flex-1 h-11"
+                className="flex-1 h-11 cursor-pointer hover:scale-98 transition-transform"
+                style={{ backgroundColor: "var(--color4)" }}
               >
                 Apply
               </Button>
