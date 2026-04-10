@@ -1,7 +1,11 @@
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 
 const API_BASE_URL = (() => {
-  const baseUrl = (process.env.NEXT_PUBLIC_API_WS_URL || "wss://teablendai-project.onrender.com/api/v1").replace(/\/$/, "");
+  const baseUrl = process.env.NEXT_PUBLIC_API_WS_URL?.replace(/\/$/, "");
+
+  if (!baseUrl) {
+    throw new Error("NEXT_PUBLIC_API_WS_URL is not defined");
+  }
   return `${baseUrl}/buyer`;
 })();
 
@@ -13,7 +17,7 @@ export function createAuctionBidSocket(
 ) {
   // Get JWT token from localStorage
   const token = typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
-  
+
   if (!token) {
     console.error("No authentication token found. User must be logged in.");
     onClose?.();
@@ -25,19 +29,19 @@ export function createAuctionBidSocket(
 
   const wsUrl = `${API_BASE_URL}/live/auction/${auctionId}?token=${encodeURIComponent(token)}`;
   console.log("Connecting to WebSocket:");
-  
+
   const ws = new WebSocket(wsUrl);
 
   ws.onopen = () => {
     console.log("WebSocket connected for auction:", auctionId);
     onOpen?.();
   };
-  
+
   ws.onclose = (event) => {
     console.log(`WebSocket closed. Code: ${event.code}, Reason: ${event.reason}`);
     onClose?.();
   };
-  
+
   ws.onerror = (event) => {
     console.error("WebSocket error:", {
       type: event.type,
@@ -47,21 +51,21 @@ export function createAuctionBidSocket(
       message: "Connection failed. Check if server is running and token is valid.",
     });
   };
-  
+
   ws.onmessage = (msg) => {
     console.log("Raw WebSocket message received:", msg.data);
     // Check for error messages from server
     try {
       const data = JSON.parse(msg.data);
       console.log("Parsed WebSocket message:", data);
-      
+
       if (data.error) {
         console.error("Server error via WebSocket:", data.error);
         ws.close();
         onClose?.();
         return;
       }
-      
+
       const parsed = data as BidWsEvent;
       const normalized: BidWsEvent = {
         ...parsed,
