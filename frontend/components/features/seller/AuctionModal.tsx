@@ -1,6 +1,8 @@
 "use client";
 import React, { useEffect, useState } from 'react';
 import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban } from 'lucide-react';
+import { apiClient } from '@/lib/apiClient';
+import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -52,7 +54,8 @@ const formatStartTimeForBackend = (localDateTime: string) => {
   const seconds = '00';
 
   const offset = date.getTimezoneOffset();
-  const offsetHours = pad(Math.abs(Math.floor(offset / 60)));
+  const absOffset = Math.abs(offset);
+  const offsetHours = pad(Math.floor(absOffset / 60));
   const offsetMinutes = pad(Math.abs(offset % 60));
   const offsetSign = offset <= 0 ? '+' : '-';
 
@@ -136,9 +139,8 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
   useEffect(() => {
     const fetchDetails = async () => {
       try {
-        const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`);
-        if (!res.ok) throw new Error("Failed to load");
-        const data = await res.json();
+        const res = await apiClient.get(`/auctions/${auctionId}`);
+        const data = res.data;
         setAuction(data);
         setFormData({
           grade: data.grade,
@@ -166,20 +168,19 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
         start_time: formatStartTimeForBackend(formData.start_time),
         duration: Math.round(formData.duration * 60),
       };
-      const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) { alert("Auction updated!"); setEditMode('none'); onClose(); }
+      await apiClient.put(`/auctions/${auctionId}`, payload);
+      alert("Auction updated!");
+      setEditMode('none');
+      onClose();
     } catch (error) { alert("Update failed."); }
   };
 
   const handleCancelAuction = async () => {
     if (!confirm("Cancel this auction?")) return;
     try {
-      const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`, { method: 'DELETE' });
-      if (res.ok) { alert("Cancelled."); onClose(); }
+      await apiClient.delete(`/auctions/${auctionId}`);
+      alert("Cancelled.");
+      onClose();
     } catch (error) { alert("Cancel failed."); }
   };
 
@@ -300,8 +301,6 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 // 2. LIVE AUCTION MODAL (Connected to Backend & WebSockets)
 // ==========================================
 
-import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
-
 export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; onClose: () => void }) {
   const [auction, setAuction] = useState<any>(null);
   const [countdown, setCountdown] = useState("Loading...");
@@ -315,10 +314,8 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   useEffect(() => {
     const fetchLiveDetails = async () => {
       try {
-        const res = await fetch(`https://teablendai-project.onrender.com/api/v1/auctions/${auctionId}`);
-        if (!res.ok) throw new Error("Failed to load");
-        const data = await res.json();
-        setAuction(data);
+        const res = await apiClient.get(`/auctions/${auctionId}`);
+        setAuction(res.data);
       } catch (error) {
         console.error(error);
       } finally {
@@ -331,15 +328,9 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   useEffect(() => {
     const fetchHistoricalBids = async () => {
       try {
-        const token = typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
-        const res = await fetch(
-          `https://teablendai-project.onrender.com/api/v1/buyer/bids/auction/${auctionId}/bids`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (!res.ok) return;
-        const bids = await res.json();
-        // Sort descending by time so highest/latest is first
-        const sorted = [...bids].sort(
+        const res = await apiClient.get(`/buyer/bids/auction/${auctionId}/bids`);
+        const bidsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        const sorted = [...bidsArray].sort(
           (a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime()
         );
         setHistoricalBids(sorted);
@@ -364,14 +355,14 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
   // 3. Determine Real-Time Price & Buyer
   // If we have WS events, use the newest event. Otherwise, fall back to DB data.
-// 3. Determine Real-Time Price & Buyer
+  // 3. Determine Real-Time Price & Buyer
   const latestWsBid = events.length > 0 ? events[0].data : null;
   const latestHistBid = historicalBids.length > 0 ? historicalBids[0] : null;
 
   const currentPrice = latestWsBid?.bid_amount
     ?? latestHistBid?.bid_amount
-    ?? auction.highest_bid 
-    ?? auction.sold_price 
+    ?? auction.highest_bid
+    ?? auction.sold_price
     ?? auction.base_price;
 
   // Prioritize buyer_name over buyer_id
@@ -550,11 +541,10 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 // ==========================================
 // 3. HISTORY AUCTION MODAL (Connected to Real Backend)
 // ==========================================
-import { apiClient } from '@/lib/apiClient';
 
 interface HistoryModalProps {
   auctionId: string;
-  data: any; 
+  data: any;
   onClose: () => void;
 }
 
@@ -572,10 +562,10 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
         // 2. Fetch the real bid history
         const bidsRes = await apiClient.get(`/buyer/bids/auction/${auctionId}/bids`);
-        
+
         // Handle FastAPI array response safely
         const bidsArray = Array.isArray(bidsRes.data) ? bidsRes.data : (bidsRes.data?.data || []);
-        
+
         // Sort bids by amount (highest first) so the winner is always at index 0
         const sortedBids = [...bidsArray].sort((a, b) => b.bid_amount - a.bid_amount);
         setBidHistory(sortedBids);
@@ -605,10 +595,10 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
   // Process display data dynamically based on whether any bids were placed
   const isSold = auctionDetails.status?.toLowerCase() === 'sold' || auctionDetails.buyer || bidHistory.length > 0;
   const displayStatus = isSold ? 'Sold' : 'Unsold';
-  
+
   const highestBid = bidHistory.length > 0 ? bidHistory[0] : null;
   const finalPrice = highestBid ? highestBid.bid_amount : (auctionDetails.sold_price || auctionDetails.base_price);
-  
+
   // Format the winner's name safely
   const rawWinnerId = highestBid ? (highestBid.buyer_name || highestBid.buyer_id) : (auctionDetails.buyer_name || auctionDetails.buyer);
   const winnerDisplay = rawWinnerId ? (rawWinnerId.includes('@') ? rawWinnerId.split('@')[0] : rawWinnerId.substring(0, 8) + "...") : "Unknown";
@@ -617,7 +607,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
-          
+
           {/* Header */}
           <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
             <div className="flex items-center gap-3">
@@ -692,7 +682,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
                 <DollarSign className="w-5 h-5" /> {isSold ? 'Winning Bid History' : 'Bids Received'}
               </h3>
-              
+
               <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
                 {bidHistory.length > 0 ? (
                   bidHistory.map((bid, index) => {
@@ -727,7 +717,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
                   </div>
                 )}
               </div>
-              
+
               {/* Actions */}
               <div className="space-y-3 pt-4 border-t-2 border-gray-200">
                 {isSold ? (
