@@ -31,11 +31,18 @@ async def create_bid(
 ):
     """Place a new bid with event publishing"""
     try:
+        first_name = current_user.first_name or ""
+        last_name = current_user.last_name or ""
+        real_name = f"{first_name} {last_name}".strip()
+
+        if not real_name:
+            real_name = current_user.user_name
+
         result = service.place_bid(
             auction_id=str(bid_request.auction_id),
             buyer_id=str(current_user.user_id),
             bid_amount=bid_request.bid_amount,
-            buyer_name=current_user.user_name
+            buyer_name=real_name
         )
         
         bid_data = result["bid"]
@@ -44,7 +51,7 @@ async def create_bid(
         # Publish event asynchronously
         asyncio.create_task(event_service.publish_bid_created(event))
         
-        logger.info(f"Bid placed successfully: {bid_data.bid_amount}")
+        logger.info(f"Bid placed successfully: {bid_data.bid_amount} by {real_name}")
         
         return bid_data
     
@@ -94,10 +101,21 @@ def get_bids_by_auction(
     auction_id: str,
     service: BidService = Depends(get_bid_service),
     current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """List all bids for an auction"""
     try:
-        return service.list_bids_by_auction(auction_id=auction_id)
+        bids = service.list_bids_by_auction(auction_id=auction_id)
+        
+        for bid in bids:
+            user = db.query(User).filter(User.user_id == bid.buyer_id).first()
+            if user:
+                first_name = user.first_name or ""
+                last_name = user.last_name or ""
+                real_name = f"{first_name} {last_name}".strip()
+                
+                bid.buyer_name = real_name if real_name else user.user_name      
+        return bids
     except Exception as e:
         logger.error(f"Error getting bids for auction {auction_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Error getting auction bids")
