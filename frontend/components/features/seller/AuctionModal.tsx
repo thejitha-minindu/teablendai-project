@@ -601,7 +601,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
   // Format the winner's name safely
   const rawWinnerId = highestBid ? (highestBid.buyer_name || highestBid.buyer_id) : (auctionDetails.buyer_name || auctionDetails.buyer);
-  const winnerDisplay = rawWinnerId ? (rawWinnerId.includes('@') ? rawWinnerId.split('@')[0] : rawWinnerId.substring(0, 8) + "...") : "Unknown";
+  const winnerDisplay = rawWinnerId ? (rawWinnerId.includes('@') ? rawWinnerId.split('@')[0] : (rawWinnerId.length > 20 ? rawWinnerId.substring(0, 20) + "..." : rawWinnerId)) : "Unknown";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
@@ -688,7 +688,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
                   bidHistory.map((bid, index) => {
                     const isWinningBid = index === 0 && isSold;
                     const buyerDisplay = bid.buyer_name || bid.buyer_id;
-                    const safeBuyer = buyerDisplay.includes('@') ? buyerDisplay.split('@')[0] : buyerDisplay.substring(0, 8) + '...';
+                    const safeBuyer = buyerDisplay.includes('@') ? buyerDisplay.split('@')[0] : (buyerDisplay.length > 20 ? buyerDisplay.substring(0, 20) + "..." : buyerDisplay);
 
                     return (
                       <div key={bid.bid_id} className={`p-4 rounded-lg transition-all ${isWinningBid ? 'bg-green-50 border-2 border-green-400 shadow-lg' : 'bg-gray-50 border border-gray-200'}`}>

@@ -5,7 +5,7 @@ import logging
 from src.application.schemas.seller.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_user, get_optional_current_user
+from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload
 from src.domain.models.user import User
 from src.domain.models.auction_status import AuctionStatus
 from uuid import UUID
@@ -23,6 +23,7 @@ def create_auction(
     auction: AuctionCreate,  
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None)
 ):
     """
@@ -48,11 +49,13 @@ def create_auction(
         
         # If we have a validated user object, use it for role check; if only X-User-ID, skip role validation
         # (MCP server is trusted)
-        if validated_user and validated_user.default_role.lower() not in ["seller", "admin"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only sellers and admins can create auctions"
-            )
+        if validated_user:
+            active_role = token_payload.get("role", "").lower() if token_payload else validated_user.default_role.lower()
+            if active_role not in ["seller"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only sellers can create auctions"
+                )
         
         # Populate seller info from authenticated user
         if validated_user:
@@ -114,6 +117,7 @@ def delete_auction(
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
 ):
     """
@@ -132,11 +136,13 @@ def delete_auction(
             detail="Authentication required to delete auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only sellers can delete auctions"
-        )
+    if current_user:
+        active_role = token_payload.get("role", "").lower() if token_payload else current_user.default_role.lower()
+        if active_role not in ["seller", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only sellers can delete auctions"
+            )
 
     auction = service.get_auction(auction_id)
     if not auction:
@@ -159,6 +165,7 @@ def update_auction(
     auction_update: AuctionCreate,
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
 ):
     """
@@ -177,11 +184,13 @@ def update_auction(
             detail="Authentication required to update auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only sellers can update auctions"
-        )
+    if current_user:
+        active_role = token_payload.get("role", "").lower() if token_payload else current_user.default_role.lower()
+        if active_role not in ["seller", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only sellers can update auctions"
+            )
 
     existing = service.get_auction(auction_id)
     if not existing:
