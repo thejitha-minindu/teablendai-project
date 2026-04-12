@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, Clock, TrendingUp } from 'lucide-react'; 
+import { Calendar, Clock, TrendingUp, Package } from 'lucide-react'; 
 import '../../../app/globals.css';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket'; 
 import { apiClient } from '@/lib/apiClient';
@@ -122,7 +122,14 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2">
+      <div className="relative w-full h-40 overflow-hidden bg-gray-50 border-b border-gray-100 rounded-t-xl flex items-center justify-center">
+        {data.image_url ? (
+          <img src={data.image_url} alt="Tea Lot" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+        ) : (
+          <Package className="w-16 h-16 text-gray-300" />
+        )}
+      </div>
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2 pt-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>

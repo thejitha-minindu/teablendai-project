@@ -62,6 +62,7 @@ export default function HistoryPage() {
               dateObj: dateObj,
               date: dateObj.toLocaleDateString(),
               time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              image_url: item.image_url
             }
           };
         });
