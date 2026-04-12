@@ -16,6 +16,7 @@ interface AuctionAPIResponse {
   description: string;
   origin: string;
   duration: number;
+  image_url?: string;
 }
 
 const parseBackendDateTime = (dateString: string) => {
@@ -106,6 +107,7 @@ export default function ScheduledAuctionsPage() {
             grade: item.grade,
             quantity: item.quantity,
             custom_auction_id: item.custom_auction_id,
+            image_url: item.image_url,
             // Calculate initial countdown
             countdown: calculateTimeUntilStart(item.start_time),
             fullData: item

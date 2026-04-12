@@ -97,7 +97,8 @@ export default function LiveAuctionsPage() {
             rawDuration: item.duration,
             // ADD THESE TWO LINES:
             date: dateObj.toLocaleDateString(),
-            time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            image_url: item.image_url
           }
         };
       });

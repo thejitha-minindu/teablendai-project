@@ -33,6 +33,7 @@ class AuctionCreate(BaseModel):
     quantity: float
     origin: str
     description: Optional[str] = None
+    image_url: Optional[str] = None
     base_price: float = Field(ge=0, description="Base price cannot be negative")
     start_time: datetime
     duration: float = Field(gt=0, description="Duration must be greater than 0")
@@ -67,6 +68,7 @@ class AuctionResponse(BaseModel):
     quantity: float
     origin: str
     description: Optional[str] = None
+    image_url: Optional[str] = None
     base_price: float
     start_time: datetime
     duration: float

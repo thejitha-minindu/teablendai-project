@@ -163,6 +163,7 @@ export default function SellerDashboardPage() {
                 buyer: item.buyer,
                 rawStart: item.start_time,
                 duration: item.duration,
+                image_url: item.image_url,
                 countdown: null as string | null
             };
             auctionObj.countdown = calculateCountdown(auctionObj);

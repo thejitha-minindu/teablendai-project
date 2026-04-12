@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Header
+from fastapi import APIRouter, HTTPException, Depends, status, Header, UploadFile, File
+import cloudinary
+import cloudinary.uploader
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
@@ -17,6 +19,34 @@ router.router = router
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
+
+@router.post("/auctions/upload-image", status_code=status.HTTP_200_OK)
+def upload_auction_image(
+    file: UploadFile = File(...),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
+    x_user_id: Optional[str] = Header(None)
+):
+    if not current_user and not x_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to upload images."
+        )
+        
+    try:
+        # Cloudinary uses CLOUDINARY_URL in the .env out of the box
+        result = cloudinary.uploader.upload(file.file)
+        url = result.get("secure_url")
+        if not url:
+            raise Exception("No secure_url returned from Cloudinary.")
+        
+        return {"image_url": url}
+    except Exception as e:
+        logger.error(f"[API] Failed to upload image: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload image: {str(e)}"
+        )
 
 @router.post("/auctions", response_model=AuctionResponse, status_code=status.HTTP_201_CREATED)
 def create_auction(

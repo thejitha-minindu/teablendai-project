@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
+import { Button } from '@/components/ui/button';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
 
 // ==========================================
@@ -132,8 +133,10 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
   const [auction, setAuction] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState<'none' | 'details' | 'schedule'>('none');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>('');
   const [formData, setFormData] = useState({
-    grade: '', quantity: 0, base_price: 0, origin: '', description: '', start_time: '', duration: 0
+    grade: '', quantity: 0, base_price: 0, origin: '', description: '', start_time: '', duration: 0, estate_name: ''
   });
 
   useEffect(() => {
@@ -149,8 +152,10 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
           origin: data.origin,
           description: data.description || '',
           start_time: toLocalISOString(data.start_time),
-          duration: durationToHoursForInput(data.duration)
+          duration: durationToHoursForInput(data.duration),
+          estate_name: data.estate_name || ''
         });
+        setImagePreview(data.image_url || '');
       } catch (error) {
         console.error(error);
       } finally {
@@ -162,11 +167,24 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
   const handleSave = async () => {
     try {
+      let finalImageUrl = auction.image_url;
+
+      // Upload newly selected image if it exists
+      if (imageFile) {
+        const imageFormData = new FormData();
+        imageFormData.append("file", imageFile);
+        const uploadRes = await apiClient.post('/auctions/upload-image', imageFormData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
+        finalImageUrl = uploadRes.data.image_url;
+      }
+
       const payload = {
         ...formData,
         seller_brand: auction.seller_brand || 'My Estate',
         start_time: formatStartTimeForBackend(formData.start_time),
         duration: Math.round(formData.duration * 60),
+        image_url: finalImageUrl || undefined
       };
       await apiClient.put(`/auctions/${auctionId}`, payload);
       alert("Auction updated!");
@@ -202,8 +220,41 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="bg-gray-100 h-64 rounded-xl flex items-center justify-center border-2 border-gray-200">
-                <Package className="w-24 h-24 text-gray-400" />
+              <div className="bg-gray-50 h-64 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative group">
+                {editMode === 'details' ? (
+                  <label htmlFor="details-dropzone" className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-white hover:bg-gray-100 transition-colors">
+                    {imagePreview ? (
+                      <>
+                        <img src={imagePreview} alt="Preview" className="w-full h-full object-cover opacity-60" />
+                        <div className="absolute inset-0 flex items-center justify-center bg-black/10">
+                          <span className="bg-white/90 text-gray-800 text-sm font-bold px-4 py-2 rounded-full shadow-lg border border-gray-200 top-2/4">Change Photo</span>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6 text-gray-500">
+                        <Package className="w-10 h-10 mb-2 opacity-50 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-600">Click to upload image</span>
+                      </div>
+                    )}
+                    <input 
+                      id="details-dropzone" 
+                      type="file" 
+                      accept="image/*"
+                      className="hidden" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setImageFile(file);
+                          setImagePreview(URL.createObjectURL(file));
+                        }
+                      }}
+                    />
+                  </label>
+                ) : imagePreview || auction.image_url ? (
+                  <img src={imagePreview || auction.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                ) : (
+                  <Package className="w-24 h-24 text-gray-300 drop-shadow-sm" />
+                )}
               </div>
               <div className="space-y-4">
                 <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Package className="w-5 h-5" /> Tea Details</h3>
@@ -212,9 +263,11 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     <span className="font-semibold text-gray-600">Ref ID:</span>
                     <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between py-2 border-b border-gray-300">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Estate Name:</span>
-                    <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
+                    {editMode === 'details' ? (
+                      <input type="text" value={formData.estate_name} onChange={(e) => setFormData({ ...formData, estate_name: e.target.value })} className="border p-1 rounded w-40" />
+                    ) : <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>}
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-300">
                     <span className="font-semibold text-gray-600">Grade:</span>
@@ -275,17 +328,27 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {editMode === 'none' ? (
                   <>
-                    <button onClick={() => setEditMode('details')} className="w-full bg-[#588157] text-white font-bold py-3 rounded-lg hover:bg-[#3A5A40]">Edit Details</button>
-                    <button onClick={() => setEditMode('schedule')} className="w-full bg-yellow-500 text-white font-bold py-3 rounded-lg hover:bg-yellow-600">Reschedule</button>
-                    <button onClick={handleCancelAuction} className="w-full bg-red-500 text-white font-bold py-3 rounded-lg hover:bg-red-600">Delete</button>
+                    <Button onClick={() => setEditMode('details')} className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide">
+                      Edit Details
+                    </Button>
+                    <Button onClick={() => setEditMode('schedule')} variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">
+                      Reschedule
+                    </Button>
+                    <Button onClick={handleCancelAuction} variant="ghost" className="w-full text-red-500 font-bold py-6 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-300 border-2 border-transparent hover:border-red-100 text-md tracking-wide">
+                      Delete Auction
+                    </Button>
                   </>
                 ) : (
                   <>
-                    <button onClick={handleSave} className="w-full bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">Save Changes</button>
-                    <button onClick={() => setEditMode('none')} className="w-full bg-gray-400 text-white font-bold py-3 rounded-lg hover:bg-gray-500">Discard</button>
+                    <Button onClick={handleSave} className="w-full bg-[#588157] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#3A5A40] text-md tracking-wide">
+                      Save Changes
+                    </Button>
+                    <Button onClick={() => setEditMode('none')} variant="outline" className="w-full border-2 border-gray-300 text-gray-500 font-bold py-6 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:text-gray-700 text-md tracking-wide">
+                      Discard
+                    </Button>
                   </>
                 )}
               </div>
@@ -406,6 +469,14 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Left Column - Real Auction Info */}
             <div className="space-y-6">
+
+              {/* Conditional Image Display for Live */}
+              {auction.image_url && (
+                  <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative shadow-sm">
+                    <img src={auction.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                  </div>
+              )}
+
               <div className="bg-green-50 border-2 border-green-400 rounded-xl p-6 shadow-inner transition-colors duration-500">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-gray-700 font-semibold uppercase tracking-wider text-sm">
@@ -427,7 +498,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-300">
                   <span className="font-semibold text-gray-600">Estate:</span>
-                  <span className="text-gray-800 font-medium">{auction.seller_brand || "My Estate"}</span>
+                  <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-gray-300">
                   <span className="font-semibold text-gray-600">Grade:</span>
@@ -621,8 +692,12 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="bg-gray-100 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200">
-                <Package className="w-20 h-20 text-gray-400" />
+              <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative">
+                {auctionDetails.image_url ? (
+                  <img src={auctionDetails.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                ) : (
+                  <Package className="w-20 h-20 text-gray-300 drop-shadow-sm" />
+                )}
               </div>
 
               {/* Dynamic Sold / Unsold Banner */}
@@ -662,6 +737,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
                 <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Package className="w-5 h-5" /> Auction Details</h3>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Ref ID:</span><span className="text-gray-800 font-medium">{auctionDetails.custom_auction_id || 'N/A'}</span></div>
+                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Estate Name:</span><span className="text-gray-800 font-medium">{auctionDetails.estate_name || "My Estate"}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Grade:</span><span className="text-gray-800 font-medium">{auctionDetails.grade}</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Quantity:</span><span className="text-gray-800 font-medium">{auctionDetails.quantity} kg</span></div>
                 <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Origin:</span><span className="text-gray-800 font-medium">{auctionDetails.origin}</span></div>
@@ -719,11 +795,15 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               </div>
 
               {/* Actions */}
-              <div className="space-y-3 pt-4 border-t-2 border-gray-200">
+              <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {isSold ? (
-                  <button className="w-full bg-[#588157] hover:bg-[#3A5A40] text-white font-bold py-3 px-6 rounded-lg transition-all shadow-md">Download Invoice</button>
+                  <Button className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide">
+                    Download Invoice
+                  </Button>
                 ) : (
-                  <button className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg transition-all shadow-md">Relist Item</button>
+                  <Button variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">
+                    Relist Item
+                  </Button>
                 )}
               </div>
             </div>
