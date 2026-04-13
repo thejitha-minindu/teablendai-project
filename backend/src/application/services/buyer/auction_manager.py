@@ -107,6 +107,8 @@ class AuctionManager:
             Auction.buyer.isnot(None)
         ).all()
         
+        event_service = LiveAuctionEventService(connection_manager)
+        
         for auction in won_auctions:
             # Get last bid time
             last_bid = db.query(Bid).filter(
@@ -114,10 +116,30 @@ class AuctionManager:
             ).order_by(Bid.bid_time.desc()).first()
             
             if last_bid:
-                is_grace_expired = AuctionTimingService.is_grace_period_expired(last_bid.bid_time, current_time)
+                # Wait 40 seconds (grace period) after last bid
+                is_grace_expired = AuctionTimingService.is_grace_period_expired(
+                    last_bid.bid_time, 
+                    current_time
+                )
                 
                 if is_grace_expired:
                     await self._close_auction(auction, db)
+                    
+                    event = AuctionEvent(
+                        event_id=str(uuid4()),
+                        event_type=AuctionEventType.AUCTION_ENDED,
+                        auction_id=str(auction.auction_id),
+                        occurred_at=datetime.now(timezone.utc),
+                        data={
+                            "winner_id": str(auction.buyer),
+                            "final_price": auction.sold_price,
+                        }
+                    )
+                    try:
+                        await event_service.publish_event(event)
+                        logger.info(f"AUCTION_ENDED event published: {auction.auction_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to publish AUCTION_ENDED for {auction.auction_id}: {e}")
     
     async def _mark_winner(self, auction: Auction, highest_bid: Bid, db: Session):
         """Mark auction winner after waiting period expires"""
@@ -152,46 +174,46 @@ class AuctionManager:
             db.rollback()
     
     async def _close_auction(self, auction: Auction, db: Session):
-        """Close auction and create order after grace period expires"""
+        """Close auction"""
         try:
+            from src.domain.models.order import WinsAuction
+            
             auction.status = AuctionStatus.HISTORY.value
             
-            # Create order if it doesn't exist
-            existing_order = db.query(Order).filter(
-                Order.auction_id == auction.auction_id
-            ).first()
-            
-            if not existing_order and auction.buyer:
-                order = Order(
-                    user_id=auction.buyer,
-                    auction_id=auction.auction_id,
-                    total_amount=auction.sold_price,
-                    order_date=datetime.now(timezone.utc),
-                    status=OrderStatus.completed
-                )
-                db.add(order)
+            if auction.buyer:
+                existing_order = db.query(Order).filter(
+                    Order.auction_id == auction.auction_id
+                ).first()
+                
+                if not existing_order:
+                    order = Order(
+                        order_id=str(uuid4()),
+                        user_id=auction.buyer,
+                        auction_id=auction.auction_id,
+                        total_amount=auction.sold_price,
+                        order_date=datetime.now(timezone.utc),
+                        status=OrderStatus.completed
+                    )
+                    db.add(order)
+                    db.flush()
+                    
+                    wins_entry = WinsAuction(
+                        auction_id=auction.auction_id,
+                        user_id=auction.buyer,
+                        order_id=order.order_id
+                    )
+                    db.add(wins_entry)
+                    logger.info(f"Order + WinsAuction created: {auction.auction_id} → {auction.buyer}")
+            else:
+                logger.info(f"Auction closed with NO WINNER: {auction.auction_id}")
             
             db.commit()
-            logger.info(f"Auction closed: {auction.auction_id}")
-            
-            if not auction.buyer:
-                
-                event_service = LiveAuctionEventService(connection_manager)
-                event = AuctionEvent(
-                    event_type="AUCTION_CLOSED",
-                    auction_id=auction.auction_id,
-                    data={
-                        "winner_id": None,
-                        "final_price": 0,
-                        "status": "ended_no_winner"
-                    }
-                )
-                await event_service.publish_event(event)
-                logger.info(f"AUCTION_CLOSED event published (no winner) for {auction.auction_id}")
+            logger.info(f"Auction closed: {auction.auction_id} → HISTORY")
             
         except Exception as e:
-            logger.error(f"Error closing auction {auction.auction_id}: {e}")
+            logger.error(f"Error closing auction {auction.auction_id}: {e}", exc_info=True)
             db.rollback()
+            raise
     
     def stop(self):
         """Stop the background task"""
