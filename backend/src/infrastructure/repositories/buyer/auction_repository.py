@@ -5,6 +5,7 @@ from src.application.schemas.buyer.auction import Auction
 from src.domain.models.user import User, WatchList
 from src.domain.repositories.buyer.auction_repository import AuctionRepositoryInterface
 from src.domain.models.auction_status import AuctionStatus
+from src.domain.models.bid import Bid
 
 class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
@@ -51,7 +52,21 @@ class AuctionRepository(AuctionRepositoryInterface):
 
     # List auction history for user
     def list_auctions_history(self, user_id: str, as_buyer: bool = False):
-        return self.list_auctions(user_id=user_id, as_buyer=as_buyer, status=AuctionStatus.HISTORY.value)
+        # Fetch all auctions where user placed bids
+        bid_auction_ids = self.db.query(Bid.auction_id).filter(
+            Bid.buyer_id == user_id
+        ).distinct().all()
+            
+        auction_ids = [bid[0] for bid in bid_auction_ids]
+            
+        if not auction_ids:
+            return []
+            
+        auctions = self.db.query(AuctionModel).filter(
+            AuctionModel.auction_id.in_(auction_ids),
+        ).all()
+            
+        return self._attach_buyer_names(auctions)
 
     # List auctions for user as buyer with history status
     def list_auctions_order(self, user_id: str):
