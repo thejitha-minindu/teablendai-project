@@ -100,6 +100,10 @@ class AuctionRepository(AuctionRepositoryInterface):
 
     def get_home_preview_auctions(self, user_id: str):
         query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
+        if query.count() == 0:
+            query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
+        if query.count() == 0:
+            query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.SCHEDULE.value).order_by(AuctionModel.created_at.desc())
         auctions = query.limit(5).all()
         return self._attach_buyer_names(auctions)
     

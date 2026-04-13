@@ -31,6 +31,7 @@ class AuctionData(BaseModel):
     countdown: Optional[float] = None
     image_url: Optional[str] = None
     created_at: Optional[datetime] = None
+    image_url: Optional[str] = None
     
     @field_serializer('duration')
     def serialize_duration(self, value: float, _info) -> float:
