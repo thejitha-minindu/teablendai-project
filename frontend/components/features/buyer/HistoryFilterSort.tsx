@@ -33,9 +33,19 @@ export interface FilterState {
 }
 
 const GRADE_OPTIONS = [
-  { value: "A", label: "Grade A" },
-  { value: "B", label: "Grade B" },
-  { value: "C", label: "Grade C" },
+  { value: "all", label: "All Grades" },
+  { value: "BOP", label: "BOP" },
+  { value: "BOPF", label: "BOPF" },
+  { value: "OP", label: "OP" },
+  { value: "OP1", label: "OP1" },
+  { value: "OPA", label: "OPA" },
+  { value: "FBOP", label: "FBOP" },
+  { value: "Pekoe", label: "Pekoe" },
+  { value: "Pekoe 1", label: "Pekoe 1" },
+  { value: "Dust", label: "Dust" },
+  { value: "Dust 1", label: "Dust 1" },
+  { value: "Silver Tips", label: "Silver Tips" },
+  { value: "Golden Tips", label: "Golden Tips" },
 ];
 
 const SORT_OPTIONS = [
