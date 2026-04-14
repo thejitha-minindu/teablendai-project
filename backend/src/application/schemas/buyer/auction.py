@@ -31,6 +31,7 @@ class AuctionData(BaseModel):
     countdown: Optional[float] = None
     image_url: Optional[str] = None
     created_at: Optional[datetime] = None
+    image_url: Optional[str] = None
     
     @field_serializer('duration')
     def serialize_duration(self, value: float, _info) -> float:
@@ -119,6 +120,15 @@ class AuctionOrderCard(BaseModel):
     sold_price: Optional[float] = None
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     buyer_name: Optional[str] = None
+    order_id: Optional[str] = None
+    
+    @field_serializer('date')
+    def serialize_date(self, value: datetime, _info) -> str:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
 
 # create/update requests
 class AuctionCreateRequest(BaseModel):

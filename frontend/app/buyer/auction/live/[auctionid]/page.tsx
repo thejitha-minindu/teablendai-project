@@ -8,7 +8,7 @@ import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
 import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
 import { toast  } from "sonner";
@@ -29,6 +29,7 @@ export default function BuyerAuctionLivePage() {
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [winner, setWinner] = useState<{ winnerId: string | null; winnerName?: string; finalPrice: number } | null>(null);
 
+  const processedBidIds = useRef(new Set<string>());
   const { connected, events } = useAuctionBidsSocket(auctionId);
 
   useEffect(() => {
@@ -61,7 +62,13 @@ export default function BuyerAuctionLivePage() {
 
         setAuction(auctionData);
         const bidData = await listBidsByAuction(auctionId);
-        setBids(bidData || []);
+        setBids(
+          (bidData || []).sort((a, b) => b.bid_amount - a.bid_amount)
+        );
+        
+        bidData?.forEach((bid) => {
+          processedBidIds.current.add(bid.bid_id);
+        });
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load auction");
         toast.error("Failed to load auction", { position: "top-right" });
@@ -87,34 +94,43 @@ export default function BuyerAuctionLivePage() {
     console.log("BID_CREATED events:", createdEvents);
     
     if (createdEvents.length) {
-      setBids((previous) => {
-        const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
-
-        createdEvents.forEach((event) => {
-          const isMyBid = event.data.buyer_id === userId;
-
-          map.set(event.data.bid_id, {
-            bid_id: event.data.bid_id,
-            auction_id: event.data.auction_id,
-            bid_amount: event.data.bid_amount,
-            bid_time: new Date(event.data.bid_time),
-            buyer_id: event.data.buyer_id,
-            buyer_name: event.data.buyer_name,
-          });
-
-          toast.success(
-            isMyBid ? "Your bid placed!" : "New bid!",
-            {
-              description: `LKR ${event.data.bid_amount} · ${new Date(event.data.bid_time).toLocaleTimeString()}`,
-              position: "top-right",
-            }
-          );
+      const newEvents = createdEvents.filter((event) => !processedBidIds.current.has(event.data.bid_id));
+      
+      if (newEvents.length) {
+        const latestNewEvent = newEvents[newEvents.length - 1];
+        const isMyBid = latestNewEvent.data.buyer_id === userId;
+        
+        toast.success(
+          isMyBid ? "Your bid placed!" : "New bid!",
+          {
+            description: `LKR ${latestNewEvent.data.bid_amount} · ${new Date(latestNewEvent.data.bid_time).toLocaleTimeString()}`,
+            position: "top-right",
+          }
+        );
+        
+        newEvents.forEach((event) => {
+          processedBidIds.current.add(event.data.bid_id);
         });
 
-        return Array.from(map.values()).sort(
-          (a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime()
-        );
-      });
+        setBids((previous) => {
+          const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
+
+          newEvents.forEach((event) => {
+            map.set(event.data.bid_id, {
+              bid_id: event.data.bid_id,
+              auction_id: event.data.auction_id,
+              bid_amount: event.data.bid_amount,
+              bid_time: new Date(event.data.bid_time),
+              buyer_id: event.data.buyer_id,
+              buyer_name: event.data.buyer_name,
+            });
+          });
+
+          return Array.from(map.values()).sort(
+            (a, b) => b.bid_amount - a.bid_amount
+          );
+        });
+      }
     }
 
     // Handle AUCTION_WON events (contains winner info)
