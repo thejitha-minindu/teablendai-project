@@ -93,7 +93,7 @@ export function AuctionDetailLayout({
                 <p><span className="font-medium">Grade:</span> {auction.grade}</p>
                 <p><span className="font-medium">Quantity:</span> {auction.quantity} Kg</p>
                 <p><span className="font-medium">Company:</span> {auction.company_name || "N/A"}</p>
-                <p><span className="font-medium">Seller:</span> {auction.seller_id || "N/A"}</p>
+                <p><span className="font-medium">Seller:</span> {auction.seller_brand || "N/A"}</p>
                 <div className="mt-3 pt-3 border-t">
                   <p><span className="font-medium">Start Time:</span> {new Date(auction.date).toLocaleString()}</p>
                   <p><span className="font-medium">Duration:</span> {Math.floor(auction.duration / 60)} minutes ({auction.duration} sec)</p>

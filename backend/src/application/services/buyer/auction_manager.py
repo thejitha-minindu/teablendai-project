@@ -75,13 +75,11 @@ class AuctionManager:
             Auction.status == AuctionStatus.LIVE.value,
             Auction.buyer.is_(None)
         ).all()
-        
-        logger.info(f"Found {len(live_auctions)} live auctions without buyer")
-        
+                
         for auction in live_auctions:
-            logger.info(f"Processing auction {auction.auction_id}")
+            logger.debug(f"Processing auction {auction.auction_id}")
             is_expired = AuctionTimingService.is_auction_expired(auction, current_time)
-            logger.info(f"Auction {auction.auction_id} expired: {is_expired}")
+            logger.debug(f"Auction {auction.auction_id} expired: {is_expired}")
             
             if is_expired:
                 # Get highest bid
@@ -89,15 +87,15 @@ class AuctionManager:
                     Bid.auction_id == auction.auction_id
                 ).order_by(Bid.bid_amount.desc()).first()
                 
-                logger.info(f"Highest bid for {auction.auction_id}: {highest_bid.bid_amount if highest_bid else None}")
+                logger.debug(f"Highest bid for {auction.auction_id}: {highest_bid.bid_amount if highest_bid else None}")  # ✅ DEBUG
                 
                 if highest_bid:
                     time_since_last_bid = (current_time - highest_bid.bid_time).total_seconds()
                     wait_threshold = AuctionTimingConstants.WAIT_BEFORE_WIN.total_seconds()
-                    logger.info(f"Time since last bid: {time_since_last_bid}s, Threshold: {wait_threshold}s")
+                    logger.debug(f"Time since last bid: {time_since_last_bid}s, Threshold: {wait_threshold}s")  # ✅ DEBUG
                     
                     if time_since_last_bid >= wait_threshold:
-                        logger.info(f"Calling _mark_winner for auction {auction.auction_id}")
+                        logger.info(f"Marking winner for auction {auction.auction_id}")  # ✅ KEEP INFO - important event
                         await self._mark_winner(auction, highest_bid, db)
     
     async def _process_won_auctions(self, db: Session, current_time: datetime):
