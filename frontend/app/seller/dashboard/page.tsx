@@ -176,6 +176,12 @@ export default function SellerDashboardPage() {
             ...histData.map((i: any) => normalize(i, 'history'))
         ];
 
+        console.log("== DASHBOARD FETCH COMPLETE ==");
+        console.log("Live:", liveData.length);
+        console.log("Sched:", schedData.length);
+        console.log("Hist:", histData.length);
+        console.log("Combined after filter:", combined.filter(a => a !== null && a !== undefined).length);
+
         setAllAuctions(combined.filter(a => a !== null && a !== undefined));
       } catch (error) {
         console.error("Failed to load dashboard data", error);
