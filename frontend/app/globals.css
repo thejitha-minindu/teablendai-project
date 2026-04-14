@@ -192,3 +192,7 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+.toaster [data-description] {
+  color: #000000 !important;
+}
