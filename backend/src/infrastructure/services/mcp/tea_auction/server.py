@@ -38,6 +38,7 @@ def _candidate_base_urls() -> List[str]:
         candidates.append(str(explicit).rstrip("/"))
 
     candidates.extend([
+        "https://teablendai-project.onrender.com",
         f"http://localhost:{settings.API_PORT}",
         "http://localhost:8000",
         "http://127.0.0.1:8000",

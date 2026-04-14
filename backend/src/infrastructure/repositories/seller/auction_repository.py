@@ -195,6 +195,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             quantity=auction_data.quantity,
             origin=auction_data.origin,
             description=auction_data.description,
+            image_url=auction_data.image_url,
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
             duration=auction_data.duration,

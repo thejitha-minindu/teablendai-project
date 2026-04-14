@@ -1,11 +1,13 @@
-from fastapi import APIRouter, HTTPException, Depends, status, Header
+from fastapi import APIRouter, HTTPException, Depends, status, Header, UploadFile, File
+import cloudinary
+import cloudinary.uploader
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
 from src.application.schemas.seller.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_user, get_optional_current_user
+from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload
 from src.domain.models.user import User
 from src.domain.models.auction_status import AuctionStatus
 from uuid import UUID
@@ -18,11 +20,40 @@ router.router = router
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
 
+@router.post("/auctions/upload-image", status_code=status.HTTP_200_OK)
+def upload_auction_image(
+    file: UploadFile = File(...),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
+    x_user_id: Optional[str] = Header(None)
+):
+    if not current_user and not x_user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to upload images."
+        )
+        
+    try:
+        # Cloudinary uses CLOUDINARY_URL in the .env out of the box
+        result = cloudinary.uploader.upload(file.file)
+        url = result.get("secure_url")
+        if not url:
+            raise Exception("No secure_url returned from Cloudinary.")
+        
+        return {"image_url": url}
+    except Exception as e:
+        logger.error(f"[API] Failed to upload image: {e}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to upload image: {str(e)}"
+        )
+
 @router.post("/auctions", response_model=AuctionResponse, status_code=status.HTTP_201_CREATED)
 def create_auction(
     auction: AuctionCreate,  
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None)
 ):
     """
@@ -48,11 +79,13 @@ def create_auction(
         
         # If we have a validated user object, use it for role check; if only X-User-ID, skip role validation
         # (MCP server is trusted)
-        if validated_user and validated_user.default_role.lower() not in ["seller", "admin"]:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only sellers and admins can create auctions"
-            )
+        if validated_user:
+            active_role = token_payload.get("role", "").lower() if token_payload else validated_user.default_role.lower()
+            if active_role not in ["seller"]:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only sellers can create auctions"
+                )
         
         # Populate seller info from authenticated user
         if validated_user:
@@ -114,6 +147,7 @@ def delete_auction(
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
 ):
     """
@@ -132,11 +166,13 @@ def delete_auction(
             detail="Authentication required to delete auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only sellers can delete auctions"
-        )
+    if current_user:
+        active_role = token_payload.get("role", "").lower() if token_payload else current_user.default_role.lower()
+        if active_role not in ["seller", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only sellers can delete auctions"
+            )
 
     auction = service.get_auction(auction_id)
     if not auction:
@@ -159,6 +195,7 @@ def update_auction(
     auction_update: AuctionCreate,
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
 ):
     """
@@ -177,11 +214,13 @@ def update_auction(
             detail="Authentication required to update auctions. Provide JWT token or X-User-ID header."
         )
     
-    if current_user and current_user.default_role.lower() not in ["seller", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only sellers can update auctions"
-        )
+    if current_user:
+        active_role = token_payload.get("role", "").lower() if token_payload else current_user.default_role.lower()
+        if active_role not in ["seller", "admin"]:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only sellers can update auctions"
+            )
 
     existing = service.get_auction(auction_id)
     if not existing:
