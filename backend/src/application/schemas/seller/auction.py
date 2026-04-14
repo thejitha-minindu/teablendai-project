@@ -86,7 +86,7 @@ class AuctionResponse(BaseModel):
             value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
     
-    @field_validator('auction_id', 'seller_id', mode='before')
+    @field_validator('auction_id', 'seller_id', 'buyer', mode='before')
     @classmethod
     def convert_uuid_to_string(cls, value):
         if isinstance(value, UUID):
