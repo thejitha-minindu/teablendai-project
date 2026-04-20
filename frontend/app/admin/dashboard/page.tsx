@@ -11,6 +11,7 @@ export default function AdminDashboard() {
   const [totalBuyers, setTotalBuyers] = useState(0);
   const [pendingSellers, setPendingSellers] = useState(0);
   const [pendingBuyers, setPendingBuyers] = useState(0);
+  const [totalViolations, setTotalViolations] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -23,6 +24,7 @@ export default function AdminDashboard() {
         setTotalBuyers(data.total_buyers || 0);
         setPendingSellers(data.pending_sellers || 0);
         setPendingBuyers(data.pending_buyers || 0);
+        setTotalViolations(data.total_violations || 0);
 
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -46,7 +48,7 @@ export default function AdminDashboard() {
         <StatCard title="Total Buyers" value={String(totalBuyers)} sub={`Pending    : ${pendingBuyers}`} />
         <StatCard title="Total Sellers" value={String(totalSellers)} sub={`Pending    : ${pendingSellers}`} />
         <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
-        <ViolationCard />
+        <ViolationCard totalViolations={totalViolations} />
       </div>
 
       {/* ANALYTICS + ACTION */}
@@ -127,7 +129,7 @@ function StatCard({
   );
 }
 
-function ViolationCard() {
+function ViolationCard({ totalViolations }: { totalViolations: number }) {
   return (
     <div className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between">
       <div className="flex items-center gap-2">
@@ -135,7 +137,7 @@ function ViolationCard() {
         <h3 className="text-sm text-gray-500">Total Violations</h3>
       </div>
 
-      <p className="text-4xl font-bold my-3">99</p>
+      <p className="text-4xl font-bold my-3">{totalViolations}</p>
 
       <Link href="/admin/violationhandling">
         <button className="w-full bg-red-100 text-red-700 py-2 rounded-lg font-medium hover:bg-red-200 transition">
