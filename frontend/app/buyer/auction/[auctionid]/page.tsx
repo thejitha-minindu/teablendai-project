@@ -5,7 +5,6 @@ import { getAuction } from "@/services/buyer/auctionService";
 import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
-import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
@@ -23,8 +22,6 @@ export default function BuyerAuctionLivePage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [imageFailed, setImageFailed] = useState(false);
-
-  const { connected, events } = useAuctionBidsSocket(auctionId);
 
   useEffect(() => {
     const claims = getAuthClaims();
@@ -67,88 +64,13 @@ export default function BuyerAuctionLivePage() {
     load();
   }, [auctionId, router]);
 
-  useEffect(() => {
-    if (!events.length) return;
+  const highestBid = 0;
 
-    const createdEvents = events.filter((event) => event.event_type === "BID_CREATED");
-    if (!createdEvents.length) return;
+  const myBids = 0;
 
-    setBids((previous) => {
-      const map = new Map(previous.map((bid) => [bid.bid_id, bid]));
-
-      createdEvents.forEach((event) => {
-        map.set(event.data.bid_id, {
-          bid_id: event.data.bid_id,
-          auction_id: event.data.auction_id,
-          bid_amount: event.data.bid_amount,
-          bid_time: new Date(event.data.bid_time),
-          buyer_id: event.data.buyer_id,
-        });
-      });
-
-      return Array.from(map.values()).sort(
-        (a, b) => new Date(b.bid_time).getTime() - new Date(a.bid_time).getTime()
-      );
-    });
-  }, [events]);
-
-  const highestBid = useMemo(() => {
-    return bids.reduce((current, next) => (next.bid_amount > current ? next.bid_amount : current), auction?.base_price ?? 0);
-  }, [bids, auction?.base_price]);
-
-  const myBids = useMemo(
-    () => bids.filter((bid) => Boolean(userId) && bid.buyer_id === userId),
-    [bids, userId]
-  );
-  const myHighestBid = useMemo(
-    () => myBids.reduce((current, next) => (next.bid_amount > current ? next.bid_amount : current), 0),
-    [myBids]
-  );
+  const myHighestBid = 0;
 
   const latestBid = bids[0];
-
-  const submitBid = async () => {
-    const amount = Number(selectedAmount);
-
-    if (!amount || Number.isNaN(amount)) {
-      setError("Please select a bid amount");
-      return;
-    }
-
-    if (!auctionId) {
-      setError("Auction is not ready");
-      return;
-    }
-
-    if (!userId) {
-      setError("Missing authenticated user");
-      return;
-    }
-
-    if (amount <= highestBid) {
-      setError(`Bid must be greater than current highest (${highestBid})`);
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      setError(null);
-
-      await createBid({
-        bid_id: crypto.randomUUID(),
-        auction_id: auctionId,
-        bid_amount: amount,
-        bid_time: new Date(),
-        buyer_id: userId,
-      });
-
-      setSelectedAmount("");
-    } catch (submitError) {
-      setError(submitError instanceof Error ? submitError.message : "Failed to place bid");
-    } finally {
-      setSubmitting(false);
-    }
-  };
 
   if (loading) {
     return <div className="p-6 text-sm text-gray-600">Loading live auction...</div>;
@@ -165,16 +87,11 @@ export default function BuyerAuctionLivePage() {
   return (
     <AuctionDetailLayout
       auction={auction}
-      bids={bids}
       highestBid={highestBid}
       myHighestBid={myHighestBid}
       latestBid={latestBid}
-      selectedAmount={selectedAmount}
-      setSelectedAmount={setSelectedAmount}
-      submitting={submitting}
-      connected={connected}
+      connected={false}
       error={error}
-      submitBid={submitBid}
       isBidLocked={isBidLocked}
       statusLabel="Scheduled"
       imageUrl={imageUrl}

@@ -1,112 +1,68 @@
 """
-SQLAlchemy Base Configuration
-
-This file sets up the foundation for all ORM models.
-All domain models will inherit from this Base class.
+SQLAlchemy base configuration shared by domain and repository models.
 """
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy import text
-from .connection import engine
-from sqlalchemy import NullPool, create_engine, text
-import os
-
 from dotenv import load_dotenv
-from sqlalchemy.orm import declarative_base
+from sqlalchemy import create_engine, text
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import NullPool
+
+from src.config import get_mssql_connection_string, get_settings
 
 load_dotenv()
 
 Base = declarative_base()
 
-def _get_db_config():
-    server = os.getenv('MSSQL_SERVER')
-    database = os.getenv('MSSQL_DATABASE')
-    username = os.getenv('MSSQL_USERNAME') or ''
-    password = os.getenv('MSSQL_PASSWORD') or ''
-    trusted_env = os.getenv('DB_TRUSTED_CONNECTION')
-
-    if trusted_env is None:
-        trusted_env = os.getenv('MSSQL_TRUSTED_CONNECTION')
-    trusted = False if trusted_env is None else str(trusted_env).lower() in ('1','true','yes','y')
-    return server, database, username, password, trusted
 
 def create_database_connection():
-    server, database, username, password, trusted = _get_db_config()
-
-    driver = "ODBC Driver 17 for SQL Server"
-    if trusted or (not username and not password):
-        connection_string = (
-            f"mssql+pyodbc://{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&trusted_connection=yes"
-            f"&TrustServerCertificate=yes"
-        )
-    else:
-        connection_string = (
-            f"mssql+pyodbc://{username}:{password}@{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&TrustServerCertificate=yes"
-        )
+    connection_string = get_mssql_connection_string()
 
     try:
-        # Create SQLAlchemy Engine
-        # Engine manages database connections
-        engine = create_engine(
-            connection_string, 
-            poolclass=NullPool, 
+        return create_engine(
+            connection_string,
+            poolclass=NullPool,
             echo=False,
-            implicit_returning=False
+            implicit_returning=False,
         )
-        return engine
     except Exception as e:
+        settings = get_settings()
         raise RuntimeError(
-            "Failed to create MSSQL engine. Ensure 'ODBC Driver 18 for SQL Server' is installed "
-            "and DB_* (or MSSQL_*) environment variables are set correctly. "
-            f"Attempted server='{server}', database='{database}', trusted={trusted}. "
+            "Failed to create MSSQL engine. Ensure the configured ODBC driver is installed "
+            "and MSSQL_* / DATABASE_URL environment variables are set correctly. "
+            f"Attempted server='{settings.MSSQL_SERVER}', database='{settings.MSSQL_DATABASE}', "
+            f"trusted={settings.DB_TRUSTED_CONNECTION}. "
             f"Original error: {e}"
         )
 
-# Create Engine Instance
-engine = create_database_connection()
 
-# Create Session Factory
-# SessionLocal is a factory for creating database sessions
+engine = create_database_connection()
 SessionLocal = sessionmaker(
     bind=engine,
-    autocommit=False,  
-    autoflush=False, 
-    expire_on_commit=False 
+    autocommit=False,
+    autoflush=False,
+    expire_on_commit=False,
 )
 
-# Create Base Class
-Base = declarative_base()
 
 def get_db():
-    """
-    Dependency injection for database sessions
-    """
+    """Dependency injection helper for database sessions."""
     db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Database Initialization
+
 def init_db():
-    """
-    Initialize database (create all tables)
-    Note: Since we created tables with SQL, this is optional.
-    """
-    from src.domain.models.conversation import Conversation
-    from src.domain.models.message import ChatMessage
+    """Initialize database tables from mapped metadata."""
+    from src.domain.models.conversation import Conversation  # noqa: F401
+    from src.domain.models.message import ChatMessage  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
     print("Database initialized!")
 
+
 def test_connection():
-    """
-    Test if database connection works
-    """
+    """Test whether database connection works."""
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
@@ -117,6 +73,6 @@ def test_connection():
         print(f"Database connection failed: {e}")
         return False
 
+
 if __name__ == "__main__":
-    # Test the connection
     test_connection()

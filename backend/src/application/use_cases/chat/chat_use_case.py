@@ -1,4 +1,5 @@
 from typing import Optional, Dict, Any
+from uuid import UUID
 from src.infrastructure.services.chat_service import ChatService
 
 
@@ -10,8 +11,8 @@ class ChatUseCase:
     async def execute(
         self,
         message: str,
-        conversation_id: Optional[int] = None,
-        user_id: Optional[int] = None
+        conversation_id: Optional[UUID] = None,
+        user_id: Optional[str] = None
     ) -> Dict[str, Any]:
 
         return await self.chat_service.process_message(

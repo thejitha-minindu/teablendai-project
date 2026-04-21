@@ -29,13 +29,13 @@ export async function listBids(params?: { userId?: string; auctionId?: string; m
 
 // List all bids for an auction
 export async function listBidsByAuction(auctionId: string): Promise<Bid[]> {
-	const response = await apiClient.get<Bid[]>(`${BUYER_API_BASE}/bids/auction/${auctionId}`);
+	const response = await apiClient.get<Bid[]>(`${BUYER_API_BASE}/bids/auction/${auctionId}/bids`);
 	return response.data;
 }
 
 // List bids by user for a specific auction
 export async function listBidsByUserAuction(userId: string, auctionId: string): Promise<Bid[]> {
-	const response = await apiClient.get<Bid[]>(`${BUYER_API_BASE}/bids/auction/${auctionId}/user/${userId}`);
+	const response = await apiClient.get<Bid[]>(`${BUYER_API_BASE}/bids/${userId}/auction/${auctionId}`);
 	return response.data;
 }
 

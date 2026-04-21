@@ -159,6 +159,7 @@ wheels/
 .installed.cfg
 *.egg
 MANIFEST
+__init__.py
 
 # Virtual environment
 venv/
@@ -179,7 +180,5 @@ env/
 # Docker
 docker-compose.override.yml
 
-# Migration files
-backend/alembic/versions/*
-
 .history/
+env.development

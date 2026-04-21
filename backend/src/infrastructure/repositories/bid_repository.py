@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from src.domain.models.bid import Bid as BidModel
+from src.domain.models.user import User
 from src.application.schemas.bid import Bid
 from src.domain.repositories.bid_repository import BidRepositoryInterface
 import logging
@@ -23,26 +25,31 @@ class BidRepository(BidRepositoryInterface):
         return db_bid
     
     def list_bids(self, user_id: str = None, auction_id: str = None, min_amount: float = None):
-        # List bids with optional filters
         logger.info("Listing bids")
         logger.debug(f"Filters - user_id: {user_id}, auction_id: {auction_id}, min_amount: {min_amount}")
-        query = self.db.query(BidModel)
+        query = self.db.query(BidModel, User.user_name).outerjoin(User, BidModel.buyer_id == User.user_id)
         if user_id:
             query = query.filter(BidModel.buyer_id == user_id)
         if auction_id:
             query = query.filter(BidModel.auction_id == auction_id)
         if min_amount is not None:
             query = query.filter(BidModel.bid_amount >= min_amount)
-        bids = query.all()
+        results = query.all()
+        bids = []
+        for bid_model, user_name in results:
+            bid_model.buyer_name = user_name
+            bids.append(bid_model)
         logger.debug(f"Found {len(bids)} bids")
         return bids
 
     def get_bid_details(self, bid_id: str):
-        # Get details of a specific bid
         logger.info(f"Getting details for bid_id: {bid_id}")
-        bid = self.db.query(BidModel).filter(BidModel.bid_id == bid_id).first()
-        logger.debug(f"Bid details: {bid}")
-        return bid
+        result = self.db.query(BidModel, User.user_name).outerjoin(User, BidModel.buyer_id == User.user_id).filter(BidModel.bid_id == bid_id).first()
+        if result:
+            bid_model, user_name = result
+            bid_model.buyer_name = user_name
+            return bid_model
+        return None
 
     def list_bids_by_auction(self, auction_id: str):
         # List all bids for a specific auction
@@ -55,8 +62,10 @@ class BidRepository(BidRepositoryInterface):
         return self.list_bids(user_id=user_id, auction_id=auction_id)
 
     def get_highest_bid_for_auction(self, auction_id: str):
-        # Get the highest bid for a specific auction
         logger.info(f"Getting highest bid for auction_id: {auction_id}")
-        bid = self.db.query(BidModel).filter(BidModel.auction_id == auction_id).order_by(BidModel.bid_amount.desc()).first()
-        logger.debug(f"Highest bid: {bid}")
-        return bid
+        result = self.db.query(BidModel, User.user_name).outerjoin(User, BidModel.buyer_id == User.user_id).filter(BidModel.auction_id == auction_id).order_by(BidModel.bid_amount.desc()).first()
+        if result:
+            bid_model, user_name = result
+            bid_model.buyer_name = user_name
+            return bid_model
+        return None

@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { ScheduledAuctionModal } from '@/components/features/seller/AuctionModal';
 import { apiClient } from '@/lib/apiClient';
 
 interface AuctionAPIResponse {
   auction_id: string;
+  custom_auction_id?: string;
   grade: string;
   quantity: number;
   base_price: number;
@@ -14,14 +16,39 @@ interface AuctionAPIResponse {
   description: string;
   origin: string;
   duration: number;
+  image_url?: string;
 }
+
+const parseBackendDateTime = (dateString: string) => {
+  if (!dateString) return null;
+
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
+    return new Date(dateString);
+  }
+
+  const normalized = dateString.replace(' ', 'T');
+  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
+  const timePart = timePartRaw.split('.')[0];
+
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
+
+  return new Date(
+    year,
+    (month || 1) - 1,
+    day || 1,
+    Number(hours),
+    Number(minutes),
+    Number(seconds)
+  );
+};
 
 // Helper to calculate time remaining until start
 const calculateTimeUntilStart = (startTime: string) => {
-  // Force UTC interpretation
-  const safeStartTime = startTime.endsWith('Z') ? startTime : startTime + 'Z';
+  const startDate = parseBackendDateTime(startTime);
+  if (!startDate || Number.isNaN(startDate.getTime())) return "Starting...";
 
-  const start = new Date(safeStartTime).getTime();
+  const start = startDate.getTime();
   const now = new Date().getTime();
   const diff = start - now;
 
@@ -42,6 +69,7 @@ export default function ScheduledAuctionsPage() {
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const searchParams = useSearchParams();
 
   // 1. Fetch Data Function
   const fetchAuctions = async () => {
@@ -65,10 +93,7 @@ export default function ScheduledAuctionsPage() {
 
       // 2. Map API Data to Card Format
       const formattedData = data.map((item) => {
-        const safeTimeString = item.start_time.endsWith('Z')
-          ? item.start_time
-          : item.start_time + 'Z';
-        const dateObj = new Date(safeTimeString);
+        const dateObj = parseBackendDateTime(item.start_time) || new Date();
 
         return {
           id: item.auction_id,
@@ -81,6 +106,8 @@ export default function ScheduledAuctionsPage() {
             time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             grade: item.grade,
             quantity: item.quantity,
+            custom_auction_id: item.custom_auction_id,
+            image_url: item.image_url,
             // Calculate initial countdown
             countdown: calculateTimeUntilStart(item.start_time),
             fullData: item
@@ -129,6 +156,16 @@ export default function ScheduledAuctionsPage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const auctionIdFromQuery = searchParams.get('auctionId');
+    if (!auctionIdFromQuery || auctions.length === 0) return;
+
+    const auctionExists = auctions.some((auction) => auction.id === auctionIdFromQuery);
+    if (auctionExists) {
+      setSelectedAuctionId(auctionIdFromQuery);
+    }
+  }, [searchParams, auctions]);
+
   return (
     <div className="max-w-7xl mx-auto px-4">
       <h1 className="text-[#1A2F1C] text-3xl font-bold text-left mb-12">
@@ -142,6 +179,7 @@ export default function ScheduledAuctionsPage() {
           {auctions.map((auction) => (
             <AuctionCard
               key={auction.id}
+              auctionId={auction.id}
               type="scheduled" // You might need to check if AuctionCard supports displaying countdown for 'scheduled' type
               id={auction.displayId}
               data={auction.data} // data.countdown is now populated

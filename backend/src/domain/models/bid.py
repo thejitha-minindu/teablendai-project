@@ -8,10 +8,10 @@ class Bid(Base):
     __tablename__ = "bids"
 
     bid_id = Column(UNIQUEIDENTIFIER, primary_key=True, default=uuid4, index=True)
-    auction_id = Column(UNIQUEIDENTIFIER, ForeignKey("auctions.auction_id", ondelete="CASCADE"), primary_key=True, index=True)
-    buyer_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), primary_key=True, index=True)
+    auction_id = Column(UNIQUEIDENTIFIER, ForeignKey("auctions.auction_id", ondelete="CASCADE"), nullable=False, index=True)
+    buyer_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False, index=True)
     bid_amount = Column(Float)
-    bid_time = Column(DateTime)
+    bid_time = Column(DateTime(timezone=True))
 
     auction = relationship("Auction", back_populates="bids")
     user = relationship("User", back_populates="bids")

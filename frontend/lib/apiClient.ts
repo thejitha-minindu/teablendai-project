@@ -10,7 +10,9 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token = localStorage.getItem("teablend_token");
+    const token =
+      localStorage.getItem("teablend_token") ||
+      localStorage.getItem("access_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -24,6 +26,7 @@ apiClient.interceptors.response.use(
     // If we get a 401 Unauthorized, automatically log the user out
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('teablend_token');
+      localStorage.removeItem('access_token');
       window.location.href = '/auth/login';
     }
     // Better diagnostics for network errors

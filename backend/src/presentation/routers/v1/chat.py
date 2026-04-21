@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional, Dict, Any
+from uuid import UUID
 
 from src.application.use_cases.chat.chat_use_case import ChatUseCase
 from src.application.dependencies import get_chat_use_case, get_history_db
@@ -9,8 +10,8 @@ from src.application.dependencies import get_chat_use_case, get_history_db
 router = APIRouter(prefix="/chat", tags=["Chatbot"])
 class ChatRequest(BaseModel):
     message: str
-    conversation_id: Optional[int] = None
-    user_id: Optional[int] = None
+    conversation_id: Optional[UUID] = None
+    user_id: Optional[str] = None
 
 @router.post("/")
 async def chat(
@@ -24,7 +25,7 @@ async def chat(
     )
 
 @router.get("/chat/history/{conversation_id}")
-async def get_chat_history(conversation_id: int) -> Dict[str, Any]:
+async def get_chat_history(conversation_id: UUID) -> Dict[str, Any]:
     """Fetches the chat history for a given conversation ID."""
     history = get_history_db()
     messages = history.get_conversation_messages(conversation_id)

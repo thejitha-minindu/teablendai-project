@@ -28,16 +28,55 @@ const isSameDay = (d1: Date, d2: Date) => {
          d1.getDate() === d2.getDate();
 };
 
+// Helper: Parse backend ISO datetimes safely
+const parseBackendDateTime = (dateString?: string | null): Date | null => {
+  if (!dateString) return null;
+
+  // Accept well-formed ISO strings including timezone offsets
+  if (/.*T.*([+-]\d{2}:\d{2}|Z)$/.test(dateString)) {
+    const date = new Date(dateString);
+    if (!Number.isNaN(date.getTime())) return date;
+  }
+
+  // Fall back for strings like "YYYY-MM-DD HH:mm:ss"
+  const normalized = dateString.replace(' ', 'T');
+  const parsed = new Date(normalized);
+  if (!Number.isNaN(parsed.getTime())) return parsed;
+
+  // Parse manually as last resort
+  const [datePart, timePart = '00:00:00'] = normalized.split('T');
+  const [year, month, day] = datePart.split('-').map(Number);
+  const [hour = '0', minute = '0', second = '0'] = timePart.split(':');
+
+  const manual = new Date(
+    year,
+    (month || 1) - 1,
+    day || 1,
+    Number(hour),
+    Number(minute),
+    Number(second)
+  );
+  return Number.isNaN(manual.getTime()) ? null : manual;
+};
+
 // --- HELPER: Calculate Countdown ---
 const calculateCountdown = (auction: any) => {
-    const safeStart = auction.rawStart.endsWith('Z') ? auction.rawStart : auction.rawStart + 'Z';
-    const startTime = new Date(safeStart).getTime();
+    // 1. Use the safe parsing function already in your file!
+    const startDate = parseBackendDateTime(auction.rawStart);
+    
+    // If it completely fails to parse, return a safe fallback instead of NaN
+    if (!startDate || Number.isNaN(startDate.getTime())) return "Loading...";
+
+    const startTime = startDate.getTime();
     const now = new Date().getTime();
 
     let targetTime = 0;
 
     if (auction.type === 'live') {
-        targetTime = startTime + (auction.duration * 60 * 60 * 1000);
+        // Safely calculate duration (convert to minutes, then milliseconds)
+        const durationValue = Number(auction.duration) || 0;
+        const durationMinutes = durationValue > 24 ? durationValue : durationValue * 60;
+        targetTime = startTime + (durationMinutes * 60 * 1000);
     } else if (auction.type === 'scheduled') {
         targetTime = startTime;
     } else {
@@ -101,23 +140,30 @@ export default function SellerDashboardPage() {
         const histData = histRes.data;
 
         const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
-            const safeTime = item.start_time.endsWith('Z') ? item.start_time : item.start_time + 'Z';
-            const dateObj = new Date(safeTime);
+            const dateObj = parseBackendDateTime(item.start_time) || new Date();
             
+            // Map the backend status (which might be "SCHEDULE", "Scheduled", "live", "Live") 
+            // to the exact string your UI expects.
+            let displayStatus = 'Scheduled';
+            if (type === 'live') displayStatus = 'Live';
+            if (type === 'history') displayStatus = item.status ? item.status : 'Sold';
+
             const auctionObj = {
                 id: item.auction_id, 
                 grade: item.grade,
                 quantity: item.quantity,
-                price: item.base_price,
+                price: item.highest_bid ?? item.base_price,
+                custom_auction_id: item.custom_auction_id,
                 sellerBrand: item.seller_brand || "My Estate",
                 dateObj: dateObj,
                 date: dateObj.toLocaleDateString(),
                 time: dateObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                status: type === 'live' ? 'Live' : (type === 'history' ? (item.status || 'Sold') : 'Scheduled'),
+                status: displayStatus,
                 type: type,
                 buyer: item.buyer,
                 rawStart: item.start_time,
                 duration: item.duration,
+                image_url: item.image_url,
                 countdown: null as string | null
             };
             auctionObj.countdown = calculateCountdown(auctionObj);
@@ -130,7 +176,13 @@ export default function SellerDashboardPage() {
             ...histData.map((i: any) => normalize(i, 'history'))
         ];
 
-        setAllAuctions(combined);
+        console.log("== DASHBOARD FETCH COMPLETE ==");
+        console.log("Live:", liveData.length);
+        console.log("Sched:", schedData.length);
+        console.log("Hist:", histData.length);
+        console.log("Combined after filter:", combined.filter(a => a !== null && a !== undefined).length);
+
+        setAllAuctions(combined.filter(a => a !== null && a !== undefined));
       } catch (error) {
         console.error("Failed to load dashboard data", error);
       } finally {
@@ -148,7 +200,12 @@ export default function SellerDashboardPage() {
         setAllAuctions(prevAuctions => 
             prevAuctions.map(auc => {
                 if (auc.type === 'history') return auc;
-                return { ...auc, countdown: calculateCountdown(auc) };
+                const newCountdown = calculateCountdown(auc);
+                if (newCountdown === auc.countdown) {
+                  // No change, return same reference
+                  return auc;
+                }
+                return { ...auc, countdown: newCountdown };
             })
         );
     }, 1000);
@@ -292,10 +349,11 @@ export default function SellerDashboardPage() {
                 </div>
             ) : displayedAuctions.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {displayedAuctions.map((auction, idx) => (
+                    {displayedAuctions.map((auction) => (
                         <AuctionCard 
-                            key={idx}
-                            id={`Auction`} // This is just for visual display
+                            key={auction.id}
+                            auctionId={auction.id}
+                            id={`Auction`}
                             type={auction.type} 
                             data={auction}
                             onViewClick={() => setSelectedAuction(auction)} 

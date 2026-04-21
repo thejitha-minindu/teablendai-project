@@ -1,19 +1,30 @@
 "use client";
 import * as React from "react";
-import '@/app/globals.css';
+import '../../../app/globals.css';
 import { useEffect, useState } from "react";
 import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { getAuthClaims } from "@/lib/auth";
 
-const userId = "11111111-1111-1111-1111-111111111111";
+interface AuctionHomePreviewProps {
+  onAuctionClick?: (auctionId: string, status: string) => void;
+}
 
-export function AuctionHomePreview() {
+export function AuctionHomePreview({ onAuctionClick }: AuctionHomePreviewProps) {
   const [auction, setAuction] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
+    const claims = getAuthClaims();
+    setUserId(claims?.id ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (!userId) return;
+    
     setLoading(true);
     getHomePreviewAuctions(userId)
       .then((data) => {
@@ -24,7 +35,7 @@ export function AuctionHomePreview() {
         setError(err.message || "Failed to load auction preview");
         setLoading(false);
       });
-  }, []);
+  }, [userId]);
 
   if (loading) return <div>Loading...</div>;
   if (error) return <div>{error}</div>;
@@ -33,8 +44,12 @@ export function AuctionHomePreview() {
   // Fallback for image
   const imageUrl = auction.image_url || null;
 
+  const handleClick = () => {
+    onAuctionClick?.(auction.id || auction.auction_id, auction.status);
+  };
+
   return (
-    <Card className="w-full mx-auto">
+    <Card className="w-full mx-auto cursor-pointer hover:shadow-lg transition-shadow" onClick={handleClick}>
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
         <div className="flex flex-col">
           <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>
@@ -64,6 +79,11 @@ export function AuctionHomePreview() {
               <p className="mb-1 text-sm">
                 <span className="font-medium">Base Price:</span> {auction.base_price ? `${auction.base_price} LKR` : "-"}
               </p>
+              {auction.custom_auction_id && (
+                <p className="mb-1 text-sm">
+                  <span className="font-medium">Ref ID:</span> {auction.custom_auction_id}
+                </p>
+              )}
             </div>
           </div>
           {imageUrl ? (

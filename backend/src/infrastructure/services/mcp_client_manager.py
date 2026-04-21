@@ -2,15 +2,16 @@
 MCP Client Manager
 
 High-level wrapper for MCP server communication.
-Manages connections to tea_database, tea_search, and tea_visualization servers.
+Manages connections to tea_database, tea_search, tea_visualization, and tea_auction servers.
 """
 
 import sys
 import asyncio
 import json
 import logging
+import os
 
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
@@ -25,6 +26,7 @@ class MCPClientManager:
     - tea_database: SQL query execution
     - tea_search: Web search via Tavily
     - tea_visualization: Chart generation with Plotly
+    - tea_auction: Auction CRUD via API adapter
     """
     
     def __init__(self):
@@ -41,32 +43,33 @@ class MCPClientManager:
         
         logger.info("Initializing MCP servers...")
 
-        try:
-            # Connect to database server
-            await self._connect_server(
-                "tea_database",
-                "src.infrastructure.services.mcp.tea_database.server"
+        targets = [
+            ("tea_database", "src.infrastructure.services.mcp.tea_database.server"),
+            ("tea_visualization", "src.infrastructure.services.mcp.tea_visualization.server"),
+            ("tea_search", "src.infrastructure.services.mcp.tea_search.server"),
+            ("tea_auction", "src.infrastructure.services.mcp.tea_auction.server"),
+        ]
+        failed_servers: List[str] = []
+
+        for server_name, module_path in targets:
+            try:
+                await self._connect_server(server_name, module_path)
+            except Exception:
+                failed_servers.append(server_name)
+                logger.exception(f"Failed to initialize MCP server: {server_name}")
+
+        self._initialized = True
+
+        if failed_servers:
+            logger.warning(
+                "MCP initialized in degraded mode. Failed servers: %s",
+                ", ".join(failed_servers),
             )
-            
-            # Connect to visualization server
-            await self._connect_server(
-                "tea_visualization",
-                "src.infrastructure.services.mcp.tea_visualization.server"
-            )
-            
-            # Connect to search server
-            await self._connect_server(
-                "tea_search",
-                "src.infrastructure.services.mcp.tea_search.server"
-            )
-            
-            self._initialized = True
-            logger.info("All MCP servers initialized.")
-        
-        except Exception as e:
-            logger.error(f"Failed to initialize MCP servers: {e}")
-            await self.shutdown()
-            raise
+
+        if self.sessions:
+            logger.info("Connected MCP servers: %s", ", ".join(self.sessions.keys()))
+        else:
+            logger.warning("No MCP servers connected. API will continue without MCP capabilities.")
 
     async def _connect_server(self, server_name: str, module_path: str):
         """Connect to a specific MCP server"""
@@ -78,7 +81,7 @@ class MCPClientManager:
             server_params = StdioServerParameters(
                 command=sys.executable,
                 args=["-m", module_path],
-                env=None
+                env=os.environ.copy()
             )
 
             # Create stdio connection
@@ -333,15 +336,188 @@ class MCPClientManager:
                 "error": str(e)
             }
 
+    # AUCTION SERVER METHODS
+    async def create_auction(
+        self,
+        user_id: str,
+        grade: str,
+        quantity: int,
+        origin: str,
+        base_price: float,
+        start_time: str,
+        duration: int,
+        description: str = None
+    ) -> Dict[str, Any]:
+        """Create auction via MCP auction server."""
+        try:
+            session = self.sessions.get("tea_auction")
+            if not session:
+                raise RuntimeError("Auction server not connected")
+
+            arguments = {
+                "user_id": user_id,
+                "grade": grade,
+                "quantity": quantity,
+                "origin": origin,
+                "base_price": base_price,
+                "start_time": start_time,
+                "duration": duration
+            }
+            if description:
+                arguments["description"] = description
+
+            result = await asyncio.wait_for(
+                session.call_tool("create_auction", arguments=arguments),
+                timeout=30.0
+            )
+
+            if result.content:
+                return json.loads(result.content[0].text)
+
+            return {
+                "status": "error",
+                "message": "No response from auction server"
+            }
+        except asyncio.TimeoutError:
+            logger.error("[AUCTION] Creation timeout")
+            return {
+                "status": "error",
+                "message": "Auction creation timed out"
+            }
+        except Exception as e:
+            logger.error(f"[AUCTION] Error: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    async def get_auction_details(
+        self,
+        auction_id: str,
+        user_id: str = None
+    ) -> Dict[str, Any]:
+        """Get auction details via MCP auction server."""
+        try:
+            session = self.sessions.get("tea_auction")
+            if not session:
+                raise RuntimeError("Auction server not connected")
+
+            result = await asyncio.wait_for(
+                session.call_tool(
+                    "get_auction",
+                    arguments={"auction_id": auction_id, "user_id": user_id}
+                ),
+                timeout=10.0
+            )
+
+            if result.content:
+                return json.loads(result.content[0].text)
+
+            return {
+                "status": "error",
+                "message": "No response"
+            }
+        except Exception as e:
+            logger.error(f"[AUCTION] Error getting details: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    async def delete_auction(
+        self,
+        auction_id: str,
+        user_id: str
+    ) -> Dict[str, Any]:
+        """Delete auction via MCP auction server."""
+        try:
+            session = self.sessions.get("tea_auction")
+            if not session:
+                raise RuntimeError("Auction server not connected")
+
+            result = await asyncio.wait_for(
+                session.call_tool(
+                    "delete_auction",
+                    arguments={"auction_id": auction_id, "user_id": user_id}
+                ),
+                timeout=30.0
+            )
+
+            if result.content:
+                return json.loads(result.content[0].text)
+
+            return {
+                "status": "error",
+                "message": "No response"
+            }
+        except Exception as e:
+            logger.error(f"[AUCTION] Error deleting: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
+    async def update_auction(
+        self,
+        auction_id: str,
+        user_id: str,
+        grade: Optional[str] = None,
+        quantity: Optional[int] = None,
+        origin: Optional[str] = None,
+        base_price: Optional[float] = None,
+        start_time: Optional[str] = None,
+        duration: Optional[int] = None,
+        description: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """Update auction via MCP auction server."""
+        try:
+            session = self.sessions.get("tea_auction")
+            if not session:
+                raise RuntimeError("Auction server not connected")
+
+            arguments: Dict[str, Any] = {
+                "auction_id": auction_id,
+                "user_id": user_id,
+            }
+
+            if grade is not None:
+                arguments["grade"] = grade
+            if quantity is not None:
+                arguments["quantity"] = quantity
+            if origin is not None:
+                arguments["origin"] = origin
+            if base_price is not None:
+                arguments["base_price"] = base_price
+            if start_time is not None:
+                arguments["start_time"] = start_time
+            if duration is not None:
+                arguments["duration"] = duration
+            if description is not None:
+                arguments["description"] = description
+
+            result = await asyncio.wait_for(
+                session.call_tool("update_auction", arguments=arguments),
+                timeout=30.0
+            )
+
+            if result.content:
+                return json.loads(result.content[0].text)
+
+            return {
+                "status": "error",
+                "message": "No response"
+            }
+        except Exception as e:
+            logger.error(f"[AUCTION] Error updating: {e}")
+            return {
+                "status": "error",
+                "message": str(e)
+            }
+
     # HEALTH CHECK
     def is_ready(self) -> bool:
-        """Check if all MCP servers are connected and ready"""
-        return (
-            self._initialized and
-            "tea_database" in self.sessions and
-            "tea_visualization" in self.sessions and
-            "tea_search" in self.sessions
-        )
+        """Check if MCP initialization has run at least once."""
+        return self._initialized
     
     def get_status(self) -> Dict[str, bool]:
         """Get connection status of all servers"""
@@ -350,6 +526,7 @@ class MCPClientManager:
             "tea_database": "tea_database" in self.sessions,
             "tea_search": "tea_search" in self.sessions,
             "tea_visualization": "tea_visualization" in self.sessions,
+            "tea_auction": "tea_auction" in self.sessions,
         }
     
 

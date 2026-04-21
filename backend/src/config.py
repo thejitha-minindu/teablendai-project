@@ -1,11 +1,42 @@
 # Centralized config
 import os
+import logging
 from typing import List, Optional
+from urllib.parse import quote_plus
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+
+
+def resolve_model_name(raw_model_name: Optional[str]) -> str:
+    """Normalize model names and handle deprecated aliases safely."""
+    if not raw_model_name:
+        return DEFAULT_GEMINI_MODEL
+
+    normalized = str(raw_model_name).strip().strip('"').strip("'").strip().rstrip(",")
+    if not normalized:
+        return DEFAULT_GEMINI_MODEL
+
+    alias_map = {
+        "gemini-1.5-flash-latest": "gemini-1.5-flash",
+        "gemini-1.5-pro-latest": "gemini-1.5-pro",
+    }
+
+    resolved = alias_map.get(normalized, normalized)
+    if resolved != normalized:
+        logger.warning(
+            "MODEL_NAME '%s' is deprecated/unsupported, using '%s' instead",
+            normalized,
+            resolved,
+        )
+
+    return resolved
 
 # Get the backend directory path
 BACKEND_DIR = Path(__file__).parent.parent
@@ -22,6 +53,11 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
+    MODEL_NAME: str = DEFAULT_GEMINI_MODEL
+    GOOGLE_API_KEY: Optional[str] = None
+
+    TAVILY_API_KEY: Optional[str] = None
+    AUCTION_API_BASE_URL: Optional[str] = None
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
@@ -34,11 +70,17 @@ class Settings(BaseSettings):
     CORS_ALLOW_HEADERS: List[str] = ["*"] 
 
     # Database Configuration
-    MSSQL_SERVER: str
-    MSSQL_DATABASE: str
+    MSSQL_SERVER: str = ""
+    MSSQL_DATABASE: str = ""
     MSSQL_USERNAME: Optional[str] = None
     MSSQL_PASSWORD: Optional[str] = None
+    MSSQL_PORT: Optional[int] = None
+    MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
+    MSSQL_ENCRYPT: bool = True
+    MSSQL_TRUST_SERVER_CERTIFICATE: bool = False
     DB_TRUSTED_CONNECTION: bool = True
+    DATABASE_URL: Optional[str] = None
+    INIT_DB_ON_STARTUP: bool = False
 
     CHAT_DATABASE_URL: bool = True
 
@@ -99,6 +141,9 @@ def get_settings() -> Settings:
     global _settings_instance
     if _settings_instance is None:
         _settings_instance = Settings()
+        _settings_instance.MODEL_NAME = resolve_model_name(
+            getattr(_settings_instance, "MODEL_NAME", None)
+        )
     return _settings_instance
 
 # Create default instance for backward compatibility
@@ -110,7 +155,11 @@ def get_mssql_connection_string(
     database: str = None,
     username: str = None,
     password: str = None,
-    trusted: bool = True
+    trusted: Optional[bool] = None,
+    driver: str = None,
+    encrypt: Optional[bool] = None,
+    trust_server_certificate: Optional[bool] = None,
+    database_url: str = None,
 ) -> str:
     """
     Generate MSSQL connection string
@@ -125,28 +174,49 @@ def get_mssql_connection_string(
     Returns:
         str: MSSQL connection string
     """
+    direct_connection = (database_url or os.getenv("DATABASE_URL", "")).strip()
+    if direct_connection:
+        return direct_connection
+
     settings = get_settings()
+    direct_connection = (settings.DATABASE_URL or "").strip()
+    if direct_connection:
+        return direct_connection
     
     server = server or settings.MSSQL_SERVER
     database = database or settings.MSSQL_DATABASE
     username = username or settings.MSSQL_USERNAME
     password = password or settings.MSSQL_PASSWORD
-    trusted = trusted if trusted is not None else settings.DB_TRUSTED_CONNECTION
-    
-    driver = "ODBC Driver 18 for SQL Server"
+    trusted = settings.DB_TRUSTED_CONNECTION if trusted is None else trusted
+    driver = driver or settings.MSSQL_DRIVER
+    encrypt = settings.MSSQL_ENCRYPT if encrypt is None else encrypt
+    trust_server_certificate = (
+        settings.MSSQL_TRUST_SERVER_CERTIFICATE
+        if trust_server_certificate is None
+        else trust_server_certificate
+    )
+
+    if settings.MSSQL_PORT and server and "," not in server and ":" not in server:
+        server = f"{server},{settings.MSSQL_PORT}"
+
+    params = [
+        f"driver={quote_plus(driver)}",
+        f"Encrypt={'yes' if encrypt else 'no'}",
+        f"TrustServerCertificate={'yes' if trust_server_certificate else 'no'}",
+    ]
     
     if trusted or (not username and not password):
+        params.append("trusted_connection=yes")
         connection_string = (
             f"mssql+pyodbc://{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&trusted_connection=yes"
-            f"&TrustServerCertificate=yes"
+            f"?{'&'.join(params)}"
         )
     else:
+        encoded_username = quote_plus(username or "")
+        encoded_password = quote_plus(password or "")
         connection_string = (
-            f"mssql+pyodbc://{username}:{password}@{server}/{database}"
-            f"?driver={driver.replace(' ', '+')}"
-            f"&TrustServerCertificate=yes"
+            f"mssql+pyodbc://{encoded_username}:{encoded_password}@{server}/{database}"
+            f"?{'&'.join(params)}"
         )
     
     return connection_string
@@ -154,7 +224,9 @@ def get_mssql_connection_string(
 __all__ = [
     'Settings',
     'get_settings',
+    'resolve_model_name',
     'settings',
     'get_mssql_connection_string',
-    'BACKEND_DIR'
+    'BACKEND_DIR',
+    'DEFAULT_GEMINI_MODEL',
 ]

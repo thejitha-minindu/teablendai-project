@@ -27,14 +27,22 @@ class AuctionConnectionManager(IConnectionManager):
         async with self._lock:
             sockets = list(self._rooms.get(room_id, set()))
 
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Broadcasting to {len(sockets)} connections in room {room_id}")
+
         dead = []
-        for ws in sockets:
+        for i, ws in enumerate(sockets):
             try:
+                logger.debug(f"  Sending message {i+1}/{len(sockets)}: {ws.client}")
                 await ws.send_json(message)
-            except Exception:
+                logger.debug(f"Message {i+1} sent successfully")
+            except Exception as e:
+                logger.error(f" Failed to send message {i+1} to {ws.client}: {e}")
                 dead.append(ws)
 
         if dead:
+            logger.info(f"Removing {len(dead)} dead connections")
             async with self._lock:
                 for ws in dead:
                     if room_id in self._rooms and ws in self._rooms[room_id]:

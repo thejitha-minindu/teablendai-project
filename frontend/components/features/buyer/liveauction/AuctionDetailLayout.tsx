@@ -10,26 +10,30 @@ import {
 } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
 
 type AuctionDetailLayoutProps = {
   auction: AuctionData;
-  bids: Bid[];
+  bids?: Bid[] | undefined;
   highestBid: number;
   myHighestBid: number;
   latestBid?: Bid;
-  selectedAmount: string;
-  setSelectedAmount: (value: string) => void;
-  submitting: boolean;
+  selectedAmount?: string;
+  setSelectedAmount?: (value: string) => void;
+  submitting?: boolean;
   connected: boolean;
   error: string | null;
-  submitBid: () => Promise<void>;
+  submitBid?: () => Promise<void>;
   isBidLocked: boolean;
   statusLabel: "Live" | "Scheduled";
   imageUrl: string;
   showImage: boolean;
   onImageError: () => void;
+  startTime?: Date | string;
+  duration?: number;
+  onAuctionEnd?: () => void;
 };
 
 export function AuctionDetailLayout({
@@ -49,6 +53,9 @@ export function AuctionDetailLayout({
   imageUrl,
   showImage,
   onImageError,
+  startTime,
+  duration,
+  onAuctionEnd,
 }: AuctionDetailLayoutProps) {
   const statusClassName =
     statusLabel === "Live"
@@ -72,7 +79,7 @@ export function AuctionDetailLayout({
             <div><p className="text-muted-foreground">Estate</p><p className="font-medium">{auction.estate_name || "N/A"}</p></div>
             <div><p className="text-muted-foreground">Base Price</p><p className="font-medium">{auction.base_price} LKR</p></div>
             <div><p className="text-muted-foreground">Highest Bid</p><p className="font-medium">{highestBid} LKR</p></div>
-            <div><p className="text-muted-foreground">Total Bids</p><p className="font-medium">{bids.length}</p></div>
+            <div><p className="text-muted-foreground">Total Bids</p><p className="font-medium">{bids?.length || 0}</p></div>
             <div><p className="text-muted-foreground">My Highest</p><p className="font-medium">{myHighestBid || "-"} LKR</p></div>
             <div><p className="text-muted-foreground">Latest Bid</p><p className="font-medium">{latestBid ? `${latestBid.bid_amount} LKR` : "N/A"}</p></div>
           </div>
@@ -86,7 +93,11 @@ export function AuctionDetailLayout({
                 <p><span className="font-medium">Grade:</span> {auction.grade}</p>
                 <p><span className="font-medium">Quantity:</span> {auction.quantity} Kg</p>
                 <p><span className="font-medium">Company:</span> {auction.company_name || "N/A"}</p>
-                <p><span className="font-medium">Seller:</span> {auction.seller_id || "N/A"}</p>
+                <p><span className="font-medium">Seller:</span> {auction.seller_brand || "N/A"}</p>
+                <div className="mt-3 pt-3 border-t">
+                  <p><span className="font-medium">Start Time:</span> {new Date(auction.date).toLocaleString()}</p>
+                  <p><span className="font-medium">Duration:</span> {Math.floor(auction.duration / 60)} minutes</p>
+                </div>
               </div>
               <div className="mt-4 flex-1 min-h-0 p-2">
                 <div className="h-full min-h-40 overflow-hidden rounded-md border bg-muted/30">
@@ -148,6 +159,15 @@ export function AuctionDetailLayout({
                   </p>
                 )}
               </div>
+              {startTime && duration && (
+                <div className="m-4 mt-20">
+                  <AuctionTimer
+                    startTime={startTime}
+                    duration={duration}
+                    onAuctionEnd={onAuctionEnd}
+                  />
+                </div>
+              )}
             </div>
           </div>
 
@@ -157,12 +177,12 @@ export function AuctionDetailLayout({
             </div>
             <ScrollArea className="h-105">
               <div className="p-4">
-                {bids.length > 0 ? (
+                {bids && bids.length > 0 ? (
                   bids.map((bid) => (
                     <div key={bid.bid_id}>
                       <div className="text-sm">
                         <p>Amount: {bid.bid_amount} LKR</p>
-                        <p>Buyer: {bid.buyer_id.slice(0, 8)}...</p>
+                        <p>Buyer: {bid.buyer_name || "Unknown"}</p>
                         <p>Time: {new Date(bid.bid_time).toLocaleDateString()} {new Date(bid.bid_time).toLocaleTimeString()}</p>
                       </div>
                       <Separator className="my-3" />

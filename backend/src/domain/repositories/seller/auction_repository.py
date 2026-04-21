@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from src.application.schemas.auction import Auction, AuctionCreate
+from src.application.schemas.seller.auction import Auction, AuctionCreate
 from src.domain.models.auction import Auction
 
 class AuctionRepositoryInterface(ABC):

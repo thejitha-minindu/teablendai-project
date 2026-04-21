@@ -7,6 +7,7 @@ import {
   listAuctionsWatchlist,
 } from "@/services/buyer/auctionService";
 import { toast  } from "sonner";
+import { getAuthClaims } from "@/lib/auth";
 
 interface WatchlistButtonProps {
   auctionId: string;
@@ -17,17 +18,19 @@ interface WatchlistButtonProps {
 
 export function WatchlistButton({
   auctionId,
-  userId = "11111111-1111-1111-1111-111111111111",
+  userId,
   className = "",
   onWatchlistChange,
 }: WatchlistButtonProps) {
   const [isInWatchlist, setIsInWatchlist] = useState<boolean | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    if (!auctionId) return;
+  const UserId = getAuthClaims()?.id;
 
-    listAuctionsWatchlist(userId)
+  useEffect(() => {
+    if (!UserId) return;
+
+    listAuctionsWatchlist(UserId)
       .then((watchlist) => {
         const found = watchlist.some(
           (auction) => auction.auction_id === auctionId
@@ -38,20 +41,20 @@ export function WatchlistButton({
         console.error("Failed to fetch watchlist:", err);
         setIsInWatchlist(false);
       });
-  }, [auctionId, userId]);
+  }, [auctionId, UserId]);
 
   const handleClick = async () => {
-    if (isLoading || isInWatchlist === null) return;
+    if (!UserId || isLoading || isInWatchlist === null) return;
 
     setIsLoading(true);
     try {
       if (isInWatchlist) {
-        await removeFromWatchlist(userId, auctionId);
+        await removeFromWatchlist(UserId, auctionId);
         setIsInWatchlist(false);
         onWatchlistChange?.(false);
         toast("Removed from Watchlist!", { position: "top-right" });
       } else {
-        await addToWatchlist(userId, auctionId);
+        await addToWatchlist(UserId, auctionId);
         setIsInWatchlist(true);
         onWatchlistChange?.(true);
         toast("Added to Watchlist!", { position: "top-right" });

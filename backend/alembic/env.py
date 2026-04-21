@@ -4,8 +4,8 @@ from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
 from dotenv import load_dotenv
-from urllib.parse import quote_plus
 from src.infrastructure.database.base import Base
+from src.config import get_mssql_connection_string
 
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
@@ -13,6 +13,8 @@ from src.domain.models.user import User, FinancialDetails, WatchList
 from src.domain.models.order import Order, PaymentDetails, WinsAuction
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
+
+from urllib.parse import quote_plus
 
 # Load environment variables from .env file
 load_dotenv()
@@ -66,13 +68,13 @@ def _build_db_url() -> str:
 
     if trusted:
         odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
+            "DRIVER={ODBC Driver 17 for SQL Server};"
             f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
             "TrustServerCertificate=yes;"
         )
     else:
         odbc = (
-            "DRIVER={ODBC Driver 18 for SQL Server};"
+            "DRIVER={ODBC Driver 17 for SQL Server};"
             f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
             "TrustServerCertificate=yes;"
         )
