@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from src.infrastructure.database.models.auction_orm import AuctionORM
 from sqlalchemy import text
+from src.infrastructure.database.models.violation import Violation
 
 
 class AdminRepository:
@@ -41,5 +42,13 @@ class AdminRepository:
             sql = text("SELECT COUNT(*) as cnt FROM users WHERE LOWER(default_role) = 'buyer' AND LOWER(verification_status) = 'pending'")
             res = self.db.execute(sql).scalar()
             return int(res or 0)
+        except Exception:
+            return 0
+        
+    def get_total_violations(self):
+        try:
+            sql = text("SELECT COUNT(*) FROM violations")
+            result = self.db.execute(sql).scalar()
+            return int(result or 0)
         except Exception:
             return 0

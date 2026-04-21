@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1.admin import admin_profile
+from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
     health,
     bid,
@@ -189,7 +190,8 @@ app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin 
 # Backwards-compatible routes used by frontend (legacy path)
 app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])
 
-
-
 # Register admin profile router
 app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"])
+
+# Register admin violation router (mounted under API v1 admin prefix)
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])

@@ -1,6 +1,7 @@
 import axios from "axios";
 import { API_BASE_URL } from "./api.config";
 
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
@@ -57,7 +58,18 @@ apiClient.interceptors.response.use(
           safeData = String(error.response?.data);
         }
 
-        console.error("[API Error]", { url, method, status, data: safeData, message: error.message });
+        const payload = {
+          url,
+          method,
+          status,
+          data: safeData,
+          message: error?.message ?? String(error),
+        };
+        try {
+          console.error("[API Error] " + JSON.stringify(payload, null, 2));
+        } catch (e) {
+          console.error("[API Error] (unserializable)", payload);
+        }
     }
     return Promise.reject(error);
   }

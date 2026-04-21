@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Bell, Database, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
+
 export default function AdminDashboard() {
 
   const [totalAuctions, setTotalAuctions] = useState(0);
@@ -16,8 +17,11 @@ export default function AdminDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/admin/dashboard-stats");
-        const data = await res.json();
+        const { apiClient } = await import("@/lib/apiClient");
+        const res = await apiClient.get("/admin/dashboard-stats");
+        const data = res.data;
+
+        console.log("[Admin Dashboard] dashboard-stats response:", data);
 
         setTotalAuctions(data.total_auctions || 0);
         setTotalSellers(data.total_sellers || 0);
@@ -49,6 +53,7 @@ export default function AdminDashboard() {
         <StatCard title="Total Sellers" value={String(totalSellers)} sub={`Pending    : ${pendingSellers}`} />
         <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
         <ViolationCard totalViolations={totalViolations} />
+      
       </div>
 
       {/* ANALYTICS + ACTION */}
@@ -137,7 +142,7 @@ function ViolationCard({ totalViolations }: { totalViolations: number }) {
         <h3 className="text-sm text-gray-500">Total Violations</h3>
       </div>
 
-      <p className="text-4xl font-bold my-3">{totalViolations}</p>
+      <p className="text-4xl font-bold my-3">{String(totalViolations)}</p>
 
       <Link href="/admin/violationhandling">
         <button className="w-full bg-red-100 text-red-700 py-2 rounded-lg font-medium hover:bg-red-200 transition">
