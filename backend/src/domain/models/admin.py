@@ -3,9 +3,8 @@ from src.infrastructure.database.connection import Base
 
 class Admin(Base):
     __tablename__ = "admins"
-    __table_args__ = {"extend_existing": True}
 
-    admin_id = Column(String, primary_key=True, index=True)
+    admin_id = Column(String, primary_key=True)
     username = Column(String)
     email = Column(String)
     password = Column(String)

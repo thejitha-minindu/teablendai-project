@@ -21,6 +21,7 @@ class User(Base):
     watch_list = relationship("WatchList", back_populates="user")
     auctions = relationship("Auction", backref="seller", foreign_keys="Auction.seller_id")
     bids = relationship("Bid", back_populates="user")
+    verification_status = Column(String, default="PENDING")
 
 class FinancialDetails(Base):
     __tablename__ = "financial_details"

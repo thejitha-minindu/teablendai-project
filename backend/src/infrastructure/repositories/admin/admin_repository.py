@@ -11,7 +11,11 @@ class AdminRepository:
         self.db = db
 
     def get_total_auctions(self):
-        return self.db.query(func.count(AuctionORM.auction_id)).scalar()
+        try:
+            result = self.db.query(func.count(AuctionORM.auction_id)).scalar()
+            return int(result or 0)
+        except Exception:
+            return 0
 
     def get_total_sellers(self):
         try:

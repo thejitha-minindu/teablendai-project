@@ -4,7 +4,6 @@ from src.infrastructure.database.connection import Base
 
 class Violation(Base):
     __tablename__ = "violations"
-    __table_args__ = {"extend_existing": True}
 
     violation_id = Column(Integer, primary_key=True, index=True)
     sender_id = Column(String)
