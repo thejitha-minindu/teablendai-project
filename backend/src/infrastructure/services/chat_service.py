@@ -25,7 +25,7 @@ from .topic_validator import TopicValidator
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from src.config import get_settings, resolve_model_name
+from src.config import get_settings
 import json
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class ChatService:
 
         self.settings = get_settings()
         self.llm = ChatGoogleGenerativeAI(
-            model=resolve_model_name(self.settings.MODEL_NAME),
+            model=self.settings.MODEL_NAME,
             google_api_key=self.settings.GOOGLE_API_KEY,
             temperature=0
         )

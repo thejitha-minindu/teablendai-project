@@ -25,7 +25,7 @@ from src.infrastructure.services.mcp.tea_auction.auction_fields import (
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
-from src.config import get_settings, resolve_model_name
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -1484,8 +1484,8 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
             conversation_id=conversation.conversation_id,
             state_type="auction_management",
             action="delete",
-            required_fields=[],
-            optional_fields=[],
+            required_fields=DELETE_AUCTION_FIELDS["required"],    # Use it
+            optional_fields=DELETE_AUCTION_FIELDS["optional"],    # Use it
             initial_data={
                 "auction_id": resolved_auction_id,
                 "auction_ref_id": ref_id,
@@ -1766,7 +1766,7 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
         settings = get_settings()
         
         llm = ChatGoogleGenerativeAI(
-            model=resolve_model_name(getattr(settings, "MODEL_NAME", None)),
+            model=settings.MODEL_NAME,
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0.7
         )

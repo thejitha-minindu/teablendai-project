@@ -37,13 +37,16 @@ def _candidate_base_urls() -> List[str]:
     if explicit:
         candidates.append(str(explicit).rstrip("/"))
 
+    # Prefer local backend first to avoid accidentally routing chatbot MCP calls
+    # to an outdated hosted deployment that may not expose the same routes.
     candidates.extend([
-        "https://teablendai-project.onrender.com",
         f"http://localhost:{settings.API_PORT}",
+        f"http://127.0.0.1:{settings.API_PORT}",
         "http://localhost:8000",
         "http://127.0.0.1:8000",
         "http://localhost:5000",
         "http://127.0.0.1:5000",
+        "https://teablendai-project.onrender.com",
     ])
 
     unique: List[str] = []

@@ -13,7 +13,7 @@ from datetime import datetime, timedelta, timezone
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
 
-from src.config import get_settings, resolve_model_name
+from src.config import get_settings
 from .auction_fields import (
     TeaGrade,
     VALID_ORIGINS,
@@ -32,7 +32,7 @@ class ParameterExtractor:
     
     def __init__(self):
         self.llm = ChatGoogleGenerativeAI(
-            model=resolve_model_name(getattr(settings, "MODEL_NAME", None)),
+            model=settings.MODEL_NAME,
             google_api_key=settings.GOOGLE_API_KEY,
             temperature=0
         )
