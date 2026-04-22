@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; 
-import { Package, Home, DollarSign, ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react'; 
+import { ArrowRight, ArrowLeft, CheckCircle2, Home, Package, DollarSign } from 'lucide-react'; 
 import { apiClient } from '@/lib/apiClient';
+import { toast } from 'sonner';
 
 const SRI_LANKAN_GRADES = [
   "BOP", "BOPF", "OP", "OP1", "OPA", "FBOP", 
@@ -81,11 +82,11 @@ export default function CreateAuctionPage() {
       };
 
       const response = await apiClient.post('/auctions', payload);
-      alert(`Auction created successfully!`);
+      toast.success(`Auction created successfully!`);
       router.push('/seller/dashboard'); 
     } catch (error: any) {
       console.error("Error submitting form:", error.response?.data || error);
-      alert(error.response?.data?.detail || 'Error creating auction. Check console for details.');
+      toast.error(error.response?.data?.detail || 'Error creating auction. Check console for details.');
     } finally {
       setIsSubmitting(false);
     }

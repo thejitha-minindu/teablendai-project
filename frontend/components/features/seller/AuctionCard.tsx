@@ -41,13 +41,18 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
   
   const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
   const [fetchedBuyer, setFetchedBuyer] = useState<string | null>(null);
+  const [isLoadingBids, setIsLoadingBids] = useState<boolean>(type === 'live' || type === 'history');
 
   // --- 2. FETCH EXISTING BIDS ON LOAD ---
   useEffect(() => {
     const fetchExistingBids = async () => {
-      if ((type !== 'live' && type !== 'history') || !auctionId) return;
+      if ((type !== 'live' && type !== 'history') || !auctionId) {
+          setIsLoadingBids(false);
+          return;
+      }
       
       try {
+        setIsLoadingBids(true);
         const res = await apiClient.get(`/buyer/bids/auction/${auctionId}/bids`);
         const bidsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
         
@@ -61,6 +66,8 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
         }
       } catch (err) {
         console.error(`Card ${auctionId} failed to fetch initial bids`, err);
+      } finally {
+        setIsLoadingBids(false);
       }
     };
 
@@ -92,10 +99,11 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
   // Priority: 1. Live WS Bid -> 2. Fetched DB Bid -> 3. Passed Highest Bid -> 4. Passed Sold Price -> 5. Base Price
   const displayPrice = wsPrice ?? fetchedPrice ?? data.highest_bid ?? data.sold_price ?? data.price;
   
-  const rawBuyer = wsBuyer ?? fetchedBuyer ?? data.highest_bidder ?? data.buyer_name ?? data.buyer ?? "No Bids Yet";
+  const rawBuyer = wsBuyer ?? fetchedBuyer ?? data.highest_bidder ?? data.buyer_name ?? data.buyer ?? (isLoadingBids ? "WAITING" : "No Bids Yet");
 
   // Safely format the buyer without crashing if it's null
   const safeBuyerDisplay = useMemo(() => {
+    if (rawBuyer === "WAITING") return <span className="animate-pulse">Loading bids...</span>;
     if (!rawBuyer || rawBuyer === "No Bids Yet") return "No bids yet";
     
     const str = String(rawBuyer); // Force to string just in case
@@ -171,11 +179,11 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
                 </p>
             )}
 
-            {/* Display Leading Buyer / Winner if bids exist */}
-            {(type === 'live' || type === 'history') && rawBuyer !== "No Bids Yet" && (
+            {/* Always Display Leading Buyer / Winner row to prevent layout shifts */}
+            {(type === 'live' || type === 'history') && (
                 <p className="flex justify-between text-sm">
                     <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
-                    <span className="text-blue-600 font-medium">
+                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-500' : 'text-blue-600'}`}>
                       {safeBuyerDisplay}
                     </span>
                 </p>
