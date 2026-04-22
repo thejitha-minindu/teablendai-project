@@ -61,6 +61,10 @@ async def lifespan(app: FastAPI):
 
     if settings.INIT_DB_ON_STARTUP:
         try:
+            # Explicitly import all models to ensure they are registered with Base.metadata before creating tables
+            import src.domain.models
+            import src.infrastructure.database.models.admin_tables_orm
+
             Base.metadata.create_all(bind=engine)
             logger.info("Database schema initialization completed on startup.")
         except Exception:
