@@ -480,7 +480,7 @@ export function NavSidebar() {
               </SidebarContent>
 
               {/* Conditional Footer - Show simplified on analytics page, full on others */}
-              {pathname === "/analytics-dashboard" ? (
+              {pathname.startsWith("/analytics-dashboard") ? (
                 <SimplifiedFooter />
               ) : (
                 shouldShowProfile && <FullFooter />
