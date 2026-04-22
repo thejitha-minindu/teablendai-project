@@ -52,6 +52,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
 
+    auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
+    app.state.auction_manager_task = auction_manager_task
+    logger.info("Auction manager background task started")
+
     if settings.INIT_DB_ON_STARTUP:
         try:
             # Explicitly import all models to ensure they are registered with Base.metadata before creating tables
@@ -73,6 +77,15 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Shutting down TeaBlendAI server")
+        
+        if hasattr(app.state, 'auction_manager_task'):
+            auction_manager.stop()
+            app.state.auction_manager_task.cancel()
+            try:
+                await app.state.auction_manager_task
+            except asyncio.CancelledError:
+                logger.debug("Auction manager task cancelled cleanly")
+        
         mcp_client = getattr(app.state, "mcp_client", None)
         if mcp_client and mcp_client.is_ready():
             try:
@@ -81,7 +94,6 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 logger.debug("MCP shutdown cancelled (expected on Windows)")
             except Exception as e:
-                # Filter out harmless scope cancellation errors common on Windows
                 if "cancel scope" not in str(e).lower():
                     logger.error(f"Error during MCP client shutdown: {e}")
                 else:

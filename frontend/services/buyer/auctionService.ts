@@ -53,9 +53,19 @@ export async function listAuctionsHistory(userId: string, asBuyer = false): Prom
 }
 
 // List auction orders for user
-export async function listAuctionsOrder(userId: string): Promise<AuctionOrderCard[]> {
-    const response = await apiClient.get<AuctionOrderCard[]>(`${BUYER_API_BASE}/auctions/user/${userId}/orders`);
-    return response.data;
+export async function listAuctionsOrder(userId: string): Promise<AuctionOrderDialog[]> {
+    const orders = await apiClient.get<AuctionOrderDialog[]>(`${BUYER_API_BASE}/auctions/user/${userId}/orders`);
+    return orders.data.map((order: AuctionOrderDialog) => ({
+        auction_id: order.auction_id,
+        auction_name: order.auction_name,
+        estate_name: order.estate_name,
+        grade: order.grade,
+        quantity: order.quantity,
+        sold_price: order.sold_price || 0,
+        date: order.date,
+        base_price: order.base_price || 0,
+        order_id: order.order_id || "",
+    }));
 }
 
 // List auctions in user's watchlist
@@ -94,24 +104,28 @@ export async function getAuctionHistoryDialog(auctionId: string): Promise<Auctio
 }
 
 // Get auction order dialog data
-export async function getAuctionOrderDialog(auctionId: string): Promise<AuctionOrderDialog> {
-    const [auction, winsAuctions] = await Promise.all([
-        getAuction(auctionId),
-        getWinsAuctionByAuctionId(auctionId),
-    ]);
+export async function getAuctionOrderDialog(auctionId: string, userId: string): Promise<AuctionOrderDialog> {
+    // Call the orders endpoint
+    const orders = await listAuctionsOrder(userId);
+    
+    // Find the specific order by auction_id
+    const order = orders.find(o => o.auction_id === auctionId);
+    
+    if (!order) {
+        throw new Error("Order not found");
+    }
 
-    const winsAuction = winsAuctions[0];
-
+    // Map to dialog format
     return {
-        auction_id: auction.auction_id,
-        auction_name: auction.auction_name,
-        estate_name: auction.estate_name,
-        grade: auction.grade,
-        quantity: auction.quantity,
-        sold_price: auction.sold_price,
-        date: auction.date,
-        base_price: auction.base_price,
-        order_id: winsAuction?.order_id || "",
+        auction_id: order.auction_id,
+        auction_name: order.auction_name,
+        estate_name: order.estate_name,
+        grade: order.grade,
+        quantity: order.quantity,
+        sold_price: order.sold_price || 0,
+        date: order.date,
+        base_price: order.base_price || 0,
+        order_id: order.order_id || "",
     };
 }
 
