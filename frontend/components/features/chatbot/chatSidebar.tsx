@@ -34,7 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ConversationSummary } from "@/services/chatService";
+import { ConversationSummary } from "@/services/chatbot/chatService";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,

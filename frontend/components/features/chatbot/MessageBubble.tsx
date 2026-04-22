@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useCallback, useMemo, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronUp, Brain, User, Copy, Check } from "lucide-react";
-import { ChatMessage } from "@/services/chatService";
+import { ChatMessage } from "@/services/chatbot/chatService";
 import VisualizationRenderer from "./VisualizationRenderer";
 import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
