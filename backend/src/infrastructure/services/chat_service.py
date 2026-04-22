@@ -946,10 +946,20 @@ class ChatService:
 
     def _is_echoed_response(self, message: str) -> bool:
         """Detect if user accidentally sent AI's response back"""
+        msg_lower = message.lower().strip()
 
-        # Too long (AI responses are typically longer)
-        if len(message) > 400:
-            return True
+        # Never treat explicit user intents as echoes.
+        user_intent_markers = [
+            "create a tea auction",
+            "auction listing",
+            "listings for",
+            "starting at",
+            "including this description",
+            "update auction",
+            "delete auction",
+        ]
+        if any(marker in msg_lower for marker in user_intent_markers):
+            return False
 
         # Starts with AI response patterns
         ai_patterns = [
@@ -962,14 +972,18 @@ class ChatService:
             "based on the data",
         ]
 
-        msg_lower = message.lower()
-        if any(pattern in msg_lower for pattern in ai_patterns):
-            return True
+        pattern_hits = sum(1 for pattern in ai_patterns if pattern in msg_lower)
 
         # Contains multiple price listings
         import re
         price_matches = re.findall(r"Rs\.\s*\d+", message)
-        if len(price_matches) >= 3:
+
+        # Echo detection should be conservative to avoid false positives on long user prompts.
+        # Require clear AI-like signals rather than message length alone.
+        if pattern_hits >= 2:
+            return True
+
+        if pattern_hits >= 1 and len(price_matches) >= 3:
             return True
 
         return False

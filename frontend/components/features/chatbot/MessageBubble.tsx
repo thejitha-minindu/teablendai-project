@@ -35,6 +35,9 @@ const AUCTION_CREATION_PHRASES = [
   "created successfully",
 ] as const;
 
+const FRONTEND_BASE_URL =
+  process.env.NEXT_PUBLIC_FRONTEND_URL?.replace(/\/$/, "") || "";
+
 interface MessageBubbleProps {
   message: ChatMessage;
   onSendMessage?: (message: string) => void;
@@ -732,7 +735,7 @@ export default function MessageBubble({
               <p>
                 You can view the auction details here:
                 <Link
-                  href={`http://localhost:3000/seller/scheduled`}
+                  href={`${FRONTEND_BASE_URL}/seller/scheduled`}
                   className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline ml-1"
                   target="_blank"
                 >

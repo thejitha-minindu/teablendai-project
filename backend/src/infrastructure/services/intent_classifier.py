@@ -19,6 +19,7 @@ class IntentClassifier:
         # Create actions
         'create auction', 'new auction', 'list tea', 'add auction',
         'start auction', 'post auction', 'auction for',
+        'auction listing', 'create auction listing', 'create a tea auction listing',
         
         # Update actions
         'update auction', 'change auction', 'modify auction',
@@ -26,7 +27,7 @@ class IntentClassifier:
         
         # Delete actions
         'delete auction', 'remove auction', 'cancel auction',
-        'close auction',
+        'close auction', 'delete', 'remove', 'cancel', 'close',
         
         # Schedule actions
         'schedule auction', 'set time', 'set date',
@@ -158,9 +159,12 @@ class IntentClassifier:
         # Natural-language action phrases (e.g., "i want to create an auction")
         action_phrase_patterns = [
             r"\b(?:i\s+want\s+to\s+|please\s+)?create\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?create\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?add\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?add\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?start\s+(?:an?\s+)?auction\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?post\s+(?:an?\s+)?auction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?post\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?schedule\s+(?:an?\s+)?auction\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?update\s+(?:an?\s+)?auction\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?change\s+(?:an?\s+)?auction\b",
@@ -170,6 +174,11 @@ class IntentClassifier:
             r"\b(?:i\s+want\s+to\s+|please\s+)?remove\s+(?:an?\s+)?auction\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?cancel\s+(?:an?\s+)?auction\b",
             r"\b(?:i\s+want\s+to\s+|please\s+)?close\s+(?:an?\s+)?auction\b",
+            # Allow an auction identifier between action verb and "auction"
+            r"\b(?:i\s+want\s+to\s+|please\s+)?delete\b[\w\s#:\-]{0,120}\bauction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?remove\b[\w\s#:\-]{0,120}\bauction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?cancel\b[\w\s#:\-]{0,120}\bauction\b",
+            r"\b(?:i\s+want\s+to\s+|please\s+)?close\b[\w\s#:\-]{0,120}\bauction\b",
         ]
 
         return any(re.search(pattern, question) for pattern in action_phrase_patterns)
