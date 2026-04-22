@@ -38,7 +38,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import ClientOnly from "@/components/ui/ClientOnly";
 
 /* ================= ADMIN MENU ================= */
 const adminMenu = [
@@ -142,36 +141,34 @@ export function AdminSidebar() {
               <SidebarFooter className="p-4 border-t bg-white">
                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <ClientOnly>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuButton size="lg" className="w-full">
-                            <div className="flex gap-3 items-center w-full">
-                              <div className="w-8 h-8 rounded-full bg-[#E5F7CB] flex items-center justify-center">
-                                <User2 className="w-5 h-5 text-[#3A5A40]" />
-                              </div>
-                              <div className="flex-1 text-left">
-                                <p className="font-semibold">Admin</p>
-                                <p className="text-xs text-gray-500">Administrator</p>
-                              </div>
-                              <ChevronUp className="w-4 h-4" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <SidebarMenuButton size="lg" className="w-full">
+                          <div className="flex gap-3 items-center w-full">
+                            <div className="w-8 h-8 rounded-full bg-[#E5F7CB] flex items-center justify-center">
+                              <User2 className="w-5 h-5 text-[#3A5A40]" />
                             </div>
-                          </SidebarMenuButton>
-                        </DropdownMenuTrigger>
+                            <div className="flex-1 text-left">
+                              <p className="font-semibold">Admin</p>
+                              <p className="text-xs text-gray-500">Administrator</p>
+                            </div>
+                            <ChevronUp className="w-4 h-4" />
+                          </div>
+                        </SidebarMenuButton>
+                      </DropdownMenuTrigger>
 
-                        <DropdownMenuContent side="top" align="end" className="w-56">
-                          <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link href="/admin/user">My Profile</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">
-                            <LogOut className="w-4 h-4 mr-2" /> Log out
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </ClientOnly>
+                      <DropdownMenuContent side="top" align="end" className="w-56">
+                        <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem asChild>
+                          <Link href="/admin/user">My Profile</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-red-600">
+                          <LogOut className="w-4 h-4 mr-2" /> Log out
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarFooter>
