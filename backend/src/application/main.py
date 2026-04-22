@@ -30,6 +30,8 @@ from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_da
 from src.application.services.buyer.auction_manager import auction_manager
 from src.presentation.routers.v1.buyer import live_auction_socket
 
+from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
+
 load_dotenv()
 
 if sys.platform == 'win32':
@@ -52,6 +54,11 @@ async def lifespan(app: FastAPI):
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_manager_task = auction_manager_task
     logger.info("Auction manager background task started")
+
+    if settings.ANALYTICS_SCHEDULER_ENABLED:
+        analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
+        app.state.analytics_snapshot_task = analytics_task
+        logger.info("Analytics snapshot scheduler started")
 
     if settings.INIT_DB_ON_STARTUP:
         try:
@@ -96,6 +103,13 @@ async def lifespan(app: FastAPI):
                 else:
                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
+        if hasattr(app.state, "analytics_snapshot_task"):
+            analytics_snapshot_scheduler.stop()
+            app.state.analytics_snapshot_task.cancel()
+            try:
+                await app.state.analytics_snapshot_task
+            except asyncio.CancelledError:
+                logger.debug("Analytics scheduler task cancelled cleanly")
 
 # Create FastAPI application
 app = FastAPI(

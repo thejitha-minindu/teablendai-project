@@ -92,6 +92,13 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "%(levelname)s:%(name)s:%(message)s"
 
+    # Analytics settings
+    ANALYTICS_SCHEDULER_ENABLED: bool = True
+    ANALYTICS_SNAPSHOT_INTERVAL_SECONDS: int = 30
+    ANALYTICS_SNAPSHOT_RETENTION_DAYS: int = 90
+    ANALYTICS_KPI_LOOKBACK_DAYS: int = 30
+    ANALYTICS_CHART_MONTHS: int = 6
+
     class Config:
         env_file = str(BACKEND_DIR / ".env")
         env_file_encoding = "utf-8"
