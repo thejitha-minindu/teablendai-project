@@ -31,9 +31,18 @@ export interface FilterState {
 
 const GRADE_OPTIONS = [
   { value: "all", label: "All Grades" },
-  { value: "A", label: "Premium (FTGFOP1, SFTGFOP, Silver Needle)" },
-  { value: "B", label: "Standard (BOP, OP, FBOP, TGFOP)" },
-  { value: "C", label: "Specialty (Herbal)" },
+  { value: "BOP", label: "BOP" },
+  { value: "BOPF", label: "BOPF" },
+  { value: "OP", label: "OP" },
+  { value: "OP1", label: "OP1" },
+  { value: "OPA", label: "OPA" },
+  { value: "FBOP", label: "FBOP" },
+  { value: "Pekoe", label: "Pekoe" },
+  { value: "Pekoe 1", label: "Pekoe 1" },
+  { value: "Dust", label: "Dust" },
+  { value: "Dust 1", label: "Dust 1" },
+  { value: "Silver Tips", label: "Silver Tips" },
+  { value: "Golden Tips", label: "Golden Tips" },
 ];
 
 const STATUS_OPTIONS = [
