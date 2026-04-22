@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import desc, asc, func, and_, or_
 
 from src.domain.models.message import ChatMessage
-from src.domain.repositories.chat_repository import ChatMessageRepositoryInterface
+from src.domain.repositories.chatbot.chat_repository import ChatMessageRepositoryInterface
 import logging
 
 logger = logging.getLogger(__name__)

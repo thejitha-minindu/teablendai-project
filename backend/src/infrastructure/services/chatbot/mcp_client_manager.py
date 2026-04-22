@@ -44,10 +44,10 @@ class MCPClientManager:
         logger.info("Initializing MCP servers...")
 
         targets = [
-            ("tea_database", "src.infrastructure.services.mcp.tea_database.server"),
-            ("tea_visualization", "src.infrastructure.services.mcp.tea_visualization.server"),
-            ("tea_search", "src.infrastructure.services.mcp.tea_search.server"),
-            ("tea_auction", "src.infrastructure.services.mcp.tea_auction.server"),
+            ("tea_database", "src.infrastructure.services.chatbot.mcp.tea_database.server"),
+            ("tea_visualization", "src.infrastructure.services.chatbot.mcp.tea_visualization.server"),
+            ("tea_search", "src.infrastructure.services.chatbot.mcp.tea_search.server"),
+            ("tea_auction", "src.infrastructure.services.chatbot.mcp.tea_auction.server"),
         ]
         failed_servers: List[str] = []
 

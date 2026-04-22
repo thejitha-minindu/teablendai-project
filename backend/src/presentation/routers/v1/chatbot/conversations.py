@@ -14,8 +14,8 @@ from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_user
 from src.domain.models.user import User
 from src.domain.models.conversation import Conversation as ConversationModel
-from src.infrastructure.repositories.conversation_repository_impl import ConversationRepository
-from src.infrastructure.repositories.chat_repository_impl import ChatMessageRepository
+from src.infrastructure.repositories.chatbot.conversation_repository_impl import ConversationRepository
+from src.infrastructure.repositories.chatbot.chat_repository_impl import ChatMessageRepository
 
 logger = logging.getLogger(__name__)
 

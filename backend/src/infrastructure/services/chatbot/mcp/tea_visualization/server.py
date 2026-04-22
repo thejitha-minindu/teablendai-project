@@ -15,7 +15,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 from anyio import get_cancelled_exc_class
 
-from src.infrastructure.services.mcp.tea_visualization.visualization_selector import (
+from src.infrastructure.services.chatbot.mcp.tea_visualization.visualization_selector import (
     VisualizationSelector
 )
 from src.config import get_settings

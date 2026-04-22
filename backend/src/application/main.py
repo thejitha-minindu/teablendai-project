@@ -3,6 +3,7 @@ import asyncio
 import logging
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
+from src.presentation.routers.v1.chatbot import chat, conversations, query
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,10 +16,6 @@ from src.presentation.routers.v1 import (
     bid, 
     user, 
     order,
-    conversations, 
-    query,
-    #dashboard,
-    chat,
     auth
 )
 from src.presentation.routers.v1.admin import admin_auction

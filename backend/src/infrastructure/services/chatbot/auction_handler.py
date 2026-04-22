@@ -12,11 +12,11 @@ from datetime import datetime
 
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
-from src.domain.repositories.chat_repository import ChatMessageRepositoryInterface
-from src.infrastructure.services.conversation_state_manager import state_manager
-from src.infrastructure.services.mcp_client_manager import MCPClientManager
-from src.infrastructure.services.mcp.tea_auction.parameter_extractor import parameter_extractor
-from src.infrastructure.services.mcp.tea_auction.auction_fields import (
+from src.domain.repositories.chatbot.chat_repository import ChatMessageRepositoryInterface
+from src.infrastructure.services.chatbot.conversation_state_manager import state_manager
+from src.infrastructure.services.chatbot.mcp_client_manager import MCPClientManager
+from src.infrastructure.services.chatbot.mcp.tea_auction.parameter_extractor import parameter_extractor
+from src.infrastructure.services.chatbot.mcp.tea_auction.auction_fields import (
     CREATE_AUCTION_FIELDS,
     UPDATE_AUCTION_FIELDS,
     DELETE_AUCTION_FIELDS,

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, asc, func, and_, case
 
 from src.domain.models.conversation import Conversation
-from src.domain.repositories.conversation_repository import ConversationRepositoryInterface
+from src.domain.repositories.chatbot.conversation_repository import ConversationRepositoryInterface
 import logging
 
 logger = logging.getLogger(__name__)

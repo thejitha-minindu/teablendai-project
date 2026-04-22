@@ -18,7 +18,7 @@ from src.application.dependencies import (
     get_optional_token_payload,
 )
 from src.domain.models.user import User
-from src.infrastructure.services.chat_service import ChatService
+from src.infrastructure.services.chatbot.chat_service import ChatService
 
 logger = logging.getLogger(__name__)
 

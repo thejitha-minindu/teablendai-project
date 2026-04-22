@@ -22,9 +22,9 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.config import get_settings, get_mssql_connection_string
-from src.infrastructure.services.mcp.tea_database.sql_generator import SQLGenerator
-from src.infrastructure.services.mcp.tea_database import schema_extractor
-from src.infrastructure.services.mcp.tea_visualization.visualization_selector import VisualizationSelector
+from src.infrastructure.services.chatbot.mcp.tea_database.sql_generator import SQLGenerator
+from src.infrastructure.services.chatbot.mcp.tea_database import schema_extractor
+from src.infrastructure.services.chatbot.mcp.tea_visualization.visualization_selector import VisualizationSelector
 
 
 settings = get_settings()
@@ -112,8 +112,10 @@ def validate_sql(sql: str) -> None:
     if not starts_valid:
         raise ValueError("Only SELECT queries are allowed (including CTEs that start with WITH).")
 
+    # Match forbidden operations as full SQL keywords, not substrings.
+    # Example: "created_at" must NOT trigger forbidden "CREATE".
     for kw in forbidden:
-        if kw in upper:
+        if re.search(rf"\b{re.escape(kw)}\b", upper):
             raise ValueError(f"Forbidden keyword detected: {kw}")
 
     if ";" in sql.strip()[:-1]:

@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 from uuid import UUID
-from src.infrastructure.services.chat_service import ChatService
+from src.infrastructure.services.chatbot.chat_service import ChatService
 
 
 class ChatUseCase:

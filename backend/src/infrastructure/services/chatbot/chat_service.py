@@ -17,9 +17,9 @@ from src.infrastructure.repositories import (
     ConversationRepository,
     ChatMessageRepository
 )
-from src.infrastructure.services.auction_handler import AuctionHandler
-from src.infrastructure.services.intent_classifier import intent_classifier, QueryIntent
-from src.infrastructure.services.conversation_state_manager import state_manager
+from src.infrastructure.services.chatbot.auction_handler import AuctionHandler
+from src.infrastructure.services.chatbot.intent_classifier import intent_classifier, QueryIntent
+from src.infrastructure.services.chatbot.conversation_state_manager import state_manager
 from .mcp_client_manager import MCPClientManager
 from .topic_validator import TopicValidator
 
@@ -608,8 +608,23 @@ class ChatService:
             "explain",
         ]
         looks_like_knowledge_query = any(marker in question_lower for marker in knowledge_markers)
+        platform_data_markers = [
+            "auction",
+            "auctions",
+            "scheduled",
+            "live",
+            "history",
+            "seller",
+            "buyer",
+            "bid",
+            "this platform",
+            "our platform",
+            "database",
+            "system",
+        ]
+        looks_like_platform_data_query = any(marker in question_lower for marker in platform_data_markers)
 
-        if is_empty_sql_generation or looks_like_knowledge_query:
+        if (is_empty_sql_generation or looks_like_knowledge_query) and not looks_like_platform_data_query:
             logger.warning("[Chat] Database failed; falling back to web search for knowledge-style query")
             search_result = await self.mcp_client.search_web(user_message)
 

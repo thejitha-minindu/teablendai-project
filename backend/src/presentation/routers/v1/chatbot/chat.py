@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 from uuid import UUID
 
-from src.application.use_cases.chat.chat_use_case import ChatUseCase
+from src.application.use_cases.chatbot.chat.chat_use_case import ChatUseCase
 from src.application.dependencies import get_chat_use_case, get_history_db
 
 
