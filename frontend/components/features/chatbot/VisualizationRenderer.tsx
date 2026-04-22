@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useEffect, useRef, useCallback } from "react";
+import { useMemo, useEffect, useRef, useCallback, memo } from "react";
+import type { Chart as ChartJS } from "chart.js";
 import { DownloadIcon } from "@/components/ui/download";
 import {
   Tooltip,
@@ -8,17 +9,19 @@ import {
   TooltipContent,
 } from "@/components/ui/tooltip";
 
+// Constants
+const CHART_TYPES = ["bar", "line", "pie"] as const;
+const DOWNLOAD_TOOLTIP_SIDE_OFFSET = 8;
+const CHART_HEIGHT_MULTI_DATASET = "h-[450px]";
+const CHART_HEIGHT_SINGLE = "h-96";
+const PIE_CHART_SIZE = "w-[400px] h-[400px]";
+
 interface VisualizationRendererProps {
   visualization: string;
   visualizationType: string | null | undefined;
   query?: string;
 }
 
-// Constants
-const CHART_TYPES = ["bar", "line", "pie"] as const;
-const DOWNLOAD_TOOLTIP_SIDE_OFFSET = 8;
-
-// Types
 interface TableData {
   columns: string[];
   data: Record<string, unknown>[];
@@ -27,39 +30,34 @@ interface TableData {
 interface ChartConfig {
   type?: string;
   options?: Record<string, unknown>;
+  data?: {
+    datasets?: unknown[];
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 }
 
-export default function VisualizationRenderer({
-  visualization,
-  visualizationType,
-}: VisualizationRendererProps) {
-  const parsed = useMemo(() => {
-    try {
-      return JSON.parse(visualization) as TableData | ChartConfig | null;
-    } catch {
-      return null;
-    }
-  }, [visualization]);
+// Utility functions
+const escapeCSVValue = (value: unknown): string => {
+  const stringValue = value ?? "";
+  return `"${String(stringValue).replace(/"/g, '""')}"`;
+};
 
-  if (!parsed) return null;
-
-  // Determine visualization type
-  const type = visualizationType || (parsed as ChartConfig)?.type;
-
-  if (type === "table") {
-    return <TableRenderer data={parsed as TableData} />;
+const formatCellValue = (value: unknown): string => {
+  if (typeof value === "number") {
+    return value.toLocaleString();
   }
+  return value ? String(value) : "-";
+};
 
-  if (CHART_TYPES.includes(type as typeof CHART_TYPES[number])) {
-    return <ChartRenderer config={parsed as ChartConfig} />;
-  }
-
-  return null;
-}
-
-// Download Button Component
-function DownloadButton({ onClick, tooltip }: { onClick: () => void; tooltip: string }) {
+// Download Button Component (memoized)
+const DownloadButton = memo(function DownloadButton({
+  onClick,
+  tooltip,
+}: {
+  onClick: () => void;
+  tooltip: string;
+}) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -84,54 +82,37 @@ function DownloadButton({ onClick, tooltip }: { onClick: () => void; tooltip: st
       </TooltipContent>
     </Tooltip>
   );
-}
+});
 
-// Table Renderer
-function TableRenderer({ data }: { data: TableData }) {
+// Table Renderer Component (memoized)
+const TableRenderer = memo(function TableRenderer({ data }: { data: TableData }) {
   const { columns = [], data: rows = [] } = data;
 
   const downloadCSV = useCallback(() => {
     if (!rows.length) return;
 
-    const escapeCSVValue = (value: unknown): string => {
-      const stringValue = value ?? "";
-      return `"${String(stringValue).replace(/"/g, '""')}"`;
-    };
-
     const csvContent = [
       columns.join(","),
-      ...rows.map((row) => 
-        columns.map((col) => escapeCSVValue(row[col])).join(",")
-      ),
+      ...rows.map((row) => columns.map((col) => escapeCSVValue(row[col])).join(",")),
     ].join("\n");
 
-    const blob = new Blob([csvContent], { 
-      type: "text/csv;charset=utf-8;" 
-    });
-    
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    
+
     link.href = url;
     link.download = "table-data.csv";
     link.click();
-    
+
     URL.revokeObjectURL(url);
   }, [columns, rows]);
 
   if (!rows.length) return null;
 
-  const formatCellValue = (value: unknown): string => {
-    if (typeof value === "number") {
-      return value.toLocaleString();
-    }
-    return value ? String(value) : "-";
-  };
-
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm relative group">
       <DownloadButton onClick={downloadCSV} tooltip="Download CSV" />
-      
+
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b border-gray-200">
@@ -148,15 +129,9 @@ function TableRenderer({ data }: { data: TableData }) {
           </thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map((row, index) => (
-              <tr
-                key={index}
-                className="hover:bg-emerald-50 transition-colors"
-              >
+              <tr key={index} className="hover:bg-emerald-50 transition-colors">
                 {columns.map((column) => (
-                  <td
-                    key={`${index}-${column}`}
-                    className="px-4 py-2.5 text-gray-700 whitespace-nowrap"
-                  >
+                  <td key={`${index}-${column}`} className="px-4 py-2.5 text-gray-700 whitespace-nowrap">
                     {formatCellValue(row[column])}
                   </td>
                 ))}
@@ -167,19 +142,19 @@ function TableRenderer({ data }: { data: TableData }) {
       </div>
     </div>
   );
-}
+});
 
-// Chart Renderer
-function ChartRenderer({ config }: { config: ChartConfig }) {
+// Chart Renderer Component (memoized)
+const ChartRenderer = memo(function ChartRenderer({ config }: { config: ChartConfig }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<Chart | null>(null);
+  const chartRef = useRef<ChartJS | null>(null);
 
   const downloadChart = useCallback(() => {
     if (!canvasRef.current) return;
 
     const url = canvasRef.current.toDataURL("image/png");
     const link = document.createElement("a");
-    
+
     link.href = url;
     link.download = "chart.png";
     link.click();
@@ -188,15 +163,32 @@ function ChartRenderer({ config }: { config: ChartConfig }) {
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    let isMounted = true;
+
     const initializeChart = async () => {
       const { Chart, registerables } = await import("chart.js");
       Chart.register(...registerables);
+
+      if (!isMounted) return;
 
       if (chartRef.current) {
         chartRef.current.destroy();
       }
 
-      const existingScales = (config.options?.scales || {}) as Record<string, any>;
+      const optionsObj = (config.options ?? {}) as Record<string, unknown>;
+      const pluginsObj =
+        typeof optionsObj.plugins === "object" && optionsObj.plugins !== null
+          ? (optionsObj.plugins as Record<string, unknown>)
+          : {};
+      const legendObj =
+        typeof pluginsObj.legend === "object" && pluginsObj.legend !== null
+          ? (pluginsObj.legend as Record<string, unknown>)
+          : {};
+
+      const existingScales =
+        typeof optionsObj.scales === "object" && optionsObj.scales !== null
+          ? (optionsObj.scales as Record<string, any>)
+          : {};
       const hasYAxis = Object.keys(existingScales).some((key) => key.startsWith("y"));
 
       const mergedScales: Record<string, any> = {
@@ -205,9 +197,9 @@ function ChartRenderer({ config }: { config: ChartConfig }) {
           ...existingScales.x,
           ticks: {
             ...existingScales.x?.ticks,
-            font: { size: 11 }
-          }
-        }
+            font: { size: 11 },
+          },
+        },
       };
 
       if (hasYAxis) {
@@ -218,8 +210,8 @@ function ChartRenderer({ config }: { config: ChartConfig }) {
               ...existingScales[key],
               ticks: {
                 ...existingScales[key]?.ticks,
-                font: { size: 11 }
-              }
+                font: { size: 11 },
+              },
             };
           });
       } else {
@@ -228,44 +220,41 @@ function ChartRenderer({ config }: { config: ChartConfig }) {
           beginAtZero: true,
           ticks: {
             ...existingScales.y?.ticks,
-            font: { size: 11 }
-          }
+            font: { size: 11 },
+          },
         };
       }
 
       const chartConfig = {
         ...config,
         options: {
-          ...config.options,
+          ...optionsObj,
           responsive: true,
           maintainAspectRatio: false,
-          // Enhanced legend & scales for grouped bar charts
           plugins: {
-            ...config.options?.plugins,
+            ...pluginsObj,
             legend: {
-              ...config.options?.plugins?.legend,
+              ...legendObj,
               position: "top",
               labels: {
                 padding: 15,
                 font: { size: 12, weight: "500" },
                 usePointStyle: true,
-                pointStyle: "rect"
-              }
-            }
+                pointStyle: "rect",
+              },
+            },
           },
-          scales: mergedScales
+          scales: mergedScales,
         },
       };
 
-      chartRef.current = new Chart(
-        canvasRef.current!,
-        chartConfig as any
-      );
+      chartRef.current = new Chart(canvasRef.current!, chartConfig as any);
     };
 
     initializeChart();
 
     return () => {
+      isMounted = false;
       if (chartRef.current) {
         chartRef.current.destroy();
         chartRef.current = null;
@@ -274,23 +263,45 @@ function ChartRenderer({ config }: { config: ChartConfig }) {
   }, [config]);
 
   const isPieChart = config.type === "pie";
-  // Adjust height for charts with multiple datasets (grouped bars need more space)
   const datasetCount = config.data?.datasets?.length || 1;
-  const chartHeight = datasetCount > 2 ? "h-[450px]" : "h-96";
-  const containerSize = isPieChart ? "w-[400px] h-[400px]" : `w-full ${chartHeight}`;
+  const chartHeight = datasetCount > 2 ? CHART_HEIGHT_MULTI_DATASET : CHART_HEIGHT_SINGLE;
+  const containerSize = isPieChart ? PIE_CHART_SIZE : `w-full ${chartHeight}`;
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative group">
       <DownloadButton onClick={downloadChart} tooltip="Download Chart" />
-      
+
       <div className={`relative mx-auto ${containerSize}`}>
         <canvas ref={canvasRef} />
       </div>
     </div>
   );
-}
+});
 
-// Type for Chart.js instance
-type Chart = {
-  destroy: () => void;
-};
+// Main Component
+export default function VisualizationRenderer({
+  visualization,
+  visualizationType,
+}: VisualizationRendererProps) {
+  const parsed = useMemo(() => {
+    try {
+      return JSON.parse(visualization) as TableData | ChartConfig | null;
+    } catch {
+      return null;
+    }
+  }, [visualization]);
+
+  if (!parsed) return null;
+
+  const type = visualizationType || (parsed as ChartConfig)?.type;
+
+  if (type === "table") {
+    return <TableRenderer data={parsed as TableData} />;
+  }
+
+  if (CHART_TYPES.includes(type as (typeof CHART_TYPES)[number])) {
+    return <ChartRenderer config={parsed as ChartConfig} />;
+  }
+
+  return null;
+}

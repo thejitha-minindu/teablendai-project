@@ -1,7 +1,7 @@
 from typing import Optional, Literal
 from uuid import UUID
 from datetime import datetime, timezone
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, field_serializer
 
 AuctionType = Literal["scheduled", "live", "history"]
 
@@ -15,7 +15,10 @@ class Auction(BaseModel):
     duration: int
     status: AuctionType
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
+    highest_bid: Optional[float] = None
+    highest_bidder: Optional[str] = None
     countdown: Optional[str] = None
 
 # 1. Input Schema (Frontend -> Backend)
@@ -30,19 +33,23 @@ class AuctionCreate(BaseModel):
     quantity: float
     origin: str
     description: Optional[str] = None
-    # 2. Block negative prices
+    image_url: Optional[str] = None
     base_price: float = Field(ge=0, description="Base price cannot be negative")
     start_time: datetime
-    # 3. Block negative durations
     duration: float = Field(gt=0, description="Duration must be greater than 0")
-    # 4. Block past dates
+    
     @field_validator('start_time')
     def validate_start_time(cls, v: datetime):
-        # We give a 5-minute grace period to account for network delays or slow typing
-        now = datetime.now(timezone.utc) if v.tzinfo else datetime.now()
+        # Always use UTC for comparison
+        now_utc = datetime.now(timezone.utc)
         
-        # If the start time is strictly earlier than right now, reject it
-        if v < now:
+        # Ensure the value is timezone-aware (convert to UTC if naive)
+        if v.tzinfo is None:
+            v_utc = v.replace(tzinfo=timezone.utc)
+        else:
+            v_utc = v.astimezone(timezone.utc)
+        
+        if v_utc < now_utc:
             raise ValueError("Scheduled start time cannot be in the past.")
         return v
 
@@ -61,10 +68,27 @@ class AuctionResponse(BaseModel):
     quantity: float
     origin: str
     description: Optional[str] = None
+    image_url: Optional[str] = None
     base_price: float
     start_time: datetime
     duration: float
     status: str
     buyer: Optional[str] = None
+    buyer_name: Optional[str] = None
     sold_price: Optional[float] = None
     created_at: datetime
+    
+    @field_serializer('start_time', 'created_at')
+    def serialize_datetime(self, value: datetime, _info) -> str:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
+    
+    @field_validator('auction_id', 'seller_id', 'buyer', mode='before')
+    @classmethod
+    def convert_uuid_to_string(cls, value):
+        if isinstance(value, UUID):
+            return str(value)
+        return value

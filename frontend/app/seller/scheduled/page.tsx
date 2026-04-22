@@ -16,6 +16,7 @@ interface AuctionAPIResponse {
   description: string;
   origin: string;
   duration: number;
+  image_url?: string;
 }
 
 const parseBackendDateTime = (dateString: string) => {
@@ -106,6 +107,7 @@ export default function ScheduledAuctionsPage() {
             grade: item.grade,
             quantity: item.quantity,
             custom_auction_id: item.custom_auction_id,
+            image_url: item.image_url,
             // Calculate initial countdown
             countdown: calculateTimeUntilStart(item.start_time),
             fullData: item
@@ -177,6 +179,7 @@ export default function ScheduledAuctionsPage() {
           {auctions.map((auction) => (
             <AuctionCard
               key={auction.id}
+              auctionId={auction.id}
               type="scheduled" // You might need to check if AuctionCard supports displaying countdown for 'scheduled' type
               id={auction.displayId}
               data={auction.data} // data.countdown is now populated

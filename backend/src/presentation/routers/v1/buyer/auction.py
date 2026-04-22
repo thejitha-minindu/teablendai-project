@@ -1,13 +1,14 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.buyer.auction import Auction, AuctionData
+from src.application.schemas.buyer.auction import Auction, AuctionData, AuctionOrderCard
 from src.application.use_cases.buyer.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
 
 router = APIRouter(prefix="/auctions", tags=["auctions"])
+router.router = router
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
@@ -46,8 +47,8 @@ def get_auctions_history(
 ):
     return service.list_auctions_history(user_id=str(current_user.user_id), as_buyer=as_buyer)
 
-# Get auctions where user is buyer with history status
-@router.get("/user/{user_id}/orders", response_model=List[AuctionData])
+# Get auctions in user's orders
+@router.get("/user/{user_id}/orders", response_model=List[AuctionOrderCard])
 def get_auctions_orders(
     user_id: str,
     service: AuctionService = Depends(get_auction_service),

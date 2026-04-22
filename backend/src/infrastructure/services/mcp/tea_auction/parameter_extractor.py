@@ -8,7 +8,7 @@ import logging
 import json
 import re
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -452,7 +452,8 @@ class ParameterExtractor:
                     if field == "start_time":
                         try:
                             parsed_start = parse_datetime(str(value))
-                            validated[field] = parsed_start.strftime("%Y-%m-%d %H:%M")
+                            # Keep timezone information so frontend can convert UTC to local time correctly.
+                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat()
                             if natural_start_time and natural_start_time.get("requires_weekday_confirmation"):
                                 validated["_weekday_confirmation_required"] = True
                                 validated["_weekday_confirmation_expression"] = natural_start_time.get("expression")
@@ -520,6 +521,17 @@ class ParameterExtractor:
         if uuid_match:
             return uuid_match.group(0).upper()
         
+        # Try explicit custom/ref ID phrases first.
+        custom_patterns = [
+            r'(?:ref\s*id|reference\s*id|custom\s*auction\s*id)\s*[:#]?\s*([A-Za-z][A-Za-z0-9\-_]{5,})',
+            r'auction\s*id\s*[:#]?\s*([A-Za-z][A-Za-z0-9\-_]{5,})',
+        ]
+
+        for pattern in custom_patterns:
+            match = re.search(pattern, user_message, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
         # Try number after "auction #" or "auction"
         number_patterns = [
             r'auction\s*#\s*(\d+)',
@@ -532,6 +544,15 @@ class ParameterExtractor:
             match = re.search(pattern, msg)
             if match:
                 return match.group(1)
+
+        # Fallback: detect long alphanumeric token (likely custom auction ref id).
+        token_match = re.search(r'\b([A-Za-z][A-Za-z0-9\-_]{8,})\b', user_message)
+        if token_match:
+            token = token_match.group(1)
+            if token.lower() not in {
+                "auction", "update", "delete", "remove", "cancel", "scheduled", "schedule", "live", "history"
+            }:
+                return token
         
         return None
 

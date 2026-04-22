@@ -6,8 +6,9 @@ Manages multi-turn conversation state for complex operations.
 
 import logging
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dataclasses import dataclass, field, asdict
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ConversationState:
     """State for a multi-turn conversation flow"""
-    conversation_id: int
+    conversation_id: UUID
     state_type: str
     action: str
     partial_data: Dict[str, Any] = field(default_factory=dict)
@@ -47,12 +48,12 @@ class ConversationStateManager:
     """Manages conversation state across multiple turns"""
     
     def __init__(self):
-        self._states: Dict[int, ConversationState] = {}
+        self._states: Dict[UUID, ConversationState] = {}
         logger.info("[StateManager] Initialized")
     
     def create_state(
         self,
-        conversation_id: int,
+        conversation_id: UUID,
         state_type: str,
         action: str,
         required_fields: List[str],
@@ -74,7 +75,7 @@ class ConversationStateManager:
         
         return state
     
-    def get_state(self, conversation_id: int) -> Optional[ConversationState]:
+    def get_state(self, conversation_id: UUID) -> Optional[ConversationState]:
         """Get state for a conversation"""
         state = self._states.get(conversation_id)
         
@@ -88,7 +89,7 @@ class ConversationStateManager:
         
         return state
     
-    def update_state(self, conversation_id: int, updates: Dict[str, Any]):
+    def update_state(self, conversation_id: UUID, updates: Dict[str, Any]):
         """Update state with new data"""
         state = self.get_state(conversation_id)
         if state is None:
@@ -97,13 +98,13 @@ class ConversationStateManager:
         for field, value in updates.items():
             state.update_field(field, value)
     
-    def delete_state(self, conversation_id: int):
+    def delete_state(self, conversation_id: UUID):
         """Delete state for a conversation"""
         if conversation_id in self._states:
             del self._states[conversation_id]
             logger.info(f"[StateManager] Deleted state for conv {conversation_id}")
     
-    def set_confirmation_pending(self, conversation_id: int, pending: bool = True):
+    def set_confirmation_pending(self, conversation_id: UUID, pending: bool = True):
         """Mark state as waiting for confirmation"""
         state = self.get_state(conversation_id)
         if state:

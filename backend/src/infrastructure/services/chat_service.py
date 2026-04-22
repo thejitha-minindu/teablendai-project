@@ -8,7 +8,8 @@ Coordinates between repositories, MCP servers, and validation.
 import asyncio
 import logging
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
+from uuid import UUID
 from sqlalchemy.orm import Session
 
 from src.domain.models import Conversation, ChatMessage
@@ -66,7 +67,7 @@ class ChatService:
     async def process_message(
         self,
         user_message: str,
-        conversation_id: Optional[int] = None,
+        conversation_id: Optional[UUID] = None,
         user_id: Optional[str] = None,
         user_role: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -82,7 +83,7 @@ class ChatService:
         Returns:
             Response dictionary with answer, data, visualizations, etc.
         """
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Message Length
         MAX_MESSAGE_LENGTH = 2500
@@ -91,7 +92,7 @@ class ChatService:
             return {
                 "success": False,
                 "error": f"Message too long. Please keep questions under {MAX_MESSAGE_LENGTH} characters.",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
 
         # Detect Echoed AI Responses
@@ -105,7 +106,7 @@ class ChatService:
                     "Could you rephrase your question?"
                 ),
                 "source": "validation",
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
         
         try:
@@ -117,6 +118,8 @@ class ChatService:
                 conversation = self.conversation_repo.get_by_id(conversation_id)
                 if not conversation:
                     raise ValueError(f"Conversation {conversation_id} not found")
+                if user_id and conversation.user_id and str(conversation.user_id) != str(user_id):
+                    raise ValueError("Conversation not found")
                 logger.info(f"[Chat] Using existing conversation {conversation_id}")
             else:
                 conversation = await self._create_conversation(user_message, conversation_user_id)
@@ -174,7 +177,7 @@ class ChatService:
                     "conversation_id": conversation.conversation_id,
                     "answer": rejection,
                     "source": "validation",
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "suggestions": self.validator.get_suggestions(user_message)
                 }
 
@@ -196,7 +199,7 @@ class ChatService:
                 return await self.auction_handler.handle_auction_management(
                     user_message=user_message,
                     conversation=conversation,
-                    user_id=auction_user_id,
+                    user_id=str(user_id) if user_id else None,
                     user_role=user_role
                 )
 
@@ -209,13 +212,13 @@ class ChatService:
             return {
                 "success": False,
                 "error": str(e),
-                "timestamp": datetime.utcnow().isoformat()
+                "timestamp": datetime.now(timezone.utc).isoformat()
             }
       
     async def _create_conversation(
         self,
         first_message: str,
-        user_id: Optional[int] = None
+        user_id: Optional[UUID] = None
     ) -> Conversation:
         """Create a new conversation with auto-generated title"""
         # Generate title from first message (first 50 chars)
@@ -236,18 +239,18 @@ class ChatService:
         return saved
 
     @staticmethod
-    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[int]:
+    def _coerce_conversation_user_id(user_id: Optional[str]) -> Optional[UUID]:
         if user_id is None:
             return None
 
         try:
-            return int(str(user_id))
+            return UUID(str(user_id))
         except (TypeError, ValueError):
             return None
     
     def get_conversation_history(
         self,
-        conversation_id: int,
+        conversation_id: UUID,
         limit: int = 50
     ) -> Dict[str, Any]:
         """Get conversation with message history"""
@@ -288,7 +291,7 @@ class ChatService:
     ) -> Dict[str, Any]:
         """Handle questions that need general knowledge (web search)"""
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         logger.info("[Chat] Handling as KNOWLEDGE query - skipping database")
 
@@ -296,7 +299,7 @@ class ChatService:
         search_result = await self.mcp_client.search_web(user_message)
 
         if search_result.get("success"):
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             answer = search_result.get("answer", "")
 
@@ -316,7 +319,7 @@ class ChatService:
                 "answer": answer,
                 "source": "web",
                 "search_results": search_result.get("results", []),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
@@ -349,6 +352,64 @@ class ChatService:
         """Handle questions about business data"""
 
         logger.info("[Chat] Handling as DATABASE query")
+
+        followup_context = self._get_followup_visualization_context(
+            user_message=user_message,
+            conversation_id=conversation.conversation_id,
+        )
+
+        if followup_context:
+            logger.info("[Chat] Using previous query data for follow-up visualization")
+
+            rows = followup_context.get("rows", [])
+            columns = followup_context.get("columns", [])
+
+            llm_out = await self._summarize_and_choose_viz(
+                question=user_message,
+                columns=columns,
+                rows=rows,
+                candidates=["bar", "line", "pie", "table"],
+            )
+
+            chosen_type = llm_out["visualization_type"]
+
+            viz_result = await self.mcp_client.create_visualization(
+                data=rows,
+                query=user_message,
+                chart_type=chosen_type,
+            )
+
+            if not viz_result.get("success"):
+                viz_result = {"visualization": None, "visualization_type": chosen_type}
+
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=llm_out["summary"],
+                sql_query=followup_context.get("sql_query"),
+                data=rows,
+                source="database",
+                visualization_type=chosen_type,
+                visualization_data=viz_result.get("visualization"),
+                response_time_ms=response_time,
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": llm_out["summary"],
+                "source": "database",
+                "columns": columns,
+                "data": rows,
+                "row_count": len(rows),
+                "visualization_type": chosen_type,
+                "visualization": viz_result.get("visualization"),
+                "sql_query": followup_context.get("sql_query"),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "response_time_ms": response_time,
+            }
 
         db_result = await self.mcp_client.query_database(user_message)
 
@@ -409,7 +470,7 @@ class ChatService:
                     chart_type="table"
                 )
 
-                response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+                response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
                 assistant_msg = ChatMessage.create_assistant_message(
                     conversation_id=conversation.conversation_id,
@@ -435,7 +496,7 @@ class ChatService:
                     "visualization_type": "table",
                     "visualization": viz_result.get("visualization"),
                     "sql_query": db_result.get("sql_query"),
-                    "timestamp": datetime.utcnow().isoformat(),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
                     "response_time_ms": response_time
                 }
 
@@ -460,7 +521,7 @@ class ChatService:
             if not viz_result.get("success"):
                 viz_result = {"visualization": None, "visualization_type": chosen_type}
 
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             assistant_msg = ChatMessage.create_assistant_message(
                 conversation_id=conversation.conversation_id,
@@ -486,7 +547,7 @@ class ChatService:
                 "visualization_type": chosen_type,
                 "visualization": viz_result.get("visualization"),
                 "sql_query": db_result.get("sql_query"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
@@ -495,7 +556,7 @@ class ChatService:
         # because the question is about live system data that the web cannot answer accurately.
         if db_result.get("success"):
             logger.info("[Chat] Database query returned no results - informing user, skipping web search")
-            response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+            response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             no_data_message = (
                 "There are currently no records in the database that match your query. "
@@ -517,14 +578,66 @@ class ChatService:
                 "answer": no_data_message,
                 "source": "database",
                 "row_count": 0,
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": datetime.now(timezone.utc).isoformat(),
                 "response_time_ms": response_time
             }
 
-        # Database query actually failed (timeout, error, etc.) - do NOT web search,
-        # because the question is database-specific and the web cannot answer it reliably.
-        logger.warning("[Chat] Database query failed - returning error, not falling back to web search")
-        response_time = int((datetime.utcnow() - start_time).total_seconds() * 1000)
+        # Database query failed (timeout, SQL generation failure, etc.).
+        # For knowledge-style tea questions, fall back to web search.
+        db_error_text = " ".join([
+            str(db_result.get("error", "")),
+            str(db_result.get("message", "")),
+        ]).lower()
+        is_empty_sql_generation = (
+            "empty query" in db_error_text
+            or "generated an empty" in db_error_text
+            or (not str(db_result.get("generated_sql", "")).strip())
+        )
+
+        question_lower = user_message.lower()
+        knowledge_markers = [
+            "tell me",
+            "what is",
+            "about",
+            "industry",
+            "history",
+            "market",
+            "global",
+            "export",
+            "overview",
+            "explain",
+        ]
+        looks_like_knowledge_query = any(marker in question_lower for marker in knowledge_markers)
+
+        if is_empty_sql_generation or looks_like_knowledge_query:
+            logger.warning("[Chat] Database failed; falling back to web search for knowledge-style query")
+            search_result = await self.mcp_client.search_web(user_message)
+
+            if search_result.get("success"):
+                response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
+                answer = search_result.get("answer", "")
+
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=answer,
+                    source="web",
+                    search_results=search_result.get("results", []),
+                    response_time_ms=response_time,
+                )
+                self.message_repo.create(assistant_msg)
+
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": answer,
+                    "source": "web",
+                    "search_results": search_result.get("results", []),
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "response_time_ms": response_time,
+                }
+
+        logger.warning("[Chat] Database query failed - returning error response")
+        response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
         fallback_message = (
             "I was unable to retrieve data from the database at this time. "
@@ -543,9 +656,53 @@ class ChatService:
             "conversation_id": conversation.conversation_id,
             "answer": fallback_message,
             "source": "error",
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "response_time_ms": response_time
         }
+
+    def _get_followup_visualization_context(
+        self,
+        user_message: str,
+        conversation_id: UUID,
+    ) -> Optional[Dict[str, Any]]:
+        question = user_message.lower().strip()
+
+        chart_terms = ["chart", "graph", "plot", "visual", "pie", "bar", "line", "table"]
+        if not any(term in question for term in chart_terms):
+            return None
+
+        reference_terms = [
+            "above",
+            "previous",
+            "earlier",
+            "same",
+            "that",
+            "this",
+            "comparison",
+            "result",
+        ]
+        if not any(term in question for term in reference_terms):
+            return None
+
+        recent_messages = self.message_repo.get_recent_by_conversation(conversation_id, limit=15)
+        for msg in recent_messages:
+            if msg.role != "assistant":
+                continue
+            if msg.source not in {"database", "hybrid"}:
+                continue
+
+            data_rows = msg.get_data()
+            if not data_rows:
+                continue
+
+            columns = list(data_rows[0].keys()) if isinstance(data_rows[0], dict) else []
+            return {
+                "rows": data_rows,
+                "columns": columns,
+                "sql_query": msg.sql_query,
+            }
+
+        return None
 
     def _is_auction_query(self, query: str, columns: list) -> bool:
         """Detect if query results are auction data."""

@@ -61,6 +61,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
     const rawBasePrice = auction.base_price || auction.basePrice;
     const rawSoldPrice = auction.sold_price || auction.soldPrice;
     const rawWinner = auction.buyer || auction.winner;
+    const rawWinnerName = auction.buyer_name || "-";
     const rawTime = auction.time;
 
     return {
@@ -81,6 +82,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
       basePrice: rawBasePrice ? `${rawBasePrice} LKR` : "-",
       soldPrice: rawSoldPrice ? `${rawSoldPrice} LKR` : undefined,
       winner: rawWinner,
+      winnerName: rawWinnerName,
       time: rawTime,
       customAuctionId: auction.custom_auction_id,
     };
@@ -109,7 +111,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
       )}
       {cardType === "history" && (
         <p className="mb-1 text-sm">
-          <span className="font-medium">Winner:</span> {safeAuction.winner}
+          <span className="font-medium">Winner:</span> {safeAuction.winnerName}
         </p>
       )}
       {safeAuction.customAuctionId && (

@@ -1,9 +1,9 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from src.application.schemas.buyer.bid import BidData
 from src.infrastructure.repositories.bid_repository import BidRepository
-from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.infrastructure.repositories.seller.auction_repository import AuctionRepository
 from src.domain.models.auction_status import AuctionStatus
 import logging
 
@@ -19,7 +19,7 @@ class BidService:
         self.auction_repo = AuctionRepository(db)
     
     def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float) -> dict:
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Get auction
         auction = self.auction_repo.get_by_id(auction_id)
@@ -91,7 +91,7 @@ class BidService:
         if not auction:
             raise ValueError(f"Auction {auction_id} not found")
         
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         remaining_seconds = 0
         
         if auction.status == AuctionStatus.LIVE.value:

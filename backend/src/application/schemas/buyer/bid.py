@@ -12,6 +12,7 @@ class BidData(BaseModel):
     bid_amount: float
     bid_time: datetime
     buyer_id: str
+    buyer_name: Optional[str] = None
     
     @field_validator('bid_id', 'auction_id', 'buyer_id', mode='before')
     @classmethod
@@ -24,9 +25,8 @@ class BidData(BaseModel):
 class BidCreateRequest(BaseModel):
     auction_id: str
     bid_amount: float
-    buyer_id: str
     
-    @field_validator('auction_id', 'buyer_id', mode='before')
+    @field_validator('auction_id', mode='before')
     @classmethod
     def convert_uuid_to_string(cls, value):
         if isinstance(value, UUID):

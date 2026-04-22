@@ -6,8 +6,10 @@ Purpose: Represents an individual message in a conversation
 """
 
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, func
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
+from uuid import UUID, uuid4
 import json
 from typing import Optional, List, Dict, Any
 
@@ -29,15 +31,15 @@ class ChatMessage(Base):
     
     message_id = Column(
         "MessageID",
-        Integer,
+        UNIQUEIDENTIFIER,
         primary_key=True,
-        autoincrement=True,
+        default=uuid4,
         index=True
     )
     
     conversation_id = Column(
         "ConversationID",
-        Integer,
+        UNIQUEIDENTIFIER,
         ForeignKey("Conversations.ConversationID", ondelete="CASCADE"),
         nullable=False,
         index=True
@@ -95,7 +97,7 @@ class ChatMessage(Base):
         "Timestamp",
         DateTime,
         nullable=False,
-        default=datetime.utcnow,
+        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
         server_default=func.getdate(),
         index=True
     )
@@ -193,7 +195,7 @@ class ChatMessage(Base):
     @classmethod
     def create_user_message(
         cls,
-        conversation_id: int,
+        conversation_id: UUID,
         content: str
     ) -> "ChatMessage":
         """Factory method for user messages"""
@@ -201,13 +203,13 @@ class ChatMessage(Base):
             conversation_id=conversation_id,
             role="user",
             content=content,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
         )
     
     @classmethod
     def create_assistant_message(
         cls,
-        conversation_id: int,
+        conversation_id: UUID,
         content: str,
         sql_query: str = None,
         data: List[Dict] = None,
@@ -227,7 +229,7 @@ class ChatMessage(Base):
             source=source,
             visualization_type=visualization_type,
             response_time_ms=response_time_ms,
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc).replace(tzinfo=None)
         )
         
         # Set JSON fields using helpers

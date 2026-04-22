@@ -1,8 +1,9 @@
 import { apiClient } from "@/lib/apiClient";
+import { AxiosError } from "axios";
 
 export interface QueryResponse {
   success: boolean;
-  conversation_id: number | null;
+  conversation_id: string | null;
   answer: string;
   source: "database" | "web" | "validation" | "error" | "fallback" | "auction_management";
   data_type?: string;
@@ -110,17 +111,27 @@ export interface ChatMessage {
 }
 
 export interface ConversationSummary {
-  conversation_id: number;
+  conversation_id: string;
   title: string;
   created_at: string;
   updated_at: string;
   message_count: number;
+  is_pinned?: boolean;
+  pinned_at?: string | null;
 }
 
 export const chatService = {
+  getAuthToken(): string | null {
+    if (typeof window === "undefined") return null;
+    return (
+      localStorage.getItem("teablend_token") ||
+      localStorage.getItem("access_token")
+    );
+  },
+
   getCurrentUserId(): string | null {
     if (typeof window === "undefined") return null;
-    const token = localStorage.getItem("teablend_token");
+    const token = this.getAuthToken();
     if (!token) return null;
 
     try {
@@ -134,14 +145,32 @@ export const chatService = {
   // Send message to backend
   async sendMessage(
     message: string,
-    conversationId?: number | null
+    conversationId?: string | null
   ): Promise<QueryResponse> {
+    const token = this.getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in.");
+    }
+
     const payload: Record<string, unknown> = { message };
     if (conversationId) payload.conversation_id = conversationId;
     const userId = this.getCurrentUserId();
     if (userId) payload.user_id = userId;
-    const response = await apiClient.post<QueryResponse>("/query", payload);
-    return response.data;
+
+    try {
+      const response = await apiClient.post<QueryResponse>("/query", payload, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return response.data;
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw error;
+    }
   },
 
   // Get all conversations for sidebar
@@ -155,7 +184,7 @@ export const chatService = {
   },
 
   // Get messages for a specific conversation
-  async getConversationMessages(conversationId: number): Promise<ChatMessage[]> {
+  async getConversationMessages(conversationId: string): Promise<ChatMessage[]> {
     try {
       const response = await apiClient.get(`/conversations/${conversationId}`);
       const raw = response.data?.messages || [];
@@ -204,7 +233,59 @@ export const chatService = {
   },
 
   // Delete a conversation
-  async deleteConversation(conversationId: number): Promise<void> {
+  async deleteConversation(conversationId: string): Promise<void> {
     await apiClient.delete(`/conversations/${conversationId}`);
+  },
+
+  // Pin a conversation
+  async pinConversation(conversationId: string | number): Promise<void> {
+    const token = this.getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in.");
+    }
+
+    try {
+      await apiClient.post(
+        `/conversations/${conversationId}/pin`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error("Failed to pin conversation");
+    }
+  },
+
+  // Unpin a conversation
+  async unpinConversation(conversationId: string | number): Promise<void> {
+    const token = this.getAuthToken();
+    if (!token) {
+      throw new Error("Authentication required. Please log in.");
+    }
+
+    try {
+      await apiClient.post(
+        `/conversations/${conversationId}/unpin`,
+        null,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      if (axiosError.response?.status === 401) {
+        throw new Error("Session expired. Please log in again.");
+      }
+      throw new Error("Failed to unpin conversation");
+    }
   },
 };

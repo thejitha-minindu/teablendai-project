@@ -1,8 +1,9 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
-from src.application.schemas.auction import Auction, AuctionCreate
-from src.infrastructure.repositories.auction_repository import AuctionRepository
+from src.application.schemas.seller.auction import Auction, AuctionCreate
+from src.infrastructure.repositories.seller.auction_repository import AuctionRepository
+from src.domain.models.auction_status import AuctionStatus
 from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
 
@@ -64,7 +65,7 @@ class AuctionService:
 
     def get_history_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status(AuctionStatus.HISTORY.value, seller_id)
+        return self.repo.get_history_auctions(seller_id)
         
     def delete_auction(self, auction_id: str):
         return self.repo.delete(auction_id)

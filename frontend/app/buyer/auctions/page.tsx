@@ -28,18 +28,26 @@ export default function BuyerHistoryPage() {
     fetchAuctions();
   }, []);
 
-  const fetchAuctions = () => {
+  const fetchAuctions = async () => {
     setLoading(true);
-    listAuctions()
-      .then((data) => {
-        setAuctionData(data || []);
-        setLoading(false);
-      })
-      .catch((err) => {
-        setError(err.message || "Failed to load auctions");
-        setAuctionData([]);
-        setLoading(false);
-      });
+    try {
+      const [scheduledAuctions, liveAuctions] = await Promise.all([
+        listAuctions({ status: "Scheduled" }),
+        listAuctions({ status: "Live" }),
+      ]);
+      
+      const combinedData = [
+        ...(liveAuctions || []),      // Live auctions first
+        ...(scheduledAuctions || []), // Then scheduled
+      ];
+      
+      setAuctionData(combinedData);
+      setLoading(false);
+    } catch (err: any) {
+      setError(err.message || "Failed to load auctions");
+      setAuctionData([]);
+      setLoading(false);
+    }
   };
 
   // Filtering

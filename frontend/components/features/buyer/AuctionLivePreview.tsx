@@ -4,8 +4,9 @@ import '@/app/globals.css';
 import { useEffect, useState } from "react";
 import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuthClaims } from "@/lib/auth";
 
-const userId = "11111111-1111-1111-1111-111111111111";
+const UserId = getAuthClaims()?.id;
 
 export function AuctionLivePreview() {
 

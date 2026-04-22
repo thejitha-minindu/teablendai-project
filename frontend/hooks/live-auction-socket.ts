@@ -5,13 +5,17 @@ import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
 export function useAuctionBidsSocket(auctionId: string) {
   const [connected, setConnected] = useState(false);
   const [events, setEvents] = useState<BidWsEvent[]>([]);
-  const [auctionStatus, setAuctionStatus] = useState<"Live" | "Closed">("Live");
+  const [auctionStatus, setAuctionStatus] = useState<"Live" | "Won" | "Closed">("Live");
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [highestBid, setHighestBid] = useState<number>(0);
+  const [bidCount, setBidCount] = useState<number>(0);
+  const [isExtended, setIsExtended] = useState<boolean>(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [finalPrice, setFinalPrice] = useState<number>(0);
   
   const wsRef = useRef<WebSocket | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const extensionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!auctionId) return;
@@ -20,19 +24,47 @@ export function useAuctionBidsSocket(auctionId: string) {
       auctionId,
       (evt: BidWsEvent) => {
         // Handle different event types based on event_type field
-        console.log("Received WebSocket event:", evt.event_type, evt);
+        const eventType = String(evt.event_type);
+        console.log("Received WebSocket event:", eventType, evt);
         
-        if (evt.event_type === "BID_CREATED") {
+        if (eventType === "BID_CREATED") {
           console.log("Bid created event received:", evt.data);
           setEvents((prev) => [evt, ...prev]);
           setAuctionStatus("Live");
+
+          const bidAmount = Number(evt.data?.bid_amount ?? 0);
+          setHighestBid((prev) => Math.max(prev, bidAmount));
+          setBidCount((prev) => prev + 1);
+
+          setTimeLeft((prev) => {
+            if (prev > 0 && prev <= 10) {
+              setIsExtended(true);
+              if (extensionTimeoutRef.current) clearTimeout(extensionTimeoutRef.current);
+              extensionTimeoutRef.current = setTimeout(() => {
+                setIsExtended(false);
+              }, 1500);
+              return prev + 10;
+            }
+            return prev;
+          });
         }
         
-        if (evt.event_type === "AUCTION_CLOSED") {
+        if (eventType === "AUCTION_WON") {
+          console.log("Auction won event received:", evt.data);
+          setEvents((prev) => [evt, ...prev]);
+          setWinner(evt.data?.winner_id || null);
+          setFinalPrice(evt.data?.final_price || 0);
+          setAuctionStatus("Won");
+          setTimeLeft(0);
+          if (evt.data?.final_price) setHighestBid(evt.data.final_price);
+        }
+        
+        if (eventType === "AUCTION_CLOSED") {
           setWinner(evt.data?.buyer_id || null);
           setFinalPrice(evt.data?.bid_amount || 0);
           setAuctionStatus("Closed");
           setTimeLeft(0);
+          if (evt.data?.bid_amount) setHighestBid(evt.data.bid_amount);
           console.log(`Auction Closed: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
         }
       },
@@ -58,6 +90,7 @@ export function useAuctionBidsSocket(auctionId: string) {
     return () => {
       clearInterval(ping);
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (extensionTimeoutRef.current) clearTimeout(extensionTimeoutRef.current);
       ws.close();
     };
   }, [auctionId]);
@@ -67,6 +100,9 @@ export function useAuctionBidsSocket(auctionId: string) {
     events, 
     auctionStatus,
     timeLeft,
+    highestBid,
+    bidCount,
+    isExtended,
     winner,
     finalPrice
   };

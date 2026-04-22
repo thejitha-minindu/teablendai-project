@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { listAuctionsWatchlist } from "@/services/buyer/auctionService";
 import { ChartPie } from "@/components/features/buyer/ChartPie";
 import { BuyerCalendar } from "@/components/features/buyer/BuyerCalendar";
@@ -11,6 +12,7 @@ import { getAuthClaims } from "@/lib/auth";
 
 
 export default function BuyerAuctionPage() {
+  const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
   const [watchlist, setWatchlist] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +53,15 @@ export default function BuyerAuctionPage() {
 
   const handleWatchlistChange = () => {
     fetchWatchlist();
+  };
+
+  const handleAuctionHomeClick = (auctionId: string, status: string) => {
+    const rawStatus = String(status || "").trim().toLowerCase();
+    const isLive = rawStatus === "live";
+    const path = isLive
+      ? `/buyer/auction/live/${auctionId}`
+      : `/buyer/auction/${auctionId}`;
+    router.push(path);
   };
   
   // Filter watchlist by selected date
@@ -113,7 +124,7 @@ export default function BuyerAuctionPage() {
           style={{ animationDelay: "80ms" }}
         >
           <div>
-            <AuctionHomePreview />
+            <AuctionHomePreview onAuctionClick={handleAuctionHomeClick} />
           </div>
             <div>
             <div>

@@ -1,8 +1,9 @@
 from typing import List, Optional
 from pydantic import BaseModel
+from uuid import UUID
 
 class Conversation(BaseModel):
-    id: int
+    id: UUID
     title: str
     created_at: str
     updated_at: str
@@ -19,4 +20,4 @@ class ConversationResponse(BaseModel):
 
 class NewConversationResponse(BaseModel):
     success: bool
-    conversation_id: int
+    conversation_id: UUID

@@ -21,7 +21,7 @@ class Auction(Base):
     origin = Column(String(100), nullable=False)    
     description = Column(Text, nullable=True)
     base_price = Column(Float, nullable=False)
-    start_time = Column(DateTime, nullable=False)
+    start_time = Column(DateTime(timezone=True), nullable=False)
     duration = Column(Float, nullable=False)
     status = Column(String(20), default=AuctionStatus.SCHEDULE.value)
     buyer = Column(UNIQUEIDENTIFIER, nullable=True)

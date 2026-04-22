@@ -1,8 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import text
 import json
 import logging
 import re
+from uuid import UUID
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ class ChatHistoryDB:
             conn.commit()
         return conversation_id
 
-    def save_message(self, conversation_id, role, content, sql_query=None,
+    def save_message(self, conversation_id: UUID | str, role, content, sql_query=None,
                      data=None, visualization_type=None):
         """Save a message to conversation"""
         with self.engine.connect() as conn:
@@ -44,7 +45,7 @@ class ChatHistoryDB:
                     VALUES (:conv_id, :role, :content, :sql_query, :data_json, :viz_type)
                 """),
                 {
-                    "conv_id": conversation_id,
+                    "conv_id": str(conversation_id),
                     "role": role,
                     "content": content,
                     "sql_query": sql_query,
@@ -92,7 +93,7 @@ class ChatHistoryDB:
                 })
             return conversations
 
-    def get_conversation_messages(self, conversation_id):
+    def get_conversation_messages(self, conversation_id: UUID | str):
         """Retrieve messages for a specific conversation with visualization data"""
         with self.engine.connect() as conn:
             result = conn.execute(
@@ -114,7 +115,7 @@ class ChatHistoryDB:
                     WHERE ConversationID = :conv_id
                     ORDER BY Timestamp ASC
                 """),
-                {"conv_id": conversation_id}
+                {"conv_id": str(conversation_id)}
             )
 
             messages = []
@@ -190,7 +191,7 @@ class ChatHistoryDB:
         auction_keys = {"auction_id", "grade", "quantity", "base_price", "origin", "status", "start_time"}
         return len(auction_keys.intersection(set(first.keys()))) >= 3
 
-    def _rehydrate_auction_message(self, message: dict, conversation_id: int) -> dict:
+    def _rehydrate_auction_message(self, message: dict, conversation_id: UUID | str) -> dict:
         """Infer structured auction fields from persisted assistant message content."""
         content = str(message.get("content") or "")
         normalized = content.lower()
@@ -243,7 +244,7 @@ class ChatHistoryDB:
 
         return structured
 
-    def _detect_input_request(self, content: str, conversation_id: int) -> dict | None:
+    def _detect_input_request(self, content: str, conversation_id: UUID | str) -> dict | None:
         normalized = content.lower().strip()
 
         field_map = [
@@ -296,7 +297,7 @@ class ChatHistoryDB:
             "field_errors": errors,
         }
 
-    def _parse_auction_payload(self, content: str, conversation_id: int) -> dict | None:
+    def _parse_auction_payload(self, content: str, conversation_id: UUID | str) -> dict | None:
         normalized = content.lower()
 
         if "please confirm auction details" in normalized:
@@ -388,7 +389,7 @@ class ChatHistoryDB:
 
         return None
 
-    def _parse_result_payload(self, content: str, conversation_id: int) -> dict | None:
+    def _parse_result_payload(self, content: str, conversation_id: UUID | str) -> dict | None:
         normalized = content.lower()
 
         if "auction created successfully" in normalized or "failed to create auction" in normalized:
@@ -470,12 +471,12 @@ class ChatHistoryDB:
         }
         return validation.get(field_name, {})
 
-    def delete_conversation(self, conversation_id):
+    def delete_conversation(self, conversation_id: UUID | str):
         """Delete a conversation (messages deleted by CASCADE)"""
         with self.engine.connect() as conn:
             conn.execute(
                 text("DELETE FROM Conversations WHERE ConversationID = :conv_id"),
-                {"conv_id": conversation_id}
+                {"conv_id": str(conversation_id)}
             )
             conn.commit()
 
@@ -492,7 +493,7 @@ class ChatHistoryDB:
             )
             conn.commit()
 
-    def update_conversation_title(self, conversation_id, title):
+    def update_conversation_title(self, conversation_id: UUID | str, title):
         """Update conversation title"""
         with self.engine.connect() as conn:
             conn.execute(
@@ -501,7 +502,7 @@ class ChatHistoryDB:
                     SET Title = :title, UpdatedAt = GETDATE()
                     WHERE ConversationID = :conv_id
                 """),
-                {"title": title, "conv_id": conversation_id}
+                {"title": title, "conv_id": str(conversation_id)}
             )
             conn.commit()
 
@@ -511,9 +512,13 @@ class ChatHistoryDB:
         if value is None:
             return None
         if hasattr(value, "isoformat"):
+            if getattr(value, "tzinfo", None) is None:
+                value = value.replace(tzinfo=timezone.utc)
+            else:
+                value = value.astimezone(timezone.utc)
             return value.isoformat()
         if isinstance(value, (int, float)):
             # Unix timestamp - handle seconds or milliseconds
             ts = value / 1000 if value > 1e10 else value
-            return datetime.fromtimestamp(ts).isoformat()
+            return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
         return str(value)

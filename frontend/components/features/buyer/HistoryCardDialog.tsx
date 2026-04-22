@@ -121,7 +121,7 @@ export function HistoryCardDialog({ auctionId }: HistoryCardDialogProps) {
                     </p>
                     <p className="mb-1 text-sm">
                       <span className="font-medium">Winner:</span>{" "}
-                      {dialogData.buyer || "-"}
+                      {dialogData.buyer_name || "-"}
                     </p>
                     <p className="mb-1 text-sm">
                       <span className="font-medium">Sold Price:</span>{" "}

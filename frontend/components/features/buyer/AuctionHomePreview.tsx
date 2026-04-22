@@ -1,13 +1,17 @@
 "use client";
 import * as React from "react";
-import '@/app/globals.css';
+import '../../../app/globals.css';
 import { useEffect, useState } from "react";
 import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { getAuthClaims } from "@/lib/auth";
 
-export function AuctionHomePreview() {
+interface AuctionHomePreviewProps {
+  onAuctionClick?: (auctionId: string, status: string) => void;
+}
+
+export function AuctionHomePreview({ onAuctionClick }: AuctionHomePreviewProps) {
   const [auction, setAuction] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,8 +44,12 @@ export function AuctionHomePreview() {
   // Fallback for image
   const imageUrl = auction.image_url || null;
 
+  const handleClick = () => {
+    onAuctionClick?.(auction.id || auction.auction_id, auction.status);
+  };
+
   return (
-    <Card className="w-full mx-auto">
+    <Card className="w-full mx-auto cursor-pointer hover:shadow-lg transition-shadow" onClick={handleClick}>
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
         <div className="flex flex-col">
           <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>

@@ -9,10 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from .dependencies import get_mcp_client
 from src.config import get_settings
+from src.presentation.routers.v1.seller.auction import router as auction
 from src.presentation.routers.v1 import (
     health, 
     bid, 
-    auction, 
     user, 
     order,
     conversations, 
@@ -24,9 +24,13 @@ from src.presentation.routers.v1 import (
 from src.presentation.routers.v1.admin import admin_auction
 from src.presentation.routers.v1.admin import admin_csv
 from src.presentation.routers.v1.admin import admin_dashboard
-from src.presentation.routers.v1.buyer import auction as buyer_auction
+from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
+from src.infrastructure.database.base import Base, engine
+from src.presentation.routers.v1 import auth
+from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
+from src.application.services.buyer.auction_manager import auction_manager
 from src.presentation.routers.v1.buyer import live_auction_socket
 
 load_dotenv()
@@ -48,6 +52,21 @@ async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
 
+    auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
+    app.state.auction_manager_task = auction_manager_task
+    logger.info("Auction manager background task started")
+
+    if settings.INIT_DB_ON_STARTUP:
+        try:
+            # Explicitly import all models to ensure they are registered with Base.metadata before creating tables
+            import src.domain.models
+            import src.infrastructure.database.models.admin_tables_orm
+
+            Base.metadata.create_all(bind=engine)
+            logger.info("Database schema initialization completed on startup.")
+        except Exception:
+            logger.exception("Database schema initialization failed; continuing startup.")
+
     try:
         app.state.mcp_client = await get_mcp_client()
         logger.info("MCP client initialized during startup.")
@@ -58,6 +77,15 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Shutting down TeaBlendAI server")
+        
+        if hasattr(app.state, 'auction_manager_task'):
+            auction_manager.stop()
+            app.state.auction_manager_task.cancel()
+            try:
+                await app.state.auction_manager_task
+            except asyncio.CancelledError:
+                logger.debug("Auction manager task cancelled cleanly")
+        
         mcp_client = getattr(app.state, "mcp_client", None)
         if mcp_client and mcp_client.is_ready():
             try:
@@ -66,7 +94,6 @@ async def lifespan(app: FastAPI):
             except asyncio.CancelledError:
                 logger.debug("MCP shutdown cancelled (expected on Windows)")
             except Exception as e:
-                # Filter out harmless scope cancellation errors common on Windows
                 if "cancel scope" not in str(e).lower():
                     logger.error(f"Error during MCP client shutdown: {e}")
                 else:
@@ -84,13 +111,6 @@ app = FastAPI(
 # CORS setup
 settings = get_settings()
 allowed_origins = settings.CORS_ORIGINS
-
-app = FastAPI(
-    title="Tea Auction Platform",
-    description="Backend API for TeaBlendAI",
-    version="1.0.0",
-    lifespan=lifespan
-)
 
 app.add_middleware(
     CORSMiddleware,
@@ -196,10 +216,6 @@ async def api_info():
             "dashboard": "/api/v1/dashboard"
         },
         "documentation": "/docs",
-        "features": {
-            "auction_timer": "Dynamic 10s extension on bid near deadline",
-            "grace_period": "30s after winner declared before closing"
-        }
     }
 
 if __name__ == "__main__":
@@ -212,4 +228,4 @@ if __name__ == "__main__":
     )
 
 
-# to run the app: uvicorn src.application.main:app --reload
+# to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000

@@ -5,12 +5,13 @@ import uuid
 import logging
 from src.domain.models.auction import Auction as AuctionModel
 from src.domain.models.auction_status import AuctionStatus
-from src.application.schemas.auction import Auction, AuctionCreate
-from src.domain.repositories.auction_repository import AuctionRepositoryInterface
 from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
-
-
 logger = logging.getLogger(__name__)
+from src.application.schemas.seller.auction import Auction, AuctionCreate
+from src.domain.repositories.seller.auction_repository import AuctionRepositoryInterface
+from sqlalchemy.orm import joinedload
+from src.domain.models.order import WinsAuction
+from src.domain.models.user import User
 
 class AuctionRepository(AuctionRepositoryInterface):
     DEV_SELLER_ID = "12345678-1234-5678-1234-567812345678"
@@ -20,6 +21,14 @@ class AuctionRepository(AuctionRepositoryInterface):
 
     def __init__(self, db: Session):
         self.db = db
+
+    @staticmethod
+    def _is_uuid(value: str) -> bool:
+        try:
+            uuid.UUID(str(value))
+            return True
+        except (ValueError, TypeError):
+            return False
 
     def _resolve_seller_id(self, requested_seller_id: str | None) -> str:
         """
@@ -188,6 +197,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             quantity=auction_data.quantity,
             origin=auction_data.origin,
             description=auction_data.description,
+            image_url=auction_data.image_url,
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
             duration=auction_data.duration,
@@ -200,7 +210,18 @@ class AuctionRepository(AuctionRepositoryInterface):
         return db_auction
     
     def get_auction(self, auction_id: str):
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+        identifier = str(auction_id).strip()
+        if self._is_uuid(identifier):
+            return (
+                self.db.query(AuctionModel)
+                .filter(AuctionModel.auction_id == identifier)
+                .first()
+            )
+        return (
+            self.db.query(AuctionModel)
+            .filter(AuctionModel.custom_auction_id == identifier)
+            .first()
+        )
 
     def list_auctions(self):
         return self.db.query(AuctionModel).all()
@@ -216,9 +237,55 @@ class AuctionRepository(AuctionRepositoryInterface):
             query = query.filter(AuctionModel.seller_id == seller_id)
             
         return query.all()
+
+    def get_history_auctions(self, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
+        query = self.db.query(AuctionModel)\
+            .options(joinedload(AuctionModel.bids))\
+            .filter(AuctionModel.status == AuctionStatus.HISTORY.value)
+            
+        if seller_id:
+            query = query.filter(AuctionModel.seller_id == seller_id)
+            
+        auctions = query.all()
+        
+        for auction in auctions:
+            # 1. Retrieve highest bid info if available
+            if hasattr(auction, 'bids') and auction.bids:
+                highest_bid = max(auction.bids, key=lambda b: b.bid_amount)
+                if not auction.sold_price:
+                    auction.sold_price = highest_bid.bid_amount
+                if not auction.buyer:
+                    auction.buyer = highest_bid.buyer_id
+            
+            # 2. Get authoritative winner details from wins_auction
+            win = self.db.query(WinsAuction).filter(WinsAuction.auction_id == auction.auction_id).first()
+            winner_user_id = win.user_id if win else auction.buyer
+            
+            if winner_user_id:
+                user_obj = self.db.query(User).filter(User.user_id == winner_user_id).first()
+                if user_obj:
+                    auction.buyer = str(user_obj.user_id)
+                    auction.buyer_name = f"{user_obj.first_name} {user_obj.last_name}"
+                    
+        return auctions
     
-    def get_by_id(self, auction_id: str) -> Auction:
-        return self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+    def get_by_id(self, auction_id: str) -> AuctionModel: # Note: return AuctionModel, not Auction schema
+        auction = self.db.query(AuctionModel)\
+            .options(joinedload(AuctionModel.bids))\
+            .filter(AuctionModel.auction_id == auction_id)\
+            .first()
+            
+        if auction:
+            # Dynamically attach highest bid info before returning
+            if auction.bids:
+                highest_bid = max(auction.bids, key=lambda b: b.bid_amount)
+                auction.highest_bid = highest_bid.bid_amount
+                auction.highest_bidder = str(highest_bid.buyer_id)
+            else:
+                auction.highest_bid = None
+                auction.highest_bidder = None
+                
+        return auction
 
     def delete(self, auction_id: str) -> bool:
         auction = self.get_by_id(auction_id)
