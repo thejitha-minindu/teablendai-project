@@ -133,6 +133,7 @@ export function AuctionDetailLayout({
                   </SelectContent>
                 </Select>
 
+                {/* isBidLocked limit the bid submission for scheduled auctions */}
                 <Button
                   className={isBidLocked ? "w-full" : "w-full text-white"}
                   style={isBidLocked ? undefined : { backgroundColor: "var(--color4)" }}

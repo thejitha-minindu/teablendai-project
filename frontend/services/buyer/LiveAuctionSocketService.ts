@@ -1,13 +1,15 @@
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
+import { createWsClient } from "@/lib/wsClient";
+import { getAuthToken } from "@/lib/auth";
 
-const API_BASE_URL = (() => {
-  const baseUrl = process.env.NEXT_PUBLIC_API_WS_URL?.replace(/\/$/, "");
+// const API_BASE_URL = (() => {
+//   const baseUrl = process.env.NEXT_PUBLIC_API_WS_URL?.replace(/\/$/, "");
 
-  if (!baseUrl) {
-    throw new Error("NEXT_PUBLIC_API_WS_URL is not defined");
-  }
-  return `${baseUrl}/buyer`;
-})();
+//   if (!baseUrl) {
+//     throw new Error("NEXT_PUBLIC_API_WS_URL is not defined");
+//   }
+//   return `${baseUrl}/buyer`;
+// })();
 
 export function createAuctionBidSocket(
   auctionId: string,
@@ -15,9 +17,7 @@ export function createAuctionBidSocket(
   onOpen?: () => void,
   onClose?: () => void,
 ) {
-  // Get JWT token from localStorage
-  const token = typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
-
+  const token = getAuthToken();
   if (!token) {
     console.error("No authentication token found. User must be logged in.");
     onClose?.();
@@ -27,10 +27,7 @@ export function createAuctionBidSocket(
     return dummyWs;
   }
 
-  const wsUrl = `${API_BASE_URL}/live/auction/${auctionId}?token=${encodeURIComponent(token)}`;
-  console.log("Connecting to WebSocket:");
-
-  const ws = new WebSocket(wsUrl);
+  const ws = createWsClient(`buyer/live/auction/${auctionId}`, token);
 
   ws.onopen = () => {
     console.log("WebSocket connected for auction:", auctionId);

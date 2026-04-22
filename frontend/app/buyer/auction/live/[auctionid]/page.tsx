@@ -1,7 +1,7 @@
 "use client";
 
 import { AuctionDetailLayout } from "@/components/features/buyer/liveauction/AuctionDetailLayout";
-import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
+// import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import { WinnerModal } from "@/components/features/buyer/liveauction/WinnerModal";
 import { getAuction } from "@/services/buyer/auctionService";
 import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
