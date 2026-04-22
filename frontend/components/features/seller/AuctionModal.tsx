@@ -4,6 +4,7 @@ import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle,
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
+import { toast } from 'sonner';
 
 // ==========================================
 // HELPER FUNCTIONS
@@ -187,19 +188,19 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
         image_url: finalImageUrl || undefined
       };
       await apiClient.put(`/auctions/${auctionId}`, payload);
-      alert("Auction updated!");
+      toast.success("Auction updated!");
       setEditMode('none');
       onClose();
-    } catch (error) { alert("Update failed."); }
+    } catch (error) { toast.error("Update failed."); }
   };
 
   const handleCancelAuction = async () => {
     if (!confirm("Cancel this auction?")) return;
     try {
       await apiClient.delete(`/auctions/${auctionId}`);
-      alert("Cancelled.");
+      toast.success("Cancelled.");
       onClose();
-    } catch (error) { alert("Cancel failed."); }
+    } catch (error) { toast.error("Cancel failed."); }
   };
 
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"><div className="bg-white p-6 rounded">Loading...</div></div>;
@@ -369,6 +370,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   const [countdown, setCountdown] = useState("Loading...");
   const [loading, setLoading] = useState(true);
   const [historicalBids, setHistoricalBids] = useState<any[]>([]);
+  const [isLoadingBids, setIsLoadingBids] = useState(false);
 
   // --- CONNECT TO WEBSOCKET ---
   const { connected, events } = useAuctionBidsSocket(auctionId);
@@ -391,6 +393,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
   useEffect(() => {
     const fetchHistoricalBids = async () => {
       try {
+        setIsLoadingBids(true);
         const res = await apiClient.get(`/buyer/bids/auction/${auctionId}/bids`);
         const bidsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
         const sorted = [...bidsArray].sort(
@@ -399,6 +402,8 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
         setHistoricalBids(sorted);
       } catch (error) {
         console.error("Failed to fetch historical bids:", error);
+      } finally {
+        setIsLoadingBids(false);
       }
     };
     if (auctionId) fetchHistoricalBids();
@@ -435,7 +440,9 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
     ?? auction.buyer;
 
   // Format name safely without cutting off short names
-  const safeBuyerDisplay = rawBuyer
+  const safeBuyerDisplay = isLoadingBids
+    ? "Loading bids..."
+    : rawBuyer
     ? (rawBuyer.includes('@') ? rawBuyer.split('@')[0] : (rawBuyer.length > 20 ? rawBuyer.substring(0, 20) + "..." : rawBuyer))
     : "Waiting for bids...";
 
@@ -592,6 +599,11 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                       </div>
                     );
                   })
+                ) : isLoadingBids ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center text-gray-500 py-10 animate-pulse">
+                    <Clock className="w-8 h-8 mb-2 opacity-50 animate-spin" />
+                    <p className="font-semibold">Loading Live Bids...</p>
+                  </div>
                 ) : (
                   /* No bids anywhere */
                   <div className="flex flex-col items-center justify-center h-full text-center text-gray-400 py-10">
