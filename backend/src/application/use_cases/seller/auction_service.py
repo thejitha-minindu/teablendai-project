@@ -65,7 +65,7 @@ class AuctionService:
 
     def get_history_auctions(self, seller_id: Optional[UUID] = None):
         self._update_auction_statuses()
-        return self.repo.get_by_status(AuctionStatus.HISTORY.value, seller_id)
+        return self.repo.get_history_auctions(seller_id)
         
     def delete_auction(self, auction_id: str):
         return self.repo.delete(auction_id)
