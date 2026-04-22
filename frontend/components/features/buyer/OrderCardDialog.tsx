@@ -31,7 +31,26 @@ export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
     if (isOpen && auctionId) {
       setLoading(true);
       setError(null);
-      getAuctionOrderDialog(auctionId)
+      
+      // Extract userId dynamically
+      const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
+      let userId = "";
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          userId = payload.id;
+        } catch (e) {
+          console.error("Token decode error:", e);
+        }
+      }
+
+      if (!userId) {
+        setError("User session not found.");
+        setLoading(false);
+        return;
+      }
+
+      getAuctionOrderDialog(auctionId, userId)
         .then((data) => {
           setDialogData(data);
           setLoading(false);

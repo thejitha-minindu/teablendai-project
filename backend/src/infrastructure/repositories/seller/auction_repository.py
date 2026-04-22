@@ -10,6 +10,8 @@ logger = logging.getLogger(__name__)
 from src.application.schemas.seller.auction import Auction, AuctionCreate
 from src.domain.repositories.seller.auction_repository import AuctionRepositoryInterface
 from sqlalchemy.orm import joinedload
+from src.domain.models.order import WinsAuction
+from src.domain.models.user import User
 
 class AuctionRepository(AuctionRepositoryInterface):
     DEV_SELLER_ID = "12345678-1234-5678-1234-567812345678"
@@ -235,6 +237,37 @@ class AuctionRepository(AuctionRepositoryInterface):
             query = query.filter(AuctionModel.seller_id == seller_id)
             
         return query.all()
+
+    def get_history_auctions(self, seller_id: Optional[uuid.UUID] = None) -> List[AuctionModel]:
+        query = self.db.query(AuctionModel)\
+            .options(joinedload(AuctionModel.bids))\
+            .filter(AuctionModel.status == AuctionStatus.HISTORY.value)
+            
+        if seller_id:
+            query = query.filter(AuctionModel.seller_id == seller_id)
+            
+        auctions = query.all()
+        
+        for auction in auctions:
+            # 1. Retrieve highest bid info if available
+            if hasattr(auction, 'bids') and auction.bids:
+                highest_bid = max(auction.bids, key=lambda b: b.bid_amount)
+                if not auction.sold_price:
+                    auction.sold_price = highest_bid.bid_amount
+                if not auction.buyer:
+                    auction.buyer = highest_bid.buyer_id
+            
+            # 2. Get authoritative winner details from wins_auction
+            win = self.db.query(WinsAuction).filter(WinsAuction.auction_id == auction.auction_id).first()
+            winner_user_id = win.user_id if win else auction.buyer
+            
+            if winner_user_id:
+                user_obj = self.db.query(User).filter(User.user_id == winner_user_id).first()
+                if user_obj:
+                    auction.buyer = str(user_obj.user_id)
+                    auction.buyer_name = f"{user_obj.first_name} {user_obj.last_name}"
+                    
+        return auctions
     
     def get_by_id(self, auction_id: str) -> AuctionModel: # Note: return AuctionModel, not Auction schema
         auction = self.db.query(AuctionModel)\
