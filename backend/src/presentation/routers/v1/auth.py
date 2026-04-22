@@ -4,13 +4,22 @@ from sqlalchemy.orm import Session
 from google.oauth2 import id_token
 from google.auth.transport import requests
 import secrets
+import logging
+
+logger = logging.getLogger(__name__)
+import logging
 
 from src.infrastructure.database.base import get_db
 from src.domain.models.user import User
 from src.application.schemas.user import Token, UserCreate, GoogleToken, RoleSwitchRequest
 from src.application.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from src.application.dependencies import get_current_user
+from src.infrastructure.services.auth_service import AuthService
+from src.infrastructure.services.email_service import EmailService
 from datetime import timedelta
+from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -131,3 +140,179 @@ def switch_role(
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ===================== PASSWORD RESET ENDPOINTS =====================
+
+class ForgotPasswordRequest(BaseModel):
+    """Request schema for forgot password endpoint."""
+    email: str = Field(..., description="User email address")
+
+
+class VerifyOTPRequest(BaseModel):
+    """Request schema for OTP verification."""
+    email: str = Field(..., description="User email address")
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+
+
+class ResetPasswordRequest(BaseModel):
+    """Request schema for password reset."""
+    email: str = Field(..., description="User email address")
+    otp_code: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
+    new_password: str = Field(..., min_length=8, description="New password (minimum 8 characters)")
+    confirm_password: str = Field(..., min_length=8, description="Password confirmation")
+
+
+@router.post("/forgot-password")
+def forgot_password(
+    request: ForgotPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Request password reset OTP. Email must be registered.
+    
+    Returns:
+        - status: "success" if email found and OTP sent
+        - message: Confirmation message
+    """
+    user = AuthService.get_user_by_email(db, request.email)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No account found with this email address"
+        )
+    
+    try:
+        password_reset = AuthService.create_password_reset_request(db, str(user.user_id))
+        EmailService.send_otp_email(
+            user.email,
+            password_reset.otp_code,
+            user.first_name or "User"
+        )
+        
+        return {
+            "status": "success",
+            "message": "OTP sent to your email. Valid for 5 minutes.",
+            "email": user.email
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to send OTP. Please try again."
+        )
+
+
+@router.post("/verify-otp")
+def verify_otp(
+    request: VerifyOTPRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Verify OTP code for password reset.
+    
+    Returns:
+        - status: "success" if OTP is valid
+        - password_reset_id: ID to use in password reset endpoint
+    """
+    user = AuthService.get_user_by_email(db, request.email)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    password_reset = AuthService.verify_otp(
+        db,
+        str(user.user_id),
+        request.otp_code
+    )
+    
+    if not password_reset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP. Please request a new one."
+        )
+    
+    return {
+        "status": "success",
+        "message": "OTP verified successfully",
+        "password_reset_id": str(password_reset.id)
+    }
+
+
+@router.post("/reset-password")
+def reset_password(
+    request: ResetPasswordRequest,
+    db: Session = Depends(get_db)
+):
+    """
+    Reset password with verified OTP.
+    
+    Returns:
+        - status: "success" if password reset successfully
+    """
+    # Validate password match
+    if request.new_password != request.confirm_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passwords do not match"
+        )
+    
+    # Validate password strength
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must be at least 8 characters long"
+        )
+    
+    user = AuthService.get_user_by_email(db, request.email)
+    
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found"
+        )
+    
+    # Verify OTP one more time
+    password_reset = AuthService.verify_otp(
+        db,
+        str(user.user_id),
+        request.otp_code
+    )
+    
+    if not password_reset:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid OTP. Please request a new password reset."
+        )
+    
+    # Reset password
+    success = AuthService.reset_password(
+        db,
+        str(user.user_id),
+        request.new_password,
+        str(password_reset.id)
+    )
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reset password. Please try again."
+        )
+    
+    # Send confirmation email
+    try:
+        EmailService.send_password_reset_confirmation_email(
+            user.email,
+            user.first_name or "User"
+        )
+    except Exception as e:
+        # Log the error but don't fail the request
+        logger.warning(f"Failed to send confirmation email: {str(e)}")
+    
+    return {
+        "status": "success",
+        "message": "Password reset successfully. You can now log in with your new password."
+    }

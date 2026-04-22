@@ -1,32 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Eye, EyeOff, Mail, Lock, ChevronLeft, ArrowRight } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ChevronLeft, ArrowRight, CheckCircle } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 import { getAuthClaims, getHomePathByRole, setStoredAuthToken } from "@/lib/auth";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
 
 // IMPORTANT: Replace this with your actual Google Client ID from the Google Cloud Console
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com"; 
+const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
 
 export default function Login() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [errorMsg, setErrorMsg] = useState("");
+    const [successMsg, setSuccessMsg] = useState("");
     
     // Form State
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+
+    useEffect(() => {
+        const message = searchParams.get("message");
+        if (message === "password-reset-success") {
+            setSuccessMsg("Password reset successful! You can now log in with your new password.");
+        }
+    }, [searchParams]);
 
     const handleStandardLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -129,6 +138,14 @@ export default function Login() {
                             </CardHeader>
 
                             <CardContent>
+                                {/* Success Message Display */}
+                                {successMsg && (
+                                    <div className="mb-6 p-3 text-sm text-green-600 bg-green-50 border border-green-100 rounded-lg text-center font-medium flex items-center justify-center gap-2">
+                                        <CheckCircle className="w-4 h-4" />
+                                        {successMsg}
+                                    </div>
+                                )}
+
                                 {/* Error Message Display */}
                                 {errorMsg && (
                                     <div className="mb-6 p-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg text-center font-medium">

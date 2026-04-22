@@ -183,3 +183,5 @@ docker-compose.override.yml
 backend/alembic/versions/*
 
 .history/
+env.development
+env.development

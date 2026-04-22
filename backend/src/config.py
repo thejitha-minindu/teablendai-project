@@ -123,6 +123,22 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "%(levelname)s:%(name)s:%(message)s"
 
+    # Authentication & Security
+    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_HOURS: int = 24
+    
+    # Email Configuration (SMTP)
+    SMTP_HOST: Optional[str] = None
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    SMTP_FROM_EMAIL: Optional[str] = None
+    
+    # Password Reset Configuration
+    OTP_EXPIRY_MINUTES: int = 5
+    OTP_MAX_ATTEMPTS: int = 3
+
     class Config:
         env_file = ".env"
         case_sensitive = True
