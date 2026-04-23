@@ -5,23 +5,17 @@ from src.config import get_settings
 from src.infrastructure.database.connection import get_db
 from src.infrastructure.repositories.admin.admin_repository import AdminRepository
 from src.application.use_cases.admin.get_dashboard_stats import GetDashboardStatsUseCase
-from src.infrastructure.repositories.dashboard.analytics_overview_repository import AnalyticsOverviewRepository
-from src.application.schemas.dashboard.analytics_overview import AnalyticsOverviewResponse
-
+from src.infrastructure.repositories.admin.analytics_overview_repository import AnalyticsOverviewRepository
+from src.application.schemas.admin.analytics_overview import AnalyticsOverviewResponse
 
 router = APIRouter(prefix="", tags=["Admin Dashboard"])
 
 
 @router.get("/dashboard-stats")
 def get_dashboard_stats(db: Session = Depends(get_db)):
-
     repo = AdminRepository(db)
     usecase = GetDashboardStatsUseCase(repo)
-
-    dashboard = usecase.execute()
-
-
-    return dashboard
+    return usecase.execute()
 
 
 @router.get("/analytics/overview", response_model=AnalyticsOverviewResponse)
@@ -47,5 +41,4 @@ def get_analytics_overview(
             chart_months=settings.ANALYTICS_CHART_MONTHS,
             refresh_interval_ms=refresh_interval_ms,
         )
-
     return snapshot

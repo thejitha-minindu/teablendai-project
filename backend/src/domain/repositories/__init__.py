@@ -9,8 +9,8 @@ Architecture Pattern: Repository Pattern + Dependency Inversion Principle
 """
 
 
-from .conversation_repository import ConversationRepositoryInterface
-from .chat_repository import ChatMessageRepositoryInterface
+from .chatbot.conversation_repository import ConversationRepositoryInterface
+from .chatbot.chat_repository import ChatMessageRepositoryInterface
 
 # Export all repository interfaces
 __all__ = [
