@@ -34,8 +34,9 @@ class AnalyticsOverviewRepository:
                 SELECT
                     COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS total_purchased,
                     COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS total_sold,
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) * CAST(quantity AS FLOAT) ELSE 0 END), 0) AS total_revenue,
-                    COALESCE(AVG(CASE WHEN status = 'History' AND buyer IS NOT NULL AND sold_price IS NOT NULL THEN CAST(sold_price AS FLOAT) END), 0) AS avg_auction_price,
+                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS total_revenue,
+                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END) / 
+                    NULLIF( SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0), 0) AS avg_auction_price,
                     COALESCE(AVG(
                         CASE
                             WHEN status = 'History' AND buyer IS NOT NULL AND sold_price > 0 AND base_price > 0
@@ -74,20 +75,25 @@ class AnalyticsOverviewRepository:
             text(
                 """
                 SELECT TOP (:months)
-                    CONCAT(LEFT(DATENAME(month, DATEFROMPARTS(YEAR(start_time), MONTH(start_time), 1)), 3), ' ', RIGHT(CAST(YEAR(start_time) AS VARCHAR(4)), 2)) AS [month],
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) * CAST(quantity AS FLOAT) ELSE 0 END), 0) AS revenue,
-                    COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS purchases,
+                    CONCAT(
+                        LEFT(DATENAME(month, DATEFROMPARTS(YEAR(start_time), MONTH(start_time), 1)), 3),
+                        ' ',
+                        RIGHT(CAST(YEAR(start_time) AS VARCHAR(4)), 2)
+                    ) AS [month],
+
+                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS revenue,
+                    COALESCE(SUM( CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS purchases,
                     YEAR(start_time) AS year_num,
                     MONTH(start_time) AS month_num
                 FROM auctions
                 GROUP BY YEAR(start_time), MONTH(start_time)
-                ORDER BY year_num DESC, month_num DESC
+                ORDER BY year_num ASC, month_num ASC
                 """
             ),
             {"months": months},
         ).mappings().all()
 
-        out = [
+        return [
             {
                 "month": r["month"],
                 "revenue": round(self._num(r["revenue"]), 2),
@@ -95,38 +101,42 @@ class AnalyticsOverviewRepository:
             }
             for r in rows
         ]
-        out.reverse()
-        return out
 
     def _tea_grade_distribution(self) -> list[dict[str, float | str]]:
         rows = self.db.execute(
             text(
                 """
-                WITH sold AS (
-                    SELECT grade, CAST(quantity AS FLOAT) AS qty
+                WITH filtered AS (
+                    SELECT 
+                        grade,
+                        CAST(quantity AS FLOAT) AS qty
                     FROM auctions
-                    WHERE status = 'History' AND buyer IS NOT NULL
+                    WHERE status IN ('History', 'Live')
+                ),
+                totals AS (
+                    SELECT SUM(qty) AS total_qty FROM filtered
                 )
                 SELECT
-                    grade AS [name],
-                    CAST((SUM(qty) * 100.0) / NULLIF((SELECT SUM(qty) FROM sold), 0) AS FLOAT) AS [value]
-                FROM sold
+                    COALESCE(grade, 'Unknown') AS [name],
+                    CAST(
+                        (SUM(qty) * 100.0) / NULLIF((SELECT total_qty FROM totals), 0)
+                        AS FLOAT
+                    ) AS [value]
+                FROM filtered
                 GROUP BY grade
                 ORDER BY SUM(qty) DESC
                 """
             )
         ).mappings().all()
 
-        out = []
-        for i, r in enumerate(rows):
-            out.append(
-                {
-                    "name": r["name"] or "Unknown",
-                    "value": round(self._num(r["value"]), 2),
-                    "color": self.GRADE_COLORS[i % len(self.GRADE_COLORS)],
-                }
-            )
-        return out
+        return [
+            {
+                "name": r["name"],
+                "value": round(self._num(r["value"]), 2),
+                "color": self.GRADE_COLORS[i % len(self.GRADE_COLORS)],
+            }
+            for i, r in enumerate(rows)
+        ]
 
     def _top_blends(self, limit: int = 5) -> list[dict[str, float | str]]:
         rows = self.db.execute(
@@ -164,18 +174,58 @@ class AnalyticsOverviewRepository:
                 """
                 SELECT
                     (SELECT COUNT(*) FROM users WHERE default_role = 'buyer') AS total_customers,
-                    (SELECT COUNT(DISTINCT buyer_id) FROM bids WHERE bid_time >= DATEADD(day, -30, SYSUTCDATETIME())) AS active_buyers,
-                    (SELECT COUNT(*) FROM auctions WHERE status = 'History' AND start_time >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)) AS completed_auctions_this_month,
-                    (SELECT COALESCE(AVG(
-                        CASE
-                            WHEN status = 'History' AND buyer IS NOT NULL AND sold_price > 0 AND base_price > 0
-                            THEN ((CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT)) / CAST(base_price AS FLOAT)) * 100
-                        END
-                    ), 0) FROM auctions WHERE start_time >= DATEADD(day, -30, SYSUTCDATETIME())) AS average_blend_margin,
+
+                    (SELECT COUNT(DISTINCT buyer_id)
+                    FROM bids
+                    WHERE bid_time >= DATEADD(day, -30, SYSUTCDATETIME())
+                    ) AS active_buyers,
+
+                    (SELECT COUNT(*)
+                    FROM auctions
+                    WHERE status = 'History'
+                    AND start_time >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
+                    ) AS completed_auctions_this_month,
+
+                    (SELECT COALESCE(
+                        SUM(
+                            CASE 
+                                WHEN status = 'History'
+                                AND buyer IS NOT NULL
+                                AND sold_price > 0
+                                AND base_price > 0
+                                THEN (
+                                    (CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT))
+                                    / CAST(base_price AS FLOAT)
+                                ) * CAST(quantity AS FLOAT)
+                                ELSE 0
+                            END
+                        )
+                        /
+                        NULLIF(
+                            SUM(
+                                CASE 
+                                    WHEN status = 'History'
+                                    AND buyer IS NOT NULL
+                                    AND base_price > 0
+                                    THEN CAST(quantity AS FLOAT)
+                                    ELSE 0
+                                END
+                            ),
+                            0
+                        ),
+                    0)
+                    FROM auctions
+                    WHERE start_time >= DATEADD(day, -30, SYSUTCDATETIME())
+                    ) AS average_blend_margin,
+
                     (SELECT COALESCE(SUM(CAST(quantity AS FLOAT)), 0)
-                     FROM auctions
-                     WHERE status IN ('Scheduled', 'Live') OR (status = 'History' AND buyer IS NULL)) AS inventory_stock_kg,
-                    (SELECT COUNT(*) FROM orders WHERE CAST(status AS VARCHAR(40)) IN ('pending', 'OrderStatus.pending')) AS pending_orders
+                    FROM auctions
+                    WHERE status IN ('Scheduled', 'Live')) AS inventory_stock_kg,
+
+                    (SELECT COUNT(*)
+                    FROM orders
+                    WHERE status IN ('pending', 'OrderStatus.pending')
+                    ) AS pending_orders
                 """
             )
         ).mappings().one()
