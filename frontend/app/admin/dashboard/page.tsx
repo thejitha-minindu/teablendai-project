@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, Database, AlertTriangle, Users, CheckCircle, XCircle, Loader } from "lucide-react";
+import { Bell, Database, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 
@@ -36,38 +36,7 @@ export default function AdminDashboard() {
     };
 
     fetchStats();
-    fetchPendingUsers();
   }, []);
-
-  const fetchPendingUsers = async () => {
-    setLoadingUsers(true);
-    try {
-      const response = await apiClient.get("/admin/users?status=PENDING");
-      setPendingUsers(response.data);
-    } catch (error) {
-      console.error("Error fetching pending users:", error);
-    } finally {
-      setLoadingUsers(false);
-    }
-  };
-
-  const approveUser = async (userId: string) => {
-    try {
-      await apiClient.patch(`/admin/users/${userId}/approve`);
-      setPendingUsers(pendingUsers.filter(user => user.user_id !== userId));
-    } catch (error) {
-      console.error("Error approving user:", error);
-    }
-  };
-
-  const rejectUser = async (userId: string) => {
-    try {
-      await apiClient.patch(`/admin/users/${userId}/reject`);
-      setPendingUsers(pendingUsers.filter(user => user.user_id !== userId));
-    } catch (error) {
-      console.error("Error rejecting user:", error);
-    }
-  };
 
   return (
     <div className="p-2 space-y-4">
