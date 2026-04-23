@@ -15,6 +15,8 @@ from src.domain.models.password_reset import PasswordReset
 from src.domain.models.order import Order, PaymentDetails, WinsAuction
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
+from src.domain.models.admin import Admin
+from src.domain.models.violation import Violation
 
 from urllib.parse import quote_plus
 

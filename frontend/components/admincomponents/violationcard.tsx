@@ -8,6 +8,7 @@ type ViolationCardProps = {
     violatorId: string;
     violationType: string;
     reason: string;
+    status:string;
 };
 
 export function ViolationCard({
@@ -15,6 +16,7 @@ export function ViolationCard({
     violatorId,
     violationType,
     reason,
+    status,
 }: ViolationCardProps) {
     return (
         <div className="bg-white rounded-xl shadow-md p-5  mb-5 w-full max-w-full min-w-0 block min-h-48">
@@ -42,6 +44,9 @@ export function ViolationCard({
                 </p>
                 <p>
                     <span className="font-medium">Reason :</span> {reason}
+                </p>
+                <p>
+                    <span className="font-medium">Status:</span>{status}
                 </p>
             </div>
 

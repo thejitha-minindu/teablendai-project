@@ -25,6 +25,7 @@ class User(Base):
     watch_list = relationship("WatchList", back_populates="user")
     auctions = relationship("Auction", backref="seller", foreign_keys="Auction.seller_id")
     bids = relationship("Bid", back_populates="user")
+    verification_status = Column(String, default="PENDING")
     password_resets = relationship("PasswordReset", back_populates="user", cascade="all, delete-orphan")
 
 class FinancialDetails(Base):

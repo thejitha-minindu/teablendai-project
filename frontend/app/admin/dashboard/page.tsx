@@ -3,20 +3,33 @@
 import { useState, useEffect } from "react";
 import { Bell, Database, AlertTriangle, Users, CheckCircle, XCircle, Loader } from "lucide-react";
 import Link from "next/link";
-import { apiClient } from "@/lib/apiClient";
+
 
 export default function AdminDashboard() {
 
   const [totalAuctions, setTotalAuctions] = useState(0);
-  const [pendingUsers, setPendingUsers] = useState([]);
-  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [totalSellers, setTotalSellers] = useState(0);
+  const [totalBuyers, setTotalBuyers] = useState(0);
+  const [pendingSellers, setPendingSellers] = useState(0);
+  const [pendingBuyers, setPendingBuyers] = useState(0);
+  const [totalViolations, setTotalViolations] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/admin/dashboard-stats");
-        const data = await res.json();
-        setTotalAuctions(data.total_auctions);
+        const { apiClient } = await import("@/lib/apiClient");
+        const res = await apiClient.get("/admin/dashboard-stats");
+        const data = res.data;
+
+        console.log("[Admin Dashboard] dashboard-stats response:", data);
+
+        setTotalAuctions(data.total_auctions || 0);
+        setTotalSellers(data.total_sellers || 0);
+        setTotalBuyers(data.total_buyers || 0);
+        setPendingSellers(data.pending_sellers || 0);
+        setPendingBuyers(data.pending_buyers || 0);
+        setTotalViolations(data.total_violations || 0);
+
       } catch (error) {
         console.error("Error fetching stats:", error);
       }
@@ -67,89 +80,11 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Buyers" value="234" sub="Pending 27" />
-        <StatCard title="Total Sellers" value="156" sub="Pending 12" />
-        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Pending 0" />
-        <ViolationCard />
-      </div>
-
-      {/* USER APPROVAL SECTION */}
-      <div className="bg-white rounded-2xl shadow-lg p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Users className="w-6 h-6 text-blue-600" />
-            <h2 className="text-lg font-semibold">Pending User Approvals</h2>
-          </div>
-          <button 
-            onClick={fetchPendingUsers}
-            className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-          >
-            {loadingUsers ? "Loading..." : "Refresh"}
-          </button>
-        </div>
-
-        {loadingUsers ? (
-          <div className="flex items-center justify-center py-8">
-            <Loader className="w-6 h-6 animate-spin text-gray-400" />
-          </div>
-        ) : pendingUsers.length === 0 ? (
-          <div className="py-8 text-center text-gray-500">
-            <p>No pending user approvals</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b">
-                <tr>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Name</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Email</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Role</th>
-                  <th className="px-4 py-3 text-left font-medium text-gray-600">Joined</th>
-                  <th className="px-4 py-3 text-center font-medium text-gray-600">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingUsers.map((user) => (
-                  <tr key={user.user_id} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">
-                        {user.first_name} {user.last_name}
-                      </div>
-                      <div className="text-xs text-gray-500">@{user.user_name}</div>
-                    </td>
-                    <td className="px-4 py-3 text-gray-600">{user.email}</td>
-                    <td className="px-4 py-3">
-                      <span className="inline-block px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full capitalize">
-                        {user.default_role}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs">
-                      {new Date(user.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => approveUser(user.user_id)}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 transition text-xs font-medium"
-                        >
-                          <CheckCircle className="w-4 h-4" />
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => rejectUser(user.user_id)}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200 transition text-xs font-medium"
-                        >
-                          <XCircle className="w-4 h-4" />
-                          Reject
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <StatCard title="Total Buyers" value={String(totalBuyers)} sub={`Pending    : ${pendingBuyers}`} />
+        <StatCard title="Total Sellers" value={String(totalSellers)} sub={`Pending    : ${pendingSellers}`} />
+        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
+        <ViolationCard totalViolations={totalViolations} />
+      
       </div>
 
       {/* ANALYTICS + ACTION */}
@@ -230,7 +165,7 @@ function StatCard({
   );
 }
 
-function ViolationCard() {
+function ViolationCard({ totalViolations }: { totalViolations: number }) {
   return (
     <div className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between">
       <div className="flex items-center gap-2">
@@ -238,7 +173,7 @@ function ViolationCard() {
         <h3 className="text-sm text-gray-500">Total Violations</h3>
       </div>
 
-      <p className="text-4xl font-bold my-3">99</p>
+      <p className="text-4xl font-bold my-3">{String(totalViolations)}</p>
 
       <Link href="/admin/violationhandling">
         <button className="w-full bg-red-100 text-red-700 py-2 rounded-lg font-medium hover:bg-red-200 transition">

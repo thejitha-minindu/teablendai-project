@@ -5,7 +5,7 @@ import uuid
 import logging
 from src.domain.models.auction import Auction as AuctionModel
 from src.domain.models.auction_status import AuctionStatus
-from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
+from src.infrastructure.services.chatbot.auction_reference_id_generator import build_auction_reference_id
 logger = logging.getLogger(__name__)
 from src.application.schemas.seller.auction import Auction, AuctionCreate
 from src.domain.repositories.seller.auction_repository import AuctionRepositoryInterface

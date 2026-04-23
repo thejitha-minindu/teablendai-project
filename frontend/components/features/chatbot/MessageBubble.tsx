@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useCallback, useMemo, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronUp, Brain, User, Copy, Check } from "lucide-react";
-import { ChatMessage } from "@/services/chatService";
+import { ChatMessage } from "@/services/chatbot/chatService";
 import VisualizationRenderer from "./VisualizationRenderer";
 import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
@@ -34,6 +34,9 @@ const AUCTION_CREATION_PHRASES = [
   "auction was successfully created",
   "created successfully",
 ] as const;
+
+const FRONTEND_BASE_URL =
+  process.env.NEXT_PUBLIC_FRONTEND_URL?.replace(/\/$/, "") || "";
 
 interface MessageBubbleProps {
   message: ChatMessage;
@@ -732,7 +735,7 @@ export default function MessageBubble({
               <p>
                 You can view the auction details here:
                 <Link
-                  href={`http://localhost:3000/seller/scheduled`}
+                  href={`${FRONTEND_BASE_URL}/seller/scheduled`}
                   className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline ml-1"
                   target="_blank"
                 >
