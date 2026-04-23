@@ -12,13 +12,6 @@ import { useAnalyticsOverview } from "@/hooks/use-analytics-overview";
 
 type Trending = 'up' | 'down' | 'neutral';
 
-interface KPIItem {
-  value: number;
-  unit: string;
-  trend: number;
-  trending: Trending;
-}
-
 export default function AnalyticsOverview() {
   const { data, loading, error, isStale, lastUpdated } = useAnalyticsOverview();
 
@@ -30,7 +23,7 @@ export default function AnalyticsOverview() {
     return <div className="p-6 text-red-600">Failed to load dashboard: {error ?? "Unknown error"}</div>;
   }
 
-  const kpiData: Record<string, KPIItem> = data.kpis;
+  const kpiData = data.kpis;
   const revenueByMonth = data.revenueByMonth;
   const teaGradeDistribution = data.teaGradeDistribution;
   const topBlends = data.topBlends;
