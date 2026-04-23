@@ -20,7 +20,9 @@ class User(BaseModel):
     first_name: str
     last_name: str
     default_role: Literal['buyer', 'seller']
+    status: Literal['PENDING', 'APPROVED', 'REJECTED'] = 'PENDING'
     profile_image_url: Optional[str] = None
+    created_at: Optional[datetime] = None
     financial_details: Optional[FinancialDetails] = None
     watch_list: list[str] = []
 
@@ -49,7 +51,9 @@ class UserProfileResponse(BaseModel):
     first_name: str
     last_name: str
     default_role: Literal['buyer', 'seller']
+    status: Literal['PENDING', 'APPROVED', 'REJECTED'] = 'PENDING'
     profile_image_url: Optional[str] = None
+    created_at: Optional[datetime] = None
     financial_details: Optional[FinancialDetails] = None
     watch_list: list[str] = []
 
@@ -77,6 +81,9 @@ class UserCreate(BaseModel):
     first_name: str
     last_name: str
     default_role: Literal['buyer', 'seller'] = 'buyer'
+
+class UserApprovalAction(BaseModel):
+    status: Literal['APPROVED', 'REJECTED']
 
 class GoogleToken(BaseModel):
     token: str

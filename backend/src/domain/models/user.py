@@ -17,6 +17,7 @@ class User(Base):
     last_name = Column(String(64), nullable=False)
     default_role = Column(String(16), nullable=False)
     profile_image_url = Column(String(256))
+    status = Column(String(16), default="PENDING", nullable=False, index=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     

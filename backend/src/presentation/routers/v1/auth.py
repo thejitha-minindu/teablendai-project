@@ -81,6 +81,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "role": user.default_role,
             "roles": ["buyer", "seller"],
             "id": str(user.user_id),
+            "status": user.status,
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -117,6 +118,7 @@ def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
                 "role": user.default_role,
                 "roles": ["buyer", "seller"],
                 "id": str(user.user_id),
+                "status": user.status,
             },
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
@@ -136,6 +138,7 @@ def switch_role(
             "role": request.role,
             "roles": ["buyer", "seller"],
             "id": str(current_user.user_id),
+            "status": current_user.status,
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )

@@ -25,7 +25,6 @@ def upgrade() -> None:
     op.drop_table('BlendComposition')
     op.drop_index(op.f('ix_BlendPurchaseMapping_MappingID'), table_name='BlendPurchaseMapping')
     op.drop_table('BlendPurchaseMapping')
-    op.drop_table('sysdiagrams')
     op.drop_index(op.f('ix_TeaBlendSale_SaleID'), table_name='TeaBlendSale')
     op.drop_table('TeaBlendSale')
     op.drop_index(op.f('ix_TeaPurchase_PurchaseID'), table_name='TeaPurchase')
@@ -51,9 +50,19 @@ def upgrade() -> None:
                existing_type=mssql.BIT(),
                nullable=True,
                existing_server_default=sa.text("('1')"))
-    op.drop_index(op.f('ix_Conversations_ConversationID'), table_name='Conversations')
-    op.drop_index(op.f('ix_Conversations_IsActive'), table_name='Conversations')
-    op.drop_index(op.f('ix_Conversations_UserID'), table_name='Conversations')
+    # Check if index exists before dropping using raw SQL
+    conn = op.get_bind()
+    result = conn.execute(sa.text("SELECT name FROM sys.indexes WHERE object_id = OBJECT_ID('Conversations') AND name = 'ix_Conversations_ConversationID'"))
+    if result.fetchone():
+        op.drop_index(op.f('ix_Conversations_ConversationID'), table_name='Conversations')
+    
+    result = conn.execute(sa.text("SELECT name FROM sys.indexes WHERE object_id = OBJECT_ID('Conversations') AND name = 'ix_Conversations_IsActive'"))
+    if result.fetchone():
+        op.drop_index(op.f('ix_Conversations_IsActive'), table_name='Conversations')
+    
+    result = conn.execute(sa.text("SELECT name FROM sys.indexes WHERE object_id = OBJECT_ID('Conversations') AND name = 'ix_Conversations_UserID'"))
+    if result.fetchone():
+        op.drop_index(op.f('ix_Conversations_UserID'), table_name='Conversations')
     op.alter_column('auctions', 'auction_name',
                existing_type=sa.VARCHAR(length=128, collation='SQL_Latin1_General_CP1_CI_AS'),
                nullable=True)
@@ -67,7 +76,11 @@ def upgrade() -> None:
                existing_type=sa.VARCHAR(length=255, collation='SQL_Latin1_General_CP1_CI_AS'),
                type_=sa.String(length=256),
                existing_nullable=False)
-    op.drop_column('users', 'is_active')
+    # Check if column exists before dropping
+    conn = op.get_bind()
+    result = conn.execute(sa.text("SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'is_active'"))
+    if result.fetchone():
+        op.drop_column('users', 'is_active')
     # ### end Alembic commands ###
 
 

@@ -24,6 +24,7 @@ from src.presentation.routers.v1 import (
 from src.presentation.routers.v1.admin import admin_auction
 from src.presentation.routers.v1.admin import admin_csv
 from src.presentation.routers.v1.admin import admin_dashboard
+from src.presentation.routers.v1.admin import admin_users
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
@@ -156,6 +157,7 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["bu
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

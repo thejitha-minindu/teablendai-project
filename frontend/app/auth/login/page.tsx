@@ -55,8 +55,18 @@ export default function Login() {
             // Save the JWT to localStorage
             setStoredAuthToken(response.data.access_token);
             
-            const role = getAuthClaims()?.role;
-            router.push(getHomePathByRole(role)); 
+            const claims = getAuthClaims();
+            const status = claims?.status;
+            
+            // Check user approval status
+            if (status === "PENDING") {
+                router.push("/auth/pending");
+            } else if (status === "REJECTED") {
+                router.push("/auth/rejected");
+            } else if (status === "APPROVED") {
+                const role = claims?.role;
+                router.push(getHomePathByRole(role));
+            }
         } catch (error: any) {
             console.error("Login failed:", error);
             setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
@@ -74,8 +84,18 @@ export default function Login() {
             
             setStoredAuthToken(response.data.access_token);
             
-            const role = getAuthClaims()?.role;
-            router.push(getHomePathByRole(role));
+            const claims = getAuthClaims();
+            const status = claims?.status;
+            
+            // Check user approval status
+            if (status === "PENDING") {
+                router.push("/auth/pending");
+            } else if (status === "REJECTED") {
+                router.push("/auth/rejected");
+            } else if (status === "APPROVED") {
+                const role = claims?.role;
+                router.push(getHomePathByRole(role));
+            }
         } catch (error) {
             console.error("Google login failed:", error);
             setErrorMsg("Google authentication failed. Please try again.");
