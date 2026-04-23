@@ -3,65 +3,69 @@
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+} from "recharts";
+import { useAnalyticsPurchases } from "@/hooks/use-analytics-purchases";
 
-// Dummy Data
-const purchaseVolumeByGrade = [
-  { grade: 'BOP', quantity: 15800, cost: 18960000 },
-  { grade: 'BOPF', quantity: 12600, cost: 13860000 },
-  { grade: 'Dust', quantity: 9200, cost: 8280000 },
-  { grade: 'OP', quantity: 5400, cost: 7560000 },
-  { grade: 'Pekoe', quantity: 2780, cost: 3892000 },
-];
-
-const priceTrends = [
-  { month: 'Jan', BOP: 1200, BOPF: 1100, Dust: 900, OP: 1400 },
-  { month: 'Feb', BOP: 1220, BOPF: 1120, Dust: 920, OP: 1420 },
-  { month: 'Mar', BOP: 1180, BOPF: 1080, Dust: 880, OP: 1380 },
-  { month: 'Apr', BOP: 1250, BOPF: 1150, Dust: 950, OP: 1450 },
-  { month: 'May', BOP: 1280, BOPF: 1180, Dust: 980, OP: 1480 },
-  { month: 'Jun', BOP: 1260, BOPF: 1160, Dust: 960, OP: 1460 },
-];
-
-const brokerVsFactory = [
-  { source: 'Brokers', quantity: 28500, percentage: 62 },
-  { source: 'Factories', quantity: 17280, percentage: 38 },
-];
-
-const supplierContribution = [
-  { supplier: 'Ceylon Tea Brokers', quantity: 12400, cost: 15500000 },
-  { supplier: 'Nuwara Eliya Estates', quantity: 10200, cost: 14280000 },
-  { supplier: 'Dimbula Tea Co.', quantity: 8900, cost: 11165000 },
-  { supplier: 'Uva Highlands', quantity: 7650, cost: 10710000 },
-  { supplier: 'Kandy Premium', quantity: 6630, cost: 9282000 },
-];
-
-
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
 
 export default function PurchaseAnalytics() {
+  const { data, loading, error, isStale, lastUpdated } = useAnalyticsPurchases();
+
+  if (loading && !data) {
+    return <div className="p-6 text-gray-500">Loading purchase analytics...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-6 text-red-600">Failed to load purchase analytics: {error ?? "Unknown error"}</div>;
+  }
+
+  const summary = data.summary;
+  const purchaseVolumeByGrade = data.purchaseVolumeByGrade;
+  const brokerVsFactory = data.sourceDistribution;
+  const supplierContribution = data.supplierContribution;
+  const priceTrendGrades = data.priceTrendGrades;
+  const priceTrends = data.priceTrends.map((item) => ({
+    month: item.month,
+    ...item.prices,
+  }));
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Purchase Analytics</h1>
           <p className="text-gray-600 mt-1">Track tea procurement and cost analysis</p>
         </div>
+        <div className="text-xs text-right text-gray-500">
+          <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
+          {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+        </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <SummaryCard title="Total Purchased" value="45,780 kg" subtitle="Across all grades" />
-        <SummaryCard title="Total Cost" value="61.0M LKR" subtitle="Average: 1,332 LKR/kg" />
-        <SummaryCard title="Unique Suppliers" value="23" subtitle="5 new this month" />
-        <SummaryCard title="Purchase Orders" value="147" subtitle="12 pending" />
+        <SummaryCard
+          title="Total Purchased"
+          value={`${summary.totalPurchasedKg.toLocaleString()} kg`}
+          subtitle="Across all grades"
+        />
+        <SummaryCard
+          title="Total Cost"
+          value={`${(summary.totalCostLkr / 1000000).toFixed(2)}M LKR`}
+          subtitle={`Average: ${summary.averagePriceLkrPerKg.toLocaleString()} LKR/kg`}
+        />
+        <SummaryCard
+          title="Unique Suppliers"
+          value={summary.uniqueSuppliers.toLocaleString()}
+          subtitle={`${summary.newSuppliersThisMonth} new this month`}
+        />
+        <SummaryCard
+          title="Purchase Orders"
+          value={summary.purchaseOrders.toLocaleString()}
+          subtitle={`${summary.pendingOrders} pending`}
+        />
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Purchase Volume by Grade */}
         <ChartCard title="Purchase Volume by Tea Grade">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={purchaseVolumeByGrade}>
@@ -75,7 +79,6 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Price Trends */}
         <ChartCard title="Purchase Price Trends by Grade">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={priceTrends}>
@@ -84,15 +87,20 @@ export default function PurchaseAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Line type="monotone" dataKey="BOP" stroke="#0088FE" strokeWidth={2} />
-              <Line type="monotone" dataKey="BOPF" stroke="#00C49F" strokeWidth={2} />
-              <Line type="monotone" dataKey="Dust" stroke="#FFBB28" strokeWidth={2} />
-              <Line type="monotone" dataKey="OP" stroke="#FF8042" strokeWidth={2} />
+              {priceTrendGrades.map((grade, index) => (
+                <Line
+                  key={grade}
+                  type="monotone"
+                  dataKey={grade}
+                  stroke={COLORS[index % COLORS.length]}
+                  strokeWidth={2}
+                  name={grade}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Broker vs Factory */}
         <ChartCard title="Purchase Source Distribution">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -101,7 +109,7 @@ export default function PurchaseAnalytics() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ source, percentage }) => `${source}: ${percentage}%`}
+                label={({ source, percentage }) => `${String(source)}: ${Number(percentage).toFixed(1)}%`}
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="percentage"
@@ -123,7 +131,6 @@ export default function PurchaseAnalytics() {
           </div>
         </ChartCard>
 
-        {/* Supplier Contribution */}
         <ChartCard title="Top Suppliers by Volume">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={supplierContribution} layout="vertical">
@@ -136,7 +143,6 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Cost Breakdown Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown by Grade</h3>
           <div className="overflow-x-auto">
@@ -155,7 +161,9 @@ export default function PurchaseAnalytics() {
                     <td className="py-3 px-2 font-medium">{item.grade}</td>
                     <td className="text-right py-3 px-2">{item.quantity.toLocaleString()} kg</td>
                     <td className="text-right py-3 px-2">{(item.cost / 1000000).toFixed(2)}M LKR</td>
-                    <td className="text-right py-3 px-2">{(item.cost / item.quantity).toFixed(0)} LKR/kg</td>
+                    <td className="text-right py-3 px-2">
+                      {item.quantity > 0 ? (item.cost / item.quantity).toFixed(0) : "0"} LKR/kg
+                    </td>
                   </tr>
                 ))}
               </tbody>
