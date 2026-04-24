@@ -3,6 +3,7 @@ import type { AnalyticsOverviewResponse } from "@/types/dashboard/analytics-over
 import type { AnalyticsPurchasesResponse } from "@/types/dashboard/analytics-purchases.types";
 import type { AnalyticsSalesResponse } from "@/types/dashboard/analytics-sales.types";
 import type { AnalyticsBlendsResponse } from "@/types/dashboard/analytics-blends.types";
+import type { AnalyticsBuyersResponse } from "@/types/dashboard/analytics-buyers.types";
 
 export async function getAnalyticsOverview(forceRefresh = false): Promise<AnalyticsOverviewResponse> {
   const response = await apiClient.get<AnalyticsOverviewResponse>("/dashboard/analytics/overview", {
@@ -27,6 +28,13 @@ export async function getAnalyticsSales(forceRefresh = false): Promise<Analytics
 
 export async function getAnalyticsBlends(forceRefresh = false): Promise<AnalyticsBlendsResponse> {
   const response = await apiClient.get<AnalyticsBlendsResponse>("/dashboard/analytics/blends", {
+    params: { force_refresh: forceRefresh },
+  });
+  return response.data;
+}
+
+export async function getAnalyticsBuyers(forceRefresh = false): Promise<AnalyticsBuyersResponse> {
+  const response = await apiClient.get<AnalyticsBuyersResponse>("/dashboard/analytics/buyers", {
     params: { force_refresh: forceRefresh },
   });
   return response.data;

@@ -11,6 +11,8 @@ from src.infrastructure.repositories.dashboard.analytics_sales_repository import
 from src.application.schemas.dashboard.analytics_sales import AnalyticsSalesResponse
 from src.infrastructure.repositories.dashboard.analytics_blends_repository import AnalyticsBlendsRepository
 from src.application.schemas.dashboard.analytics_blends import AnalyticsBlendsResponse
+from src.infrastructure.repositories.dashboard.analytics_buyers_repository import AnalyticsBuyersRepository
+from src.application.schemas.dashboard.analytics_buyers import AnalyticsBuyersResponse
 
 router = APIRouter(prefix="", tags=["Analytics Dashboard"])
 
@@ -96,6 +98,31 @@ def get_analytics_blends(
     settings = get_settings()
     refresh_interval_ms = settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS * 1000
     repo = AnalyticsBlendsRepository(db)
+
+    if force_refresh:
+        return repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=refresh_interval_ms,
+        )
+
+    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    if snapshot is None:
+        return repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=refresh_interval_ms,
+        )
+
+    return snapshot
+
+
+@router.get("/analytics/buyers", response_model=AnalyticsBuyersResponse)
+def get_analytics_buyers(
+    force_refresh: bool = Query(False),
+    db: Session = Depends(get_db),
+):
+    settings = get_settings()
+    refresh_interval_ms = settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS * 1000
+    repo = AnalyticsBuyersRepository(db)
 
     if force_refresh:
         return repo.create_snapshot(

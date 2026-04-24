@@ -7,6 +7,7 @@ from src.infrastructure.repositories.dashboard.analytics_overview_repository imp
 from src.infrastructure.repositories.dashboard.analytics_purchases_repository import AnalyticsPurchasesRepository
 from src.infrastructure.repositories.dashboard.analytics_sales_repository import AnalyticsSalesRepository
 from src.infrastructure.repositories.dashboard.analytics_blends_repository import AnalyticsBlendsRepository
+from src.infrastructure.repositories.dashboard.analytics_buyers_repository import AnalyticsBuyersRepository
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,13 @@ class AnalyticsSnapshotScheduler:
                     refresh_interval_ms=interval * 1000,
                 )
                 blends_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+
+                buyers_repo = AnalyticsBuyersRepository(db)
+                buyers_repo.create_snapshot(
+                    chart_months=settings.ANALYTICS_CHART_MONTHS,
+                    refresh_interval_ms=interval * 1000,
+                )
+                buyers_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
             except Exception:
                 logger.exception("Analytics snapshot refresh failed")
                 db.rollback()
