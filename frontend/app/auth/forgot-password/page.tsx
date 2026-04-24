@@ -22,14 +22,20 @@ export default function ForgotPasswordPage() {
     setError("");
     setLoading(true);
 
+    console.log("Forgot password form submitted with email:", email);
+
     try {
-      await apiClient.post("/auth/forgot-password", { email });
+      console.log("Sending forgot-password request to backend with email:", email);
+      const response = await apiClient.post("/auth/forgot-password", { email });
+      console.log("Forgot-password response:", response.data);
+      
       setSubmitted(true);
 
       setTimeout(() => {
         router.push(`/auth/verify-otp?email=${encodeURIComponent(email)}`);
       }, 2000);
     } catch (err: any) {
+      console.error("Forgot-password error:", err);
       setError(err.response?.data?.detail || "Failed to send OTP");
     } finally {
       setLoading(false);

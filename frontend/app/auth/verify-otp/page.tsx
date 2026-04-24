@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import Image from "next/image";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Loader2, Mail, ArrowLeft } from "lucide-react";
+import { AlertCircle, CheckCircle, Loader2, ArrowLeft } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
 
 export default function VerifyOTPPage() {
@@ -16,9 +17,8 @@ export default function VerifyOTPPage() {
 
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
   const [success, setSuccess] = useState(false);
-  const [passwordResetId, setPasswordResetId] = useState("");
 
   useEffect(() => {
     if (!email) {
@@ -28,157 +28,157 @@ export default function VerifyOTPPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
       const response = await apiClient.post("/auth/verify-otp", {
         email,
-        otp_code: otp
+        otp_code: otp,
       });
 
       setSuccess(true);
-      setPasswordResetId(response.data.password_reset_id);
+      setMessage("OTP verified! Redirecting...");
 
-      // Redirect to reset password page after 2 seconds
       setTimeout(() => {
-        router.push(`/auth/reset-password?email=${encodeURIComponent(email)}&reset_id=${response.data.password_reset_id}`);
+        router.push(
+          `/auth/reset-password?email=${encodeURIComponent(email)}&reset_id=${response.data.password_reset_id}&otp_code=${encodeURIComponent(otp)}`
+        );
       }, 2000);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Invalid OTP. Please try again.");
+      setMessage(err.response?.data?.detail || "Invalid OTP. Try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const handleResendOTP = async () => {
-    setError("");
+    setMessage("");
     setLoading(true);
 
     try {
       await apiClient.post("/auth/forgot-password", { email });
-      setError(""); // Clear any previous errors
-      // Show success message briefly
-      const successMsg = "New OTP sent to your email!";
-      setError(successMsg);
-      setTimeout(() => setError(""), 3000);
+      setMessage("New OTP sent successfully!");
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Failed to resend OTP");
+      setMessage(err.response?.data?.detail || "Failed to resend OTP");
     } finally {
       setLoading(false);
     }
   };
 
-  if (!email) {
-    return null; // Will redirect in useEffect
-  }
+  if (!email) return null;
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 py-12 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-green-50 px-4 py-6">
+      <Card className="w-full max-w-md shadow-2xl rounded-2xl border-0 backdrop-blur-lg bg-white/95">
+        
+        {/* HEADER */}
+        <CardHeader className="text-center space-y-2">
           <div className="flex justify-center mb-4">
-            <Mail className="w-10 h-10 text-blue-600" />
+            <div className="p-4 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 shadow-xl">
+              <Image
+                src="/tea-blend-logo.svg"
+                alt="Logo"
+                width={80}
+                height={80}
+                className="w-16 h-16 object-contain"
+              />
+            </div>
           </div>
-          <CardTitle>Verify Your Email</CardTitle>
-          <CardDescription>
-            Enter the 6-digit code sent to {email}
+
+          <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
+            Verify OTP
+          </CardTitle>
+
+          <CardDescription className="text-gray-600 text-sm">
+            Enter the 6-digit code sent to <br />
+            <span className="font-semibold text-gray-800">{email}</span>
           </CardDescription>
         </CardHeader>
 
-        <CardContent>
-          {error && !error.includes("New OTP sent") && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
+        {/* BODY */}
+        <CardContent className="space-y-4">
 
-          {error && error.includes("New OTP sent") && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-green-700">{error}</p>
-            </div>
-          )}
-
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-green-700">
-                OTP verified! Redirecting to password reset...
+          {/* MESSAGE */}
+          {message && (
+            <div
+              className={`flex items-start gap-3 p-3 rounded-lg border ${
+                success
+                  ? "bg-green-50 border-green-200"
+                  : "bg-red-50 border-red-200"
+              }`}
+            >
+              {success ? (
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+              )}
+              <p className={`text-sm ${success ? "text-green-700" : "text-red-600"}`}>
+                {message}
               </p>
             </div>
           )}
 
+          {/* FORM */}
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="otp" className="text-sm font-medium text-gray-700 mb-2 block">
-                6-Digit Code
-              </label>
-              <Input
-                id="otp"
-                type="text"
-                value={otp}
-                onChange={(e) => {
-                  // Only allow digits and limit to 6 characters
-                  const value = e.target.value.replace(/\D/g, "").slice(0, 6);
-                  setOtp(value);
-                }}
-                placeholder="123456"
-                required
-                disabled={loading || success}
-                className="text-center text-lg tracking-widest"
-                maxLength={6}
-              />
-            </div>
+            <Input
+              type="text"
+              value={otp}
+              onChange={(e) =>
+                setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
+              }
+              placeholder="Enter 6-digit OTP"
+              className="h-12 text-center text-lg tracking-widest rounded-full border-2 focus:border-green-500"
+              maxLength={6}
+              required
+            />
 
             <Button
               type="submit"
-              disabled={loading || success || otp.length !== 6}
-              className="w-full"
-              size="lg"
+              disabled={loading || otp.length !== 6}
+              className="w-full h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold"
             >
               {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
                   Verifying...
-                </>
-              ) : success ? (
-                "Verified!"
+                </span>
               ) : (
                 "Verify Code"
               )}
             </Button>
           </form>
 
-          <div className="mt-4 text-center space-y-2 text-sm">
+          {/* RESEND */}
+          <div className="text-center text-sm">
             <p className="text-gray-600">
-              Didn't receive the code?{" "}
+              Didn’t receive code?{" "}
               <button
                 onClick={handleResendOTP}
+                className="text-green-600 font-semibold hover:underline"
                 disabled={loading}
-                className="text-blue-600 hover:underline font-semibold disabled:opacity-50"
               >
                 Resend OTP
               </button>
             </p>
-
-            <div className="pt-2">
-              <Link
-                href="/auth/forgot-password"
-                className="inline-flex items-center text-gray-600 hover:text-gray-800"
-              >
-                <ArrowLeft className="w-4 h-4 mr-1" />
-                Back to Forgot Password
-              </Link>
-            </div>
           </div>
 
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-xs text-blue-700">
-              <strong>Security Note:</strong> The OTP is valid for 5 minutes and allows up to 3 verification attempts.
-            </p>
+          {/* BACK */}
+          <div className="text-center pt-2">
+            <Link
+              href="/auth/forgot-password"
+              className="inline-flex items-center text-gray-600 hover:text-gray-800 text-sm"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" />
+              Back
+            </Link>
           </div>
+
+          {/* SECURITY NOTE */}
+          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-xs text-blue-700">
+            OTP is valid for 5 minutes (max 3 attempts)
+          </div>
+
         </CardContent>
       </Card>
     </div>

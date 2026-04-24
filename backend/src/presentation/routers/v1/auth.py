@@ -7,7 +7,6 @@ import secrets
 import logging
 
 logger = logging.getLogger(__name__)
-import logging
 
 from src.infrastructure.database.base import get_db
 from src.domain.models.user import User
@@ -23,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com" # Replace this
+GOOGLE_CLIENT_ID = "66190572875-bnen1rjau39fma3pd86c1d6udqm22dri.apps.googleusercontent.com"
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -82,7 +81,7 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
             "role": user.default_role,
             "roles": ["buyer", "seller"],
             "id": str(user.user_id),
-            "status": user.status,
+            "status": (user.verification_status or "PENDING").upper(),
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -91,8 +90,18 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 @router.post("/google", response_model=Token)
 def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
     try:
-        id_info = id_token.verify_oauth2_token(request.token, requests.Request(), GOOGLE_CLIENT_ID)
+        logger.info("Google auth: verifying token with client_id=%s", GOOGLE_CLIENT_ID)
+        logger.info("Google auth: token (first 50 chars): %s...", request.token[:50] if request.token else "EMPTY")
+        
+        id_info = id_token.verify_oauth2_token(
+            request.token, requests.Request(), GOOGLE_CLIENT_ID
+        )
+        
+        logger.info("Google auth: token verified successfully, id_info=%s", id_info)
         email = id_info.get("email")
+        
+        if not email:
+            raise HTTPException(status_code=401, detail="Google token did not contain email")
         
         user = db.query(User).filter(User.email == email).first()
         
@@ -113,6 +122,9 @@ def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
             db.add(user)
             db.commit()
             db.refresh(user)
+            logger.info("Google auth: new user created for %s", email)
+        else:
+            logger.info("Google auth: existing user found for %s", email)
 
         access_token = create_access_token(
             data={
@@ -120,13 +132,17 @@ def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
                 "role": user.default_role,
                 "roles": ["buyer", "seller"],
                 "id": str(user.user_id),
-                "status": user.status,
+                "status": (user.verification_status or "PENDING").upper(),
             },
             expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         return {"access_token": access_token, "token_type": "bearer"}
-    except ValueError:
-        raise HTTPException(status_code=401, detail="Invalid Google token")
+    except ValueError as e:
+        logger.error("Google auth ValueError: %s", str(e))
+        raise HTTPException(status_code=401, detail=f"Invalid Google token: {str(e)}")
+    except Exception as e:
+        logger.error("Google auth unexpected error: %s: %s", type(e).__name__, str(e))
+        raise HTTPException(status_code=401, detail=f"Google authentication failed: {str(e)}")
 
 
 @router.post("/switch-role", response_model=Token)
@@ -140,7 +156,22 @@ def switch_role(
             "role": request.role,
             "roles": ["buyer", "seller"],
             "id": str(current_user.user_id),
-            "status": current_user.status,
+            "status": (current_user.verification_status or "PENDING").upper(),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.post("/refresh", response_model=Token)
+def refresh_token(current_user: User = Depends(get_current_user)):
+    access_token = create_access_token(
+        data={
+            "sub": current_user.email,
+            "role": current_user.default_role,
+            "roles": ["buyer", "seller"],
+            "id": str(current_user.user_id),
+            "status": (current_user.verification_status or "PENDING").upper(),
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
@@ -180,28 +211,48 @@ def forgot_password(
         - status: "success" if email found and OTP sent
         - message: Confirmation message
     """
-    user = AuthService.get_user_by_email(db, request.email)
+    normalized_request_email = request.email.strip()
+    logger.info(f"Forgot password request for email: {normalized_request_email}")
+    
+    user = AuthService.get_user_by_email(db, normalized_request_email)
     
     if not user:
+        logger.warning(f"User not found for email: {request.email}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="No account found with this email address"
         )
     
+    logger.info(f"Found user: {user.user_id} with email: {user.email}")
+    
     try:
         password_reset = AuthService.create_password_reset_request(db, str(user.user_id))
-        EmailService.send_otp_email(
+        logger.info(f"Created password reset request for user {user.user_id}, OTP: {password_reset.otp_code}")
+        
+        logger.info(f"Sending OTP email to: {user.email} (user: {user.first_name or 'Unknown'})")
+        sent = EmailService.send_otp_email(
             user.email,
             password_reset.otp_code,
             user.first_name or "User"
         )
         
+        if not sent:
+            logger.error(f"Failed to send OTP email to {user.email}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to send OTP. Please check email configuration and try again."
+            )
+        
+        logger.info(f"OTP email sent successfully to {user.email}")
         return {
             "status": "success",
             "message": "OTP sent to your email. Valid for 5 minutes.",
             "email": user.email
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Unexpected error in forgot-password: {str(e)}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to send OTP. Please try again."
@@ -245,6 +296,50 @@ def verify_otp(
         "message": "OTP verified successfully",
         "password_reset_id": str(password_reset.id)
     }
+
+
+@router.get("/debug/smtp")
+def debug_smtp():
+    """
+    Debug endpoint to check SMTP settings.
+    """
+    from src.config import get_settings
+    settings = get_settings()
+    return {
+        "SMTP_HOST": settings.SMTP_HOST,
+        "SMTP_PORT": settings.SMTP_PORT,
+        "SMTP_USER": settings.SMTP_USER,
+        "SMTP_FROM_EMAIL": settings.SMTP_FROM_EMAIL,
+    }
+
+
+class TestEmailRequest(BaseModel):
+    """Request schema for testing email sending."""
+    email: str = Field(..., description="Email address to send test OTP to")
+
+
+@router.post("/test-email")
+def test_email(request: TestEmailRequest):
+    """
+    Debug endpoint to test email sending to any address.
+    """
+    logger.info(f"Test email request for: {request.email}")
+    
+    # Generate a test OTP
+    test_otp = "123456"  # Fixed for testing
+    
+    sent = EmailService.send_otp_email(
+        request.email,
+        test_otp,
+        "Test User"
+    )
+    
+    if sent:
+        logger.info(f"Test email sent successfully to {request.email}")
+        return {"status": "success", "message": f"Test OTP sent to {request.email}"}
+    else:
+        logger.error(f"Failed to send test email to {request.email}")
+        return {"status": "error", "message": f"Failed to send test email to {request.email}"}
 
 
 @router.post("/reset-password")

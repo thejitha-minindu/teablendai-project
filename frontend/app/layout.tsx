@@ -1,4 +1,5 @@
 import './globals.css'
+import { UserProvider } from '@/contexts/UserContext'
 
 export const metadata = {
 	title: 'TeaBlendAI',
@@ -12,7 +13,11 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en">
-			<body className="min-h-screen bg-white text-black">{children}</body>
+			<body className="min-h-screen bg-white text-black">
+				<UserProvider>
+					{children}
+				</UserProvider>
+			</body>
 		</html>
 	)
 }

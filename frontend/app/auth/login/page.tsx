@@ -14,9 +14,10 @@ import { Eye, EyeOff, Mail, Lock, ChevronLeft, ArrowRight, CheckCircle } from "l
 import { apiClient } from "@/lib/apiClient";
 import { getAuthClaims, getHomePathByRole, setStoredAuthToken } from "@/lib/auth";
 import { GoogleOAuthProvider, GoogleLogin } from "@react-oauth/google";
+import authService from "@/services/authService";
 
 // IMPORTANT: Replace this with your actual Google Client ID from the Google Cloud Console
-const GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = "66190572875-bnen1rjau39fma3pd86c1d6udqm22dri.apps.googleusercontent.com";
 
 export default function Login() {
     const router = useRouter();
@@ -55,17 +56,36 @@ export default function Login() {
             // Save the JWT to localStorage
             setStoredAuthToken(response.data.access_token);
             
-            const claims = getAuthClaims();
-            const status = claims?.status;
-            
-            // Check user approval status
-            if (status === "PENDING") {
-                router.push("/auth/pending");
-            } else if (status === "REJECTED") {
-                router.push("/auth/rejected");
-            } else if (status === "APPROVED") {
-                const role = claims?.role;
-                router.push(getHomePathByRole(role));
+            // CRITICAL FIX: Fetch current user data from backend to get real status from DB
+            // This ensures we don't use stale status from JWT
+            try {
+                const currentUser = await authService.getCurrentUser();
+                const verificationStatus = currentUser.verification_status || "PENDING";
+                console.log("[Login] Current user status from DB:", verificationStatus);
+                
+                // Route based on actual database status, not JWT
+                if (verificationStatus === "PENDING") {
+                    router.push("/auth/pending");
+                } else if (verificationStatus === "REJECTED") {
+                    router.push("/auth/rejected");
+                } else if (verificationStatus === "APPROVED") {
+                    const role = currentUser.default_role;
+                    router.push(getHomePathByRole(role));
+                }
+            } catch (fetchError) {
+                console.error("Failed to fetch current user:", fetchError);
+                // Fallback to JWT status if fetch fails
+                const claims = getAuthClaims();
+                const status = claims?.status;
+                
+                if (status === "PENDING") {
+                    router.push("/auth/pending");
+                } else if (status === "REJECTED") {
+                    router.push("/auth/rejected");
+                } else if (status === "APPROVED") {
+                    const role = claims?.role;
+                    router.push(getHomePathByRole(role));
+                }
             }
         } catch (error: any) {
             console.error("Login failed:", error);
@@ -84,17 +104,35 @@ export default function Login() {
             
             setStoredAuthToken(response.data.access_token);
             
-            const claims = getAuthClaims();
-            const status = claims?.status;
-            
-            // Check user approval status
-            if (status === "PENDING") {
-                router.push("/auth/pending");
-            } else if (status === "REJECTED") {
-                router.push("/auth/rejected");
-            } else if (status === "APPROVED") {
-                const role = claims?.role;
-                router.push(getHomePathByRole(role));
+            // CRITICAL FIX: Fetch current user data from backend to get real status from DB
+            try {
+                const currentUser = await authService.getCurrentUser();
+                const verificationStatus = currentUser.verification_status || "PENDING";
+                console.log("[Google Login] Current user status from DB:", verificationStatus);
+                
+                // Route based on actual database status, not JWT
+                if (verificationStatus === "PENDING") {
+                    router.push("/auth/pending");
+                } else if (verificationStatus === "REJECTED") {
+                    router.push("/auth/rejected");
+                } else if (verificationStatus === "APPROVED") {
+                    const role = currentUser.default_role;
+                    router.push(getHomePathByRole(role));
+                }
+            } catch (fetchError) {
+                console.error("Failed to fetch current user:", fetchError);
+                // Fallback to JWT status if fetch fails
+                const claims = getAuthClaims();
+                const status = claims?.status;
+                
+                if (status === "PENDING") {
+                    router.push("/auth/pending");
+                } else if (status === "REJECTED") {
+                    router.push("/auth/rejected");
+                } else if (status === "APPROVED") {
+                    const role = claims?.role;
+                    router.push(getHomePathByRole(role));
+                }
             }
         } catch (error) {
             console.error("Google login failed:", error);

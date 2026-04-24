@@ -25,9 +25,19 @@ apiClient.interceptors.response.use(
   (error) => {
     // If we get a 401 Unauthorized, automatically log the user out
     if (error.response?.status === 401 && typeof window !== 'undefined') {
-      localStorage.removeItem('teablend_token');
-      localStorage.removeItem('access_token');
-      window.location.href = '/auth/login';
+      // Don't auto-redirect for auth endpoints - let the component handle those errors
+      const requestUrl = error.config?.url || '';
+      const isAuthEndpoint = requestUrl.includes('/auth/login') || 
+                             requestUrl.includes('/auth/google') || 
+                             requestUrl.includes('/auth/register') ||
+                             requestUrl.includes('/auth/forgot-password') ||
+                             requestUrl.includes('/auth/verify-otp') ||
+                             requestUrl.includes('/auth/reset-password');
+      if (!isAuthEndpoint) {
+        localStorage.removeItem('teablend_token');
+        localStorage.removeItem('access_token');
+        window.location.href = '/auth/login';
+      }
     }
     // Better diagnostics for network errors
     const url = error.config?.url;

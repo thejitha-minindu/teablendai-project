@@ -91,7 +91,7 @@ export default function HomePage() {
                             <Button asChild variant="outline" className="h-12 px-8 text-lg rounded-full border-2">
                                 <Link href="#features" className="flex items-center gap-2">
                                     <PlayCircle className="w-5 h-5" />
-                                    Watch Demo
+                                    More Info
                                 </Link>
                             </Button>
                         </div>
@@ -288,22 +288,7 @@ export default function HomePage() {
                                 </address>
                             </div>
                             
-                            <div className="space-y-3">
-                                <h4 className="font-medium flex items-center gap-2">
-                                    <Mail className="w-4 h-4" />
-                                    Newsletter
-                                </h4>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="email" 
-                                        placeholder="Your email" 
-                                        className="flex-1 px-3 py-2 bg-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    />
-                                    <Button size="sm" className="bg-linear-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600">
-                                        <ArrowRight className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </div>
+                            
                         </div>
                     </div>
 
@@ -314,9 +299,13 @@ export default function HomePage() {
                             © {new Date().getFullYear()} TEABLENDAI. All rights reserved.
                         </p>
                         <div className="flex gap-6 text-sm text-gray-400">
-                            {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Sitemap'].map((item) => (
-                                <Link key={item} href="#" className="hover:text-white transition-colors hover:underline underline-offset-2">
-                                    {item}
+                            {[
+                                { label: 'Privacy Policy', path: '/privacy' },
+                                { label: 'Terms of Service', path: '/terms' },
+                                { label: 'Cookie Policy', path: '/cookie-policy' }
+                            ].map((item) => (
+                                <Link key={item.label} href={item.path} className="hover:text-white transition-colors hover:underline underline-offset-2">
+                                    {item.label}
                                 </Link>
                             ))}
                         </div>

@@ -12,4 +12,4 @@ pip install --upgrade pip
 pip install -r requirements.txt
 
 REM Run the FastAPI app
-uvicorn src.application.main:app --host 0.0.0.0 --port 8000
+uvicorn src.application.main:app --host 0.0.0.0 --port 8000 --reload

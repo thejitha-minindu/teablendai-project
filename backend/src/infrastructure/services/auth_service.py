@@ -5,10 +5,14 @@ import random
 import string
 from datetime import datetime, timedelta
 from typing import Optional
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from src.domain.models.user import User
 from src.domain.models.password_reset import PasswordReset
 import bcrypt
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class AuthService:
@@ -65,6 +69,7 @@ class AuthService:
         Returns:
             Random OTP code
         """
+        logger.info(f"Generated OTP")
         return ''.join(random.choices(string.digits, k=length))
 
     @staticmethod
@@ -92,6 +97,7 @@ class AuthService:
         db.commit()
 
         otp_code = AuthService.generate_otp()
+        logger.info(f"Generated OTP for user {user_id}: {otp_code}")
         expires_at = datetime.utcnow() + timedelta(minutes=otp_expiry_minutes)
 
         password_reset = PasswordReset(
@@ -195,4 +201,20 @@ class AuthService:
         Returns:
             User record if found, None otherwise
         """
-        return db.query(User).filter(User.email == email.lower()).first()
+        logger.info(f"AuthService.get_user_by_email called with email: '{email}'")
+        normalized_email = email.lower()
+        logger.info(f"Normalized email: '{normalized_email}'")
+        
+        user = db.query(User).filter(func.lower(User.email) == normalized_email).first()
+        
+        if user:
+            logger.info(f"Found user: ID={user.user_id}, email='{user.email}', name='{user.first_name} {user.last_name}'")
+        else:
+            logger.warning(f"No user found with email: '{normalized_email}'")
+            # Log all users in database for debugging
+            all_users = db.query(User).all()
+            logger.info(f"Total users in database: {len(all_users)}")
+            for u in all_users[:10]:  # Log first 10 users
+                logger.info(f"  User: ID={u.user_id}, email='{u.email}'")
+        
+        return user

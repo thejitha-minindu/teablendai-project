@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Clock, LogOut, Home } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 import { getStoredToken } from "@/lib/auth";
 
 export default function PendingApproval() {
@@ -26,6 +27,44 @@ export default function PendingApproval() {
         localStorage.removeItem("teablend_token");
         router.push("/auth/login");
     };
+
+    const checkApprovalStatus = async () => {
+        try {
+            const token = getStoredToken();
+            if (!token) return;
+
+            // Fetch a fresh token from the backend
+            const response = await apiClient.post("/auth/refresh");
+
+            if (response.data?.access_token) {
+                // Save new token
+                localStorage.setItem("teablend_token", response.data.access_token);
+                // Dispatch event for other hooks
+                window.dispatchEvent(new Event("teablend-auth-changed"));
+                
+                // Decode to check status
+                const payloadBase64 = response.data.access_token.split('.')[1];
+                if (payloadBase64) {
+                    const payload = JSON.parse(atob(payloadBase64));
+                    if (payload.status === "APPROVED") {
+                        // Redirect based on role
+                        const role = payload.role;
+                        router.push(role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+                    } else if (payload.status === "REJECTED") {
+                        router.push("/auth/rejected");
+                    }
+                }
+            }
+        } catch (error) {
+            console.error("Error checking approval status:", error);
+        }
+    };
+
+    useEffect(() => {
+        // Run check periodically
+        const intervalId = setInterval(checkApprovalStatus, 5000);
+        return () => clearInterval(intervalId);
+    }, [router]);
 
     return (
         <div className="min-h-screen w-full bg-gradient-to-br from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-4">
@@ -95,7 +134,7 @@ export default function PendingApproval() {
 
                     <div className="flex gap-3">
                         <Button
-                            onClick={() => window.location.reload()}
+                            onClick={checkApprovalStatus}
                             variant="outline"
                             className="flex-1"
                         >

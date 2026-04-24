@@ -29,6 +29,24 @@ interface RegisterResponse {
   user_id: string;
 }
 
+export interface CurrentUserResponse {
+  user_id: string;
+  email: string;
+  phone_num: string;
+  user_name: string;
+  first_name: string;
+  last_name: string;
+  default_role: 'buyer' | 'seller';
+  profile_image_url?: string;
+  shipping_address?: string;
+  payment_method?: string;
+  financial_details?: any;
+  watch_list?: string[];
+  verification_status?: string;
+  // For API that might return status field
+  status?: string;
+}
+
 class AuthService {
   private api: AxiosInstance;
 
@@ -109,6 +127,13 @@ class AuthService {
       this.setToken(response.data.access_token);
     }
 
+    return response.data;
+  }
+
+  // ==================== USER DATA ====================
+
+  async getCurrentUser(): Promise<CurrentUserResponse> {
+    const response = await this.api.get<CurrentUserResponse>('/users/me');
     return response.data;
   }
 

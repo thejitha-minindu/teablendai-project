@@ -5,7 +5,8 @@ import {
   User, MapPin, Camera, Save, Edit2, 
   ShoppingBag, TrendingUp, CreditCard, ShieldCheck, LayoutDashboard,
   Package, Lock, LogOut, Star, BarChart3, 
-  Wallet, ListOrdered, History, Truck, X
+  Wallet, ListOrdered, History, Truck, X,
+  Plus, Eye, EyeOff
 } from 'lucide-react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/apiClient';
@@ -19,7 +20,6 @@ type ProfileFormState = {
   profile_image_url: string;
   nic: string;
   shipping_address: string;
-  payment_method: string;
   brand: string;
   sellerRating: number;
   totalReviews: number;
@@ -41,7 +41,6 @@ const defaultProfileState: ProfileFormState = {
   profile_image_url: "",
   nic: "952314578V",
   shipping_address: "No. 10, Colombo 03, Western Province",
-  payment_method: "Visa ending in 4242",
   brand: "Kenmare Estate",
   sellerRating: 4.8,
   totalReviews: 124,
@@ -64,6 +63,25 @@ export default function UserProfilePage() {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwords, setPasswords] = useState({ current: "", new: "", confirm: "" });
   const [pwdLoading, setPwdLoading] = useState(false);
+
+  // Payment Cards States
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [cards, setCards] = useState([
+    { id: 1, type: 'Visa', last4: '4242', expiry: '12/26', isDefault: true },
+    { id: 2, type: 'Mastercard', last4: '8888', expiry: '08/27', isDefault: false }
+  ]);
+  const [newCard, setNewCard] = useState({
+    number: '',
+    expiry: '',
+    cvv: '',
+    name: ''
+  });
+  const [cardLoading, setCardLoading] = useState(false);
+
+  // Shipping Address States
+  const [showEditAddress, setShowEditAddress] = useState(false);
+  const [tempAddress, setTempAddress] = useState('');
+  const [addressLoading, setAddressLoading] = useState(false);
 
   // Mock Data for Sales
   const weeklySales = [
@@ -115,7 +133,7 @@ export default function UserProfilePage() {
           phone_num: profile.phone_num || prev.phone_num,
           profile_image_url: profile.profile_image_url || prev.profile_image_url,
           shipping_address: profile.shipping_address || prev.shipping_address,
-          payment_method: profile.payment_method || prev.payment_method,
+          nic: profile.nic || prev.nic,
           payoutBank: profile.financial_details?.bank_name
             ? `${profile.financial_details.bank_name} - ${maskedAccount}`
             : prev.payoutBank,
@@ -156,7 +174,7 @@ export default function UserProfilePage() {
           phone_num: user.phone_num,
           profile_image_url: user.profile_image_url || null,
           shipping_address: user.shipping_address,
-          payment_method: user.payment_method,
+          nic: user.nic,
         });
         setIsEditing(false);
         alert("Profile updated successfully!");
@@ -196,6 +214,100 @@ export default function UserProfilePage() {
       alert(message);
     } finally {
       setPwdLoading(false);
+    }
+  };
+
+  const handleAddCard = async () => {
+    if (!newCard.number || !newCard.expiry || !newCard.cvv || !newCard.name) {
+      alert('Please fill all card details');
+      return;
+    }
+
+    // Basic validation
+    if (newCard.number.replace(/\s/g, '').length < 13) {
+      alert('Please enter a valid card number');
+      return;
+    }
+
+    if (!/^\d{2}\/\d{2}$/.test(newCard.expiry)) {
+      alert('Please enter expiry date in MM/YY format');
+      return;
+    }
+
+    if (newCard.cvv.length < 3) {
+      alert('Please enter a valid CVV');
+      return;
+    }
+
+    setCardLoading(true);
+    try {
+      // Mock API call - replace with actual API
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      const cardType = newCard.number.startsWith('4') ? 'Visa' : 
+                      newCard.number.startsWith('5') ? 'Mastercard' : 'Card';
+      const last4 = newCard.number.slice(-4);
+
+      const newCardEntry = {
+        id: Date.now(),
+        type: cardType,
+        last4,
+        expiry: newCard.expiry,
+        isDefault: cards.length === 0
+      };
+
+      setCards(prev => [...prev, newCardEntry]);
+      setNewCard({ number: '', expiry: '', cvv: '', name: '' });
+      setShowAddCard(false);
+      alert('Card added successfully!');
+    } catch (error) {
+      alert('Failed to add card. Please try again.');
+    } finally {
+      setCardLoading(false);
+    }
+  };
+
+  const handleDeleteCard = (cardId: number) => {
+    if (cards.length === 1) {
+      alert('You must have at least one payment method');
+      return;
+    }
+    setCards(prev => prev.filter(card => card.id !== cardId));
+  };
+
+  const handleSetDefaultCard = (cardId: number) => {
+    setCards(prev => prev.map(card => ({
+      ...card,
+      isDefault: card.id === cardId
+    })));
+  };
+
+  const handleUpdateAddress = async () => {
+    if (!tempAddress.trim()) {
+      alert('Please enter a valid address');
+      return;
+    }
+
+    setAddressLoading(true);
+    try {
+      await apiClient.put('/profile/me', {
+        first_name: user.first_name,
+        last_name: user.last_name,
+        email: user.email,
+        phone_num: user.phone_num,
+        profile_image_url: user.profile_image_url || null,
+        shipping_address: tempAddress.trim(),
+        nic: user.nic,
+      });
+      setUser(prev => ({ ...prev, shipping_address: tempAddress.trim() }));
+      setShowEditAddress(false);
+      setTempAddress('');
+      alert('Shipping address updated successfully!');
+    } catch (error: any) {
+      const message = error?.response?.data?.detail || 'Failed to update shipping address';
+      alert(message);
+    } finally {
+      setAddressLoading(false);
     }
   };
 
@@ -311,7 +423,6 @@ export default function UserProfilePage() {
                     { label: 'NIC Number', name: 'nic', val: user.nic },
                     { label: 'Phone', name: 'phone_num', val: user.phone_num },
                     { label: 'Address', name: 'shipping_address', val: user.shipping_address },
-                    { label: 'Payment Method', name: 'payment_method', val: user.payment_method },
                   ].map((field) => (
                     <div key={field.name} className="space-y-1">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{field.label}</label>
@@ -483,13 +594,167 @@ export default function UserProfilePage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
                     <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><MapPin className="w-4 h-4 text-[#588157]" /> Shipping Address</h3>
-                    <p className="text-sm text-gray-600 leading-relaxed">{user.shipping_address || 'Not set'}</p>
-                    <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Change Address</button>
+                    
+                    {!showEditAddress ? (
+                      <>
+                        <p className="text-sm text-gray-600 leading-relaxed">{user.shipping_address || 'Not set'}</p>
+                        <button 
+                          onClick={() => {
+                            setTempAddress(user.shipping_address || '');
+                            setShowEditAddress(true);
+                          }}
+                          className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight"
+                        >
+                          Change Address
+                        </button>
+                      </>
+                    ) : (
+                      <div className="space-y-3">
+                        <textarea
+                          value={tempAddress}
+                          onChange={(e) => setTempAddress(e.target.value)}
+                          placeholder="Enter your shipping address"
+                          className="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#588157] focus:border-[#588157] outline-none resize-none"
+                          rows={3}
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={handleUpdateAddress}
+                            disabled={addressLoading}
+                            className="flex-1 py-2 bg-[#588157] text-white rounded-lg text-sm font-bold hover:bg-[#4a6d49] transition-colors disabled:bg-gray-400"
+                          >
+                            {addressLoading ? 'Updating...' : 'Update Address'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowEditAddress(false);
+                              setTempAddress('');
+                            }}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><CreditCard className="w-4 h-4 text-[#588157]" /> Payment Method</h3>
-                    <p className="text-sm text-gray-600">{user.payment_method || 'Not set'}</p>
-                    <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Manage Cards</button>
+                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><CreditCard className="w-4 h-4 text-[#588157]" /> Payment Methods</h3>
+                    
+                    {/* Existing Cards */}
+                    <div className="space-y-3 mb-4">
+                      {cards.map((card) => (
+                        <div key={card.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-6 bg-gradient-to-r from-blue-600 to-blue-400 rounded flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">{card.type[0]}</span>
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">
+                                {card.type} •••• {card.last4}
+                                {card.isDefault && <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">DEFAULT</span>}
+                              </p>
+                              <p className="text-xs text-gray-500">Expires {card.expiry}</p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {!card.isDefault && (
+                              <button 
+                                onClick={() => handleSetDefaultCard(card.id)}
+                                className="text-xs text-[#588157] hover:underline font-semibold"
+                              >
+                                Set Default
+                              </button>
+                            )}
+                            <button 
+                              onClick={() => handleDeleteCard(card.id)}
+                              className="text-red-500 hover:text-red-700 p-1"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Add New Card Button */}
+                    <button 
+                      onClick={() => setShowAddCard(!showAddCard)}
+                      className="w-full py-3 border-2 border-dashed border-gray-300 rounded-lg text-sm font-bold text-gray-500 hover:bg-gray-50 hover:border-[#588157] hover:text-[#588157] transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {showAddCard ? 'Cancel' : 'Add New Card'}
+                    </button>
+
+                    {/* Add Card Form */}
+                    {showAddCard && (
+                      <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <h4 className="text-sm font-bold text-gray-800 mb-3">Add New Payment Method</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-gray-600 mb-1">Card Number</label>
+                            <input
+                              type="text"
+                              placeholder="1234 5678 9012 3456"
+                              className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#588157] focus:border-[#588157] outline-none"
+                              value={newCard.number}
+                              onChange={(e) => setNewCard({...newCard, number: e.target.value.replace(/\s/g, '').replace(/(\d{4})/g, '$1 ').trim()})}
+                              maxLength={19}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-1">Expiry Date</label>
+                            <input
+                              type="text"
+                              placeholder="MM/YY"
+                              className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#588157] focus:border-[#588157] outline-none"
+                              value={newCard.expiry}
+                              onChange={(e) => setNewCard({...newCard, expiry: e.target.value})}
+                              maxLength={5}
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-gray-600 mb-1">CVV</label>
+                            <input
+                              type="text"
+                              placeholder="123"
+                              className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#588157] focus:border-[#588157] outline-none"
+                              value={newCard.cvv}
+                              onChange={(e) => setNewCard({...newCard, cvv: e.target.value.replace(/\D/g, '')})}
+                              maxLength={4}
+                            />
+                          </div>
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-bold text-gray-600 mb-1">Cardholder Name</label>
+                            <input
+                              type="text"
+                              placeholder="John Wickramasinghe"
+                              className="w-full p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#588157] focus:border-[#588157] outline-none"
+                              value={newCard.name}
+                              onChange={(e) => setNewCard({...newCard, name: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex gap-2 mt-4">
+                          <button
+                            onClick={handleAddCard}
+                            disabled={cardLoading}
+                            className="flex-1 py-2 bg-[#588157] text-white rounded-lg text-sm font-bold hover:bg-[#4a6d49] transition-colors disabled:bg-gray-400"
+                          >
+                            {cardLoading ? 'Adding...' : 'Add Card'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowAddCard(false);
+                              setNewCard({ number: '', expiry: '', cvv: '', name: '' });
+                            }}
+                            className="px-4 py-2 border border-gray-300 rounded-lg text-sm font-bold text-gray-600 hover:bg-gray-50"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
