@@ -40,7 +40,7 @@ export default function SalesAuctionAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <MetricCard
           title="Total Revenue"
-          value={`${(summary.totalRevenueLkr / 1000000).toFixed(2)}M LKR`}
+          value={`${(summary.totalRevenueLkr / 1000000)}M LKR`}
           subtitle="Closed auction revenue"
         />
         <MetricCard
