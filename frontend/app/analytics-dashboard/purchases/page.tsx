@@ -50,7 +50,7 @@ export default function PurchaseAnalytics() {
         />
         <SummaryCard
           title="Total Cost"
-          value={`${(summary.totalCostLkr / 1000000).toFixed(2)}M LKR`}
+          value={`${(summary.totalCostLkr / 1000000)}M LKR`}
           subtitle={`Average: ${summary.averagePriceLkrPerKg.toLocaleString()} LKR/kg`}
         />
         <SummaryCard
@@ -79,7 +79,7 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Purchase Price Trends by Grade">
+        <ChartCard title="Average Purchase Price Trends by Grade">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={priceTrends}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -160,9 +160,9 @@ export default function PurchaseAnalytics() {
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-2 font-medium">{item.grade}</td>
                     <td className="text-right py-3 px-2">{item.quantity.toLocaleString()} kg</td>
-                    <td className="text-right py-3 px-2">{(item.cost / 1000000).toFixed(2)}M LKR</td>
+                    <td className="text-right py-3 px-2">{(item.cost / 1000000)}M LKR</td>
                     <td className="text-right py-3 px-2">
-                      {item.quantity > 0 ? (item.cost / item.quantity).toFixed(0) : "0"} LKR/kg
+                      {item.quantity > 0 ? (item.cost / item.quantity).toFixed(2) : "0"} LKR/kg
                     </td>
                   </tr>
                 ))}

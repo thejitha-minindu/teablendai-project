@@ -15,68 +15,142 @@ class AnalyticsPurchasesRepository:
         return float(value or 0)
 
     def _summary(self) -> dict[str, float | int]:
-        row = self.db.execute(
-            text(
-                """
+
+        # AUCTION-BASED METRICS
+        auction_row = self.db.execute(
+            text("""
                 SELECT
-                    COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS total_purchased,
-                    COALESCE(SUM(CAST(base_price AS FLOAT) * CAST(quantity AS FLOAT)), 0) AS total_cost,
-                    COALESCE(COUNT(DISTINCT NULLIF(LTRIM(RTRIM(COALESCE(company_name, estate_name, ''))), '')), 0) AS unique_suppliers,
-                    COALESCE(COUNT(*), 0) AS purchase_orders,
-                    COALESCE(SUM(CASE WHEN status = 'Scheduled' THEN 1 ELSE 0 END), 0) AS pending_orders
+                    COALESCE(
+                        SUM(CASE 
+                                WHEN status = 'History' AND sold_price > 0 
+                                THEN CAST(quantity AS FLOAT) 
+                                ELSE 0 
+                            END), 0
+                    ) AS total_purchased,
+
+                    COALESCE(
+                        SUM(CASE 
+                                WHEN status = 'History' AND sold_price > 0 
+                                THEN CAST(sold_price AS FLOAT) 
+                                ELSE 0 
+                            END), 0
+                    ) AS total_cost,
+
+                    COALESCE(
+                        COUNT(DISTINCT CASE 
+                            WHEN status = 'History' AND sold_price > 0 
+                            THEN NULLIF(LTRIM(RTRIM(COALESCE(company_name, estate_name))), '') 
+                        END), 0
+                    ) AS unique_suppliers,
+
+                    COALESCE(
+                        COUNT(CASE 
+                            WHEN status = 'History' AND sold_price > 0 
+                            THEN 1 
+                        END), 0
+                    ) AS paid_auctions
                 FROM auctions
-                """
-            )
+            """)
         ).mappings().one()
 
-        new_suppliers_row = self.db.execute(
-            text(
-                """
-                WITH supplier_first_seen AS (
-                    SELECT supplier_name, MIN(start_time) AS first_seen
+        # ORDER-BASED METRICS
+        order_row = self.db.execute(
+            text("""
+                SELECT
+                    COALESCE(COUNT(CASE WHEN status = 'completed' THEN 1 END), 0) AS completed_orders
+                FROM orders
+            """)
+        ).mappings().one()
+
+        # SUPPLIER ACQUISITION
+        supplier_row = self.db.execute(
+            text("""
+                WITH supplier_first_purchase AS (
+                    SELECT
+                        supplier_name,
+                        MIN(start_time) AS first_purchase_at
                     FROM (
                         SELECT
-                            NULLIF(LTRIM(RTRIM(COALESCE(company_name, estate_name, ''))), '') AS supplier_name,
+                            COALESCE(
+                                NULLIF(LTRIM(RTRIM(company_name)), ''),
+                                NULLIF(LTRIM(RTRIM(estate_name)), '')
+                            ) AS supplier_name,
                             start_time
                         FROM auctions
-                    ) src
+                        WHERE status = 'History'
+                        AND sold_price > 0
+                        AND start_time IS NOT NULL
+                    ) s
                     WHERE supplier_name IS NOT NULL
                     GROUP BY supplier_name
                 )
-                SELECT COUNT(*) AS new_suppliers_this_month
-                FROM supplier_first_seen
-                WHERE first_seen >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
-                """
-            )
+                SELECT
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN YEAR(first_purchase_at) = YEAR(SYSUTCDATETIME())
+                                AND MONTH(first_purchase_at) = MONTH(SYSUTCDATETIME())
+                                THEN 1 ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS new_suppliers_this_month
+                FROM supplier_first_purchase
+            """)
         ).mappings().one()
 
-        total_purchased = self._num(row["total_purchased"])
-        total_cost = self._num(row["total_cost"])
+        # CALCULATIONS
+        total_purchased = self._num(auction_row["total_purchased"])
+        total_cost = self._num(auction_row["total_cost"])
+
+        paid_auctions = self._num(auction_row["paid_auctions"])
+        completed_orders = self._num(order_row["completed_orders"])
+
+        pending_orders = paid_auctions - completed_orders
+        if pending_orders < 0:
+            pending_orders = 0
+
         average_price = (total_cost / total_purchased) if total_purchased > 0 else 0.0
 
         return {
             "totalPurchasedKg": round(total_purchased, 2),
             "totalCostLkr": round(total_cost, 2),
             "averagePriceLkrPerKg": round(average_price, 2),
-            "uniqueSuppliers": int(self._num(row["unique_suppliers"])),
-            "newSuppliersThisMonth": int(self._num(new_suppliers_row["new_suppliers_this_month"])),
-            "purchaseOrders": int(self._num(row["purchase_orders"])),
-            "pendingOrders": int(self._num(row["pending_orders"])),
+
+            "uniqueSuppliers": int(self._num(auction_row["unique_suppliers"])),
+            "newSuppliersThisMonth": int(self._num(supplier_row["new_suppliers_this_month"])),
+
+            "purchaseOrders": int(completed_orders),
+            "pendingOrders": int(pending_orders),
         }
 
     def _purchase_volume_by_grade(self) -> list[dict[str, float | str]]:
         rows = self.db.execute(
-            text(
-                """
+            text("""
                 SELECT
-                    COALESCE(NULLIF(grade, ''), 'Unknown') AS grade,
+                    CASE 
+                        WHEN COALESCE(NULLIF(grade, ''), 'Unknown') = 'Golden Tips' THEN 'GT'
+                        WHEN COALESCE(NULLIF(grade, ''), 'Unknown') = 'Silver Tips' THEN 'ST'
+                        ELSE COALESCE(NULLIF(grade, ''), 'Unknown')
+                    END AS grade,
+
                     COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS quantity,
-                    COALESCE(SUM(CAST(base_price AS FLOAT) * CAST(quantity AS FLOAT)), 0) AS cost
+
+                    COALESCE(SUM(CAST(sold_price AS FLOAT)), 0) AS cost
+
                 FROM auctions
-                GROUP BY COALESCE(NULLIF(grade, ''), 'Unknown')
+                WHERE status = 'History'
+                AND sold_price > 0
+
+                GROUP BY 
+                    CASE 
+                        WHEN COALESCE(NULLIF(grade, ''), 'Unknown') = 'Golden Tips' THEN 'GT'
+                        WHEN COALESCE(NULLIF(grade, ''), 'Unknown') = 'Silver Tips' THEN 'ST'
+                        ELSE COALESCE(NULLIF(grade, ''), 'Unknown')
+                    END
+
                 ORDER BY quantity DESC
-                """
-            )
+            """)
         ).mappings().all()
 
         return [
@@ -91,55 +165,58 @@ class AnalyticsPurchasesRepository:
     def _price_trends(
         self, months: int, ordered_grades: list[str]
     ) -> tuple[list[dict[str, dict[str, float] | str]], list[str]]:
+
         rows = self.db.execute(
-            text(
-                """
+            text("""
                 SELECT
                     YEAR(start_time) AS year_num,
                     MONTH(start_time) AS month_num,
                     COALESCE(NULLIF(grade, ''), 'Unknown') AS grade,
-                    COALESCE(AVG(CAST(base_price AS FLOAT)), 0) AS avg_price
+                    COALESCE(AVG(CAST(sold_price AS FLOAT)), 0) AS avg_price
                 FROM auctions
-                WHERE start_time >= DATEADD(
-                    month,
-                    -:months + 1,
-                    DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
-                )
+                WHERE status = 'History'
+                AND sold_price > 0
+                AND start_time >= DATEADD(
+                        month,
+                        -:months + 1,
+                        DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
+                    )
                 GROUP BY
                     YEAR(start_time),
                     MONTH(start_time),
                     COALESCE(NULLIF(grade, ''), 'Unknown')
                 ORDER BY year_num ASC, month_num ASC, grade ASC
-                """
-            ),
+            """),
             {"months": max(months, 1)},
         ).mappings().all()
 
         grade_set = {str(row["grade"]) for row in rows}
+
         if ordered_grades:
-            grade_order = [grade for grade in ordered_grades if grade in grade_set]
-            grade_order.extend(sorted(grade for grade in grade_set if grade not in grade_order))
+            grade_order = [g for g in ordered_grades if g in grade_set]
+            grade_order.extend(sorted(g for g in grade_set if g not in grade_order))
         else:
             grade_order = sorted(grade_set)
 
-        points_by_month: dict[tuple[int, int], dict[str, Any]] = {}
+        points_by_month: dict[tuple[int, int], dict[str, any]] = {}
+
         for row in rows:
             y = int(row["year_num"])
             m = int(row["month_num"])
             key = (y, m)
+
             if key not in points_by_month:
                 month_label = datetime(y, m, 1).strftime("%b %y")
                 points_by_month[key] = {
                     "month": month_label,
                     "prices": {grade: 0.0 for grade in grade_order},
                 }
+
             grade_name = str(row["grade"])
-            if grade_name in points_by_month[key]["prices"]:
-                points_by_month[key]["prices"][grade_name] = round(self._num(row["avg_price"]), 2)
-            else:
-                points_by_month[key]["prices"][grade_name] = round(self._num(row["avg_price"]), 2)
+            points_by_month[key]["prices"][grade_name] = round(self._num(row["avg_price"]), 2)
 
         trend_points = [points_by_month[key] for key in sorted(points_by_month.keys())]
+
         return trend_points, grade_order
 
     def _source_distribution(self) -> list[dict[str, float | str]]:
@@ -182,26 +259,31 @@ class AnalyticsPurchasesRepository:
 
     def _supplier_contribution(self, limit: int = 5) -> list[dict[str, float | str]]:
         rows = self.db.execute(
-            text(
-                """
+            text("""
                 SELECT TOP (:limit)
                     COALESCE(
                         NULLIF(LTRIM(RTRIM(company_name)), ''),
                         NULLIF(LTRIM(RTRIM(estate_name)), ''),
                         'Unknown Supplier'
                     ) AS supplier,
+
                     COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS quantity,
-                    COALESCE(SUM(CAST(base_price AS FLOAT) * CAST(quantity AS FLOAT)), 0) AS cost
+
+                    COALESCE(SUM(CAST(sold_price AS FLOAT)), 0) AS cost
+
                 FROM auctions
+                WHERE status = 'History'
+                AND sold_price > 0
+
                 GROUP BY
                     COALESCE(
                         NULLIF(LTRIM(RTRIM(company_name)), ''),
                         NULLIF(LTRIM(RTRIM(estate_name)), ''),
                         'Unknown Supplier'
                     )
+
                 ORDER BY quantity DESC
-                """
-            ),
+            """),
             {"limit": max(limit, 1)},
         ).mappings().all()
 
@@ -286,10 +368,14 @@ class AnalyticsPurchasesRepository:
         if generated_at.tzinfo is None:
             generated_at = generated_at.replace(tzinfo=timezone.utc)
 
+        summary = json.loads(row["summary_json"])
+        # Backward compatibility for older snapshots created before this field existed.
+        summary.setdefault("newSuppliersThisMonth", 0)
+
         return {
             "generatedAt": generated_at,
             "refreshIntervalMs": refresh_interval_ms,
-            "summary": json.loads(row["summary_json"]),
+            "summary": summary,
             "purchaseVolumeByGrade": json.loads(row["purchase_volume_by_grade_json"]),
             "priceTrends": json.loads(row["price_trends_json"]),
             "priceTrendGrades": json.loads(row["price_trend_grades_json"]),
