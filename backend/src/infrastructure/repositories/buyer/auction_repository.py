@@ -33,8 +33,11 @@ class AuctionRepository(AuctionRepositoryInterface):
         
         return auctions
 
-    def get_auction_by_id(self, auction_id: str):
-        auction = self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
+    def get_auction_by_id(self, auction_id: str, lock_for_update: bool = False):
+        query = self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id)
+        if lock_for_update:
+            query = query.with_for_update()
+        auction = query.first()
         return self._attach_buyer_names(auction)
 
 

@@ -8,7 +8,6 @@ from src.infrastructure.database.base import get_db
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
-import asyncio
 import logging
 
 logger = logging.getLogger(__name__)
@@ -46,8 +45,8 @@ async def create_bid(
     bid_data = result["bid"]
     event = result["event"]
     
-    # Publish event asynchronously to WebSocket subscribers
-    asyncio.create_task(event_service.publish_event(event))
+    # Publish event to WebSocket subscribers before returning
+    await event_service.publish_event(event)
     
     logger.info(f"Bid placed: {bid_data.bid_amount} by {real_name}")
     return bid_data

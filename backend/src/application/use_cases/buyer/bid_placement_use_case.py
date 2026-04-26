@@ -28,24 +28,13 @@ class BidPlacementUseCase:
         """
         current_time = datetime.now(timezone.utc)
         
-        # Get auction with FOR UPDATE to prevent race conditions
-        auction = self.auction_repo.get_auction_by_id(auction_id)
+        # Lock auction row to prevent concurrent bid race conditions
+        auction = self.auction_repo.get_auction_by_id(auction_id, lock_for_update=True)
         if not auction:
             raise ValueError(f"Auction {auction_id} not found")
         
         # Check if auction time has expired
         is_expired = AuctionTimingService.is_auction_expired(auction, current_time)
-        
-        # Log auction timing details for debugging
-        end_time = AuctionTimingService.calculate_auction_end_time(auction)
-        logger.info(f"Auction {auction_id} timing check:")
-        logger.info(f"  Current time: {current_time}")
-        logger.info(f"  Start time: {auction.start_time}")
-        logger.info(f"  Duration (hours): {auction.duration}")
-        logger.info(f"  End time: {end_time}")
-        logger.info(f"  Is expired: {is_expired}")
-        logger.info(f"  Status: {auction.status}")
-        logger.info(f"  Buyer: {auction.buyer}")
         
         # Validate auction can accept bids
         BidValidationService.validate_auction_accepts_bids(auction, is_expired)
