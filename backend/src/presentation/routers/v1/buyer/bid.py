@@ -8,6 +8,7 @@ from src.infrastructure.database.base import get_db
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
+from src.domain.services.rate_limiter import rate_limiter
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,15 @@ async def create_bid(
     event_service: LiveAuctionEventService = Depends(get_event_service),
     current_user: User = Depends(get_current_buyer),
 ):
-    """Place a new bid with event publishing"""
+    """Place a new bid with rate limiting"""
+    allowed, wait_time = rate_limiter.is_allowed(str(current_user.user_id))
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many bids. Try again in {wait_time:.1f}s",
+            headers={"Retry-After": str(int(wait_time) + 1)}
+        )
+    
     first_name = current_user.first_name or ""
     last_name = current_user.last_name or ""
     real_name = f"{first_name} {last_name}".strip()
@@ -45,7 +54,7 @@ async def create_bid(
     bid_data = result["bid"]
     event = result["event"]
     
-    # Publish event to WebSocket subscribers before returning
+
     await event_service.publish_event(event)
     
     logger.info(f"Bid placed: {bid_data.bid_amount} by {real_name}")
