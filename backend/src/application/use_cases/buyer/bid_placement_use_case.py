@@ -5,9 +5,11 @@ from src.application.schemas.bid import Bid as BidSchema
 from src.domain.events.auction_event import AuctionEvent
 from src.infrastructure.repositories.bid_repository import BidRepository
 from src.infrastructure.repositories.buyer.auction_repository import AuctionRepository
+from src.infrastructure.repositories.outbox_repository import OutboxRepository
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 from src.domain.services.buyer.bid_validation_service import BidValidationService
 from src.domain.models.auction_status import AuctionStatus
+import json
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,11 +22,11 @@ class BidPlacementUseCase:
         self.bid_repo = BidRepository(db)
         self.auction_repo = AuctionRepository(db)
     
-    def execute(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> tuple[BidSchema, AuctionEvent]:
+    def execute(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> BidSchema:
         """
-        Place a bid with validation and return the bid and associated event.
-        Returns: (bid, auction_event)
-        Raises: BidValidationException if bid is invalid
+        Place bid with outbox pattern for reliable event publishing.
+        Returns: bid data
+        Both bid and event saved atomically in single transaction.
         """
         current_time = datetime.now(timezone.utc)
         
@@ -63,10 +65,8 @@ class BidPlacementUseCase:
         )
         
         created_bid = self.bid_repo.create_bid(bid_data)
-        self.db.commit()
-        logger.info(f"Bid created: {bid_id} for auction {auction_id}, amount: {bid_amount}")
         
-        # Create event
+        # Create event for outbox
         event_id = str(uuid4())
         event = AuctionEvent.bid_created(
             event_id=event_id,
@@ -78,4 +78,18 @@ class BidPlacementUseCase:
             buyer_name=buyer_name
         )
         
-        return created_bid, event
+        # Save to outbox (atomic with bid)
+        outbox_repo = OutboxRepository(self.db)
+        payload = json.dumps(event.model_dump(mode='json'))
+        outbox_repo.save_event(
+            event_id=event_id,
+            auction_id=auction_id,
+            event_type="BID_CREATED",
+            payload=payload
+        )
+        
+        # Commit everything atomically
+        self.db.commit()
+        logger.info(f"Bid created: {bid_id} for auction {auction_id}, amount: {bid_amount}")
+        
+        return created_bid

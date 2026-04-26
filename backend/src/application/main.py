@@ -27,10 +27,11 @@ from src.presentation.routers.v1.admin import admin_dashboard
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
-from src.infrastructure.database.base import Base, engine
+from src.infrastructure.database.base import Base, engine, SessionLocal
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
 from src.application.services.buyer.auction_manager import auction_manager
+from src.application.services.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
 from src.presentation.routers.v1.buyer import live_auction_socket
 
 load_dotenv()
@@ -52,9 +53,15 @@ async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
 
+    # Start auction manager
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_manager_task = auction_manager_task
     logger.info("Auction manager background task started")
+    
+    # Initialize and start outbox publisher
+    init_outbox_publisher(SessionLocal)
+    await start_outbox_publisher()
+    logger.info("Outbox publisher started")
 
     if settings.INIT_DB_ON_STARTUP:
         try:
@@ -77,6 +84,10 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         logger.info("Shutting down TeaBlendAI server")
+        
+        # Stop outbox publisher
+        await stop_outbox_publisher()
+        logger.info("Outbox publisher stopped")
         
         if hasattr(app.state, 'auction_manager_task'):
             auction_manager.stop()

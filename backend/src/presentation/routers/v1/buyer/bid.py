@@ -3,9 +3,7 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.application.schemas.buyer.bid import BidCreateRequest, Bid
 from src.application.services.buyer.bid_service import BidService
-from src.application.services.buyer.live_auction_event_service import LiveAuctionEventService
 from src.infrastructure.database.base import get_db
-from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
 from src.domain.services.rate_limiter import rate_limiter
@@ -18,18 +16,14 @@ router = APIRouter(prefix="/bids", tags=["bids"])
 def get_bid_service(db: Session = Depends(get_db)) -> BidService:
     return BidService(db)
 
-def get_event_service() -> LiveAuctionEventService:
-    return LiveAuctionEventService(auction_ws_manager)
-
 
 @router.post("", response_model=Bid)
 async def create_bid(
     bid_request: BidCreateRequest,
     service: BidService = Depends(get_bid_service),
-    event_service: LiveAuctionEventService = Depends(get_event_service),
     current_user: User = Depends(get_current_buyer),
 ):
-    """Place a new bid with rate limiting"""
+    """Place bid with rate limiting (event published via outbox)"""
     allowed, wait_time = rate_limiter.is_allowed(str(current_user.user_id))
     if not allowed:
         raise HTTPException(
@@ -44,18 +38,12 @@ async def create_bid(
     if not real_name:
         real_name = current_user.user_name
 
-    result = service.place_bid(
+    bid_data = service.place_bid(
         auction_id=str(bid_request.auction_id),
         buyer_id=str(current_user.user_id),
         bid_amount=bid_request.bid_amount,
         buyer_name=real_name
     )
-    
-    bid_data = result["bid"]
-    event = result["event"]
-    
-
-    await event_service.publish_event(event)
     
     logger.info(f"Bid placed: {bid_data.bid_amount} by {real_name}")
     return bid_data

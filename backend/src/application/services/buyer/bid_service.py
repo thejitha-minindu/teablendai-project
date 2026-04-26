@@ -20,29 +20,15 @@ class BidService:
         self.bid_repo = BidRepository(db)
         self.auction_repo = AuctionRepository(db)
     
-    def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> dict:
+    def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> BidSchema:
         """
         Place a bid using the dedicated use case.
-        Returns dict with bid and event for broadcasting.
+        Event saved to outbox by use case (no need to return).
+        Returns: bid data
         """
         use_case = BidPlacementUseCase(self.db)
-        bid, event = use_case.execute(auction_id, buyer_id, bid_amount, buyer_name)
-        
-        # Get updated auction state
-        auction = self.auction_repo.get_auction_by_id(auction_id)
-        
-        # Calculate remaining time
-        remaining_seconds = AuctionTimingService.get_remaining_time(
-            auction, 
-            datetime.now(timezone.utc)
-        ).total_seconds()
-        
-        return {
-            "bid": bid,
-            "event": event,
-            "auction": auction,
-            "remaining_seconds": remaining_seconds
-        }
+        bid = use_case.execute(auction_id, buyer_id, bid_amount, buyer_name)
+        return bid
     
     def get_auction_state(self, auction_id: str) -> dict:
         """Get current auction state for timer sync"""
