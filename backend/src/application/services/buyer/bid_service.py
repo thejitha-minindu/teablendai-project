@@ -7,6 +7,7 @@ from src.infrastructure.repositories.buyer.auction_repository import AuctionRepo
 from src.application.use_cases.buyer.bid_placement_use_case import BidPlacementUseCase
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 from src.domain.models.auction_status import AuctionStatus
+from src.domain.models.user import User
 import logging
 
 logger = logging.getLogger(__name__)
@@ -98,3 +99,26 @@ class BidService:
     def list_bids_by_auction(self, auction_id: str):
         """Get bids for an auction"""
         return self.bid_repo.list_bids_by_auction(auction_id=auction_id)
+    
+    def list_bids_by_auction_with_names(self, auction_id: str):
+        """Get bids for an auction and enrich with buyer names"""
+        bids = self.bid_repo.list_bids_by_auction(auction_id=auction_id)
+        
+        # Enrich bids with buyer names
+        for bid in bids:
+            user = self.db.query(User).filter(User.user_id == bid.buyer_id).first()
+            if user:
+                first_name = user.first_name or ""
+                last_name = user.last_name or ""
+                real_name = f"{first_name} {last_name}".strip()
+                bid.buyer_name = real_name if real_name else user.user_name
+        
+        return bids
+    
+    def list_bids_by_user_auction(self, user_id: str, auction_id: str):
+        """List bids by user for a specific auction"""
+        return self.bid_repo.list_bids(user_id=user_id, auction_id=auction_id)
+    
+    def get_highest_bid_for_auction(self, auction_id: str):
+        """Get the highest bid for an auction"""
+        return self.bid_repo.get_highest_bid_for_auction(auction_id=auction_id)

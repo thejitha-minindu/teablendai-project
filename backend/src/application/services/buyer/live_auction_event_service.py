@@ -28,15 +28,3 @@ class LiveAuctionEventService:
                 exc_info=True
             )
             raise
-    
-    async def publish_bid_created(self, event: AuctionEvent) -> None:
-        """Publish BID_CREATED event"""
-        await self.publish_event(event)
-    
-    async def publish_auction_won(self, event: AuctionEvent) -> None:
-        """Publish AUCTION_WON event"""
-        await self.publish_event(event)
-    
-    async def publish_auction_ended(self, event: AuctionEvent) -> None:
-        """Publish AUCTION_ENDED event"""
-        await self.publish_event(event)
