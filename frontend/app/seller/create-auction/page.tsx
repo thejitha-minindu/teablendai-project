@@ -41,6 +41,22 @@ export default function CreateAuctionPage() {
   }, []);
 
   const handleNext = () => {
+    if (step === 1) {
+      if (!formData.companyName.trim() || !formData.estateName.trim()) {
+        toast.error("Please fill in all required fields.");
+        return;
+      }
+    }
+    if (step === 2) {
+      if (!formData.grade || (formData.grade === "Other" && !formData.customGrade.trim())) {
+        toast.error("Please specify the tea grade.");
+        return;
+      }
+      if (!formData.origin.trim() || !formData.quantity || parseFloat(formData.quantity) <= 0) {
+        toast.error("Please provide a valid origin and a positive quantity.");
+        return;
+      }
+    }
     if (step < 3) setStep(step + 1);
   };
 
@@ -50,6 +66,26 @@ export default function CreateAuctionPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate Step 3
+    if (!formData.startingPrice || parseFloat(formData.startingPrice) < 0) {
+      toast.error("Please provide a valid starting price.");
+      return;
+    }
+    if (!formData.scheduledStart) {
+      toast.error("Please select a scheduled start time.");
+      return;
+    }
+    const startTime = new Date(formData.scheduledStart);
+    if (startTime <= new Date()) {
+      toast.error("Scheduled start time must be in the future.");
+      return;
+    }
+    if (!formData.duration || parseFloat(formData.duration) <= 0) {
+      toast.error("Please provide a valid duration.");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
