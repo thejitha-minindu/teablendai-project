@@ -183,6 +183,9 @@ class ChatService:
 
             # INTENT CLASSIFICATION & ROUTING
             intent: QueryIntent = intent_classifier.classify(user_message)
+            if intent == "database" and intent_classifier.is_auction_management_request(user_message):
+                logger.info("[Chat] Overriding database intent with auction_management due to auction action context")
+                intent = "auction_management"
             logger.info(f"[Chat] Query intent: {intent}")
 
             # Route based on intent

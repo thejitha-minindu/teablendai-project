@@ -9,6 +9,7 @@ import json
 import re
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -25,6 +26,7 @@ from .auction_fields import (
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+COLOMBO_TZ = ZoneInfo("Asia/Colombo")
 
 
 class ParameterExtractor:
@@ -192,7 +194,7 @@ class ParameterExtractor:
             }
         """
         message = user_message.lower()
-        now = datetime.now()
+        now = datetime.now(COLOMBO_TZ)
 
         # Relative time expressions: "in 2 hours", "after 30 minutes", "2 hours from now"
         relative_patterns = [
@@ -245,7 +247,10 @@ class ParameterExtractor:
 
             hour_24, minute = parsed_time
             base_date = now.date() + timedelta(days=day_offset)
-            candidate = datetime.combine(base_date, datetime.min.time()).replace(hour=hour_24, minute=minute)
+            candidate = datetime.combine(base_date, datetime.min.time(), tzinfo=COLOMBO_TZ).replace(
+                hour=hour_24,
+                minute=minute,
+            )
             candidate = self._ensure_future_datetime(candidate, timedelta(days=1), now)
 
             return {
@@ -291,7 +296,10 @@ class ParameterExtractor:
                 days_ahead = days_ahead + 7 if days_ahead != 0 else 7
 
             candidate_date = now.date() + timedelta(days=days_ahead)
-            candidate = datetime.combine(candidate_date, datetime.min.time()).replace(hour=hour_24, minute=minute)
+            candidate = datetime.combine(candidate_date, datetime.min.time(), tzinfo=COLOMBO_TZ).replace(
+                hour=hour_24,
+                minute=minute,
+            )
 
             if modifier == "":
                 candidate = self._ensure_future_datetime(candidate, timedelta(days=7), now)
@@ -453,7 +461,7 @@ class ParameterExtractor:
                         try:
                             parsed_start = parse_datetime(str(value))
                             # Keep timezone information so frontend can convert UTC to local time correctly.
-                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat()
+                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
                             if natural_start_time and natural_start_time.get("requires_weekday_confirmation"):
                                 validated["_weekday_confirmation_required"] = True
                                 validated["_weekday_confirmation_expression"] = natural_start_time.get("expression")
@@ -493,14 +501,14 @@ class ParameterExtractor:
         """
         msg = user_message.lower()
         
-        if any(word in msg for word in ['create', 'new', 'add', 'start', 'list', 'post']):
-            return "create"
-        elif any(word in msg for word in ['update', 'change', 'modify', 'edit']):
+        if any(word in msg for word in ['update', 'change', 'modify', 'edit']):
             return "update"
-        elif any(word in msg for word in ['delete', 'remove', 'cancel']):
+        elif any(word in msg for word in ['delete', 'remove', 'cancel', 'close']):
             return "delete"
         elif any(word in msg for word in ['schedule', 'set time', 'set date', 'reschedule']):
             return "schedule"
+        elif any(word in msg for word in ['create', 'new', 'add', 'start auction', 'list', 'post']):
+            return "create"
         else:
             return "unknown"
     

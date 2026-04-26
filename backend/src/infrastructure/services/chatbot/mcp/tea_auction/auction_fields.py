@@ -5,7 +5,11 @@ Auction Field Definitions
 from typing import Dict, Any, List, Tuple
 from enum import Enum
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 import re
+
+
+COLOMBO_TZ = ZoneInfo("Asia/Colombo")
 
 
 class AuctionStatus(str, Enum):
@@ -25,6 +29,11 @@ class TeaGrade(str, Enum):
     FANNINGS = "Fannings"
     DUST = "Dust"
     FBOP = "FBOP"
+    OPA = "OPA"
+    PEKOE_1 = "Pekoe 1"
+    DUST_1 = "Dust 1"
+    SILVER_TIPS = "Silver Tips"
+    GOLDEN_TIPS = "Golden Tips"
 
 # Sri Lankan tea regions
 VALID_ORIGINS = [
@@ -177,7 +186,9 @@ def parse_datetime(datetime_str: str) -> datetime:
     - "tomorrow at HH:MM AM/PM"
     - Many more natural formats via dateutil
     
-    Returns: timezone-aware datetime in UTC
+    Returns: timezone-aware datetime in UTC.
+
+    Naive inputs are assumed to be in Asia/Colombo before conversion to UTC.
     """
 
     from dateutil import parser as dateutil_parser
@@ -191,7 +202,7 @@ def parse_datetime(datetime_str: str) -> datetime:
     normalized = re.sub(r"(?i)(\d)(am|pm)\b", r"\1 \2", normalized)
     normalized = re.sub(r"\s+", " ", normalized).strip()
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(COLOMBO_TZ)
 
     # Handle relative dates (today, tomorrow)
     relative_prefixes = {
@@ -216,10 +227,8 @@ def parse_datetime(datetime_str: str) -> datetime:
             for time_fmt in time_formats:
                 try:
                     parsed_time = datetime.strptime(time_part.upper(), time_fmt).time()
-                    # Combine with timezone-aware date
-                    naive_dt = datetime.combine(base_date, parsed_time)
-                    aware_dt = naive_dt.replace(tzinfo=timezone.utc)
-                    return aware_dt
+                    local_dt = datetime.combine(base_date, parsed_time).replace(tzinfo=COLOMBO_TZ)
+                    return local_dt.astimezone(timezone.utc)
                 except ValueError:
                     continue
 
@@ -227,12 +236,12 @@ def parse_datetime(datetime_str: str) -> datetime:
         
     try:
         parsed = dateutil_parser.parse(datetime_str, fuzzy=False)
-        # If parsed datetime is naive, assume UTC; otherwise normalize to UTC.
+        # If parsed datetime is naive, assume Asia/Colombo; otherwise normalize to UTC.
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(tzinfo=COLOMBO_TZ)
         else:
             parsed = parsed.astimezone(timezone.utc)
-        return parsed
+        return parsed.astimezone(timezone.utc)
     except Exception:
         pass
 
@@ -251,9 +260,8 @@ def parse_datetime(datetime_str: str) -> datetime:
     for fmt in formats:
         try:
             naive_dt = datetime.strptime(normalized.upper(), fmt)
-            # Make it timezone-aware (UTC)
-            aware_dt = naive_dt.replace(tzinfo=timezone.utc)
-            return aware_dt
+            local_dt = naive_dt.replace(tzinfo=COLOMBO_TZ)
+            return local_dt.astimezone(timezone.utc)
         except ValueError:
             continue
 
@@ -370,6 +378,6 @@ def format_datetime_for_display(datetime_str: str) -> str:
     """Format datetime for user-friendly display"""
     try:
         dt = parse_datetime(datetime_str)
-        return dt.strftime("%B %d, %Y at %I:%M %p")
+        return dt.astimezone(COLOMBO_TZ).strftime("%B %d, %Y at %I:%M %p")
     except Exception:
         return datetime_str

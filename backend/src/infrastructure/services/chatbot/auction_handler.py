@@ -8,7 +8,7 @@ Multi-turn conversation flow for creating/updating/deleting auctions.
 import logging
 import re
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
@@ -56,10 +56,14 @@ class AuctionHandler:
         flow_started_at = state.partial_data.get("_flow_started_at") if state else None
         if isinstance(flow_started_at, str):
             try:
-                return datetime.fromisoformat(flow_started_at)
+                parsed_time = datetime.fromisoformat(flow_started_at)
+                return parsed_time if parsed_time.tzinfo is not None else parsed_time.replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
-        return state.created_at if state else datetime.now()
+        if state and getattr(state, "created_at", None):
+            created_at = state.created_at
+            return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc)
 
     def _prompt_for_custom_description(
         self,
@@ -229,7 +233,6 @@ class AuctionHandler:
         Returns:
             Response dictionary
         """
-        start_time = datetime.utcnow()
         action = parameter_extractor.detect_action_type(user_message)
         state = state_manager.get_state(conversation.conversation_id)
 
@@ -294,7 +297,7 @@ class AuctionHandler:
         
         # Extract any parameters from initial message
         required_fields = CREATE_AUCTION_FIELDS["required"].copy()
-        flow_started_at = datetime.now()
+        flow_started_at = datetime.now(timezone.utc)
         
         extracted = await parameter_extractor.extract_parameters(
             user_message,
@@ -962,10 +965,11 @@ class AuctionHandler:
     ) -> Dict[str, Any]:
         """Ask user to confirm interpreted weekday datetime before proceeding."""
 
-        expression_text = expression or f"weekday at {display_time_12h or resolved_start_time}"
+        resolved_start_time_display = format_datetime_for_display(resolved_start_time)
+        expression_text = expression or f"weekday at {display_time_12h or resolved_start_time_display}"
         confirmation_text = f"""
 You asked to schedule the auction on **{expression_text}**.
-That corresponds to **{resolved_start_time}**.
+    That corresponds to **{resolved_start_time_display}**.
 Please confirm if this is correct.
 
 - Reply **'yes'** to confirm this start time
