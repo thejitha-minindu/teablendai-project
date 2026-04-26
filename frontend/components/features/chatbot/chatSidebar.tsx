@@ -34,7 +34,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ConversationSummary } from "@/services/chatbot/chatService";
+import type {
+  ChatHistoryItem,
+  ConversationSummary,
+} from "@/types/chatbot/chat.types";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
@@ -45,7 +48,6 @@ import {
   setStoredAuthToken,
   type UserRole,
 } from "@/lib/auth";
-import { Input } from "@/components/ui/input";
 
 // Constants
 const COLLAPSED_WIDTH = "w-16 md:w-20";
@@ -53,15 +55,6 @@ const EXPANDED_WIDTH = "w-full md:w-80";
 const PINNED_SECTION_LABEL = "Pinned";
 const RECENT_SECTION_LABEL = "Recent";
 const SEARCH_DEBOUNCE_DELAY = 300;
-
-interface ChatHistoryItem {
-  id: string;
-  title: string;
-  timestamp: Date;
-  pinnedAt?: Date | null;
-  preview: string;
-  isPinned?: boolean;
-}
 
 interface ChatSidebarProps {
   conversations?: ConversationSummary[];

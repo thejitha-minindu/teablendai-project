@@ -6,7 +6,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedAIChat } from "./chat";
 import { ChatSidebar } from "./chatSidebar";
 import MessageBubble from "./MessageBubble";
-import { chatService, ChatMessage, ConversationSummary } from "@/services/chatbot/chatService";
+import { chatService } from "@/services/chatbot/chatService";
+import type {
+  ChatMessage,
+  ConversationSummary,
+} from "@/types/chatbot/chat.types";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
 
 // Constants

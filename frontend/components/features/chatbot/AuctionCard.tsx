@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
-
 interface AuctionData {
   auction_id?: string;
   auction_name?: string;
@@ -69,6 +68,7 @@ const STATUS_STYLES = {
 } as const;
 
 type StatusType = keyof typeof STATUS_STYLES;
+const BASE_URL = process.env.NEXT_PUBLIC_FRONTEND_URL;
 
 // Utility functions
 const parseBackendDateTime = (dateString?: string): Date | null => {
@@ -348,7 +348,7 @@ export const AuctionCard = React.memo(function AuctionCard({ auction, index }: A
               </p>
             )}
             <Link
-              href={`http://localhost:3000/seller/scheduled?auction_id=${auction.auction_id}`}
+              href={`${BASE_URL}/seller/scheduled?auction_id=${auction.auction_id}`}
               className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline"
               target="_blank"
             >
