@@ -7,44 +7,36 @@ from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
 
-load_dotenv()
-
+# Setup logging early
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DEFAULT_GEMINI_MODEL = "gemini-1.5-flash"
+# Get the backend directory path
+BACKEND_DIR = Path(__file__).resolve().parent.parent
+
+# Explicitly load .env from backend root
+load_dotenv(dotenv_path=BACKEND_DIR / ".env")
+
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 
 def resolve_model_name(raw_model_name: Optional[str]) -> str:
-    """Normalize model names and handle deprecated aliases safely."""
+    """Normalize model names from env and apply safe fallback."""
     if not raw_model_name:
         return DEFAULT_GEMINI_MODEL
 
     normalized = str(raw_model_name).strip().strip('"').strip("'").strip().rstrip(",")
+
     if not normalized:
         return DEFAULT_GEMINI_MODEL
 
-    alias_map = {
-        "gemini-1.5-flash-latest": "gemini-1.5-flash",
-        "gemini-1.5-pro-latest": "gemini-1.5-pro",
-    }
+    return normalized
 
-    resolved = alias_map.get(normalized, normalized)
-    if resolved != normalized:
-        logger.warning(
-            "MODEL_NAME '%s' is deprecated/unsupported, using '%s' instead",
-            normalized,
-            resolved,
-        )
-
-    return resolved
-
-# Get the backend directory path
-BACKEND_DIR = Path(__file__).parent.parent
 
 class Settings(BaseSettings):
     # API Configuration
     API_HOST: str = "0.0.0.0"
-    API_PORT: int = 5000
+    API_PORT: int = 8000
     API_RELOAD: bool = True
     API_V1_PREFIX: str = "/api/v1"
 
@@ -53,6 +45,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     ENVIRONMENT: str = "development"
+
     MODEL_NAME: str = DEFAULT_GEMINI_MODEL
     GOOGLE_API_KEY: Optional[str] = None
 
@@ -67,7 +60,7 @@ class Settings(BaseSettings):
     ]
     CORS_ALLOW_CREDENTIALS: bool = True
     CORS_ALLOW_METHODS: List[str] = ["*"]
-    CORS_ALLOW_HEADERS: List[str] = ["*"] 
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
 
     # Database Configuration
     MSSQL_SERVER: str = ""
@@ -82,7 +75,7 @@ class Settings(BaseSettings):
     DATABASE_URL: Optional[str] = None
     INIT_DB_ON_STARTUP: bool = False
 
-    CHAT_DATABASE_URL: bool = True
+    CHAT_DATABASE_URL: Optional[str] = None
 
     # Database pool settings
     DATABASE_POOL_SIZE: int = 5
@@ -90,66 +83,54 @@ class Settings(BaseSettings):
     DATABASE_POOL_TIMEOUT: int = 30
     DATABASE_POOL_RECYCLE: int = 3600
 
-    # MCP Servers - Use relative paths from backend directory
-    MCP_DATABASE_SERVER_PATH: str = str(
-        BACKEND_DIR / "mcp_servers" / "tea_database" / "server.py"
-    )
-    MCP_SEARCH_SERVER_PATH: str = str(
-        BACKEND_DIR / "mcp_servers" / "tea_search" / "server.py"
-    )
-    MCP_VISUALIZATION_SERVER_PATH: str = str(
-        BACKEND_DIR / "mcp_servers" / "tea_visualization" / "server.py"
-    )
-
     # Chat settings
     MAX_CONVERSATION_HISTORY: int = 50
     CHAT_TIMEOUT_SECONDS: int = 30
     ENABLE_TOPIC_VALIDATION: bool = True
 
-    # Valid Topics for Chat
-    VALID_TOPICS: List[str] = [
-        "tea",
-        "auction",
-        "grades",
-        "pricing",
-        "quality",
-        "Ceylon tea",
-        "tea types",
-        "market trends",
-        "bidding",
-        "tea production",
-        "tea blending",
-        "tea tasting",
-        "tea chemistry"
-    ]
-
     # Logging
     LOG_LEVEL: str = "INFO"
     LOG_FORMAT: str = "%(levelname)s:%(name)s:%(message)s"
 
+    # Analytics settings
+    ANALYTICS_SCHEDULER_ENABLED: bool = True
+    ANALYTICS_SNAPSHOT_INTERVAL_SECONDS: int = 30
+    ANALYTICS_SNAPSHOT_RETENTION_DAYS: int = 90
+    ANALYTICS_KPI_LOOKBACK_DAYS: int = 30
+    ANALYTICS_CHART_MONTHS: int = 6
+
     class Config:
-        env_file = ".env"
+        env_file = str(BACKEND_DIR / ".env")
+        env_file_encoding = "utf-8"
         case_sensitive = True
-        env_file_encoding = 'utf-8'
-        extra = "allow" 
+        extra = "allow"
+
 
 # Singleton settings instance
-_settings_instance = None
+_settings_instance: Optional[Settings] = None
+
 
 def get_settings() -> Settings:
     """Get settings instance (singleton pattern)"""
     global _settings_instance
+
     if _settings_instance is None:
         _settings_instance = Settings()
+
+        # Normalize MODEL_NAME after loading from env
         _settings_instance.MODEL_NAME = resolve_model_name(
-            getattr(_settings_instance, "MODEL_NAME", None)
+            _settings_instance.MODEL_NAME
         )
+
+        logger.info("Using AI model: %s", _settings_instance.MODEL_NAME)
+
     return _settings_instance
+
 
 # Create default instance for backward compatibility
 settings = get_settings()
 
-# Helper function to get database connection string
+
 def get_mssql_connection_string(
     server: str = None,
     database: str = None,
@@ -161,28 +142,19 @@ def get_mssql_connection_string(
     trust_server_certificate: Optional[bool] = None,
     database_url: str = None,
 ) -> str:
-    """
-    Generate MSSQL connection string
-    
-    Args:
-        server: SQL Server hostname
-        database: Database name
-        username: Username (for SQL auth)
-        password: Password (for SQL auth)
-        trusted: Use Windows authentication
-        
-    Returns:
-        str: MSSQL connection string
-    """
-    direct_connection = (database_url or os.getenv("DATABASE_URL", "")).strip()
+    """Generate MSSQL connection string"""
+
+    # Direct parameter
+    direct_connection = (database_url or "").strip()
     if direct_connection:
         return direct_connection
 
     settings = get_settings()
-    direct_connection = (settings.DATABASE_URL or "").strip()
-    if direct_connection:
-        return direct_connection
-    
+
+    # Env DATABASE_URL
+    if settings.DATABASE_URL:
+        return settings.DATABASE_URL.strip()
+
     server = server or settings.MSSQL_SERVER
     database = database or settings.MSSQL_DATABASE
     username = username or settings.MSSQL_USERNAME
@@ -204,29 +176,26 @@ def get_mssql_connection_string(
         f"Encrypt={'yes' if encrypt else 'no'}",
         f"TrustServerCertificate={'yes' if trust_server_certificate else 'no'}",
     ]
-    
+
     if trusted or (not username and not password):
         params.append("trusted_connection=yes")
-        connection_string = (
-            f"mssql+pyodbc://{server}/{database}"
-            f"?{'&'.join(params)}"
-        )
-    else:
-        encoded_username = quote_plus(username or "")
-        encoded_password = quote_plus(password or "")
-        connection_string = (
-            f"mssql+pyodbc://{encoded_username}:{encoded_password}@{server}/{database}"
-            f"?{'&'.join(params)}"
-        )
-    
-    return connection_string
+        return f"mssql+pyodbc://{server}/{database}?{'&'.join(params)}"
+
+    encoded_username = quote_plus(username or "")
+    encoded_password = quote_plus(password or "")
+
+    return (
+        f"mssql+pyodbc://{encoded_username}:{encoded_password}@{server}/{database}"
+        f"?{'&'.join(params)}"
+    )
+
 
 __all__ = [
-    'Settings',
-    'get_settings',
-    'resolve_model_name',
-    'settings',
-    'get_mssql_connection_string',
-    'BACKEND_DIR',
-    'DEFAULT_GEMINI_MODEL',
+    "Settings",
+    "get_settings",
+    "resolve_model_name",
+    "settings",
+    "get_mssql_connection_string",
+    "BACKEND_DIR",
+    "DEFAULT_GEMINI_MODEL",
 ]

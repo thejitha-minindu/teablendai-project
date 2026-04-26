@@ -113,8 +113,6 @@ const getRoleDisplayName = (role: UserRole): string => {
       return "Seller";
     case "buyer":
       return "Buyer";
-    case "analytics":
-      return "Analytics";
     default:
       return "User";
   }
@@ -133,7 +131,7 @@ export function NavSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   
-  // --- NEW: Dynamic User State ---
+  // Dynamic User State
   const [userEmail, setUserEmail] = useState("Loading...");
   const [userName, setUserName] = useState("User");
 
@@ -149,7 +147,7 @@ export function NavSidebar() {
     }
   }, [pathname]);
 
-  // --- NEW: Logout Handler ---
+  // Logout Handler
   const handleLogout = () => {
     clearStoredAuthToken();
     window.location.href = "/auth/login";
@@ -209,9 +207,167 @@ export function NavSidebar() {
   const isAnalyticsPage = pathname.startsWith("/analytics-dashboard");
   const shouldShowProfile = !isAnalyticsPage;
 
+  // Simplified Footer Component for Analytics Page
+  const SimplifiedFooter = () => (
+    <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
+                <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-5 h-5" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold text-gray-800">
+                      {userName}
+                    </span>
+                    <span className="truncate text-xs text-gray-500 capitalize">
+                      {getRoleDisplayName(role)} Account
+                    </span>
+                  </div>
+                  <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
+                </div>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+            >
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-6 h-6" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{userName}</span>
+                    <span className="truncate text-xs text-gray-500">{userEmail}</span>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                <Link href="/profile" className="flex items-center w-full">
+                  <User className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>My Profile</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarFooter>
+  );
+
+  // Full Footer Component for Other Pages
+  const FullFooter = () => (
+    <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
+                <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-5 h-5" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold text-gray-800">
+                      {userName}
+                    </span>
+                    <span className="truncate text-xs text-gray-500 capitalize">
+                      {getRoleDisplayName(role)} Account
+                    </span>
+                  </div>
+                  <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
+                </div>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+            >
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-6 h-6" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{userName}</span>
+                    <span className="truncate text-xs text-gray-500">{userEmail}</span>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                <Link href="/profile" className="flex items-center w-full">
+                  <User className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>My Profile</span>
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Switch Role */}
+              <DropdownMenuItem
+                className="cursor-pointer hover:bg-gray-50"
+                disabled={isSwitchingRole}
+                onClick={handleSwitchRole}
+              >
+                <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                <span>
+                  {isSwitchingRole
+                    ? "Switching role..."
+                    : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                </span>
+              </DropdownMenuItem>
+
+              {/* Analytics Link */}
+              {role !== "analytics" && (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                  <Link href="/analytics-dashboard" className="flex items-center w-full">
+                    <History className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Analytics Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarFooter>
+  );
+
   return (
     <div className="relative flex h-screen">
-      {/* ... (Keep your existing collapse/expand Tooltip button here) ... */}
+      {/* Collapse button when sidebar is collapsed */}
       {isCollapsed && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -251,7 +407,7 @@ export function NavSidebar() {
           >
             <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
               
-              {/* ... (Keep your Logo and Nav Links identical here) ... */}
+              {/* Logo Section */}
               <SidebarContent className="flex-1 flex flex-col">
                 <SidebarGroup>
                   <div className="flex items-center justify-between relative">
@@ -284,6 +440,7 @@ export function NavSidebar() {
                   </div>
                 </SidebarGroup>
 
+                {/* Navigation Items */}
                 <SidebarGroup>
                   <SidebarGroupContent className="px-3 space-y-4 flex-grow">
                     {role === "seller" && (
@@ -322,98 +479,11 @@ export function NavSidebar() {
                 </SidebarGroup>
               </SidebarContent>
 
-              {/* Footer with Profile */}
-              {shouldShowProfile && (
-                <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
-                            <div className="flex items-center gap-3 w-full">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                                <User2 className="w-5 h-5" />
-                              </div>
-                              <div className="grid flex-1 text-left text-sm leading-tight">
-                                {/* DYNAMIC NAME */}
-                                <span className="truncate font-semibold text-gray-800">
-                                  {userName}
-                                </span>
-                                <span className="truncate text-xs text-gray-500 capitalize">
-                                  {getRoleDisplayName(role)} Account
-                                </span>
-                              </div>
-                              <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
-                            </div>
-                          </SidebarMenuButton>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent
-                          side="top"
-                          align="end"
-                          className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
-                        >
-                          <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-3 px-2 py-2.5 text-left">
-                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                                <User2 className="w-6 h-6" />
-                              </div>
-                              <div className="grid flex-1 text-left text-sm leading-tight">
-                                {/* DYNAMIC NAME & EMAIL */}
-                                <span className="truncate font-semibold">{userName}</span>
-                                <span className="truncate text-xs text-gray-500">{userEmail}</span>
-                              </div>
-                            </div>
-                          </DropdownMenuLabel>
-
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                            <Link href="/profile" className="flex items-center w-full">
-                              <User className="mr-2 h-4 w-4 text-gray-500" />
-                              <span>My Profile</span>
-                            </Link>
-                          </DropdownMenuItem>
-
-                          {/* Switch Role */}
-                          <DropdownMenuItem
-                            className="cursor-pointer hover:bg-gray-50"
-                            disabled={isSwitchingRole}
-                            onClick={handleSwitchRole}
-                          >
-                            <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                            <span>
-                              {isSwitchingRole
-                                ? "Switching role..."
-                                : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
-                            </span>
-                          </DropdownMenuItem>
-
-                          {/* Analytics Link */}
-                          {role !== "analytics" && (
-                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                              <Link href="/analytics-dashboard" className="flex items-center w-full">
-                                <History className="mr-2 h-4 w-4 text-gray-500" />
-                                <span>Analytics Dashboard</span>
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuSeparator />
-
-                          {/* --- DYNAMIC LOGOUT BUTTON --- */}
-                          <DropdownMenuItem
-                            className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
-                            onClick={handleLogout}
-                          >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Log out</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarFooter>
+              {/* Conditional Footer - Show simplified on analytics page, full on others */}
+              {pathname.startsWith("/analytics-dashboard") ? (
+                <SimplifiedFooter />
+              ) : (
+                shouldShowProfile && <FullFooter />
               )}
             </Sidebar>
           </motion.div>

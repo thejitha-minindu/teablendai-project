@@ -41,7 +41,8 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # We use model_dump() to get the data, but explicitly exclude the raw password
     db_user = User(
         **user_data.model_dump(exclude={"password"}), 
-        hashed_password=hashed_pwd
+        hashed_password=hashed_pwd,
+        verification_status="pending"
     )
     
     # 5. Save to database
@@ -96,7 +97,8 @@ def google_auth(request: GoogleToken, db: Session = Depends(get_db)):
                 phone_num="N/A",
                 default_role="buyer",
                 hashed_password=get_password_hash(random_password),
-                profile_image_url=id_info.get("picture")
+                profile_image_url=id_info.get("picture"),
+                verification_status="pending"
             )
             db.add(user)
             db.commit()

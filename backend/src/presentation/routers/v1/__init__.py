@@ -1,2 +1,4 @@
-from . import health, bid, user, order, conversations, query, chat, auth
+from .chatbot import chat, conversations, query
+
+from . import health, bid, user, order, auth
 

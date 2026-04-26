@@ -89,6 +89,22 @@ export default function CreateAuctionPage() {
     setIsSubmitting(true);
 
     try {
+      // Validate scheduled start is in the future (client-side guard)
+      if (!formData.scheduledStart) {
+        alert('Please select a scheduled start time.');
+        setIsSubmitting(false);
+        return;
+      }
+
+      const selected = new Date(formData.scheduledStart).getTime();
+      const now = Date.now();
+      // require at least 30 seconds in the future to account for small clock skew
+      if (selected <= now + 30 * 1000) {
+        alert('Scheduled start time must be in the future. Please choose a later time.');
+        setIsSubmitting(false);
+        return;
+      }
+
       const finalGrade = formData.grade === "Other" ? formData.customGrade : formData.grade;
       let finalImageUrl = "";
 
