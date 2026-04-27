@@ -3,7 +3,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, timezone
 from typing import Any, Optional
 from uuid import UUID
-from src.domain.constants.auction_constants import AuctionEventType
+from src.domain.constants.auction_constants import AuctionEventType, AuctionTimingConstants
 
 class AuctionEvent(BaseModel):
     """Unified event schema for all auction-related domain events."""
@@ -46,7 +46,7 @@ class AuctionEvent(BaseModel):
             data={
                 "winner_id": str(winner_id),
                 "final_price": final_price,
-                "grace_period_seconds": 40
+                "grace_period_seconds": AuctionTimingConstants.GRACE_PERIOD.total_seconds()
             }
         )
     

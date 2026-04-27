@@ -46,14 +46,7 @@ class BidPlacementUseCase:
         
         # Validate bid amount
         BidValidationService.validate_bid_amount(bid_amount, highest_bid, auction.base_price)
-        
-        # Update auction status if transitioning from SCHEDULE to LIVE
-        if auction.status == AuctionStatus.SCHEDULE.value and current_time >= auction.start_time:
-            auction.status = AuctionStatus.LIVE.value
-            auction.start_time = current_time  # Reset to actual LIVE start time for duration calculation
-            self.db.commit()
-            logger.info(f"Auction transitioned to LIVE: {auction_id}")
-        
+                
         # Create bid
         bid_id = str(uuid4())
         bid_data = BidSchema(

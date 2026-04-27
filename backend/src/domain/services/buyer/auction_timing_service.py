@@ -33,10 +33,10 @@ class AuctionTimingService:
         end_time = AuctionTimingService.calculate_auction_end_time(auction)
         return current_time > end_time
     
-    @staticmethod
-    def should_extend_auction(time_remaining: timedelta) -> bool:
-        """Check if auction should extend due to late bid"""
-        return time_remaining <= AuctionTimingConstants.BID_EXTENSION_THRESHOLD
+    # @staticmethod
+    # def should_extend_auction(time_remaining: timedelta) -> bool:
+    #     """Check if auction should extend due to late bid"""
+    #     return time_remaining <= AuctionTimingConstants.BID_EXTENSION_THRESHOLD
     
     @staticmethod
     def calculate_grace_period_end(last_bid_time: datetime) -> datetime:
