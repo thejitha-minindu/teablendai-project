@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { 
-  User, MapPin, Camera, Save, Edit2, 
+import {
+  User, MapPin, Camera, Save, Edit2,
   ShoppingBag, TrendingUp, CreditCard, ShieldCheck, LayoutDashboard,
-  Package, Lock, LogOut, Star, BarChart3, 
-  Wallet, ListOrdered, History, Truck, X
+  Package, Lock, LogOut, Star, BarChart3,
+  Wallet, ListOrdered, History, Truck, X,
+  Bell, BellOff, AlertTriangle, FileText, CheckCircle2, Clock, ChevronRight, Trash2, ToggleLeft, ToggleRight, Send, Filter
 } from 'lucide-react';
 import Link from 'next/link';
 import { apiClient } from '@/lib/apiClient';
@@ -54,9 +55,52 @@ const defaultProfileState: ProfileFormState = {
   disputes: 0,
 };
 
+type ReportItem = {
+  id: string;
+  subject: string;
+  category: string;
+  date: string;
+  status: 'Open' | 'Under Review' | 'Resolved' | 'Closed';
+  description: string;
+  violatorId?: string;
+  violationType?: string;
+  reason?: string;
+  auctionId?: string;
+};
+
+type NotificationItem = {
+  id: string;
+  title: string;
+  message: string;
+  time: string;
+  read: boolean;
+  type: 'order' | 'system' | 'promo' | 'alert';
+};
+
+type NotificationPrefs = {
+  orderUpdates: boolean;
+  systemAlerts: boolean;
+  promotions: boolean;
+  emailNotifications: boolean;
+};
+
+const mockReports: ReportItem[] = [
+  { id: 'RPT-001', subject: 'Wrong item delivered', category: 'Order Issue', date: 'Feb 10, 2024', status: 'Resolved', description: 'I received a different tea grade than what I ordered in lot #12.' },
+  { id: 'RPT-002', subject: 'Payment not reflected', category: 'Payment Issue', date: 'Feb 18, 2024', status: 'Under Review', description: 'My bank was charged but the order still shows as unpaid.' },
+  { id: 'RPT-003', subject: 'Seller unresponsive', category: 'Seller Conduct', date: 'Mar 01, 2024', status: 'Open', description: 'The seller has not responded to my messages for over 5 days.' },
+];
+
+const mockNotifications: NotificationItem[] = [
+  { id: 'N1', title: 'Order Shipped', message: 'Your order ORD-105 (BOPF Premium Bulk) has been dispatched.', time: '2 hours ago', read: false, type: 'order' },
+  { id: 'N2', title: 'Payment Confirmed', message: 'Payment of $450.00 for ORD-102 was successfully processed.', time: 'Yesterday', read: false, type: 'order' },
+  { id: 'N3', title: 'System Maintenance', message: 'Scheduled maintenance on Mar 15, 2024 from 2:00–4:00 AM.', time: '3 days ago', read: true, type: 'system' },
+  { id: 'N4', title: 'New Auction Live', message: 'A new Silver Tips lot is now open for bidding. Check it out!', time: '4 days ago', read: true, type: 'promo' },
+  { id: 'N5', title: 'Report Update', message: 'Your report RPT-002 has been reviewed and is under investigation.', time: '5 days ago', read: true, type: 'alert' },
+];
+
 export default function UserProfilePage() {
   const [isEditing, setIsEditing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'personal' | 'seller' | 'buyer'>('personal');
+  const [activeTab, setActiveTab] = useState<'personal' | 'seller' | 'buyer' | 'reports' | 'notifications'>('personal');
   const [isLoading, setIsLoading] = useState(false);
   const [isProfileLoading, setIsProfileLoading] = useState(true);
 
@@ -76,18 +120,114 @@ export default function UserProfilePage() {
     { day: "Sun", value: 50, amount: "$1,500" },
   ];
 
+  // Reports state
+  const [reportSubTab, setReportSubTab] = useState<'submit' | 'history'>('history');
+  const [reportForm, setReportForm] = useState({
+    subject: '',
+    category: '',
+    description: '',
+    violatorId: '',
+    violationType: '',
+    reason: '',
+    auctionId: ''
+  });
+  const [reportSubmitting, setReportSubmitting] = useState(false);
+  const [reports, setReports] = useState<ReportItem[]>(mockReports);
+
+  // Notifications state
+  const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPrefs>({
+    orderUpdates: true,
+    systemAlerts: true,
+    promotions: false,
+    emailNotifications: true,
+  });
+  const [notifFilter, setNotifFilter] = useState<'all' | 'unread'>('all');
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const handleMarkAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  const handleMarkRead = (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Clear all notifications?')) setNotifications([]);
+  };
+
+  const handleTogglePref = (key: keyof NotificationPrefs) => {
+    setNotifPrefs(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleReportSubmit = () => {
+    if (!reportForm.subject.trim() || !reportForm.description.trim()) {
+      alert('Please fill in all required fields.');
+      return;
+    }
+    setReportSubmitting(true);
+    setTimeout(() => {
+      const newReport: ReportItem = {
+        id: `RPT-00${reports.length + 4}`,
+        subject: reportForm.subject,
+        category: reportForm.category || 'Other',
+        date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: '2-digit' }),
+        status: 'Open',
+        description: reportForm.description,
+        violatorId: reportForm.violatorId,
+        violationType: reportForm.violationType,
+        reason: reportForm.reason,
+        auctionId: reportForm.auctionId,
+      };
+      setReports(prev => [newReport, ...prev]);
+      setReportForm({ subject: '', category: '', description: '', violatorId: '', violationType: '', reason: '', auctionId: '' });
+      setReportSubmitting(false);
+      setReportSubTab('history');
+      alert('Report submitted successfully!');
+    }, 1200);
+  };
+
+  const statusStyle: Record<ReportItem['status'], string> = {
+    'Open': 'bg-blue-50 text-blue-700',
+    'Under Review': 'bg-yellow-50 text-yellow-700',
+    'Resolved': 'bg-green-50 text-green-700',
+    'Closed': 'bg-gray-100 text-gray-500',
+  };
+
+  const statusIcon: Record<ReportItem['status'], React.ReactNode> = {
+    'Open': <Clock className="w-3 h-3" />,
+    'Under Review': <AlertTriangle className="w-3 h-3" />,
+    'Resolved': <CheckCircle2 className="w-3 h-3" />,
+    'Closed': <X className="w-3 h-3" />,
+  };
+
+  const notifTypeStyle: Record<NotificationItem['type'], string> = {
+    order: 'bg-blue-100 text-blue-600',
+    system: 'bg-gray-100 text-gray-500',
+    promo: 'bg-purple-100 text-purple-600',
+    alert: 'bg-orange-100 text-orange-600',
+  };
+
   const [user, setUser] = useState<ProfileFormState>(defaultProfileState);
 
   const displayName = `${user.first_name} ${user.last_name}`.trim();
+
+  // Tabs per role — Reports and Notifications are now their own separate tabs
   const availableTabs = user.role === 'seller'
     ? [
-        { id: 'personal' as const, label: 'Personal Profile' },
-        { id: 'seller' as const, label: 'Seller Insights' },
-      ]
+      { id: 'personal' as const, label: 'Personal Profile' },
+      { id: 'seller' as const, label: 'Seller Insights' },
+      { id: 'reports' as const, label: 'Reports' },
+      { id: 'notifications' as const, label: 'Notifications' },
+    ]
     : [
-        { id: 'personal' as const, label: 'Personal Profile' },
-        { id: 'buyer' as const, label: 'Buyer Activity' },
-      ];
+      { id: 'personal' as const, label: 'Personal Profile' },
+      { id: 'buyer' as const, label: 'Buyer Activity' },
+      { id: 'reports' as const, label: 'Reports' },
+      { id: 'notifications' as const, label: 'Notifications' },
+    ];
 
   const handlePhotoEdit = () => {
     const imageUrl = window.prompt('Enter profile image URL');
@@ -132,12 +272,8 @@ export default function UserProfilePage() {
   }, []);
 
   useEffect(() => {
-    if (user.role === 'buyer' && activeTab === 'seller') {
-      setActiveTab('personal');
-    }
-    if (user.role === 'seller' && activeTab === 'buyer') {
-      setActiveTab('personal');
-    }
+    if (user.role === 'buyer' && activeTab === 'seller') setActiveTab('personal');
+    if (user.role === 'seller' && activeTab === 'buyer') setActiveTab('personal');
   }, [user.role, activeTab]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,12 +312,10 @@ export default function UserProfilePage() {
       alert('Please fill all password fields');
       return;
     }
-
     if (passwords.new !== passwords.confirm) {
       alert('New password and confirm password do not match');
       return;
     }
-
     setPwdLoading(true);
     try {
       await apiClient.put('/profile/change-password', {
@@ -199,9 +333,12 @@ export default function UserProfilePage() {
     }
   };
 
+  // Tabs where Edit Profile button should be hidden
+  const hideEditButton = activeTab === 'reports' || activeTab === 'notifications';
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20 font-sans">
-      
+
       {/* --- HERO SECTION --- */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-4 pt-10">
@@ -245,23 +382,34 @@ export default function UserProfilePage() {
             </div>
 
             <div className="flex gap-3 w-full md:w-auto">
-              <Link href={user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard'} className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all">
+              <Link
+                href={user.role === 'seller' ? '/seller/dashboard' : '/buyer/dashboard'}
+                className="flex-1 md:flex-none flex justify-center items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 shadow-sm transition-all"
+              >
                 <LayoutDashboard className="w-4 h-4" /> Dashboard
               </Link>
             </div>
           </div>
 
-          {/* TABS - Scrollable on Mobile */}
+          {/* TABS */}
           <div className="flex items-center gap-6 md:gap-8 border-b border-gray-200 overflow-x-auto no-scrollbar">
             {availableTabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap ${
-                  activeTab === tab.id ? 'border-[#588157] text-[#588157]' : 'border-transparent text-gray-500 hover:text-gray-800'
+                className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                  activeTab === tab.id
+                    ? 'border-[#588157] text-[#588157]'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
                 {tab.label}
+                {/* Unread badge on Notifications tab */}
+                {tab.id === 'notifications' && unreadCount > 0 && (
+                  <span className="inline-flex items-center justify-center w-4 h-4 text-[9px] font-black bg-red-500 text-white rounded-full">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
             ))}
           </div>
@@ -275,31 +423,48 @@ export default function UserProfilePage() {
               Loading profile details...
             </div>
           )}
-          
+
           {/* CONTENT HEADER */}
           <div className="p-4 md:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-center bg-gray-50/50 gap-4">
             <h2 className="text-lg font-bold text-gray-800">
               {activeTab === 'personal' && 'Personal Information'}
               {activeTab === 'seller' && 'Estate & Business Intelligence'}
               {activeTab === 'buyer' && 'Purchasing & Order History'}
+              {activeTab === 'reports' && 'My Reports'}
+              {activeTab === 'notifications' && 'Notifications'}
             </h2>
             <div className="w-full sm:w-auto">
               {isEditing ? (
                 <div className="flex gap-2 w-full">
-                  <button onClick={() => setIsEditing(false)} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-                  <button onClick={handleSave} disabled={isLoading} className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#4a6d49]">
+                  <button
+                    onClick={() => setIsEditing(false)}
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSave}
+                    disabled={isLoading}
+                    className="flex-1 sm:flex-none px-4 py-2 text-sm font-bold text-white bg-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#4a6d49]"
+                  >
                     {isLoading ? "Saving..." : <><Save className="w-4 h-4" /> Save</>}
                   </button>
                 </div>
               ) : (
-                <button onClick={() => setIsEditing(true)} className="w-full sm:w-auto px-4 py-2 text-sm font-bold text-[#588157] border border-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#F5F7EB] transition-all">
-                  <Edit2 className="w-4 h-4" /> Edit Profile
-                </button>
+                !hideEditButton && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="w-full sm:w-auto px-4 py-2 text-sm font-bold text-[#588157] border border-[#588157] rounded-lg flex items-center justify-center gap-2 hover:bg-[#F5F7EB] transition-all"
+                  >
+                    <Edit2 className="w-4 h-4" /> Edit Profile
+                  </button>
+                )
               )}
             </div>
           </div>
 
           <div className="p-6 md:p-8">
+
             {/* 1. PERSONAL TAB */}
             {activeTab === 'personal' && (
               <div className="space-y-8">
@@ -315,54 +480,57 @@ export default function UserProfilePage() {
                   ].map((field) => (
                     <div key={field.name} className="space-y-1">
                       <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">{field.label}</label>
-                      <input 
-                        name={field.name} 
-                        disabled={!isEditing} 
-                        value={field.val} 
-                        onChange={handleChange} 
-                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] outline-none transition-all disabled:opacity-70" 
+                      <input
+                        name={field.name}
+                        disabled={!isEditing}
+                        value={field.val}
+                        onChange={handleChange}
+                        className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] outline-none transition-all disabled:opacity-70"
                       />
                     </div>
                   ))}
                 </div>
-                
+
                 <div className="pt-8 border-t">
                   <h4 className="text-sm font-bold text-gray-800 mb-4">Security & Access</h4>
                   <div className="flex flex-wrap gap-3">
-                    <button 
-                      onClick={() => setShowChangePassword(!showChangePassword)} 
+                    <button
+                      onClick={() => setShowChangePassword(!showChangePassword)}
                       className={`flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-semibold transition-all ${showChangePassword ? 'bg-gray-800 text-white' : 'bg-white hover:bg-gray-50'}`}
                     >
                       {showChangePassword ? <X className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                       {showChangePassword ? 'Close' : 'Change Password'}
                     </button>
-                    <button onClick={() => alert('Revoked')} className="flex items-center gap-2 px-4 py-2 border border-red-100 text-red-600 rounded-lg text-sm font-semibold bg-red-50 hover:bg-red-100 transition-all">
+                    <button
+                      onClick={() => alert('Revoked')}
+                      className="flex items-center gap-2 px-4 py-2 border border-red-100 text-red-600 rounded-lg text-sm font-semibold bg-red-50 hover:bg-red-100 transition-all"
+                    >
                       <LogOut className="w-4 h-4" /> Revoke Other Sessions
                     </button>
                   </div>
 
                   {showChangePassword && (
                     <div className="mt-4 p-5 border rounded-2xl bg-gray-50 grid grid-cols-1 md:grid-cols-3 gap-4 animate-in fade-in slide-in-from-top-2">
-                      <input 
-                        type="password" 
-                        placeholder="Current Password" 
-                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]" 
-                        onChange={(e) => setPasswords({...passwords, current: e.target.value})}
+                      <input
+                        type="password"
+                        placeholder="Current Password"
+                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]"
+                        onChange={(e) => setPasswords({ ...passwords, current: e.target.value })}
                       />
-                      <input 
-                        type="password" 
-                        placeholder="New Password" 
-                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]" 
-                        onChange={(e) => setPasswords({...passwords, new: e.target.value})}
+                      <input
+                        type="password"
+                        placeholder="New Password"
+                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]"
+                        onChange={(e) => setPasswords({ ...passwords, new: e.target.value })}
                       />
-                      <input 
-                        type="password" 
-                        placeholder="Confirm Password" 
-                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]" 
-                        onChange={(e) => setPasswords({...passwords, confirm: e.target.value})}
+                      <input
+                        type="password"
+                        placeholder="Confirm Password"
+                        className="p-2.5 border rounded-lg bg-white outline-none focus:ring-2 focus:ring-[#588157]"
+                        onChange={(e) => setPasswords({ ...passwords, confirm: e.target.value })}
                       />
-                      <button 
-                        onClick={handlePasswordUpdate} 
+                      <button
+                        onClick={handlePasswordUpdate}
                         disabled={pwdLoading}
                         className="bg-[#588157] text-white rounded-lg font-bold hover:bg-[#4a6d49] transition-colors disabled:bg-gray-400 md:col-span-3"
                       >
@@ -403,7 +571,7 @@ export default function UserProfilePage() {
                       </h3>
                       <span className="text-[10px] font-bold text-[#588157] bg-[#588157]/10 px-2 py-1 rounded-md">LAST 7 DAYS</span>
                     </div>
-                    
+
                     <div className="relative h-48 flex items-end justify-between gap-2 px-1">
                       <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-[0.03] px-1">
                         {[1, 2, 3, 4].map((i) => <div key={i} className="w-full border-t border-black" />)}
@@ -431,7 +599,9 @@ export default function UserProfilePage() {
                   {/* PAYOUT SECTION */}
                   <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl flex flex-col justify-between">
                     <div>
-                      <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-4"><Wallet className="w-4 h-4 text-[#588157]" /> Payout Details</h3>
+                      <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-4">
+                        <Wallet className="w-4 h-4 text-[#588157]" /> Payout Details
+                      </h3>
                       <div className="space-y-3">
                         <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
                           <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Settlement Account</p>
@@ -482,19 +652,25 @@ export default function UserProfilePage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><MapPin className="w-4 h-4 text-[#588157]" /> Shipping Address</h3>
+                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3">
+                      <MapPin className="w-4 h-4 text-[#588157]" /> Shipping Address
+                    </h3>
                     <p className="text-sm text-gray-600 leading-relaxed">{user.shipping_address || 'Not set'}</p>
                     <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Change Address</button>
                   </div>
                   <div className="p-5 border border-gray-200 rounded-2xl bg-white shadow-sm">
-                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3"><CreditCard className="w-4 h-4 text-[#588157]" /> Payment Method</h3>
+                    <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-3">
+                      <CreditCard className="w-4 h-4 text-[#588157]" /> Payment Method
+                    </h3>
                     <p className="text-sm text-gray-600">{user.payment_method || 'Not set'}</p>
                     <button className="mt-4 text-xs font-bold text-[#588157] hover:underline uppercase tracking-tight">Manage Cards</button>
                   </div>
                 </div>
 
                 <div>
-                  <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-4"><History className="w-5 h-5 text-[#588157]" /> Recent History</h3>
+                  <h3 className="flex items-center gap-2 font-bold text-gray-800 mb-4">
+                    <History className="w-5 h-5 text-[#588157]" /> Recent History
+                  </h3>
                   <div className="space-y-3">
                     {[
                       { id: 'ORD-102', item: 'Silver Tips - Lot #12', date: 'Feb 05, 2024', status: 'Delivered', color: 'bg-green-100 text-green-700', price: '$450.00' },
@@ -503,7 +679,9 @@ export default function UserProfilePage() {
                     ].map((order) => (
                       <div key={order.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-gray-200 rounded-xl hover:border-[#588157] transition-all bg-white group cursor-pointer gap-4">
                         <div className="flex items-center gap-4">
-                          <div className={`p-2.5 rounded-lg ${order.color.split(' ')[0]}`}><Truck className="w-5 h-5" /></div>
+                          <div className={`p-2.5 rounded-lg ${order.color.split(' ')[0]}`}>
+                            <Truck className="w-5 h-5" />
+                          </div>
                           <div>
                             <p className="font-bold text-gray-800 group-hover:text-[#588157] transition-colors">{order.item}</p>
                             <p className="text-xs text-gray-400 font-medium">{order.date} • ID: {order.id}</p>
@@ -522,6 +700,222 @@ export default function UserProfilePage() {
                 </div>
               </div>
             )}
+
+            {/* 4. REPORTS TAB */}
+            {activeTab === 'reports' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-500">Track and manage your submitted reports.</p>
+                  {/* Sub-tab switcher */}
+                  <div className="flex bg-gray-100 rounded-xl p-1 gap-1">
+                    <button
+                      onClick={() => setReportSubTab('history')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        reportSubTab === 'history' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      History
+                    </button>
+                    <button
+                      onClick={() => setReportSubTab('submit')}
+                      className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+                        reportSubTab === 'submit' ? 'bg-white text-[#588157] shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      + New Report
+                    </button>
+                  </div>
+                </div>
+
+                {/* Submit Report Form */}
+                {reportSubTab === 'submit' && (
+                  <div className="p-6 bg-gray-50 border border-gray-200 rounded-2xl space-y-4">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Violator ID <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter violator ID"
+                        value={reportForm.violatorId}
+                        onChange={(e) => setReportForm(prev => ({ ...prev, violatorId: e.target.value }))}
+                        className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] text-sm transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Auction ID <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="Enter Auction ID"
+                        value={reportForm.auctionId}
+                        onChange={(e) => setReportForm(prev => ({ ...prev, auctionId: e.target.value }))}
+                        className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] text-sm transition-all"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Violation Type <span className="text-red-400">*</span>
+                      </label>
+                      <select
+                        value={reportForm.violationType}
+                        onChange={(e) => setReportForm(prev => ({ ...prev, violationType: e.target.value }))}
+                        className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] text-sm text-gray-800 transition-all"
+                      >
+                        <option value="Fraud">Fraud</option>
+                        <option value="Scam">Scam</option>
+                        <option value="Harassment">Harassment</option>
+                        <option value="Fake Product">Fake Product</option>
+                        <option value="Payment Issue">Payment Issue</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                        Reason <span className="text-red-400">*</span>
+                      </label>
+                      <textarea
+                        rows={4}
+                        placeholder="Explain the violation reason..."
+                        value={reportForm.reason}
+                        onChange={(e) => setReportForm(prev => ({ ...prev, reason: e.target.value }))}
+                        className="w-full p-3 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#588157]/20 focus:border-[#588157] text-sm resize-none transition-all"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleReportSubmit}
+                      disabled={reportSubmitting}
+                      className="w-full py-3 bg-[#588157] text-white font-bold rounded-xl flex items-center justify-center gap-2 hover:bg-[#4a6d49] disabled:bg-gray-300 transition-all"
+                    >
+                      {reportSubmitting ? 'Submitting...' : <><Send className="w-4 h-4" /> Submit Report</>}
+                    </button>
+                  </div>
+                )}
+
+                {/* Report History */}
+                {reportSubTab === 'history' && (
+                  <div className="space-y-3">
+                    {reports.length === 0 && (
+                      <div className="py-12 text-center text-gray-400">
+                        <FileText className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-sm font-semibold">No reports submitted yet</p>
+                      </div>
+                    )}
+                    {reports.map((report) => (
+                      <div key={report.id} className="p-4 border border-gray-200 rounded-xl bg-white hover:border-[#588157] transition-all group cursor-pointer">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="font-bold text-gray-800 group-hover:text-[#588157] transition-colors text-sm">
+                                {report.subject}
+                              </p>
+                              <span className={`inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full ${statusStyle[report.status]}`}>
+                                {statusIcon[report.status]} {report.status}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-gray-400 mt-0.5 font-medium">
+                              {report.id} · {report.category} · {report.date}
+                            </p>
+                            <p className="text-xs text-gray-500 mt-2 leading-relaxed line-clamp-2">{report.description}</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#588157] flex-shrink-0 mt-1 transition-colors" />
+                        </div>
+                      </div>
+                    ))}
+                    <button
+                      onClick={() => setReportSubTab('submit')}
+                      className="w-full mt-2 py-4 border-2 border-dashed border-gray-200 rounded-xl text-sm font-bold text-gray-400 hover:bg-gray-50 hover:border-[#588157] hover:text-[#588157] transition-all uppercase tracking-widest"
+                    >
+                      + Submit a New Report
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* 5. NOTIFICATIONS TAB */}
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="text-sm text-gray-500">
+                    {unreadCount > 0
+                      ? <span className="font-semibold text-gray-700">{unreadCount} unread</span>
+                      : 'All caught up!'}
+                    {unreadCount > 0 && ' — click a notification to mark it as read.'}
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => setNotifFilter(notifFilter === 'all' ? 'unread' : 'all')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-gray-200 rounded-lg bg-white hover:bg-gray-50 transition-all"
+                    >
+                      <Filter className="w-3 h-3" />
+                      {notifFilter === 'all' ? 'Show Unread' : 'Show All'}
+                    </button>
+                    {unreadCount > 0 && (
+                      <button
+                        onClick={handleMarkAllRead}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-[#588157] text-[#588157] rounded-lg bg-white hover:bg-[#F5F7EB] transition-all"
+                      >
+                        <CheckCircle2 className="w-3 h-3" /> Mark All Read
+                      </button>
+                    )}
+                    {notifications.length > 0 && (
+                      <button
+                        onClick={handleClearAll}
+                        className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold border border-red-100 text-red-500 rounded-lg bg-red-50 hover:bg-red-100 transition-all"
+                      >
+                        <Trash2 className="w-3 h-3" /> Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Notification list */}
+                <div className="space-y-2">
+                  {notifications.length === 0 && (
+                    <div className="py-12 text-center text-gray-400">
+                      <BellOff className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                      <p className="text-sm font-semibold">No notifications</p>
+                    </div>
+                  )}
+                  {notifications
+                    .filter(n => notifFilter === 'all' || !n.read)
+                    .map((notif) => (
+                      <div
+                        key={notif.id}
+                        onClick={() => handleMarkRead(notif.id)}
+                        className={`flex items-start gap-4 p-4 rounded-xl border cursor-pointer transition-all group ${
+                          !notif.read
+                            ? 'bg-[#F5F7EB] border-[#588157]/30 hover:border-[#588157]'
+                            : 'bg-white border-gray-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className={`mt-0.5 flex-shrink-0 p-2 rounded-lg ${notifTypeStyle[notif.type]}`}>
+                          <Bell className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className={`text-sm font-bold ${!notif.read ? 'text-gray-900' : 'text-gray-600'}`}>
+                              {notif.title}
+                            </p>
+                            <span className="text-[10px] text-gray-400 whitespace-nowrap font-medium">{notif.time}</span>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5 leading-relaxed">{notif.message}</p>
+                        </div>
+                        {!notif.read && (
+                          <div className="flex-shrink-0 w-2 h-2 mt-2 rounded-full bg-[#588157]" />
+                        )}
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+
           </div>
         </div>
       </div>
