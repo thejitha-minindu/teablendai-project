@@ -140,7 +140,7 @@ export function AuctionCard({ cardType, auction, onWatchlistChange }: AuctionCar
             />
             <Button
               variant="outline"
-              style={{ transition: "background 0.2s" }}
+              style={{ transition: "background 0.2s", fontSize: "0.7rem" }}
               className="hover:text-white hover:cursor-pointer flex-1 min-w-[120px]"
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor = "var(--color3)")
