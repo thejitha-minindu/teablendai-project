@@ -69,3 +69,22 @@ class BidRepository(BidRepositoryInterface):
             bid_model.buyer_name = user_name
             return bid_model
         return None
+
+    def list_bids_by_auction_with_user_info(self, auction_id: str):
+        """List bids with full user info"""
+        results = self.db.query(BidModel, User.first_name, User.last_name, User.user_name).outerjoin(
+            User, BidModel.buyer_id == User.user_id
+        ).filter(
+            BidModel.auction_id == auction_id
+        ).all()
+        
+        bids = []
+        for bid_model, first_name, last_name, user_name in results:
+            first_name = first_name or ""
+            last_name = last_name or ""
+            real_name = f"{first_name} {last_name}".strip()
+            bid_model.buyer_name = real_name if real_name else user_name
+            bids.append(bid_model)
+        
+        logger.debug(f"Found {len(bids)} bids with user info")
+        return bids

@@ -82,19 +82,8 @@ class BidService:
         return self.bid_repo.list_bids_by_auction(auction_id=auction_id)
     
     def list_bids_by_auction_with_names(self, auction_id: str):
-        """Get bids for an auction and enrich with buyer names"""
-        bids = self.bid_repo.list_bids_by_auction(auction_id=auction_id)
-        
-        # Enrich bids with buyer names
-        for bid in bids:
-            user = self.db.query(User).filter(User.user_id == bid.buyer_id).first()
-            if user:
-                first_name = user.first_name or ""
-                last_name = user.last_name or ""
-                real_name = f"{first_name} {last_name}".strip()
-                bid.buyer_name = real_name if real_name else user.user_name
-        
-        return bids
+        """Get bids for an auction with buyer names"""
+        return self.bid_repo.list_bids_by_auction_with_user_info(auction_id=auction_id)
     
     def list_bids_by_user_auction(self, user_id: str, auction_id: str):
         """List bids by user for a specific auction"""
