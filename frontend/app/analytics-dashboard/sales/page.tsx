@@ -1,77 +1,71 @@
 "use client";
 
 import {
-  BarChart, Bar, Line, 
+  BarChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Area
 } from 'recharts';
-import { TrendingUp, TrendingDown } from 'lucide-react';
-
-// Dummy Data
-const auctionPerformance = [
-  { auction: 'Colombo A1', basePrice: 1100, closingPrice: 1280, volume: 12500, bidCount: 45 },
-  { auction: 'Kandy B2', basePrice: 1200, closingPrice: 1350, volume: 9800, bidCount: 38 },
-  { auction: 'Galle C1', basePrice: 980, closingPrice: 1120, volume: 8600, bidCount: 32 },
-  { auction: 'Nuwara D3', basePrice: 1300, closingPrice: 1480, volume: 11200, bidCount: 52 },
-  { auction: 'Uva E2', basePrice: 1150, closingPrice: 1290, volume: 7900, bidCount: 29 },
-];
-
-const gradeWisePrices = [
-  { grade: 'BOP', minBid: 1050, avgBid: 1220, maxBid: 1420, soldVolume: 14200 },
-  { grade: 'BOPF', minBid: 980, avgBid: 1140, maxBid: 1320, soldVolume: 11600 },
-  { grade: 'Dust', minBid: 750, avgBid: 910, maxBid: 1080, soldVolume: 8900 },
-  { grade: 'OP', minBid: 1200, avgBid: 1410, maxBid: 1650, soldVolume: 5200 },
-  { grade: 'Pekoe', minBid: 1350, avgBid: 1580, maxBid: 1820, soldVolume: 2450 },
-];
-
-const sellingTrends = [
-  { month: 'Jan', revenue: 16.2, volume: 6800, avgPrice: 1200 },
-  { month: 'Feb', revenue: 17.8, volume: 7200, avgPrice: 1230 },
-  { month: 'Mar', revenue: 18.5, volume: 7500, avgPrice: 1265 },
-  { month: 'Apr', revenue: 19.2, volume: 7800, avgPrice: 1285 },
-  { month: 'May', revenue: 20.1, volume: 8100, avgPrice: 1310 },
-  { month: 'Jun', revenue: 19.6, volume: 7900, avgPrice: 1295 },
-];
-
-const sellerPerformance = [
-  { seller: 'Premium Exports Ltd', totalSales: 15.8, avgMargin: 24.5, auctionsWon: 28 },
-  { seller: 'Ceylon Tea Global', totalSales: 13.2, avgMargin: 22.1, auctionsWon: 24 },
-  { seller: 'Island Tea Co.', totalSales: 11.6, avgMargin: 20.8, auctionsWon: 19 },
-  { seller: 'Heritage Blends', totalSales: 9.4, avgMargin: 23.2, auctionsWon: 16 },
-  { seller: 'Golden Leaf Traders', totalSales: 8.1, avgMargin: 21.5, auctionsWon: 14 },
-];
-
-const bidVolumeAnalysis = [
-  { auction: 'Colombo A1', totalBids: 456, avgBidIncrement: 45, winningBids: 12 },
-  { auction: 'Kandy B2', totalBids: 392, avgBidIncrement: 52, winningBids: 10 },
-  { auction: 'Galle C1', totalBids: 328, avgBidIncrement: 38, winningBids: 9 },
-  { auction: 'Nuwara D3', totalBids: 512, avgBidIncrement: 58, winningBids: 14 },
-  { auction: 'Uva E2', totalBids: 298, avgBidIncrement: 42, winningBids: 8 },
-];
+import { useAnalyticsSales } from '@/hooks/use-analytics-sales';
 
 export default function SalesAuctionAnalytics() {
+  const { data, loading, error, isStale, lastUpdated } = useAnalyticsSales();
+
+  if (loading && !data) {
+    return <div className="p-6 text-gray-500">Loading sales analytics...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-6 text-red-600">Failed to load sales analytics: {error ?? 'Unknown error'}</div>;
+  }
+
+  const summary = data.summary;
+  const auctionPerformance = data.auctionPerformance;
+  const gradeWisePrices = data.gradeWisePrices;
+  const sellingTrends = data.sellingTrends;
+  const sellerPerformance = data.sellerPerformance;
+  const bidVolumeAnalysis = data.bidVolumeAnalysis;
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Sales & Auction Performance</h1>
           <p className="text-gray-600 mt-1">Monitor auction results and selling trends</p>
         </div>
+        <div className="text-xs text-right text-gray-500">
+          <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
+          {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+        </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <MetricCard title="Total Revenue" value="91.4M LKR" change="+15.2%" isPositive />
-        <MetricCard title="Avg Closing Price" value="1,304 LKR/kg" change="+3.8%" isPositive />
-        <MetricCard title="Auctions Held" value="47" change="+12" isPositive />
-        <MetricCard title="Total Bids" value="1,986" change="+8.5%" isPositive />
-        <MetricCard title="Avg Time to Sell" value="4.4 days" change="-0.6" isPositive />
+        <MetricCard
+          title="Total Revenue"
+          value={`${(summary.totalRevenueLkr / 1000000)}M LKR`}
+          subtitle="Closed auction revenue"
+        />
+        <MetricCard
+          title="Avg Closing Price"
+          value={`${summary.averageClosingPriceLkrPerKg.toLocaleString()} LKR/kg`}
+          subtitle="Across sold volume"
+        />
+        <MetricCard
+          title="Auctions Held"
+          value={summary.auctionsHeld.toLocaleString()}
+          subtitle="History status auctions"
+        />
+        <MetricCard
+          title="Total Bids"
+          value={summary.totalBids.toLocaleString()}
+          subtitle="Bids on sold auctions"
+        />
+        <MetricCard
+          title="Avg Time to Sell"
+          value={`${summary.averageTimeToSellDays.toFixed(2)} days`}
+          subtitle="From configured duration"
+        />
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Auction Performance */}
         <ChartCard title="Auction Performance: Base vs Closing Price">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={auctionPerformance}>
@@ -86,7 +80,6 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Grade-wise Price Range */}
         <ChartCard title="Price Range by Tea Grade">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={gradeWisePrices}>
@@ -102,7 +95,6 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Sales Trends */}
         <ChartCard title="Monthly Sales Revenue & Volume">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={sellingTrends}>
@@ -112,19 +104,19 @@ export default function SalesAuctionAnalytics() {
               <YAxis yAxisId="right" orientation="right" />
               <Tooltip />
               <Legend />
-              <Area 
+              <Area
                 yAxisId="left"
-                type="monotone" 
-                dataKey="revenue" 
-                fill="#0088FE" 
-                stroke="#0088FE" 
+                type="monotone"
+                dataKey="revenue"
+                fill="#0088FE"
+                stroke="#0088FE"
                 name="Revenue (M LKR)"
               />
-              <Line 
+              <Line
                 yAxisId="right"
-                type="monotone" 
-                dataKey="volume" 
-                stroke="#FF8042" 
+                type="monotone"
+                dataKey="volume"
+                stroke="#FF8042"
                 strokeWidth={2}
                 name="Volume (kg)"
               />
@@ -132,7 +124,6 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Seller Performance */}
         <ChartCard title="Top Sellers by Revenue">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={sellerPerformance} layout="vertical">
@@ -146,7 +137,6 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Bid Volume Analysis */}
         <ChartCard title="Bid Activity by Auction">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={bidVolumeAnalysis}>
@@ -162,9 +152,7 @@ export default function SalesAuctionAnalytics() {
         </ChartCard>
       </div>
 
-      {/* Detailed Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Grade Performance Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Grade-wise Sales Performance</h3>
           <div className="overflow-x-auto">
@@ -182,9 +170,9 @@ export default function SalesAuctionAnalytics() {
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-2 font-medium">{item.grade}</td>
                     <td className="text-right py-3 px-2">{item.soldVolume.toLocaleString()}</td>
-                    <td className="text-right py-3 px-2">{item.avgBid.toLocaleString()} LKR</td>
+                    <td className="text-right py-3 px-2">{item.avgBid.toLocaleString()} LKR/kg</td>
                     <td className="text-right py-3 px-2 text-green-600 font-medium">
-                      {item.maxBid.toLocaleString()} LKR
+                      {item.maxBid.toLocaleString()} LKR/kg
                     </td>
                   </tr>
                 ))}
@@ -193,7 +181,6 @@ export default function SalesAuctionAnalytics() {
           </div>
         </div>
 
-        {/* Seller Margins Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Seller Margin Analysis</h3>
           <div className="overflow-x-auto">
@@ -211,7 +198,7 @@ export default function SalesAuctionAnalytics() {
                     <td className="py-3 px-2 font-medium">{item.seller}</td>
                     <td className="text-right py-3 px-2">{item.auctionsWon}</td>
                     <td className="text-right py-3 px-2">
-                      <span className="text-green-600 font-medium">{item.avgMargin}%</span>
+                      <span className="text-green-600 font-medium">{item.avgMargin.toFixed(2)}%</span>
                     </td>
                   </tr>
                 ))}
@@ -224,20 +211,16 @@ export default function SalesAuctionAnalytics() {
   );
 }
 
-function MetricCard({ title, value, change, isPositive }: { 
-  title: string; 
-  value: string; 
-  change: string;
-  isPositive: boolean;
+function MetricCard({ title, value, subtitle }: {
+  title: string;
+  value: string;
+  subtitle: string;
 }) {
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="text-gray-600 text-sm font-medium">{title}</h3>
       <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
-      <div className={`flex items-center gap-1 mt-2 text-sm ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-        {isPositive ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-        <span>{change}</span>
-      </div>
+      <p className="text-gray-500 text-sm mt-1">{subtitle}</p>
     </div>
   );
 }

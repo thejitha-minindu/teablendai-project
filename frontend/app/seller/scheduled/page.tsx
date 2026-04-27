@@ -19,51 +19,8 @@ interface AuctionAPIResponse {
   image_url?: string;
 }
 
-const parseBackendDateTime = (dateString: string) => {
-  if (!dateString) return null;
-
-  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
-  }
-
-  const normalized = dateString.replace(' ', 'T');
-  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
-  const timePart = timePartRaw.split('.')[0];
-
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
-
-  return new Date(
-    year,
-    (month || 1) - 1,
-    day || 1,
-    Number(hours),
-    Number(minutes),
-    Number(seconds)
-  );
-};
-
-// Helper to calculate time remaining until start
-const calculateTimeUntilStart = (startTime: string) => {
-  const startDate = parseBackendDateTime(startTime);
-  if (!startDate || Number.isNaN(startDate.getTime())) return "Starting...";
-
-  const start = startDate.getTime();
-  const now = new Date().getTime();
-  const diff = start - now;
-
-  if (diff <= 0) return "Starting...";
-
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
-  }
-  return `${hours}h ${minutes}m ${seconds}s`;
-};
+import { parseBackendDateTime, calculateTimeUntilStart } from "@/utils/dateFormatter";
+import { getUserFromToken } from "@/utils/auth";
 
 export default function ScheduledAuctionsPage() {
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
@@ -75,10 +32,11 @@ export default function ScheduledAuctionsPage() {
   const fetchAuctions = async () => {
     try {
       // Decode the token to get YOUR specific user ID
-      const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
-      if (!token) return;
-      
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = getUserFromToken();
+      if (!payload || !payload.id) {
+        setLoading(false);
+        return;
+      }
       const myUserId = payload.id; 
 
       // Use apiClient and attach the seller_id to the URL

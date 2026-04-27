@@ -12,13 +12,6 @@ import { useAnalyticsOverview } from "@/hooks/use-analytics-overview";
 
 type Trending = 'up' | 'down' | 'neutral';
 
-interface KPIItem {
-  value: number;
-  unit: string;
-  trend: number;
-  trending: Trending;
-}
-
 export default function AnalyticsOverview() {
   const { data, loading, error, isStale, lastUpdated } = useAnalyticsOverview();
 
@@ -30,7 +23,7 @@ export default function AnalyticsOverview() {
     return <div className="p-6 text-red-600">Failed to load dashboard: {error ?? "Unknown error"}</div>;
   }
 
-  const kpiData: Record<string, KPIItem> = data.kpis;
+  const kpiData = data.kpis;
   const revenueByMonth = data.revenueByMonth;
   const teaGradeDistribution = data.teaGradeDistribution;
   const topBlends = data.topBlends;
@@ -50,8 +43,8 @@ export default function AnalyticsOverview() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <KPICard title="Total Tea Purchased" value={kpiData.totalPurchased.value.toLocaleString()} unit="kg" trend={kpiData.totalPurchased.trend} trending={kpiData.totalPurchased.trending} icon={<ShoppingCart className="text-blue-600" />} color="blue" />
-        <KPICard title="Total Tea Sold" value={kpiData.totalSold.value.toLocaleString()} unit="kg" trend={kpiData.totalSold.trend} trending={kpiData.totalSold.trending} icon={<Package className="text-green-600" />} color="green" />
+        <KPICard title="Total Tea Auction Volume (Participated)" value={kpiData.totalPurchased.value.toLocaleString()} unit="kg" trend={kpiData.totalPurchased.trend} trending={kpiData.totalPurchased.trending} icon={<ShoppingCart className="text-blue-600" />} color="blue" />
+        <KPICard title="Total Tea Sold Volume" value={kpiData.totalSold.value.toLocaleString()} unit="kg" trend={kpiData.totalSold.trend} trending={kpiData.totalSold.trending} icon={<Package className="text-green-600" />} color="green" />
         <KPICard title="Total Revenue" value={`${(kpiData.totalRevenue.value / 1000000)}M`} unit="LKR" trend={kpiData.totalRevenue.trend} trending={kpiData.totalRevenue.trending} icon={<DollarSign className="text-purple-600" />} color="purple" />
         <KPICard title="Avg Auction Price" value={kpiData.avgAuctionPrice.value.toLocaleString()} unit="LKR/kg" trend={kpiData.avgAuctionPrice.trend} trending={kpiData.avgAuctionPrice.trending} icon={<Award className="text-orange-600" />} color="orange" />
         <KPICard title="Profit Margin" value={kpiData.profitMargin.value.toFixed(2)} unit="%" trend={kpiData.profitMargin.trend} trending={kpiData.profitMargin.trending} icon={<TrendingUp className="text-indigo-600" />} color="indigo" />
