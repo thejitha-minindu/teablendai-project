@@ -8,6 +8,7 @@ from src.application.use_cases.buyer.bid_placement_use_case import BidPlacementU
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 from src.domain.models.auction_status import AuctionStatus
 from src.domain.models.user import User
+from src.domain.constants.auction_constants import AuctionTimingConstants
 import logging
 
 logger = logging.getLogger(__name__)
@@ -30,49 +31,43 @@ class BidService:
         bid = use_case.execute(auction_id, buyer_id, bid_amount, buyer_name)
         return bid
     
-    def get_auction_state(self, auction_id: str) -> dict:
-        """Get current auction state for timer sync"""
-        auction = self.auction_repo.get_auction_by_id(auction_id)
-        if not auction:
-            raise ValueError(f"Auction {auction_id} not found")
+    # def get_auction_state(self, auction_id: str) -> dict:
+    #     """Get current auction state for timer sync"""
+    #     auction = self.auction_repo.get_auction_by_id(auction_id)
+    #     if not auction:
+    #         raise ValueError(f"Auction {auction_id} not found")
         
-        current_time = datetime.now(timezone.utc)
-        remaining_seconds = 0
+    #     current_time = datetime.now(timezone.utc)
+    #     remaining_seconds = 0
         
-        if auction.status == AuctionStatus.LIVE.value:
-            remaining = AuctionTimingService.get_remaining_time(auction, current_time)
-            remaining_seconds = remaining.total_seconds()
+    #     if auction.status == AuctionStatus.LIVE.value:
+    #         remaining = AuctionTimingService.get_remaining_time(auction, current_time)
+    #         remaining_seconds = remaining.total_seconds()
         
-        # Get highest bid
-        highest_bid = self.bid_repo.get_highest_bid_for_auction(auction_id)
+    #     highest_bid = self.bid_repo.get_highest_bid_for_auction(auction_id)
+    #     bid_count = len(auction.bids) if auction.bids else 0
+    #     last_bid_time = highest_bid.bid_time if highest_bid else None
         
-        # Get bid count
-        bid_count = len(auction.bids) if auction.bids else 0
+    #     is_won = False
+    #     grace_period_remaining = 0
+    #     if auction.buyer and last_bid_time:
+    #         time_since_last_bid = (current_time - last_bid_time).total_seconds()
+    #         if time_since_last_bid >= AuctionTimingConstants.WAIT_BEFORE_WIN.total_seconds():
+    #             is_won = True
+    #             grace_end = last_bid_time + AuctionTimingConstants.GRACE_PERIOD
+    #             grace_period_remaining = max(0, (grace_end - current_time).total_seconds())
         
-        # Get last bid time
-        last_bid_time = highest_bid.bid_time if highest_bid else None
-        
-        # Determine if won (buyer is set + 10s passed since last bid)
-        is_won = False
-        grace_period_remaining = 0
-        if auction.buyer and last_bid_time:
-            time_since_last_bid = (current_time - last_bid_time).total_seconds()
-            if time_since_last_bid >= 10:  # WAIT_BEFORE_WIN
-                is_won = True
-                grace_end = last_bid_time + timedelta(seconds=40)  # GRACE_PERIOD
-                grace_period_remaining = max(0, (grace_end - current_time).total_seconds())
-        
-        return {
-            "auction_id": str(auction.auction_id),
-            "status": "Won" if is_won else auction.status,
-            "remaining_seconds": grace_period_remaining if is_won else remaining_seconds,
-            "bid_count": bid_count,
-            "highest_bid": highest_bid.bid_amount if highest_bid else auction.base_price,
-            "highest_bidder": str(highest_bid.buyer_id) if highest_bid else None,
-            "last_bid_time": last_bid_time.isoformat() if last_bid_time else None,
-            "final_price": auction.sold_price,
-            "winner": str(auction.buyer) if auction.buyer else None
-        }
+    #     return {
+    #         "auction_id": str(auction.auction_id),
+    #         "status": "Won" if is_won else auction.status,
+    #         "remaining_seconds": grace_period_remaining if is_won else remaining_seconds,
+    #         "bid_count": bid_count,
+    #         "highest_bid": highest_bid.bid_amount if highest_bid else auction.base_price,
+    #         "highest_bidder": str(highest_bid.buyer_id) if highest_bid else None,
+    #         "last_bid_time": last_bid_time.isoformat() if last_bid_time else None,
+    #         "final_price": auction.sold_price,
+    #         "winner": str(auction.buyer) if auction.buyer else None
+    #     }
     
     def get_bid(self, bid_id: str):
         """Get bid details"""

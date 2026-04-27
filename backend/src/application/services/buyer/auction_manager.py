@@ -114,7 +114,7 @@ class AuctionManager:
             ).order_by(Bid.bid_time.desc()).first()
             
             if last_bid:
-                # Wait 40 seconds (grace period) after last bid
+                # Wait 40 seconds after last bid
                 is_grace_expired = AuctionTimingService.is_grace_period_expired(
                     last_bid.bid_time, 
                     current_time
