@@ -9,30 +9,7 @@ import { toast } from 'sonner';
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
-
-const parseBackendDateTime = (dateString: string) => {
-  if (!dateString) return null;
-
-  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
-  }
-
-  const normalized = dateString.replace(' ', 'T');
-  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
-  const timePart = timePartRaw.split('.')[0];
-
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
-
-  return new Date(
-    year,
-    (month || 1) - 1,
-    day || 1,
-    Number(hours),
-    Number(minutes),
-    Number(seconds)
-  );
-};
+import { parseBackendDateTime, calculateLiveCountdown, durationToMinutes } from "@/utils/dateFormatter";
 
 const formatDateTimeLocalValue = (date: Date) => {
   const pad = (num: number) => String(num).padStart(2, '0');
@@ -62,11 +39,6 @@ const formatStartTimeForBackend = (localDateTime: string) => {
   const offsetSign = offset <= 0 ? '+' : '-';
 
   return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offsetSign}${offsetHours}:${offsetMinutes}`;
-};
-
-const durationToMinutes = (durationValue: number) => {
-  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
-  return durationValue > 24 ? durationValue : durationValue * 60;
 };
 
 const durationToHoursForInput = (durationValue: number) => {
@@ -105,26 +77,6 @@ const formatTime = (isoString: string) => {
   const date = parseBackendDateTime(isoString);
   if (!date || Number.isNaN(date.getTime())) return 'N/A';
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-};
-
-// 3. Helper for Live Countdown
-const calculateLiveCountdown = (startTime: string, durationValue: number) => {
-  const startDate = parseBackendDateTime(startTime);
-  if (!startDate || Number.isNaN(startDate.getTime())) return "00:00:00";
-
-  const start = startDate.getTime();
-  const durationMinutes = durationToMinutes(durationValue);
-  const end = start + (durationMinutes * 60 * 1000);
-  const now = new Date().getTime();
-  const diff = end - now;
-
-  if (diff <= 0) return "00:00:00";
-
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 };
 
 // ==========================================

@@ -24,16 +24,13 @@ from src.presentation.routers.v1 import (
     auth,
     profile,
 )
-from src.presentation.routers.v1.admin import admin_auction
-from src.presentation.routers.v1.admin import admin_csv
-from src.presentation.routers.v1.admin import admin_dashboard
-from src.presentation.routers.v1.admin import admin_users
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
 from src.infrastructure.database.base import Base, engine
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
+from src.presentation.routers.v1.dashboard import analytics_dashboard
 from src.application.services.buyer.auction_manager import auction_manager
 from src.presentation.routers.v1.buyer import live_auction_socket
 
@@ -166,7 +163,6 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
-#app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
 # Admin routers
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
@@ -185,6 +181,9 @@ app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"]
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
 app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
+
+# Dashboard routers
+app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):

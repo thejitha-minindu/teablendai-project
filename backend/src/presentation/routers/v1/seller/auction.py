@@ -33,6 +33,23 @@ def upload_auction_image(
             detail="Authentication required to upload images."
         )
         
+    # Validate file type
+    if file.content_type not in ["image/jpeg", "image/png", "image/webp"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Only JPEG, PNG, and WEBP are allowed."
+        )
+    
+    # Validate file size (5MB max)
+    file.file.seek(0, 2)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size too large. Maximum allowed is 5MB."
+        )
+        
     try:
         # Cloudinary uses CLOUDINARY_URL in the .env out of the box
         result = cloudinary.uploader.upload(file.file)

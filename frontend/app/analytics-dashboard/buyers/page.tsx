@@ -5,91 +5,59 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { Users, TrendingUp } from 'lucide-react';
-
-// Dummy Data
-const buyerParticipation = [
-  { buyer: 'Global Tea Imports', frequency: 38, totalBids: 456, wonAuctions: 24 },
-  { buyer: 'European Tea Co.', frequency: 32, totalBids: 385, wonAuctions: 18 },
-  { buyer: 'Asia Premium', frequency: 28, totalBids: 342, wonAuctions: 16 },
-  { buyer: 'Middle East Traders', frequency: 24, totalBids: 298, wonAuctions: 12 },
-  { buyer: 'Americas Tea House', frequency: 22, totalBids: 267, wonAuctions: 11 },
-];
-
-const mostActiveBuyers = [
-  { buyer: 'Global Tea Imports', volume: 8600, spend: 11.2, avgBid: 1302 },
-  { buyer: 'European Tea Co.', volume: 7200, spend: 9.5, avgBid: 1319 },
-  { buyer: 'Asia Premium', volume: 6800, spend: 8.9, avgBid: 1309 },
-  { buyer: 'Middle East Traders', volume: 5400, spend: 7.1, avgBid: 1315 },
-  { buyer: 'Americas Tea House', volume: 4900, spend: 6.4, avgBid: 1306 },
-];
-
-const bidIncrementAnalysis = [
-  { buyer: 'Global Tea Imports', avgIncrement: 52, maxIncrement: 125, bidStyle: 'Aggressive' },
-  { buyer: 'European Tea Co.', avgIncrement: 45, maxIncrement: 98, bidStyle: 'Moderate' },
-  { buyer: 'Asia Premium', avgIncrement: 38, maxIncrement: 82, bidStyle: 'Conservative' },
-  { buyer: 'Middle East Traders', avgIncrement: 48, maxIncrement: 110, bidStyle: 'Aggressive' },
-  { buyer: 'Americas Tea House', avgIncrement: 42, maxIncrement: 95, bidStyle: 'Moderate' },
-];
-
-const demandByGrade = [
-  { grade: 'BOP', globalTea: 3200, europeanTea: 2800, asiaPremium: 2600, middleEast: 2100, americas: 1900 },
-  { grade: 'BOPF', globalTea: 2600, europeanTea: 2200, asiaPremium: 2100, middleEast: 1700, americas: 1500 },
-  { grade: 'Dust', globalTea: 1800, europeanTea: 1500, asiaPremium: 1400, middleEast: 1100, americas: 900 },
-  { grade: 'OP', globalTea: 800, europeanTea: 600, asiaPremium: 550, middleEast: 400, americas: 350 },
-  { grade: 'Pekoe', globalTea: 200, europeanTea: 100, asiaPremium: 150, middleEast: 100, americas: 250 },
-];
-
-const repeatBuyerRate = [
-  { month: 'Jan', newBuyers: 5, repeatBuyers: 18, rate: 78 },
-  { month: 'Feb', newBuyers: 3, repeatBuyers: 20, rate: 87 },
-  { month: 'Mar', newBuyers: 4, repeatBuyers: 19, rate: 83 },
-  { month: 'Apr', newBuyers: 2, repeatBuyers: 21, rate: 91 },
-  { month: 'May', newBuyers: 6, repeatBuyers: 17, rate: 74 },
-  { month: 'Jun', newBuyers: 3, repeatBuyers: 20, rate: 87 },
-];
-
-const buyerSegmentation = [
-  { segment: 'High Volume', buyers: 8, percentage: 15, contribution: 42 },
-  { segment: 'Regular', buyers: 15, percentage: 28, contribution: 38 },
-  { segment: 'Occasional', buyers: 20, percentage: 38, contribution: 15 },
-  { segment: 'New/Trial', buyers: 10, percentage: 19, contribution: 5 },
-];
-
-const monthlyEngagement = [
-  { month: 'Jan', activeBuyers: 23, totalBids: 876, avgBidsPerBuyer: 38 },
-  { month: 'Feb', activeBuyers: 23, totalBids: 920, avgBidsPerBuyer: 40 },
-  { month: 'Mar', activeBuyers: 23, totalBids: 985, avgBidsPerBuyer: 43 },
-  { month: 'Apr', activeBuyers: 23, totalBids: 1042, avgBidsPerBuyer: 45 },
-  { month: 'May', activeBuyers: 23, totalBids: 1120, avgBidsPerBuyer: 49 },
-  { month: 'Jun', activeBuyers: 23, totalBids: 1086, avgBidsPerBuyer: 47 },
-];
+import { useAnalyticsBuyers } from '@/hooks/use-analytics-buyers';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
 export default function BuyerBehaviorAnalytics() {
+  const { data, loading, error, isStale, lastUpdated } = useAnalyticsBuyers();
+
+  if (loading && !data) {
+    return <div className="p-6 text-gray-500">Loading buyer analytics...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-6 text-red-600">Failed to load buyer analytics: {error ?? 'Unknown error'}</div>;
+  }
+
+  const summary = data.summary;
+  const buyerSeries = data.buyerSeries;
+  const buyerParticipation = data.buyerParticipation;
+  const mostActiveBuyers = data.mostActiveBuyers;
+  const bidIncrementAnalysis = data.bidIncrementAnalysis;
+  const repeatBuyerRate = data.repeatBuyerRate;
+  const buyerSegmentation = data.buyerSegmentation;
+  const monthlyEngagement = data.monthlyEngagement;
+
+  const demandByGrade = data.demandByGrade.map((item) => ({
+    grade: item.grade,
+    ...item.buyerDemand,
+  }));
+
+  const gradeDemandSeries = buyerSeries.slice(0, 3);
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex justify-between items-start">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Buyer & Market Behavior</h1>
           <p className="text-gray-600 mt-1">Analyze buyer patterns and market participation</p>
         </div>
+        <div className="text-xs text-right text-gray-500">
+          <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
+          {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+        </div>
       </div>
 
-      {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
-        <InfoCard title="Total Buyers" value="53" icon={<Users size={20} />} />
-        <InfoCard title="Active Buyers" value="23" subtitle="This month" />
-        <InfoCard title="Avg Participation" value="38 bids" subtitle="Per buyer" />
-        <InfoCard title="Repeat Rate" value="87%" icon={<TrendingUp size={20} />} />
-        <InfoCard title="New Buyers" value="3" subtitle="This month" />
+        <InfoCard title="Total Buyers" value={summary.totalBuyers.toLocaleString()} icon={<Users size={20} />} />
+        <InfoCard title="Active Buyers" value={summary.activeBuyers.toLocaleString()} subtitle="This month" />
+        <InfoCard title="Avg Participation" value={`${summary.avgParticipation} bids`} subtitle={data.summaryWindowLabel} />
+        <InfoCard title="Repeat Rate" value={`${summary.repeatRate.toFixed(1)}%`} icon={<TrendingUp size={20} />} />
+        <InfoCard title="New Buyers" value={summary.newBuyersThisMonth.toLocaleString()} subtitle="This month" />
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Buyer Participation */}
         <ChartCard title="Buyer Participation Frequency">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={buyerParticipation} layout="vertical">
@@ -104,7 +72,6 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Most Active Buyers */}
         <ChartCard title="Top Buyers by Volume & Spend">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={mostActiveBuyers}>
@@ -120,7 +87,6 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Demand by Grade */}
         <ChartCard title="Buyer Demand by Tea Grade">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={demandByGrade}>
@@ -129,14 +95,19 @@ export default function BuyerBehaviorAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="globalTea" stackId="a" fill="#0088FE" name="Global Tea Imports" />
-              <Bar dataKey="europeanTea" stackId="a" fill="#00C49F" name="European Tea Co." />
-              <Bar dataKey="asiaPremium" stackId="a" fill="#FFBB28" name="Asia Premium" />
+              {gradeDemandSeries.map((buyer, index) => (
+                <Bar
+                  key={buyer}
+                  dataKey={buyer}
+                  stackId="a"
+                  fill={COLORS[index % COLORS.length]}
+                  name={buyer}
+                />
+              ))}
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Repeat Buyer Rate */}
         <ChartCard title="New vs Repeat Buyers">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={repeatBuyerRate}>
@@ -153,7 +124,6 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Buyer Segmentation */}
         <ChartCard title="Buyer Segmentation by Volume">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -162,7 +132,7 @@ export default function BuyerBehaviorAnalytics() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ segment, percentage }) => `${segment}: ${percentage}%`}
+                label={({ segment, percentage }) => `${String(segment)}: ${Number(percentage).toFixed(1)}%`}
                 outerRadius={100}
                 fill="#8884d8"
                 dataKey="percentage"
@@ -176,7 +146,6 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Monthly Engagement */}
         <ChartCard title="Monthly Buyer Engagement Trends">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={monthlyEngagement}>
@@ -191,7 +160,6 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Bid Increment */}
         <ChartCard title="Average Bid Increment by Buyer">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={bidIncrementAnalysis}>
@@ -207,9 +175,7 @@ export default function BuyerBehaviorAnalytics() {
         </ChartCard>
       </div>
 
-      {/* Detailed Tables */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Buyer Activity Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Buyer Activity Details</h3>
           <div className="overflow-x-auto">
@@ -230,7 +196,7 @@ export default function BuyerBehaviorAnalytics() {
                     <td className="text-right py-3 px-2">{item.wonAuctions}</td>
                     <td className="text-right py-3 px-2">
                       <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                        {((item.wonAuctions / item.totalBids) * 100).toFixed(1)}%
+                        {(item.totalBids > 0 ? (item.wonAuctions / item.totalBids) * 100 : 0).toFixed(1)}%
                       </span>
                     </td>
                   </tr>
@@ -240,7 +206,6 @@ export default function BuyerBehaviorAnalytics() {
           </div>
         </div>
 
-        {/* Segmentation Table */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Buyer Segment Contribution</h3>
           <div className="overflow-x-auto">
@@ -258,14 +223,14 @@ export default function BuyerBehaviorAnalytics() {
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
                     <td className="py-3 px-2 font-medium">{item.segment}</td>
                     <td className="text-right py-3 px-2">{item.buyers}</td>
-                    <td className="text-right py-3 px-2">{item.percentage}%</td>
+                    <td className="text-right py-3 px-2">{item.percentage.toFixed(2)}%</td>
                     <td className="text-right py-3 px-2">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                         item.contribution > 30 ? 'bg-green-100 text-green-700' : 
                         item.contribution > 15 ? 'bg-blue-100 text-blue-700' : 
                         'bg-gray-100 text-gray-700'
                       }`}>
-                        {item.contribution}%
+                        {item.contribution.toFixed(2)}%
                       </span>
                     </td>
                   </tr>

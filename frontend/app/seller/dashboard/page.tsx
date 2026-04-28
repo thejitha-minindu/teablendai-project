@@ -16,6 +16,9 @@ import {
     HistoryAuctionModal 
 } from "@/components/features/seller/AuctionModal";
 
+import { parseBackendDateTime } from "@/utils/dateFormatter";
+import { getUserFromToken } from "@/utils/auth";
+
 // Helper: Date Formatting
 const formatDateTitle = (date: Date) => {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
@@ -26,37 +29,6 @@ const isSameDay = (d1: Date, d2: Date) => {
   return d1.getFullYear() === d2.getFullYear() &&
          d1.getMonth() === d2.getMonth() &&
          d1.getDate() === d2.getDate();
-};
-
-// Helper: Parse backend ISO datetimes safely
-const parseBackendDateTime = (dateString?: string | null): Date | null => {
-  if (!dateString) return null;
-
-  // Accept well-formed ISO strings including timezone offsets
-  if (/.*T.*([+-]\d{2}:\d{2}|Z)$/.test(dateString)) {
-    const date = new Date(dateString);
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-
-  // Fall back for strings like "YYYY-MM-DD HH:mm:ss"
-  const normalized = dateString.replace(' ', 'T');
-  const parsed = new Date(normalized);
-  if (!Number.isNaN(parsed.getTime())) return parsed;
-
-  // Parse manually as last resort
-  const [datePart, timePart = '00:00:00'] = normalized.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour = '0', minute = '0', second = '0'] = timePart.split(':');
-
-  const manual = new Date(
-    year,
-    (month || 1) - 1,
-    day || 1,
-    Number(hour),
-    Number(minute),
-    Number(second)
-  );
-  return Number.isNaN(manual.getTime()) ? null : manual;
 };
 
 // --- HELPER: Calculate Countdown ---
@@ -121,11 +93,12 @@ export default function SellerDashboardPage() {
         setLoading(true);
 
         // 1. Decode the token to get YOUR specific user ID
-        const token = localStorage.getItem("teablend_token");
-        if (!token) return;
-
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const myUserId = payload.id; // We stored this securely during login!
+        const payload = getUserFromToken();
+        if (!payload || !payload.id) {
+          setLoading(false);
+          return;
+        }
+        const myUserId = payload.id;
         
         // 2. Attach your ID to the URLs using a query string (?seller_id=...)
         const [liveRes, schedRes, histRes] = await Promise.all([
