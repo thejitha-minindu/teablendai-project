@@ -6,8 +6,9 @@ type AuthClaims = {
   sub?: string;
   id?: string;
   role?: UserRole;
-  roles?: string[];
+  roles?: UserRole[];
   status?: UserStatus;
+  seller_status?: UserStatus;
   exp?: number;
 };
 

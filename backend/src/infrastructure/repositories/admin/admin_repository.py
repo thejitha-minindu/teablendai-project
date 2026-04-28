@@ -19,7 +19,17 @@ class AdminRepository:
 
     def get_total_sellers(self):
         try:
-            sql = text("SELECT COUNT(*) as cnt FROM users WHERE LOWER(default_role) = 'seller' AND LOWER(verification_status) = 'approved'")
+            sql = text(
+                """
+                SELECT COUNT(*) as cnt
+                FROM users
+                WHERE LOWER(verification_status) = 'approved'
+                  AND (
+                    LOWER(default_role) = 'seller'
+                    OR LOWER(ISNULL(seller_verification_status, '')) = 'approved'
+                  )
+                """
+            )
             res = self.db.execute(sql).scalar()
             return int(res or 0)
         except Exception:
@@ -35,7 +45,17 @@ class AdminRepository:
 
     def get_pending_sellers(self):
         try:
-            sql = text("SELECT COUNT(*) as cnt FROM users WHERE LOWER(default_role) = 'seller' AND LOWER(verification_status) = 'pending'")
+            sql = text(
+                """
+                SELECT COUNT(*) as cnt
+                FROM users
+                WHERE LOWER(ISNULL(seller_verification_status, '')) = 'pending'
+                   OR (
+                     LOWER(default_role) = 'seller'
+                     AND LOWER(verification_status) = 'pending'
+                   )
+                """
+            )
             res = self.db.execute(sql).scalar()
             return int(res or 0)
         except Exception:

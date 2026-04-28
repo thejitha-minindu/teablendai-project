@@ -37,9 +37,28 @@ export interface CurrentUserResponse {
   first_name: string;
   last_name: string;
   default_role: 'buyer' | 'seller';
+  active_role?: 'buyer' | 'seller';
+  available_roles?: Array<'buyer' | 'seller'>;
   profile_image_url?: string;
+  nic?: string;
   shipping_address?: string;
   payment_method?: string;
+  seller_verification_status?: string;
+  seller_requested_at?: string;
+  seller_approved_at?: string;
+  seller_rejection_reason?: string;
+  can_become_seller?: boolean;
+  seller_profile?: {
+    seller_name?: string;
+    seller_registration_no?: string;
+    seller_started_year?: number;
+    seller_website?: string;
+    seller_description?: string;
+    seller_street_address?: string;
+    seller_province?: string;
+    seller_city?: string;
+    seller_postal_code?: string;
+  };
   financial_details?: any;
   watch_list?: string[];
   verification_status?: string;
@@ -98,7 +117,8 @@ class AuthService {
     firstName: string,
     lastName: string,
     phoneNum: string,
-    defaultRole: 'buyer' | 'seller' = 'buyer'
+    defaultRole: 'buyer' | 'seller' = 'buyer',
+    shippingAddress?: string
   ): Promise<RegisterResponse> {
     const response = await this.api.post<RegisterResponse>('/auth/register', {
       email,
@@ -107,6 +127,7 @@ class AuthService {
       first_name: firstName,
       last_name: lastName,
       phone_num: phoneNum,
+      shipping_address: shippingAddress,
       default_role: defaultRole,
     });
     return response.data;

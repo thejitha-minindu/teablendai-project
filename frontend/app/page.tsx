@@ -83,7 +83,7 @@ export default function HomePage() {
                         
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">
                             <Button asChild className="bg-linear-to-r from-green-700 to-emerald-600 hover:from-green-800 hover:to-emerald-700 text-white h-12 px-8 text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group">
-                                <Link href="/auth/login" className="flex items-center gap-2">
+                                <Link href="/auth" className="flex items-center gap-2">
                                     Get Started 
                                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </Link>

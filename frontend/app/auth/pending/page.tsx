@@ -1,164 +1,205 @@
-"use client";
+"use client"; // Tells Next.js to run this component in the browser
 
-import { useState, useEffect } from "react";
+// --- Imports ---
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Clock, LogOut, Home } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
-import { getStoredToken } from "@/lib/auth";
+import { Home, LogOut } from "lucide-react"; // Icons
+import { apiClient } from "@/lib/apiClient"; // Tool for backend requests
+import { getStoredToken } from "@/lib/auth"; // Utility to get the user's JWT token
 
 export default function PendingApproval() {
-    const router = useRouter();
-    const [isLoading, setIsLoading] = useState(false);
+  // --- Next.js Hooks ---
+  const router = useRouter(); // For page navigation
+  const searchParams = useSearchParams(); // To read the URL (e.g., ?context=seller-upgrade)
+  
+  // --- React State ---
+  const [isLoading, setIsLoading] = useState(false); // Controls loading states on buttons
 
-    useEffect(() => {
-        // Check if user is authenticated
-        const token = getStoredToken();
-        if (!token) {
-            router.push("/auth/login");
-        }
-    }, [router]);
+  // Determine if the user is here because they registered as a new user
+  // OR if they are a buyer trying to upgrade to a seller.
+  const isSellerUpgradeFlow = searchParams.get("context") === "seller-upgrade";
 
-    const handleLogout = () => {
-        setIsLoading(true);
-        localStorage.removeItem("teablend_token");
-        router.push("/auth/login");
-    };
+  // --- Dynamic UI Text ---
+  // useMemo remembers this text so it doesn't have to be recalculated on every render
+  const copy = useMemo(
+    () => ({
+      title: isSellerUpgradeFlow ? "Seller Approval Pending" : "Account Pending Review",
+      intro: isSellerUpgradeFlow
+        ? "Your seller request has been submitted successfully. Our admin team is reviewing your seller details now."
+        : "Your account has been successfully created! Our admin team is currently reviewing your profile. This typically takes 24-48 hours.",
+      completeLabel: isSellerUpgradeFlow
+        ? "Seller request submitted successfully"
+        : "Account created successfully",
+      pendingLabel: isSellerUpgradeFlow
+        ? "Awaiting seller approval"
+        : "Awaiting admin approval",
+      note: isSellerUpgradeFlow
+        ? "You can continue using your buyer account while this request is under review. Seller access will appear once the request is approved."
+        : "You can check back anytime to see if your account has been approved. If you have any questions, please contact our support team.",
+    }),
+    [isSellerUpgradeFlow]
+  );
 
-    const checkApprovalStatus = async () => {
-        try {
-            const token = getStoredToken();
-            if (!token) return;
+  // --- Security Check ---
+  // If the user lands here but has no token (not logged in), send them back to login
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) {
+      router.push("/auth");
+    }
+  }, [router]);
 
-            // Fetch a fresh token from the backend
-            const response = await apiClient.post("/auth/refresh");
+  // --- Logout Logic ---
+  const handleLogout = () => {
+    setIsLoading(true);
+    localStorage.removeItem("teablend_token"); // Clear the token
+    router.push("/auth"); // Send back to login page
+  };
 
-            if (response.data?.access_token) {
-                // Save new token
-                localStorage.setItem("teablend_token", response.data.access_token);
-                // Dispatch event for other hooks
-                window.dispatchEvent(new Event("teablend-auth-changed"));
-                
-                // Decode to check status
-                const payloadBase64 = response.data.access_token.split('.')[1];
-                if (payloadBase64) {
-                    const payload = JSON.parse(atob(payloadBase64));
-                    if (payload.status === "APPROVED") {
-                        // Redirect based on role
-                        const role = payload.role;
-                        router.push(role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
-                    } else if (payload.status === "REJECTED") {
-                        router.push("/auth/rejected");
-                    }
-                }
-            }
-        } catch (error) {
-            console.error("Error checking approval status:", error);
-        }
-    };
+  // --- Polling (Checking Status Automatically) ---
+  // This function pings the backend to see if an Admin has approved the account yet
+  const checkApprovalStatus = async () => {
+    try {
+      const token = getStoredToken();
+      if (!token) return;
 
-    useEffect(() => {
-        // Run check periodically
-        const intervalId = setInterval(checkApprovalStatus, 5000);
-        return () => clearInterval(intervalId);
-    }, [router]);
+      // 1. Ask the backend for a fresh token (which contains the latest status)
+      const refreshResponse = await apiClient.post("/auth/refresh");
 
-    return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-4">
-            {/* Navigation */}
-            <div className="absolute top-6 left-6 z-20">
-                <Link href="/" className="flex items-center gap-2 group">
-                    <div className="relative h-12 w-32">
-                        <Image src="/tea-blend-logo.svg" alt="Tea Blend AI Logo" fill className="object-contain" />
-                    </div>
-                </Link>
+      if (!refreshResponse.data?.access_token) {
+        return;
+      }
+
+      // 2. Save the fresh token and notify the rest of the app
+      localStorage.setItem("teablend_token", refreshResponse.data.access_token);
+      window.dispatchEvent(new Event("teablend-auth-changed"));
+
+      // 3. Decode the token to read the status directly from it
+      const payloadBase64 = refreshResponse.data.access_token.split(".")[1];
+      if (!payloadBase64) return;
+      const payload = JSON.parse(atob(payloadBase64));
+
+      // 4. Also fetch the full profile to check specific seller status
+      const profileResponse = await apiClient.get("/profile");
+      const profile = profileResponse.data;
+      const sellerStatus = (profile?.seller_verification_status || "").toUpperCase();
+
+      // --- Routing Logic based on Status ---
+
+      // If they were completely rejected, send to rejected page
+      if (payload.status === "REJECTED" || sellerStatus === "REJECTED") {
+        router.push(sellerStatus === "REJECTED" ? "/auth/rejected?context=seller-upgrade" : "/auth/rejected");
+        return;
+      }
+
+      // If they are approved as a seller
+      if (sellerStatus === "APPROVED") {
+        router.push("/seller/dashboard");
+        return;
+      }
+
+      // If they are approved as a buyer (and not waiting for seller approval)
+      if (payload.status === "APPROVED" && sellerStatus !== "PENDING") {
+        router.push(payload.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+        return;
+      }
+    } catch (error) {
+      console.error("Error checking approval status:", error);
+    }
+  };
+
+  // --- Interval Setup ---
+  // Run the checkApprovalStatus function every 5 seconds
+  useEffect(() => {
+    const intervalId = setInterval(checkApprovalStatus, 5000);
+    return () => clearInterval(intervalId); // Cleanup the timer when the user leaves the page
+  }, [isSellerUpgradeFlow]);
+
+  // --- UI Render ---
+  return (
+    <div className="min-h-screen w-full bg-gradient-to-br from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-4">
+      {/* Header Logo */}
+      <div className="absolute top-6 left-6 z-20">
+        <Link href="/" className="flex items-center gap-2 group">
+          <div className="relative h-12 w-32">
+            <Image src="/tea-blend-logo.svg" alt="Tea Blend AI Logo" fill className="object-contain" />
+          </div>
+        </Link>
+      </div>
+
+      <Card className="w-full max-w-sm border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
+        <CardHeader className="text-center space-y-2 pb-4">
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            {copy.title}
+          </CardTitle>
+        </CardHeader>
+
+        <CardContent className="space-y-4">
+          
+          {/* Intro Text */}
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <h3 className="font-semibold text-yellow-900 mb-1 text-sm">What&apos;s happening?</h3>
+            <p className="text-yellow-800 text-xs leading-relaxed">{copy.intro}</p>
+          </div>
+
+          {/* Status Timeline UI */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center h-5 w-5 rounded-full bg-green-100 text-green-700 text-[10px] font-bold">
+                OK
+              </div>
+              <p className="text-xs text-gray-700">{copy.completeLabel}</p>
             </div>
+            <div className="flex gap-2 items-center">
+              <div className="flex items-center justify-center h-5 w-5 rounded-full bg-yellow-100 text-yellow-700 text-[10px] font-bold">
+                ...
+              </div>
+              <p className="text-xs text-gray-700">{copy.pendingLabel}</p>
+            </div>
+          </div>
 
-            {/* Main Content */}
-            <Card className="w-full max-w-md border-0 shadow-2xl bg-white/95 backdrop-blur-sm">
-                <CardHeader className="text-center space-y-4">
-                    <div className="flex justify-center">
-                        <div className="p-4 bg-yellow-100 rounded-full">
-                            <Clock className="w-12 h-12 text-yellow-600 animate-spin" />
-                        </div>
-                    </div>
-                    <CardTitle className="text-3xl font-bold text-gray-900">
-                        Account Pending Review
-                    </CardTitle>
-                </CardHeader>
+          {/* Next Steps */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <h3 className="font-semibold text-blue-900 mb-1 text-sm">What happens next?</h3>
+            <ul className="text-blue-800 text-xs space-y-1">
+              <li>- Our team will verify your information</li>
+              <li>- We&apos;ll review the submitted details</li>
+              <li>- Once approved, the right dashboard access will unlock automatically</li>
+            </ul>
+          </div>
 
-                <CardContent className="space-y-6">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-yellow-900 mb-2">What's happening?</h3>
-                        <p className="text-yellow-800 text-sm leading-relaxed">
-                            Your account has been successfully created! Our admin team is currently reviewing your profile. This typically takes 24-48 hours.
-                        </p>
-                    </div>
+          {/* Bottom Note */}
+          <div className="border-t pt-3">
+            <p className="text-[11px] text-gray-500 text-center mb-3">
+              {copy.note}
+            </p>
+          </div>
 
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-3">
-                        <div className="flex gap-3">
-                            <div className="flex-shrink-0">
-                                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-100">
-                                    <span className="text-green-700 font-bold text-sm">✓</span>
-                                </div>
-                            </div>
-                            <p className="text-sm text-gray-700">Account created successfully</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <div className="flex-shrink-0">
-                                <div className="flex items-center justify-center h-6 w-6 rounded-full bg-yellow-100">
-                                    <span className="text-yellow-700 font-bold text-sm">⏳</span>
-                                </div>
-                            </div>
-                            <p className="text-sm text-gray-700">Awaiting admin approval</p>
-                        </div>
-                    </div>
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            <Button
+              onClick={handleLogout}
+              variant="destructive"
+              className="flex-1 gap-2 h-9 text-sm"
+              disabled={isLoading}
+            >
+              <LogOut className="w-4 h-4" />
+              Sign Out
+            </Button>
+          </div>
 
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                        <h3 className="font-semibold text-blue-900 mb-2">What happens next?</h3>
-                        <ul className="text-blue-800 text-sm space-y-2">
-                            <li>• Our team will verify your information</li>
-                            <li>• We'll check your account details</li>
-                            <li>• Once approved, you'll gain full access</li>
-                        </ul>
-                    </div>
-
-                    <div className="border-t pt-4">
-                        <p className="text-xs text-gray-500 text-center mb-4">
-                            You can check back anytime to see if your account has been approved. If you have any questions, please contact our support team.
-                        </p>
-                    </div>
-
-                    <div className="flex gap-3">
-                        <Button
-                            onClick={checkApprovalStatus}
-                            variant="outline"
-                            className="flex-1"
-                        >
-                            Check Status
-                        </Button>
-                        <Button
-                            onClick={handleLogout}
-                            variant="destructive"
-                            className="flex-1 gap-2"
-                            disabled={isLoading}
-                        >
-                            <LogOut className="w-4 h-4" />
-                            Sign Out
-                        </Button>
-                    </div>
-
-                    <Link href="/" className="block">
-                        <Button variant="ghost" className="w-full gap-2">
-                            <Home className="w-4 h-4" />
-                            Back to Home
-                        </Button>
-                    </Link>
-                </CardContent>
-            </Card>
-        </div>
-    );
+          <Link href="/" className="block">
+            <Button variant="ghost" className="w-full gap-2 h-9 text-sm">
+              <Home className="w-4 h-4" />
+              Back to Home
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  );
 }

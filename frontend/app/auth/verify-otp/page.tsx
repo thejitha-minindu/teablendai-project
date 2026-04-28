@@ -1,5 +1,6 @@
-"use client";
+"use client"; // Tells Next.js to run this component in the browser, not on the server
 
+// --- Imports ---
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,56 +8,83 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Loader2, ArrowLeft } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
+import { AlertCircle, CheckCircle, Loader2, ArrowLeft } from "lucide-react"; // Icons
+import { apiClient } from "@/lib/apiClient"; // Tool used to send requests to our backend
 
 export default function VerifyOTPPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  // --- Next.js Hooks ---
+  const router = useRouter(); // Used to redirect the user to other pages
+  const searchParams = useSearchParams(); // Used to read URL parameters (e.g., ?email=john@example.com)
+
+  // --- Reading Data from the URL ---
+  // When the user comes from the "Forgot Password" page, their email is in the URL
   const email = searchParams.get("email") || "";
+  const role = searchParams.get("role"); // 'buyer' or 'seller'
+  
+  // Helpers to keep the role in the URL when redirecting
+  const sharedRoleSuffix =
+    role === "buyer" || role === "seller" ? `?role=${role}` : "";
+  const queryRoleSuffix =
+    role === "buyer" || role === "seller" ? `&role=${role}` : "";
 
-  const [otp, setOtp] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [success, setSuccess] = useState(false);
+  // --- React State ---
+  // These variables hold data that changes while the user interacts with the page
+  const [otp, setOtp] = useState(""); // The 6-digit code the user types in
+  const [loading, setLoading] = useState(false); // True while waiting for the backend to reply
+  const [message, setMessage] = useState(""); // Success or error messages shown to the user
+  const [success, setSuccess] = useState(false); // Did the OTP verification succeed?
 
+  // --- Security Check (Effect) ---
+  // If someone tries to open this page directly without an email in the URL,
+  // we kick them back to the Forgot Password page.
   useEffect(() => {
     if (!email) {
-      router.push("/auth/forgot-password");
+      router.push(`/auth/forgot-password${sharedRoleSuffix}`);
     }
-  }, [email, router]);
+  }, [email, router, sharedRoleSuffix]);
 
+  // --- Form Submission (OTP Verification Flow) ---
+  // Called when the user clicks "Verify Code"
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage("");
-    setLoading(true);
+    e.preventDefault(); // Stop the page from reloading
+    setMessage(""); // Clear old messages
+    setLoading(true); // Show the loading spinner
 
     try {
+      // 1. API Call: Send the email and the OTP code to the backend
       const response = await apiClient.post("/auth/verify-otp", {
         email,
         otp_code: otp,
       });
 
+      // 2. Success! The backend matched the OTP.
       setSuccess(true);
       setMessage("OTP verified! Redirecting...");
 
+      // 3. Routing: Wait 2 seconds, then send them to the "Reset Password" page.
+      // We pass along a special `password_reset_id` that the backend gave us.
+      // This proves they verified the OTP when they try to save their new password.
       setTimeout(() => {
         router.push(
-          `/auth/reset-password?email=${encodeURIComponent(email)}&reset_id=${response.data.password_reset_id}&otp_code=${encodeURIComponent(otp)}`
+          `/auth/reset-password?email=${encodeURIComponent(email)}&reset_id=${response.data.password_reset_id}&otp_code=${encodeURIComponent(otp)}${queryRoleSuffix}`
         );
       }, 2000);
     } catch (err: any) {
+      // 4. Error handling: OTP was wrong or expired
       setMessage(err.response?.data?.detail || "Invalid OTP. Try again.");
     } finally {
-      setLoading(false);
+      setLoading(false); // Stop the loading spinner
     }
   };
 
+  // --- Resend OTP Flow ---
+  // Called when the user clicks "Resend OTP"
   const handleResendOTP = async () => {
     setMessage("");
     setLoading(true);
 
     try {
+      // Ask the backend to generate a new OTP and email it again
       await apiClient.post("/auth/forgot-password", { email });
       setMessage("New OTP sent successfully!");
     } catch (err: any) {
@@ -66,8 +94,10 @@ export default function VerifyOTPPage() {
     }
   };
 
+  // If there's no email, render nothing while the useEffect redirects them
   if (!email) return null;
 
+  // --- UI Render ---
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-green-50 px-4 py-6">
       <Card className="w-full max-w-md shadow-2xl rounded-2xl border-0 backdrop-blur-lg bg-white/95">
@@ -99,7 +129,8 @@ export default function VerifyOTPPage() {
         {/* BODY */}
         <CardContent className="space-y-4">
 
-          {/* MESSAGE */}
+          {/* MESSAGE BOX */}
+          {/* Shows success (green) or error (red) alerts */}
           {message && (
             <div
               className={`flex items-start gap-3 p-3 rounded-lg border ${
@@ -125,6 +156,8 @@ export default function VerifyOTPPage() {
               type="text"
               value={otp}
               onChange={(e) =>
+                // The replace regex ensures only numbers (\D) can be typed
+                // slice(0, 6) limits it to exactly 6 characters
                 setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))
               }
               placeholder="Enter 6-digit OTP"
@@ -135,7 +168,7 @@ export default function VerifyOTPPage() {
 
             <Button
               type="submit"
-              disabled={loading || otp.length !== 6}
+              disabled={loading || otp.length !== 6} // Cannot submit until 6 digits are typed
               className="w-full h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold"
             >
               {loading ? (
@@ -149,24 +182,24 @@ export default function VerifyOTPPage() {
             </Button>
           </form>
 
-          {/* RESEND */}
+          {/* RESEND LINK */}
           <div className="text-center text-sm">
             <p className="text-gray-600">
               Didn’t receive code?{" "}
               <button
                 onClick={handleResendOTP}
                 className="text-green-600 font-semibold hover:underline"
-                disabled={loading}
+                disabled={loading} // Don't let them spam the resend button
               >
                 Resend OTP
               </button>
             </p>
           </div>
 
-          {/* BACK */}
+          {/* BACK LINK */}
           <div className="text-center pt-2">
-            <Link
-              href="/auth/forgot-password"
+              <Link
+              href={`/auth/forgot-password${sharedRoleSuffix}`}
               className="inline-flex items-center text-gray-600 hover:text-gray-800 text-sm"
             >
               <ArrowLeft className="w-4 h-4 mr-1" />

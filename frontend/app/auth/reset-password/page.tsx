@@ -1,5 +1,6 @@
-"use client";
+"use client"; // Tells Next.js to run this component in the browser
 
+// --- Imports ---
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
@@ -7,38 +8,58 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react";
-import { apiClient } from "@/lib/apiClient";
+import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react"; // Icons
+import { apiClient } from "@/lib/apiClient"; // Tool for backend communication
 
 export default function ResetPasswordPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  // --- Next.js Hooks ---
+  const router = useRouter(); // Used for navigation
+  const searchParams = useSearchParams(); // Used to read data passed in the URL
+  
+  // Read the security parameters passed from the OTP page
   const email = searchParams.get("email") || "";
   const resetId = searchParams.get("reset_id") || "";
   const otpCode = searchParams.get("otp_code") || "";
+  const role = searchParams.get("role");
+  
+  // Helpers to keep the role in the URL
+  const sharedRoleSuffix =
+    role === "buyer" || role === "seller" ? `?role=${role}` : "";
 
+  // --- React State ---
+  // Stores the passwords the user types
   const [formData, setFormData] = useState({
     newPassword: "",
     confirmPassword: ""
   });
 
+  // UI Toggles
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  
+  // Status states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // --- Security Check (Effect) ---
+  // If the user arrives here without the required security tokens (email, resetId, otpCode),
+  // they probably typed the URL directly. We kick them back to the forgot password page.
   useEffect(() => {
     if (!email || !resetId || !otpCode) {
-      router.push("/auth/forgot-password");
+      router.push(`/auth/forgot-password${sharedRoleSuffix}`);
     }
-  }, [email, resetId, otpCode, router]);
+  }, [email, resetId, otpCode, router, sharedRoleSuffix]);
 
+  // --- Handlers ---
+  
+  // Updates the form state when the user types
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-    setError("");
+    setError(""); // Clear errors while they type
   };
 
+  // Validates the password strength before we send it to the server
   const validateForm = () => {
     if (formData.newPassword.length < 8) {
       setError("Password must be at least 8 characters long");
@@ -50,6 +71,7 @@ export default function ResetPasswordPage() {
       return false;
     }
 
+    // Checking for specific characters using Regular Expressions (Regex)
     const hasUpperCase = /[A-Z]/.test(formData.newPassword);
     const hasLowerCase = /[a-z]/.test(formData.newPassword);
     const hasNumbers = /\d/.test(formData.newPassword);
@@ -60,17 +82,20 @@ export default function ResetPasswordPage() {
       return false;
     }
 
-    return true;
+    return true; // Form is valid!
   };
 
+  // Called when the user clicks "Reset Password"
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // Stop page reload
 
+    // Run our checks first
     if (!validateForm()) return;
 
     setLoading(true);
 
     try {
+      // 1. API Call: Send the new password to the server, along with the OTP tokens to prove we are allowed to change it.
       await apiClient.post("/auth/reset-password", {
         email,
         otp_code: otpCode,
@@ -78,20 +103,29 @@ export default function ResetPasswordPage() {
         confirm_password: formData.confirmPassword
       });
 
+      // 2. Success!
       setSuccess(true);
 
+      // 3. Wait 3 seconds, then redirect to the login page so they can log in with the new password
       setTimeout(() => {
-        router.push("/auth/login?message=password-reset-success");
+        const loginHref =
+          role === "buyer" || role === "seller"
+            ? `/auth/${role}/login`
+            : "/auth/login";
+        router.push(`${loginHref}?message=password-reset-success`);
       }, 3000);
     } catch (err: any) {
+      // 4. Handle errors (e.g., token expired while they were typing)
       setError(err.response?.data?.detail || "Failed to reset password");
     } finally {
       setLoading(false);
     }
   };
 
+  // Prevent rendering if the security tokens are missing (the useEffect will redirect them)
   if (!email || !resetId || !otpCode) return null;
 
+  // --- UI Render ---
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-green-50 px-4 py-6 sm:py-8 md:py-10">
       
@@ -123,7 +157,7 @@ export default function ResetPasswordPage() {
         {/* Content */}
         <CardContent className="space-y-3 px-4 py-3 sm:px-6 sm:py-4">
 
-          {/* Error */}
+          {/* Error Message Box */}
           {error && (
             <div className="flex gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
               <AlertCircle className="w-4 h-4 text-red-500 mt-0.5" />
@@ -131,7 +165,7 @@ export default function ResetPasswordPage() {
             </div>
           )}
 
-          {/* Success */}
+          {/* Success Message Box */}
           {success && (
             <div className="flex gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
               <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
@@ -144,13 +178,13 @@ export default function ResetPasswordPage() {
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
 
-            {/* New Password */}
+            {/* New Password Input */}
             <div className="relative">
               <label className="text-xs sm:text-sm font-medium text-gray-700">
                 New Password
               </label>
               <Input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? "text" : "password"} // Switches between text and hidden dots
                 value={formData.newPassword}
                 onChange={(e) => handleInputChange("newPassword", e.target.value)}
                 className="h-10 sm:h-12 rounded-full pr-10 border-2 focus:border-green-500"
@@ -165,13 +199,13 @@ export default function ResetPasswordPage() {
               </button>
             </div>
 
-            {/* Confirm Password */}
+            {/* Confirm Password Input */}
             <div className="relative">
               <label className="text-xs sm:text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
               <Input
-                type={showConfirmPassword ? "text" : "password"}
+                type={showConfirmPassword ? "text" : "password"} // Switches between text and hidden dots
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                 className="h-10 sm:h-12 rounded-full pr-10 border-2 focus:border-green-500"
@@ -186,7 +220,7 @@ export default function ResetPasswordPage() {
               </button>
             </div>
 
-            {/* Button */}
+            {/* Submit Button */}
             <Button
               type="submit"
               disabled={loading || success}
@@ -205,10 +239,10 @@ export default function ResetPasswordPage() {
             </Button>
           </form>
 
-          {/* Footer */}
+          {/* Footer Back Link */}
           <div className="text-center text-xs sm:text-sm pt-2">
             <Link
-              href="/auth/forgot-password"
+              href={`/auth/forgot-password${sharedRoleSuffix}`}
               className="text-green-600 hover:underline flex justify-center items-center gap-1"
             >
               <ArrowLeft size={14} />
