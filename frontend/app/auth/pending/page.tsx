@@ -11,7 +11,7 @@ import { Home, LogOut } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for backend requests
 import { getStoredToken } from "@/lib/auth"; // Utility to get the user's JWT token
 
-export default function PendingApproval() {
+function PendingApprovalContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // For page navigation
   const searchParams = useSearchParams(); // To read the URL (e.g., ?context=seller-upgrade)
@@ -201,5 +201,15 @@ export default function PendingApproval() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function PendingApproval() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <PendingApprovalContent />
+    </ReactSuspense>
   );
 }

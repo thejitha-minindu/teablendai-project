@@ -8,7 +8,7 @@ import { AuthCard } from "@/components/auth/AuthCard"; // A custom UI component 
 
 // --- Auth Selection Page ---
 // This is the main `/auth` page. It asks the user whether they want to proceed as a Buyer or a Seller.
-export default function AuthSelectPage() {
+function AuthSelectContent() {
   // We use useSearchParams to grab URL parameters.
   // For example, if they clicked "Checkout" while logged out, the URL might look like `/auth?redirect=/checkout`.
   // We want to pass that `redirect` parameter along to the next page so we don't forget where they were trying to go.
@@ -77,5 +77,15 @@ export default function AuthSelectPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function AuthSelectPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <AuthSelectContent />
+    </ReactSuspense>
   );
 }

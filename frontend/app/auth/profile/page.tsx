@@ -471,7 +471,7 @@ export default function AuthProfilePage() {
                     <div className="h-20 w-20 sm:h-28 sm:w-28 overflow-hidden rounded-full border-4 border-white shadow-xl bg-gray-100 flex items-center justify-center relative">
                       {profile.profile_image_url ? (
                         <img 
-                          src={profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${API_BASE_URL.replace('/api/v1', '')}${profile.profile_image_url}`} 
+                          src={profile.profile_image_url.startsWith('http') ? profile.profile_image_url : `${(API_BASE_URL || '').replace('/api/v1', '')}${profile.profile_image_url}`} 
                           alt="Profile" 
                           className="h-full w-full object-cover"
                         />

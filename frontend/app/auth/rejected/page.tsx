@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, LogOut, Home, Mail } from "lucide-react"; // Icons
 import { getStoredToken } from "@/lib/auth"; // Utility to check if user is logged in
 
-export default function RejectedAccount() {
+function RejectedAccountContent() {
     // --- Next.js Hooks ---
     const router = useRouter(); // Used to redirect to another page
     const searchParams = useSearchParams(); // Used to read URL parameters
@@ -147,5 +147,15 @@ export default function RejectedAccount() {
                 </CardContent>
             </Card>
         </div>
+    );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function RejectedAccount() {
+    return (
+        <ReactSuspense fallback={<div>Loading...</div>}>
+            <RejectedAccountContent />
+        </ReactSuspense>
     );
 }

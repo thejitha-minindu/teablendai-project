@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Loader2, ArrowLeft, Mail, KeyRound } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for sending requests to the backend
 
-export default function ForgotPasswordPage() {
+function ForgotPasswordContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // Used to redirect to another page
   const searchParams = useSearchParams(); // Used to read URL parameters (like ?role=buyer)
@@ -192,5 +192,15 @@ export default function ForgotPasswordPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function ForgotPasswordPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <ForgotPasswordContent />
+    </ReactSuspense>
   );
 }

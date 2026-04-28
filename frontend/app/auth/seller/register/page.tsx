@@ -34,7 +34,7 @@ const initialFormState: FormState = {
   sellerDescription: "", streetAddress: "", province: "", city: "", postalCode: "", password: "", confirmPassword: "",
 };
 
-export default function SellerRegisterPage() {
+function SellerRegisterContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // Used to redirect to another page
   const searchParams = useSearchParams(); // Used to read URL parameters (e.g., ?redirect=)
@@ -445,5 +445,15 @@ export default function SellerRegisterPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function SellerRegisterPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <SellerRegisterContent />
+    </ReactSuspense>
   );
 }

@@ -32,7 +32,7 @@ const initialFormState: FormState = {
   confirmPassword: "",
 };
 
-export default function BuyerRegisterPage() {
+function BuyerRegisterContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // For redirecting after success
   const searchParams = useSearchParams(); // To read the URL (e.g. ?redirect=/cart)
@@ -434,5 +434,15 @@ export default function BuyerRegisterPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function BuyerRegisterPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <BuyerRegisterContent />
+    </ReactSuspense>
   );
 }

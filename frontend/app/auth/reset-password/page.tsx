@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, ArrowLeft, Lock, KeyRound } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for backend communication
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // Used for navigation
   const searchParams = useSearchParams(); // Used to read data passed in the URL
@@ -322,5 +322,15 @@ export default function ResetPasswordPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function ResetPasswordPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <ResetPasswordContent />
+    </ReactSuspense>
   );
 }

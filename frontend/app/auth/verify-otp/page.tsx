@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { AlertCircle, CheckCircle, Loader2, ArrowLeft, KeyRound, Mail } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool used to send requests to our backend
 
-export default function VerifyOTPPage() {
+function VerifyOTPContent() {
   // --- Next.js Hooks ---
   const router = useRouter(); // Used to redirect the user to other pages
   const searchParams = useSearchParams(); // Used to read URL parameters (e.g., ?email=john@example.com)
@@ -222,5 +222,15 @@ export default function VerifyOTPPage() {
         </div>
       </main>
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function VerifyOTPPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <VerifyOTPContent />
+    </ReactSuspense>
   );
 }
