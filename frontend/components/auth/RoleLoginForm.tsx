@@ -14,7 +14,7 @@ import { getAuthClaims, getHomePathByRole, setStoredAuthToken, type UserRole } f
 import { apiClient } from "@/lib/apiClient";
 import authService from "@/services/authService";
 
-const GOOGLE_CLIENT_ID = "66190572875-bnen1rjau39fma3pd86c1d6udqm22dri.apps.googleusercontent.com";
+const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
 function getSafeRedirectPath(redirectPath: string | null) {
   if (!redirectPath || !redirectPath.startsWith("/")) {
