@@ -15,7 +15,12 @@ Base = declarative_base()
 def create_database_engine():
     connection_string = get_mssql_connection_string()
     try:
-        engine = create_engine(connection_string, poolclass=NullPool, echo=False)
+        engine = create_engine(
+            connection_string, 
+            poolclass=NullPool, 
+            echo=False,
+            connect_args={"timeout": 30}
+        )
         return engine
     except Exception as e:
         settings = get_settings()

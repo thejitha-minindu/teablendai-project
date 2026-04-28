@@ -20,7 +20,19 @@ class User(BaseModel):
     first_name: str
     last_name: str
     default_role: Literal['buyer', 'seller']
+    status: Literal['PENDING', 'APPROVED', 'REJECTED'] = 'PENDING'
     profile_image_url: Optional[str] = None
+    seller_name: Optional[str] = None
+    seller_registration_no: Optional[str] = None
+    seller_started_year: Optional[int] = None
+    seller_website: Optional[str] = None
+    seller_description: Optional[str] = None
+    seller_street_address: Optional[str] = None
+    seller_province: Optional[str] = None
+    seller_city: Optional[str] = None
+    seller_postal_code: Optional[str] = None
+    seller_verification_status: Optional[str] = None
+    created_at: Optional[datetime] = None
     financial_details: Optional[FinancialDetails] = None
     watch_list: list[str] = []
 
@@ -37,6 +49,16 @@ class UserProfileUpdate(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     profile_image_url: Optional[str] = None
+    shipping_address: Optional[str] = None
+    seller_name: Optional[str] = None
+    seller_registration_no: Optional[str] = None
+    seller_started_year: Optional[int] = None
+    seller_website: Optional[str] = None
+    seller_description: Optional[str] = None
+    seller_street_address: Optional[str] = None
+    seller_province: Optional[str] = None
+    seller_city: Optional[str] = None
+    seller_postal_code: Optional[str] = None
     financial_details: Optional[FinancialDetailsUpdate] = None
 
 class UserProfileResponse(BaseModel):
@@ -49,7 +71,20 @@ class UserProfileResponse(BaseModel):
     first_name: str
     last_name: str
     default_role: Literal['buyer', 'seller']
+    status: Literal['PENDING', 'APPROVED', 'REJECTED'] = 'PENDING'
     profile_image_url: Optional[str] = None
+    shipping_address: Optional[str] = None
+    seller_name: Optional[str] = None
+    seller_registration_no: Optional[str] = None
+    seller_started_year: Optional[int] = None
+    seller_website: Optional[str] = None
+    seller_description: Optional[str] = None
+    seller_street_address: Optional[str] = None
+    seller_province: Optional[str] = None
+    seller_city: Optional[str] = None
+    seller_postal_code: Optional[str] = None
+    seller_verification_status: Optional[str] = None
+    created_at: Optional[datetime] = None
     financial_details: Optional[FinancialDetails] = None
     watch_list: list[str] = []
 
@@ -76,7 +111,20 @@ class UserCreate(BaseModel):
     user_name: str
     first_name: str
     last_name: str
+    shipping_address: Optional[str] = None
+    seller_name: Optional[str] = None
+    seller_registration_no: Optional[str] = None
+    seller_started_year: Optional[int] = None
+    seller_website: Optional[str] = None
+    seller_description: Optional[str] = None
+    seller_street_address: Optional[str] = None
+    seller_province: Optional[str] = None
+    seller_city: Optional[str] = None
+    seller_postal_code: Optional[str] = None
     default_role: Literal['buyer', 'seller'] = 'buyer'
+
+class UserApprovalAction(BaseModel):
+    status: Literal['APPROVED', 'REJECTED']
 
 class GoogleToken(BaseModel):
     token: str

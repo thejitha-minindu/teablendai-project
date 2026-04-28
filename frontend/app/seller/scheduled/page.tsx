@@ -22,7 +22,7 @@ interface AuctionAPIResponse {
 import { parseBackendDateTime, calculateTimeUntilStart } from "@/utils/dateFormatter";
 import { getUserFromToken } from "@/utils/auth";
 
-export default function ScheduledAuctionsPage() {
+function ScheduledAuctionsContent() {
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
   const [auctions, setAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,5 +159,15 @@ export default function ScheduledAuctionsPage() {
         />
       )}
     </div>
+  );
+}
+
+import { Suspense as ReactSuspense } from "react";
+
+export default function ScheduledAuctionsPage() {
+  return (
+    <ReactSuspense fallback={<div>Loading...</div>}>
+      <ScheduledAuctionsContent />
+    </ReactSuspense>
   );
 }

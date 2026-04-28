@@ -13,19 +13,20 @@ import {
 } from 'lucide-react';
 
 interface CheckoutProps {
-  params: {
+  params: Promise<{
     orderId: string;
-  };
+  }>;
 }
 
 export default function CheckoutPage({ params }: CheckoutProps) {
+  const resolvedParams = React.use(params);
   const router = useRouter();
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
 
   // Mock Order Data
   const orderSummary = {
-    id: params.orderId || "ORD-77291",
+    id: resolvedParams.orderId || "ORD-77291",
     item: "Premium BOPF - Nuwara Eliya",
     seller: "Kenmare Estate",
     subtotal: 25000.00,

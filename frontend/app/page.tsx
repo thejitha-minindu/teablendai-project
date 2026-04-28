@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useRouter } from 'next/navigation';
 
 import { 
   Brain, 
@@ -46,6 +47,7 @@ import {
 } from "lucide-react";
 
 export default function HomePage() {
+    const router = useRouter();
     return (
         <main className="overflow-hidden">
             {/* ================= HERO SECTION ================= */}
@@ -81,7 +83,7 @@ export default function HomePage() {
                         
                         <div className="flex flex-col sm:flex-row gap-4 pt-4">
                             <Button asChild className="bg-linear-to-r from-green-700 to-emerald-600 hover:from-green-800 hover:to-emerald-700 text-white h-12 px-8 text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 group">
-                                <Link href="/auth/login" className="flex items-center gap-2">
+                                <Link href="/auth" className="flex items-center gap-2">
                                     Get Started 
                                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                                 </Link>
@@ -89,7 +91,7 @@ export default function HomePage() {
                             <Button asChild variant="outline" className="h-12 px-8 text-lg rounded-full border-2">
                                 <Link href="#features" className="flex items-center gap-2">
                                     <PlayCircle className="w-5 h-5" />
-                                    Watch Demo
+                                    More Info
                                 </Link>
                             </Button>
                         </div>
@@ -136,19 +138,22 @@ export default function HomePage() {
                                 title: "AI Tea Blend Creator",
                                 description: "Generate perfect tea blends using machine learning algorithms",
                                 icon: <Brain className="w-10 h-10 text-green-600" />,
-                                color: "white"
+                                color: "white",
+                                path: "/export-analytics"
                             },
                             {
                                 title: "Market Analysis",
                                 description: "Real-time insights on tea market trends and pricing",
                                 icon: <TrendingUp className="w-10 h-10 text-green-600" />,
-                                color: "white"
+                                color: "white",
+                                path: "/market-analysis"
                             },
                             {
                                 title: "Export Analytics",
                                 description: "Data-driven insights for international tea trade",
                                 icon: <Globe className="w-10 h-10 text-green-600" />,
-                                color: "white"
+                                color: "white",
+                                path: "/export-analytics"
                             }
                         ].map((feature, index) => (
                             <Card key={index} className={`group hover:shadow-2xl transition-all duration-300 border-2 hover:border-green-200 hover:scale-[1.02] bg-linear-to-br ${feature.color}`}>
@@ -160,7 +165,7 @@ export default function HomePage() {
                                 </CardHeader>
                                 <CardContent>
                                     <p className="text-gray-600 mb-4">{feature.description}</p>
-                                    <Button variant="ghost" className="text-green-700 hover:text-green-800 p-0 h-auto group">
+                                    <Button variant="ghost" className="text-green-700 hover:text-green-800 p-0 h-auto group" onClick={() => router.push(feature.path)}>
                                         Learn more
                                         <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
                                     </Button>
@@ -177,20 +182,14 @@ export default function HomePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-linear-to-r from-green-600 to-emerald-500 rounded-lg flex items-center justify-center">
-                                    <div className="absolute top-6 left-6 z-20">
-                    <Link href="/" className="flex items-center gap-2 group">
-                        <ChevronLeft className="w-4 h-4 text-white/80 group-hover:text-white group-hover:-translate-x-1 transition-transform" />
-                        <div className="relative h-12 w-32">
-                            <Image
-                                src="/tea-blend-logo.svg"
-                                alt="Tea Blend AI Logo"
-                                fill
-                                className="object-contain"
-                            />
-                        </div>
-                    </Link>
-                </div>
+                                <div className="w-10 h-10 bg-linear-to-r from-green-600 to-emerald-500 rounded-lg flex items-center justify-center overflow-hidden">
+                                    <Image
+                                        src="/tea-blend-logo.svg"
+                                        alt="Tea Blend AI Logo"
+                                        width={28}
+                                        height={28}
+                                        className="w-7 h-7 object-contain"
+                                    />
                                 </div>
                                 <span className="text-xl font-bold">TeaBlendAI</span>
                             </div>
@@ -199,17 +198,25 @@ export default function HomePage() {
                                 Join our tea community and revolutionize your tea experience with AI.
                             </p>
                             <div className='flex items-center gap-3'>
-                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white">
-                                    <Instagram className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white" asChild>
+                                    <Link href="https://www.instagram.com" target="_blank" rel="noopener noreferrer">
+                                        <Instagram className="w-4 h-4" />
+                                    </Link>
                                 </Button>
-                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white">
-                                    <Facebook className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white" asChild>
+                                    <Link href="https://www.facebook.com" target="_blank" rel="noopener noreferrer">
+                                        <Facebook className="w-4 h-4" />
+                                    </Link>
                                 </Button>
-                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white">
-                                    <Twitter className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white" asChild>
+                                    <Link href="https://www.twitter.com" target="_blank" rel="noopener noreferrer">
+                                        <Twitter className="w-4 h-4" />
+                                    </Link>
                                 </Button>
-                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white">
-                                    <Linkedin className="w-4 h-4" />
+                                <Button variant="ghost" size="icon" className="rounded-full bg-gray-800 hover:bg-gray-700 hover:text-white" asChild>
+                                    <Link href="https://www.linkedin.com" target="_blank" rel="noopener noreferrer">
+                                        <Linkedin className="w-4 h-4" />
+                                    </Link>
                                 </Button>
                             </div>
                         </div>
@@ -281,22 +288,7 @@ export default function HomePage() {
                                 </address>
                             </div>
                             
-                            <div className="space-y-3">
-                                <h4 className="font-medium flex items-center gap-2">
-                                    <Mail className="w-4 h-4" />
-                                    Newsletter
-                                </h4>
-                                <div className="flex gap-2">
-                                    <input 
-                                        type="email" 
-                                        placeholder="Your email" 
-                                        className="flex-1 px-3 py-2 bg-gray-800 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
-                                    />
-                                    <Button size="sm" className="bg-linear-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600">
-                                        <ArrowRight className="w-4 h-4" />
-                                    </Button>
-                                </div>
-                            </div>
+                            
                         </div>
                     </div>
 
@@ -307,9 +299,13 @@ export default function HomePage() {
                             © {new Date().getFullYear()} TEABLENDAI. All rights reserved.
                         </p>
                         <div className="flex gap-6 text-sm text-gray-400">
-                            {['Privacy Policy', 'Terms of Service', 'Cookie Policy', 'Sitemap'].map((item) => (
-                                <Link key={item} href="#" className="hover:text-white transition-colors hover:underline underline-offset-2">
-                                    {item}
+                            {[
+                                { label: 'Privacy Policy', path: '/privacy' },
+                                { label: 'Terms of Service', path: '/terms' },
+                                { label: 'Cookie Policy', path: '/cookie-policy' }
+                            ].map((item) => (
+                                <Link key={item.label} href={item.path} className="hover:text-white transition-colors hover:underline underline-offset-2">
+                                    {item.label}
                                 </Link>
                             ))}
                         </div>

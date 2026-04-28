@@ -41,8 +41,13 @@ export function ProfileMenu({
     if (typeof window !== "undefined") {
       localStorage.removeItem("teablend_token");
       localStorage.removeItem("role");
-      window.location.href = "/auth/login";
+      window.location.href = "/auth";
     }
+  };
+
+  const handleProfileClick = () => {
+    onClose();
+    router.push("/auth/profile");
   };
 
   if (!isOpen || isCollapsed) return null;
@@ -65,7 +70,7 @@ export function ProfileMenu({
       {/* Menu Items */}
       <div className="p-2">
         <button
-          onClick={onClose}
+          onClick={handleProfileClick}
           className="w-full flex items-center gap-3 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
         >
           <User className="w-4 h-4 shrink-0" />
