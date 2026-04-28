@@ -25,6 +25,10 @@ export default function VerificationPage() {
                     <UserCard
                         name={`${user.first_name} ${user.last_name} (${user.role})`}
                         id={user.user_id}
+                        email={user.email}
+                        first_name={user.first_name}
+                        last_name={user.last_name}
+                        username={user.username}
                     />
                 </div>
             ))}

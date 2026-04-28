@@ -1,14 +1,20 @@
 "use client";
 
+import { fi } from "date-fns/locale";
 import { MoreVertical, User, FileText, Link } from "lucide-react";
 import { useState } from "react";
+
 
 type UserCardProps = {
     name: string;
     id: string;
+    email: string;
+    username: string;
+    first_name: string;
+    last_name: string;
 };
 
-export function UserCard({ name, id }: UserCardProps) {
+export function UserCard({ name, id , email, first_name, last_name}: UserCardProps) {
 
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState("pending");
@@ -80,6 +86,18 @@ export function UserCard({ name, id }: UserCardProps) {
 
                     <p className="text-sm text-gray-500">
                         ID: {id}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                        First Name : {first_name}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                        Last Name : {last_name}
+                    </p>
+
+                    <p className="text-sm text-gray-500">
+                        Email : {email}
                     </p>
 
                     <p className="text-sm text-gray-500">
