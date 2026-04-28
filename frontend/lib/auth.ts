@@ -1,11 +1,14 @@
 export type UserRole = "buyer" | "seller";
 export type AppRole = UserRole | "analytics";
+export type UserStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 type AuthClaims = {
   sub?: string;
   id?: string;
   role?: UserRole;
-  roles?: string[];
+  roles?: UserRole[];
+  status?: UserStatus;
+  seller_status?: UserStatus;
   exp?: number;
 };
 

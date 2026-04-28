@@ -123,6 +123,7 @@ export function NavSidebar() {
   const router = useRouter();
   const { state, setOpen } = useSidebar();
   const [activeUserRole, setActiveUserRole] = useState<AuthUserRole>("seller");
+  const [availableRoles, setAvailableRoles] = useState<AuthUserRole[]>(["buyer"]);
 
   const role: UserRole = pathname.startsWith("/analytics-dashboard")
     ? "analytics"
@@ -145,12 +146,17 @@ export function NavSidebar() {
     if (claims?.role) {
       setActiveUserRole(claims.role);
     }
+    if (Array.isArray(claims?.roles)) {
+      setAvailableRoles(
+        claims.roles.filter((role): role is AuthUserRole => role === "buyer" || role === "seller")
+      );
+    }
   }, [pathname]);
 
   // Logout Handler
   const handleLogout = () => {
     clearStoredAuthToken();
-    window.location.href = "/auth/login";
+    window.location.href = "/auth";
   };
 
   const handleSwitchRole = async () => {
@@ -160,6 +166,10 @@ export function NavSidebar() {
     }
 
     const targetRole = switchInfo.role as AuthUserRole;
+    if (!availableRoles.includes(targetRole)) {
+      router.push("/auth/profile");
+      return;
+    }
     try {
       setIsSwitchingRole(true);
       const response = await apiClient.post("/auth/switch-role", { role: targetRole });
@@ -204,6 +214,7 @@ export function NavSidebar() {
   }, [role]);
 
   const switchInfo = useMemo(() => getSwitchInfo(role), [role]);
+  const canSwitchRole = role !== "analytics" && availableRoles.includes(switchInfo.role as AuthUserRole);
   const isAnalyticsPage = pathname.startsWith("/analytics-dashboard");
   const shouldShowProfile = !isAnalyticsPage;
 
@@ -252,7 +263,7 @@ export function NavSidebar() {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                <Link href="/profile" className="flex items-center w-full">
+                <Link href="/auth/profile" className="flex items-center w-full">
                   <User className="mr-2 h-4 w-4 text-gray-500" />
                   <span>My Profile</span>
                 </Link>
@@ -319,25 +330,34 @@ export function NavSidebar() {
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                <Link href="/profile" className="flex items-center w-full">
+                <Link href="/auth/profile" className="flex items-center w-full">
                   <User className="mr-2 h-4 w-4 text-gray-500" />
                   <span>My Profile</span>
                 </Link>
               </DropdownMenuItem>
 
               {/* Switch Role */}
-              <DropdownMenuItem
-                className="cursor-pointer hover:bg-gray-50"
-                disabled={isSwitchingRole}
-                onClick={handleSwitchRole}
-              >
-                <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                <span>
-                  {isSwitchingRole
-                    ? "Switching role..."
-                    : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
-                </span>
-              </DropdownMenuItem>
+              {canSwitchRole ? (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-50"
+                  disabled={isSwitchingRole}
+                  onClick={handleSwitchRole}
+                >
+                  <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>
+                    {isSwitchingRole
+                      ? "Switching role..."
+                      : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                  <Link href="/auth/profile" className="flex items-center w-full">
+                    <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Manage Roles</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
 
               {/* Analytics Link */}
               {role !== "analytics" && (
