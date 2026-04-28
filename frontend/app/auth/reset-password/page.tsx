@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, ArrowLeft } from "lucide-react"; // Icons
+import { AlertCircle, CheckCircle, Loader2, Eye, EyeOff, ArrowLeft, Lock, KeyRound } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for backend communication
 
 export default function ResetPasswordPage() {
@@ -26,6 +26,11 @@ export default function ResetPasswordPage() {
   const sharedRoleSuffix =
     role === "buyer" || role === "seller" ? `?role=${role}` : "";
 
+  // Determine back button href
+  const backHref = role === "buyer" || role === "seller" 
+    ? `/auth/forgot-password?role=${role}` 
+    : "/auth/forgot-password";
+
   // --- React State ---
   // Stores the passwords the user types
   const [formData, setFormData] = useState({
@@ -42,6 +47,15 @@ export default function ResetPasswordPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // Password strength checks
+  const [passwordStrength, setPasswordStrength] = useState({
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    specialChar: false
+  });
+
   // --- Security Check (Effect) ---
   // If the user arrives here without the required security tokens (email, resetId, otpCode),
   // they probably typed the URL directly. We kick them back to the forgot password page.
@@ -50,6 +64,17 @@ export default function ResetPasswordPage() {
       router.push(`/auth/forgot-password${sharedRoleSuffix}`);
     }
   }, [email, resetId, otpCode, router, sharedRoleSuffix]);
+
+  // Update password strength when new password changes
+  useEffect(() => {
+    setPasswordStrength({
+      length: formData.newPassword.length >= 8,
+      uppercase: /[A-Z]/.test(formData.newPassword),
+      lowercase: /[a-z]/.test(formData.newPassword),
+      number: /\d/.test(formData.newPassword),
+      specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(formData.newPassword)
+    });
+  }, [formData.newPassword]);
 
   // --- Handlers ---
   
@@ -127,131 +152,175 @@ export default function ResetPasswordPage() {
 
   // --- UI Render ---
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-green-50 px-4 py-6 sm:py-8 md:py-10">
-      
-      <Card className="w-full max-w-md shadow-2xl rounded-2xl border-0 backdrop-blur-lg bg-white/95">
-        
-        {/* Header */}
-        <CardHeader className="text-center space-y-1 px-4 py-2 sm:px-6">
-          <div className="flex justify-center mb-4">
-            <div className="p-3 sm:p-4 rounded-full bg-gradient-to-tr from-green-600 to-emerald-500 shadow-xl">
-              <Image
-                src="/tea-blend-logo.svg"
-                alt="Tea Blend AI"
-                width={80}
-                height={80}
-                className="w-16 h-16 sm:w-20 sm:h-20 object-contain"
-              />
-            </div>
-          </div>
+    <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-green-50">
+      {/* Header - Compact */}
+      <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
+        <Link href="/" className="flex items-center gap-2">
+          <img src="/Tealogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
+        </Link>
 
-          <CardTitle className="text-xl sm:text-2xl font-bold text-gray-900">
-            Reset Password
-          </CardTitle>
+        <Link
+          href={backHref}
+          className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-white/80 px-4 py-1.5 text-sm font-medium text-green-700 transition backdrop-blur-sm hover:bg-green-50"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Back
+        </Link>
+      </header>
 
-          <CardDescription className="text-gray-600 text-xs sm:text-sm px-1">
-            Enter your new password below
-          </CardDescription>
-        </CardHeader>
+      {/* Main Content - Full height with flex centering */}
+      <main className="flex h-full items-center justify-center">
+        <div className="w-full max-w-md px-4">
+          <div className="overflow-hidden rounded-2xl border border-green-100 bg-white/95 shadow-2xl shadow-green-100/60 backdrop-blur-sm">
+            {/* Form Content */}
+            <div className="flex max-h-[90vh] flex-col overflow-y-auto p-6 sm:p-8">
+              <div className="mb-5 text-center">
+                <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
+                  Reset Password
+                </h1>
+                <p className="mt-1 text-sm text-gray-600">
+                  Enter your new password below
+                </p>
+                <p className="mt-1 text-xs text-gray-500">
+                  for {email}
+                </p>
+              </div>
 
-        {/* Content */}
-        <CardContent className="space-y-3 px-4 py-3 sm:px-6 sm:py-4">
-
-          {/* Error Message Box */}
-          {error && (
-            <div className="flex gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
-              <AlertCircle className="w-4 h-4 text-red-500 mt-0.5" />
-              <p className="text-xs sm:text-sm text-red-600">{error}</p>
-            </div>
-          )}
-
-          {/* Success Message Box */}
-          {success && (
-            <div className="flex gap-2 p-3 rounded-lg bg-green-50 border border-green-200">
-              <CheckCircle className="w-4 h-4 text-green-600 mt-0.5" />
-              <p className="text-xs sm:text-sm text-green-700">
-                Password reset successful! Redirecting...
-              </p>
-            </div>
-          )}
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-
-            {/* New Password Input */}
-            <div className="relative">
-              <label className="text-xs sm:text-sm font-medium text-gray-700">
-                New Password
-              </label>
-              <Input
-                type={showPassword ? "text" : "password"} // Switches between text and hidden dots
-                value={formData.newPassword}
-                onChange={(e) => handleInputChange("newPassword", e.target.value)}
-                className="h-10 sm:h-12 rounded-full pr-10 border-2 focus:border-green-500"
-                disabled={loading || success}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-4 top-[38px] text-gray-500"
-              >
-                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {/* Confirm Password Input */}
-            <div className="relative">
-              <label className="text-xs sm:text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <Input
-                type={showConfirmPassword ? "text" : "password"} // Switches between text and hidden dots
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                className="h-10 sm:h-12 rounded-full pr-10 border-2 focus:border-green-500"
-                disabled={loading || success}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-4 top-[38px] text-gray-500"
-              >
-                {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-              </button>
-            </div>
-
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={loading || success}
-              className="w-full h-10 sm:h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold shadow-lg"
-            >
-              {loading ? (
-                <span className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Resetting...
-                </span>
-              ) : success ? (
-                "Done!"
-              ) : (
-                "Reset Password"
+              {/* Error Message Box */}
+              {error && (
+                <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-2.5 text-center text-xs font-medium text-red-700 flex items-center justify-center gap-1.5">
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  {error}
+                </div>
               )}
-            </Button>
-          </form>
 
-          {/* Footer Back Link */}
-          <div className="text-center text-xs sm:text-sm pt-2">
-            <Link
-              href={`/auth/forgot-password${sharedRoleSuffix}`}
-              className="text-green-600 hover:underline flex justify-center items-center gap-1"
-            >
-              <ArrowLeft size={14} />
-              Back
-            </Link>
+              {/* Success Message Box */}
+              {success && (
+                <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-2.5 text-center text-xs font-medium text-green-700 flex items-center justify-center gap-1.5">
+                  <CheckCircle className="h-3.5 w-3.5" />
+                  Password reset successful! Redirecting...
+                </div>
+              )}
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* New Password Input */}
+                <div className="space-y-1.5">
+                  <label htmlFor="new-password" className="text-xs font-semibold text-gray-700">
+                    New Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="new-password"
+                      type={showPassword ? "text" : "password"} // Switches between text and hidden dots
+                      value={formData.newPassword}
+                      onChange={(e) => handleInputChange("newPassword", e.target.value)}
+                      placeholder="Enter new password"
+                      className="h-10 rounded-lg border pl-9 pr-9 text-sm focus:border-green-500 focus:ring-green-500/20"
+                      disabled={loading || success}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+
+                  {/* Password Strength Indicator */}
+                  {formData.newPassword.length > 0 && (
+                    <div className="mt-2 space-y-1.5 rounded-lg border border-gray-100 bg-gray-50/80 p-2.5">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                        Password requirements
+                      </p>
+                      <div className="grid gap-1.5">
+                        <p className={`text-xs ${passwordStrength.length ? "text-green-700" : "text-red-600"}`}>
+                          ✓ {passwordStrength.length ? "OK" : "NO"} At least 8 characters
+                        </p>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <p className={`text-xs ${passwordStrength.uppercase ? "text-green-700" : "text-red-600"}`}>
+                            ✓ {passwordStrength.uppercase ? "OK" : "NO"} Uppercase letter
+                          </p>
+                          <p className={`text-xs ${passwordStrength.lowercase ? "text-green-700" : "text-red-600"}`}>
+                            ✓ {passwordStrength.lowercase ? "OK" : "NO"} Lowercase letter
+                          </p>
+                          <p className={`text-xs ${passwordStrength.number ? "text-green-700" : "text-red-600"}`}>
+                            ✓ {passwordStrength.number ? "OK" : "NO"} Number
+                          </p>
+                          <p className={`text-xs ${passwordStrength.specialChar ? "text-green-700" : "text-red-600"}`}>
+                            ✓ {passwordStrength.specialChar ? "OK" : "NO"} Special character
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Confirm Password Input */}
+                <div className="space-y-1.5">
+                  <label htmlFor="confirm-password" className="text-xs font-semibold text-gray-700">
+                    Confirm Password
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                    <Input
+                      id="confirm-password"
+                      type={showConfirmPassword ? "text" : "password"} // Switches between text and hidden dots
+                      value={formData.confirmPassword}
+                      onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                      placeholder="Confirm your password"
+                      className="h-10 rounded-lg border pl-9 pr-9 text-sm focus:border-green-500 focus:ring-green-500/20"
+                      disabled={loading || success}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  
+                  {/* Password match indicator */}
+                  {formData.confirmPassword.length > 0 && (
+                    <p className={`mt-1.5 text-xs font-medium ${
+                      formData.newPassword === formData.confirmPassword 
+                        ? "text-green-700" 
+                        : "text-red-600"
+                    }`}>
+                      {formData.newPassword === formData.confirmPassword 
+                        ? "✓ Passwords match" 
+                        : "✗ Passwords do not match"}
+                    </p>
+                  )}
+                </div>
+
+                {/* Submit Button */}
+                <Button
+                  type="submit"
+                  disabled={loading || success}
+                  className="h-10 w-full rounded-lg bg-gradient-to-r from-green-600 to-emerald-500 text-sm font-semibold text-white shadow-md shadow-green-200 transition-all duration-300 hover:from-green-700 hover:to-emerald-600 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm">Resetting...</span>
+                    </span>
+                  ) : success ? (
+                    <span className="text-sm">Done!</span>
+                  ) : (
+                    <span className="text-sm">Reset Password</span>
+                  )}
+                </Button>
+              </form>
+            </div>
           </div>
-
-        </CardContent>
-      </Card>
+        </div>
+      </main>
     </div>
   );
 }
