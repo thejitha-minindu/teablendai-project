@@ -342,6 +342,7 @@ export function ChatSidebar({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [activeUserRole, setActiveUserRole] = useState<UserRole>("seller");
+  const [availableRoles, setAvailableRoles] = useState<UserRole[]>(["buyer"]);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [userEmail, setUserEmail] = useState("Loading...");
   const [userName, setUserName] = useState("User");
@@ -416,6 +417,11 @@ export function ChatSidebar({
     if (claims?.role) {
       setActiveUserRole(claims.role);
     }
+    if (Array.isArray(claims?.roles)) {
+      setAvailableRoles(
+        claims.roles.filter((role): role is UserRole => role === "buyer" || role === "seller")
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -475,11 +481,15 @@ export function ChatSidebar({
 
   const handleLogout = useCallback(() => {
     clearStoredAuthToken();
-    router.replace("/auth/login");
+    router.replace("/auth");
   }, [router]);
 
   const handleSwitchRole = useCallback(async () => {
     const targetRole = switchInfo.role;
+    if (!availableRoles.includes(targetRole)) {
+      router.push("/auth/profile");
+      return;
+    }
     try {
       setIsSwitchingRole(true);
       const response = await apiClient.post("/auth/switch-role", { role: targetRole });
@@ -502,7 +512,7 @@ export function ChatSidebar({
     } finally {
       setIsSwitchingRole(false);
     }
-  }, [switchInfo.role, router]);
+  }, [switchInfo.role, router, availableRoles]);
 
   const shouldShowOnMobile = isMobileOpen;
   const isDesktop = isMounted && typeof window !== "undefined" && window.innerWidth >= 768;
@@ -773,24 +783,33 @@ export function ChatSidebar({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
-                <Link href="/profile" className="flex items-center w-full">
+                <Link href="/auth/profile" className="flex items-center w-full">
                   <User className="mr-2 h-4 w-4 text-gray-500" />
                   <span>My Profile</span>
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
-                disabled={isSwitchingRole}
-                onClick={handleSwitchRole}
-              >
-                <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                <span>
-                  {isSwitchingRole
-                    ? "Switching role..."
-                    : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
-                </span>
-              </DropdownMenuItem>
+              {availableRoles.includes(switchInfo.role) ? (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
+                  disabled={isSwitchingRole}
+                  onClick={handleSwitchRole}
+                >
+                  <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>
+                    {isSwitchingRole
+                      ? "Switching role..."
+                      : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
+                  <Link href="/auth/profile" className="flex items-center w-full">
+                    <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Manage Roles</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
                 <Link href="/analytics-dashboard" className="flex items-center w-full">

@@ -27,7 +27,17 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
             const claims = getAuthClaims();
             if (!claims) {
                 clearStoredAuthToken();
-                window.location.href = `/auth/login?redirect=${pathname}`; 
+                window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
+                return;
+            }
+
+            if (claims.status === "REJECTED") {
+                window.location.href = "/auth/rejected";
+                return;
+            }
+
+            if (claims.status && claims.status !== "APPROVED") {
+                window.location.href = "/auth/pending";
                 return;
             }
 

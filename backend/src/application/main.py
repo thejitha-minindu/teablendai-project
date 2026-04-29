@@ -1,24 +1,34 @@
 import sys
+import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from src.presentation.routers.v1.admin import admin_users
 from dotenv import load_dotenv
 from src.presentation.routers.v1.chatbot import chat, conversations, query
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
+from src.presentation.routers.v1.admin import admin_profile
+from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
     health, 
     bid, 
     user, 
     order,
-    auth
+    auth,
+    profile,
 )
+<<<<<<< HEAD
+=======
 
+from src.presentation.routers.v1.admin import admin_users
+>>>>>>> 550740ba511890e3c02e6b8a11fb8bd566bb08b6
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
@@ -130,6 +140,10 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# Static Files setup
+os.makedirs("uploads/profile_images", exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # API v1 routers
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
@@ -139,6 +153,12 @@ app.include_router(bid.router, prefix="/api/v1")
 app.include_router(auction.router, prefix="/api/v1")
 # Register user router
 app.include_router(user.router, prefix="/api/v1")
+# Register profile router
+app.include_router(profile.router, prefix="/api/v1")
+
+# Register payment card router
+from src.presentation.routers.v1 import payment_card
+app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"])
 # Register order router
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
@@ -165,6 +185,7 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["bu
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
 
 # Dashboard routers
 app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -241,3 +262,17 @@ if __name__ == "__main__":
 
 
 # to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
+
+# Register admin dashboard router
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
+# Register admin user management router
+# app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
+# Backwards-compatible routes used by frontend (legacy path)
+app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])
+
+# Register admin profile router
+app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"])
+
+# Register admin violation router (mounted under API v1 admin prefix)
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])

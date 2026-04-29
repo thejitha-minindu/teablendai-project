@@ -115,7 +115,7 @@ export default function ChatbotConversationPage({
 
     if (!token) {
       const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
-      router.push(`/auth/login?redirect=${redirectPath}`);
+      router.push(`/auth?redirect=${redirectPath}`);
     }
   }, [pathname, router]);
 
@@ -232,7 +232,7 @@ export default function ChatbotConversationPage({
           errorText.includes("Session expired")
         ) {
           const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
-          router.push(`/auth/login?redirect=${redirectPath}`);
+          router.push(`/auth?redirect=${redirectPath}`);
           return;
         }
 
