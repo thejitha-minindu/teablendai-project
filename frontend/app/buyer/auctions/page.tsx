@@ -148,12 +148,6 @@ export default function BuyerHistoryPage() {
 
   return (
     <div className="sm:px-4 lg:px-10 lg:pt-10">
-      {loading && (
-        <div className="text-center py-10">Loading...</div>
-      )}
-      {error && (
-        <div className="text-center py-10 text-red-500">{error}</div>
-      )}
       <style jsx>{`
         @keyframes fadeInUp {
           from {
@@ -185,8 +179,20 @@ export default function BuyerHistoryPage() {
         }}
       />
 
-      {/* No Results Message */}
-      {sortedData.length === 0 && (
+      {loading && (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Loading auctions...</h3>
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-10">
+          <h3 className="text-lg font-semibold mb-2">Failed to load auctions</h3>
+          <p className="text-muted-foreground">{error}</p>
+        </div>
+      )}
+
+      {!loading && !error && sortedData.length === 0 && (
         <div className="text-center py-10">
           <h3 className="text-xl font-semibold mb-2">No auctions found</h3>
           <p className="text-muted-foreground">
@@ -195,8 +201,7 @@ export default function BuyerHistoryPage() {
         </div>
       )}
 
-      {/* Auction Cards Grid */}
-      {sortedData.length > 0 && (
+      {!loading && !error && sortedData.length > 0 && (
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
             {cardsToShow.map((auction, index) => (
