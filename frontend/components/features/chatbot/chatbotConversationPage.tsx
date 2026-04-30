@@ -37,6 +37,7 @@ export default function ChatbotConversationPage({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const activeHistoryLoadRef = useRef(0);
+  const lastSyncedRouteConversationIdRef = useRef<string | null>(null);
 
   // Memoized scroll check
   const isNearBottom = useCallback(() => {
@@ -132,10 +133,17 @@ export default function ChatbotConversationPage({
           setConversationId(null);
           setMessages([]);
         }
+        lastSyncedRouteConversationIdRef.current = null;
+        return;
+      }
+
+      if (lastSyncedRouteConversationIdRef.current === routeConversationId) {
+        setConversationId(routeConversationId);
         return;
       }
 
       await loadConversationHistory(routeConversationId, false);
+      lastSyncedRouteConversationIdRef.current = routeConversationId;
     };
 
     loadFromRoute();
@@ -172,6 +180,7 @@ export default function ChatbotConversationPage({
           const newConversationId = response.conversation_id;
           setConversationId(newConversationId);
           setIsManualNewChat(false);
+          lastSyncedRouteConversationIdRef.current = String(newConversationId);
           setConversations((prev) => {
             const exists = prev.some(
               (conversation) => String(conversation.conversation_id) === String(newConversationId)
@@ -189,11 +198,10 @@ export default function ChatbotConversationPage({
               ...prev,
             ];
           });
-          loadConversations();
 
           const currentPathConversationId = pathname?.split("/")[3] || null;
           // Keep URL in sync without forcing scroll resets.
-          if (!currentPathConversationId && currentPathConversationId !== newConversationId) {
+          if (currentPathConversationId !== newConversationId) {
             router.replace(`/chatbot/conversation/${newConversationId}`, { scroll: false });
           }
         }
@@ -257,6 +265,7 @@ export default function ChatbotConversationPage({
     setMessages([]);
     setConversationId(null);
     activeHistoryLoadRef.current = 0;
+    lastSyncedRouteConversationIdRef.current = null;
     router.replace("/chatbot/conversation", { scroll: false });
   }, [router]);
 
