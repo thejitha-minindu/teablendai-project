@@ -24,11 +24,8 @@ from src.presentation.routers.v1 import (
     auth,
     profile,
 )
-<<<<<<< HEAD
-=======
 
 from src.presentation.routers.v1.admin import admin_users
->>>>>>> 550740ba511890e3c02e6b8a11fb8bd566bb08b6
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
