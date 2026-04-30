@@ -1,4 +1,4 @@
-"""Live auction event service - publishes events to WebSocket subscribers."""
+# Live auction event service - publishes events to WebSocket subscribers.
 from src.domain.services.buyer.connection_manager import IConnectionManager
 from src.domain.events.auction_event import AuctionEvent
 import asyncio
@@ -7,14 +7,14 @@ import logging
 logger = logging.getLogger(__name__)
 
 class LiveAuctionEventService:
-    """Publishes auction events to connected clients via WebSocket"""
+    # Publishes auction events to connected clients via WebSocket
     
     def __init__(self, manager: IConnectionManager):
         self.manager = manager
         self._processor_task = None
     
     async def publish_event(self, event: AuctionEvent) -> None:
-        """Direct event broadcast (for non-bid events)"""
+        # Direct event broadcast (for non-bid events)
         try:
             message = event.model_dump(mode='json')
             await self.manager.broadcast(
@@ -27,7 +27,7 @@ class LiveAuctionEventService:
             raise
     
     async def broadcast_aggregated(self, auction_id: str, message: dict) -> None:
-        """Broadcast aggregated bid update to all clients"""
+        # Broadcast aggregated bid update to all clients
         try:
             await self.manager.broadcast(room_id=auction_id, message=message)
             logger.debug(f"Aggregated broadcast for {auction_id}: {message.get('bid_count')} bids")

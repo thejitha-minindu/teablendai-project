@@ -30,8 +30,8 @@ from src.presentation.routers.v1.buyer import order as buyer_order
 from src.infrastructure.database.base import Base, engine, SessionLocal
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
-from src.application.services.buyer.auction_manager import auction_manager
-from src.application.services.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
+from src.application.use_cases.buyer.auction_manager import auction_manager
+from src.application.use_cases.buyer.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
 from src.presentation.routers.v1.buyer import live_auction_socket
 
 load_dotenv()

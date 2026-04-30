@@ -2,7 +2,7 @@
 from datetime import datetime, timedelta, timezone
 from sqlalchemy.orm import Session
 from src.application.schemas.bid import Bid as BidSchema
-from src.infrastructure.repositories.bid_repository import BidRepository
+from src.infrastructure.repositories.buyer.bid_repository import BidRepository
 from src.infrastructure.repositories.buyer.auction_repository import AuctionRepository
 from src.application.use_cases.buyer.bid_placement_use_case import BidPlacementUseCase
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
@@ -14,7 +14,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class BidService:
-    """Facade service for bid operations - delegates to specific use cases"""
+    # Facade service for bid operations
     
     def __init__(self, db: Session):
         self.db = db
@@ -22,11 +22,6 @@ class BidService:
         self.auction_repo = AuctionRepository(db)
     
     def place_bid(self, auction_id: str, buyer_id: str, bid_amount: float, buyer_name: str = None) -> BidSchema:
-        """
-        Place a bid using the dedicated use case.
-        Event saved to outbox by use case (no need to return).
-        Returns: bid data
-        """
         use_case = BidPlacementUseCase(self.db)
         bid = use_case.execute(auction_id, buyer_id, bid_amount, buyer_name)
         return bid
@@ -70,15 +65,12 @@ class BidService:
     #     }
     
     def get_bid(self, bid_id: str):
-        """Get bid details"""
         return self.bid_repo.get_bid_details(bid_id)
     
     def list_bids(self, user_id: str = None, auction_id: str = None, min_amount: float = None):
-        """List bids with optional filters"""
         return self.bid_repo.list_bids(user_id=user_id, auction_id=auction_id, min_amount=min_amount)
     
     def list_bids_by_auction(self, auction_id: str):
-        """Get bids for an auction"""
         return self.bid_repo.list_bids_by_auction(auction_id=auction_id)
     
     def list_bids_by_auction_with_names(self, auction_id: str):

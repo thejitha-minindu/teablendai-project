@@ -13,18 +13,18 @@ from src.domain.models.order import Order, OrderStatus
 from src.domain.models.auction_status import AuctionStatus
 from src.domain.constants.auction_constants import AuctionTimingConstants, AuctionEventType
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
-from src.application.services.buyer.live_auction_event_service import LiveAuctionEventService
+from src.application.use_cases.buyer.live_auction_event_service import LiveAuctionEventService
 
 logger = logging.getLogger(__name__)
 
 class AuctionManager:
-    """Manages background auction state transitions - core business logic for auction lifecycle"""
+    # Manages background auction state transitions - core business logic for auction lifecycle
     
     def __init__(self):
         self.running = False
         
     async def start_background_task(self):
-        """Start background task for auction state management"""
+        # Start background task for auction state management
         self.running = True
         logger.info(f"Auction manager background task started ({AuctionTimingConstants.BACKGROUND_TASK_INTERVAL}s intervals)")
         
@@ -37,7 +37,7 @@ class AuctionManager:
                 await asyncio.sleep(AuctionTimingConstants.BACKGROUND_TASK_INTERVAL)
     
     async def process_auctions(self):
-        """Process all auctions for state transitions"""
+        # Process all auctions for state transitions
         db = SessionLocal()
         try:
             current_time = datetime.now(timezone.utc)
@@ -57,7 +57,7 @@ class AuctionManager:
             db.close()
     
     async def _process_scheduled_auctions(self, db: Session, current_time: datetime):
-        """Transition scheduled auctions to live when start time is reached"""
+        # Transition scheduled auctions to live when start time is reached
         scheduled_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.SCHEDULE.value
         ).all()
@@ -70,7 +70,7 @@ class AuctionManager:
                 logger.info(f"Auction transitioned to LIVE: {auction.auction_id}")
     
     async def _process_live_auctions(self, db: Session, current_time: datetime):
-        """Check if live auctions should transition to WON"""
+        # Check if live auctions should transition to WON
         live_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.LIVE.value,
             Auction.buyer.is_(None)
@@ -99,7 +99,7 @@ class AuctionManager:
                         await self._mark_winner(auction, highest_bid, db)
     
     async def _process_won_auctions(self, db: Session, current_time: datetime):
-        """Check if won auctions should transition to HISTORY (after grace period)"""
+        # Check if won auctions should transition to HISTORY (after grace period)
         won_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.LIVE.value,
             Auction.buyer.isnot(None)
@@ -140,7 +140,7 @@ class AuctionManager:
                         logger.error(f"Failed to publish AUCTION_ENDED for {auction.auction_id}: {e}")
     
     async def _mark_winner(self, auction: Auction, highest_bid: Bid, db: Session):
-        """Mark auction winner after waiting period expires"""
+        # Mark auction winner after waiting period expires
         try:
             auction.buyer = highest_bid.buyer_id
             auction.sold_price = highest_bid.bid_amount
@@ -172,7 +172,7 @@ class AuctionManager:
             db.rollback()
     
     async def _close_auction(self, auction: Auction, db: Session):
-        """Close auction"""
+        # Close auction
         try:
             from src.domain.models.order import WinsAuction
             
@@ -214,7 +214,7 @@ class AuctionManager:
             raise
     
     def stop(self):
-        """Stop the background task"""
+        # Stop the background task
         self.running = False
         logger.info("Auction manager stopped")
 

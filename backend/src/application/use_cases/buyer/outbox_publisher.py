@@ -1,4 +1,4 @@
-"""Outbox publisher - publishes events with retry logic."""
+# Outbox publisher - publishes events with retry logic.
 import asyncio
 import json
 from sqlalchemy.orm import Session
@@ -14,7 +14,7 @@ POLL_INTERVAL = 0.1  # 100ms
 
 
 class OutboxPublisher:
-    """Publish events from outbox with retry logic."""
+    # Publish events from outbox with retry logic.
     
     def __init__(self, db_session_factory, manager: IConnectionManager = None):
         self.db_session_factory = db_session_factory
@@ -22,18 +22,18 @@ class OutboxPublisher:
         self.running = False
     
     async def start(self) -> None:
-        """Start background publisher task."""
+        # Start background publisher task.
         self.running = True
         logger.info("Outbox publisher started")
         asyncio.create_task(self._run())
     
     async def stop(self) -> None:
-        """Stop background publisher."""
+        # Stop background publisher.
         self.running = False
         logger.info("Outbox publisher stopped")
     
     async def _run(self) -> None:
-        """Background polling task."""
+        # Background polling task.
         while self.running:
             try:
                 await self._publish_pending()
@@ -43,7 +43,7 @@ class OutboxPublisher:
             await asyncio.sleep(POLL_INTERVAL)
     
     async def _publish_pending(self) -> None:
-        """Fetch and publish pending events."""
+        # Fetch and publish pending events.
         db = self.db_session_factory()
         try:
             repo = OutboxRepository(db)
@@ -55,7 +55,7 @@ class OutboxPublisher:
             db.close()
     
     async def _publish_event(self, event, repo: OutboxRepository) -> None:
-        """Publish single event with retry logic."""
+        # Publish single event with retry logic.
         try:
             # Parse payload
             payload = json.loads(event.payload)
@@ -85,23 +85,23 @@ _publisher = None
 
 
 def init_outbox_publisher(db_session_factory, manager: IConnectionManager = None):
-    """Initialize outbox publisher."""
+    # Initialize outbox publisher.
     global _publisher
     _publisher = OutboxPublisher(db_session_factory, manager)
 
 
 async def start_outbox_publisher() -> None:
-    """Start publisher background task."""
+    # Start publisher background task.
     if _publisher:
         await _publisher.start()
 
 
 async def stop_outbox_publisher() -> None:
-    """Stop publisher background task."""
+    # Stop publisher background task.
     if _publisher:
         await _publisher.stop()
 
 
 def get_outbox_publisher() -> OutboxPublisher:
-    """Get publisher instance."""
+    # Get publisher instance.
     return _publisher

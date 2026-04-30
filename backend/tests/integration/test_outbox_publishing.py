@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from src.domain.models.outbox import AuctionOutbox
 from src.domain.models.base import Base
 from src.infrastructure.repositories.outbox_repository import OutboxRepository
-from src.application.services.outbox_publisher import OutboxPublisher
+from src.application.use_cases.buyer.outbox_publisher import OutboxPublisher
 
 
 @pytest.fixture
