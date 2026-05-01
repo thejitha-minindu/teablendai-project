@@ -1,38 +1,43 @@
 import sys
+import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from src.presentation.routers.v1.admin import admin_users
 from dotenv import load_dotenv
+from src.presentation.routers.v1.chatbot import chat, conversations, query
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from .dependencies import get_mcp_client
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
+from src.presentation.routers.v1.admin import admin_profile
+from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
     health, 
     bid, 
     user, 
     order,
-    conversations, 
-    query,
-    #dashboard,
-    chat,
-    auth
+    auth,
+    profile,
 )
-from src.presentation.routers.v1.admin import admin_auction
-from src.presentation.routers.v1.admin import admin_csv
-from src.presentation.routers.v1.admin import admin_dashboard
+
+from src.presentation.routers.v1.admin import admin_users
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
 from src.infrastructure.database.base import Base, engine, SessionLocal
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
+from src.presentation.routers.v1.dashboard import analytics_dashboard
 from src.application.use_cases.buyer.auction_manager import auction_manager
 from src.application.use_cases.buyer.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
 from src.presentation.routers.v1.buyer import live_auction_socket
+
+from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
 
@@ -62,6 +67,16 @@ async def lifespan(app: FastAPI):
     init_outbox_publisher(SessionLocal)
     await start_outbox_publisher()
     logger.info("Outbox publisher started")
+
+    if settings.ANALYTICS_SCHEDULER_ENABLED:
+        analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
+        app.state.analytics_snapshot_task = analytics_task
+        logger.info("Analytics snapshot scheduler started")
+
+    if settings.ANALYTICS_SCHEDULER_ENABLED:
+        analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
+        app.state.analytics_snapshot_task = analytics_task
+        logger.info("Analytics snapshot scheduler started")
 
     if settings.INIT_DB_ON_STARTUP:
         try:
@@ -110,6 +125,13 @@ async def lifespan(app: FastAPI):
                 else:
                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
+        if hasattr(app.state, "analytics_snapshot_task"):
+            analytics_snapshot_scheduler.stop()
+            app.state.analytics_snapshot_task.cancel()
+            try:
+                await app.state.analytics_snapshot_task
+            except asyncio.CancelledError:
+                logger.debug("Analytics scheduler task cancelled cleanly")
 
 # Create FastAPI application
 app = FastAPI(
@@ -131,6 +153,10 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# Static Files setup
+os.makedirs("uploads/profile_images", exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # API v1 routers
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
@@ -140,6 +166,12 @@ app.include_router(bid.router, prefix="/api/v1")
 app.include_router(auction.router, prefix="/api/v1")
 # Register user router
 app.include_router(user.router, prefix="/api/v1")
+# Register profile router
+app.include_router(profile.router, prefix="/api/v1")
+
+# Register payment card router
+from src.presentation.routers.v1 import payment_card
+app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"])
 # Register order router
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
@@ -149,7 +181,6 @@ app.include_router(health.router, prefix="/api/v1")
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
-#app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
 # Admin routers
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
@@ -167,6 +198,10 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["bu
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
 app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
 app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
+
+# Dashboard routers
+app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
@@ -240,3 +275,17 @@ if __name__ == "__main__":
 
 
 # to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
+
+# Register admin dashboard router
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+
+# Register admin user management router
+# app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
+# Backwards-compatible routes used by frontend (legacy path)
+app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])
+
+# Register admin profile router
+app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"])
+
+# Register admin violation router (mounted under API v1 admin prefix)
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])

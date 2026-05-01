@@ -4,17 +4,31 @@ import { useState, useEffect } from "react";
 import { Bell, Database, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
+
 export default function AdminDashboard() {
 
   const [totalAuctions, setTotalAuctions] = useState(0);
+  const [totalSellers, setTotalSellers] = useState(0);
+  const [totalBuyers, setTotalBuyers] = useState(0);
+  const [pendingSellers, setPendingSellers] = useState(0);
+  const [pendingBuyers, setPendingBuyers] = useState(0);
+  const [totalViolations, setTotalViolations] = useState(0);
 
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await fetch("http://localhost:8000/api/v1/admin/dashboard-stats");
-        const data = await res.json();
+        const { apiClient } = await import("@/lib/apiClient");
+        const res = await apiClient.get("/admin/dashboard-stats");
+        const data = res.data;
 
-        setTotalAuctions(data.total_auctions);
+        console.log("[Admin Dashboard] dashboard-stats response:", data);
+
+        setTotalAuctions(data.total_auctions || 0);
+        setTotalSellers(data.total_sellers || 0);
+        setTotalBuyers(data.total_buyers || 0);
+        setPendingSellers(data.pending_sellers || 0);
+        setPendingBuyers(data.pending_buyers || 0);
+        setTotalViolations(data.total_violations || 0);
 
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -35,10 +49,11 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Total Buyers" value="234" sub="Pending 27" />
-        <StatCard title="Total Sellers" value="156" sub="Pending 12" />
-        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Pending 0" />
-        <ViolationCard />
+        <StatCard title="Total Buyers" value={String(totalBuyers)} sub={`Pending    : ${pendingBuyers}`} />
+        <StatCard title="Total Sellers" value={String(totalSellers)} sub={`Pending    : ${pendingSellers}`} />
+        <StatCard title="Total Auctions" value={String(totalAuctions)} sub="Live 0" />
+        <ViolationCard totalViolations={totalViolations} />
+      
       </div>
 
       {/* ANALYTICS + ACTION */}
@@ -119,7 +134,7 @@ function StatCard({
   );
 }
 
-function ViolationCard() {
+function ViolationCard({ totalViolations }: { totalViolations: number }) {
   return (
     <div className="bg-white rounded-2xl shadow p-6 flex flex-col justify-between">
       <div className="flex items-center gap-2">
@@ -127,7 +142,7 @@ function ViolationCard() {
         <h3 className="text-sm text-gray-500">Total Violations</h3>
       </div>
 
-      <p className="text-4xl font-bold my-3">99</p>
+      <p className="text-4xl font-bold my-3">{String(totalViolations)}</p>
 
       <Link href="/admin/violationhandling">
         <button className="w-full bg-red-100 text-red-700 py-2 rounded-lg font-medium hover:bg-red-200 transition">

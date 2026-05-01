@@ -7,11 +7,11 @@ from fastapi import Depends, HTTPException, status, WebSocket, Query
 
 from src.database import get_db, get_engine
 
-from src.application.use_cases.chat.chat_use_case import ChatUseCase
+from src.application.use_cases.chatbot.chat.chat_use_case import ChatUseCase
 from src.application.security import SECRET_KEY, ALGORITHM
 from src.domain.models.user import User
-from src.infrastructure.services.chat_service import ChatService
-from src.infrastructure.services.mcp_client_manager import MCPClientManager
+from src.infrastructure.services.chatbot.chat_service import ChatService
+from src.infrastructure.services.chatbot.mcp_client_manager import MCPClientManager
 from src.infrastructure.database.chat_history import ChatHistoryDB
 from src.infrastructure.repositories import ConversationRepository, ChatMessageRepository
 

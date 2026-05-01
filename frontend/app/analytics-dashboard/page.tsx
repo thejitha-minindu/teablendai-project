@@ -1,128 +1,57 @@
 "use client";
 
-import { 
-  TrendingUp, TrendingDown, ShoppingCart, DollarSign, 
-  Package, Users, Award, Activity 
-} from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, ShoppingCart, DollarSign,
+  Package, Award, Activity
+} from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
-} from 'recharts';
+} from "recharts";
+import { useAnalyticsOverview } from "@/hooks/use-analytics-overview";
 
 type Trending = 'up' | 'down' | 'neutral';
 
-interface KPIItem {
-  value: number;
-  unit: string;
-  trend: number;
-  trending: Trending;
-}
-
-// Dummy Data
-const kpiData: Record<string, KPIItem> = {
-  totalPurchased: { value: 45780, unit: 'kg', trend: 12.5, trending: 'up' },
-  totalSold: { value: 42350, unit: 'kg', trend: 8.3, trending: 'up' },
-  totalRevenue: { value: 2847500, unit: 'LKR', trend: 15.2, trending: 'up' },
-  avgAuctionPrice: { value: 1250, unit: 'LKR/kg', trend: -3.1, trending: 'down' },
-  profitMargin: { value: 22.5, unit: '%', trend: 4.2, trending: 'up' },
-  activeAuctions: { value: 8, unit: '', trend: 0, trending: 'neutral' },
-};
-
-const revenueByMonth = [
-  { month: 'Jan', revenue: 185000, purchases: 3200 },
-  { month: 'Feb', revenue: 195000, purchases: 3400 },
-  { month: 'Mar', revenue: 210000, purchases: 3650 },
-  { month: 'Apr', revenue: 225000, purchases: 3800 },
-  { month: 'May', revenue: 242000, purchases: 4100 },
-  { month: 'Jun', revenue: 238000, purchases: 3950 },
-];
-
-const teaGradeDistribution = [
-  { name: 'BOP', value: 35, color: '#0088FE' },
-  { name: 'BOPF', value: 28, color: '#00C49F' },
-  { name: 'Dust', value: 20, color: '#FFBB28' },
-  { name: 'OP', value: 12, color: '#FF8042' },
-  { name: 'Others', value: 5, color: '#8884d8' },
-];
-
-const topBlends = [
-  { name: 'Premium Ceylon', sales: 8500, profit: 22 },
-  { name: 'Gold Blend', sales: 7200, profit: 19 },
-  { name: 'Morning Fresh', sales: 6800, profit: 24 },
-  { name: 'Classic Mix', sales: 6200, profit: 18 },
-  { name: 'Estate Select', sales: 5900, profit: 21 },
-];
-
 export default function AnalyticsOverview() {
+  const { data, loading, error, isStale, lastUpdated } = useAnalyticsOverview();
+
+  if (loading && !data) {
+    return <div className="p-6 text-gray-500">Loading analytics dashboard...</div>;
+  }
+
+  if (!data) {
+    return <div className="p-6 text-red-600">Failed to load dashboard: {error ?? "Unknown error"}</div>;
+  }
+
+  const kpiData = data.kpis;
+  const revenueByMonth = data.revenueByMonth;
+  const teaGradeDistribution = data.teaGradeDistribution;
+  const topBlends = data.topBlends;
+  const quickStats = data.quickStats;
+
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Tea Analytics Dashboard</h1>
-        <p className="text-gray-600 mt-1">Comprehensive insights into your tea business</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Tea Analytics Dashboard</h1>
+          <p className="text-gray-600 mt-1">Comprehensive insights into your tea business</p>
+        </div>
+        <div className="text-xs text-right text-gray-500">
+          <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
+          {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+        </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <KPICard
-          title="Total Tea Purchased"
-          value={kpiData.totalPurchased.value.toLocaleString()}
-          unit={kpiData.totalPurchased.unit}
-          trend={kpiData.totalPurchased.trend}
-          trending={kpiData.totalPurchased.trending}
-          icon={<ShoppingCart className="text-blue-600" />}
-          color="blue"
-        />
-        <KPICard
-          title="Total Tea Sold"
-          value={kpiData.totalSold.value.toLocaleString()}
-          unit={kpiData.totalSold.unit}
-          trend={kpiData.totalSold.trend}
-          trending={kpiData.totalSold.trending}
-          icon={<Package className="text-green-600" />}
-          color="green"
-        />
-        <KPICard
-          title="Total Revenue"
-          value={`${(kpiData.totalRevenue.value / 1000000).toFixed(2)}M`}
-          unit={kpiData.totalRevenue.unit}
-          trend={kpiData.totalRevenue.trend}
-          trending={kpiData.totalRevenue.trending}
-          icon={<DollarSign className="text-purple-600" />}
-          color="purple"
-        />
-        <KPICard
-          title="Avg Auction Price"
-          value={kpiData.avgAuctionPrice.value.toLocaleString()}
-          unit={kpiData.avgAuctionPrice.unit}
-          trend={kpiData.avgAuctionPrice.trend}
-          trending={kpiData.avgAuctionPrice.trending}
-          icon={<Award className="text-orange-600" />}
-          color="orange"
-        />
-        <KPICard
-          title="Profit Margin"
-          value={kpiData.profitMargin.value.toString()}
-          unit={kpiData.profitMargin.unit}
-          trend={kpiData.profitMargin.trend}
-          trending={kpiData.profitMargin.trending}
-          icon={<TrendingUp className="text-indigo-600" />}
-          color="indigo"
-        />
-        <KPICard
-          title="Active Auctions"
-          value={kpiData.activeAuctions.value.toString()}
-          unit="auctions"
-          trend={kpiData.activeAuctions.trend}
-          trending="neutral"
-          icon={<Activity className="text-pink-600" />}
-          color="pink"
-        />
+        <KPICard title="Total Tea Auction Volume (Participated)" value={kpiData.totalPurchased.value.toLocaleString()} unit="kg" trend={kpiData.totalPurchased.trend} trending={kpiData.totalPurchased.trending} icon={<ShoppingCart className="text-blue-600" />} color="blue" />
+        <KPICard title="Total Tea Sold Volume" value={kpiData.totalSold.value.toLocaleString()} unit="kg" trend={kpiData.totalSold.trend} trending={kpiData.totalSold.trending} icon={<Package className="text-green-600" />} color="green" />
+        <KPICard title="Total Revenue" value={`${(kpiData.totalRevenue.value / 1000000)}M`} unit="LKR" trend={kpiData.totalRevenue.trend} trending={kpiData.totalRevenue.trending} icon={<DollarSign className="text-purple-600" />} color="purple" />
+        <KPICard title="Avg Auction Price" value={kpiData.avgAuctionPrice.value.toLocaleString()} unit="LKR/kg" trend={kpiData.avgAuctionPrice.trend} trending={kpiData.avgAuctionPrice.trending} icon={<Award className="text-orange-600" />} color="orange" />
+        <KPICard title="Profit Margin" value={kpiData.profitMargin.value.toFixed(2)} unit="%" trend={kpiData.profitMargin.trend} trending={kpiData.profitMargin.trending} icon={<TrendingUp className="text-indigo-600" />} color="indigo" />
+        <KPICard title="Active Auctions" value={kpiData.activeAuctions.value.toString()} unit="auctions" trend={kpiData.activeAuctions.trend} trending={kpiData.activeAuctions.trending} icon={<Activity className="text-pink-600" />} color="pink" />
       </div>
 
-      {/* Charts Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Revenue Trend */}
         <ChartCard title="Revenue & Purchase Trends">
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={revenueByMonth}>
@@ -138,7 +67,6 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Tea Grade Distribution */}
         <ChartCard title="Tea Grade Distribution">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
@@ -147,9 +75,8 @@ export default function AnalyticsOverview() {
                 cx="50%"
                 cy="50%"
                 labelLine={false}
-                label={({ name, value }) => `${name}: ${value}%`}
+                label={({ name, value }) => `${name}: ${Number(value).toFixed(1)}%`}
                 outerRadius={100}
-                fill="#8884d8"
                 dataKey="value"
               >
                 {teaGradeDistribution.map((entry, index) => (
@@ -161,7 +88,6 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Top Blends Performance */}
         <ChartCard title="Top Performing Blends">
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={topBlends}>
@@ -176,16 +102,15 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        {/* Quick Stats */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Statistics</h3>
           <div className="space-y-4">
-            <StatRow label="Total Customers" value="247" />
-            <StatRow label="Active Buyers" value="89" />
-            <StatRow label="Completed Auctions (This Month)" value="34" />
-            <StatRow label="Average Blend Margin" value="21.3%" />
-            <StatRow label="Inventory Stock" value="3,430 kg" />
-            <StatRow label="Pending Orders" value="12" />
+            <StatRow label="Total Customers" value={quickStats.totalCustomers.toLocaleString()} />
+            <StatRow label="Active Buyers" value={quickStats.activeBuyers.toLocaleString()} />
+            <StatRow label="Completed Auctions (This Month)" value={quickStats.completedAuctionsThisMonth.toLocaleString()} />
+            <StatRow label="Average Blend Margin" value={`${quickStats.averageBlendMargin.toFixed(1)}%`} />
+            <StatRow label="Inventory Stock" value={`${quickStats.inventoryStockKg.toLocaleString()} kg`} />
+            <StatRow label="Pending Orders" value={quickStats.pendingOrders.toLocaleString()} />
           </div>
         </div>
       </div>

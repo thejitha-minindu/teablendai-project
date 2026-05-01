@@ -1,5 +1,6 @@
 from logging.config import fileConfig
 import os
+from urllib.parse import quote_plus
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 from alembic import context
@@ -10,9 +11,12 @@ from src.config import get_mssql_connection_string
 from src.domain.models.auction import Auction
 from src.domain.models.bid import Bid
 from src.domain.models.user import User, FinancialDetails, WatchList
+from src.domain.models.password_reset import PasswordReset
 from src.domain.models.order import Order, PaymentDetails, WinsAuction
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
+from src.domain.models.admin import Admin
+from src.domain.models.violation import Violation
 
 from urllib.parse import quote_plus
 

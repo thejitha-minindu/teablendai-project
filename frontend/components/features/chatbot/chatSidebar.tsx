@@ -34,7 +34,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ConversationSummary } from "@/services/chatService";
+import { ConversationSummary } from "@/services/chatbot/chatService";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
@@ -65,6 +65,7 @@ interface ChatHistoryItem {
 
 interface ChatSidebarProps {
   conversations?: ConversationSummary[];
+  activeConversationId?: string | null;
   onNewChat?: () => void;
   onSelectChat?: (chatId: string) => void;
   onDeleteChat?: (chatId: string) => void;
@@ -221,9 +222,9 @@ const ChatHistoryCard = memo(function ChatHistoryCard({
         onClick={onSelect}
         className={cn(
           "group relative rounded-xl cursor-pointer transition-all duration-200",
-          "border",
+          "border-2",
           isSelected
-            ? "bg-gray-100 border-gray-300 shadow-sm"
+            ? "bg-[#E5F7CB] shadow-md"
             : "bg-white border-transparent hover:bg-gray-50 hover:border-gray-200"
         )}
       >
@@ -231,7 +232,9 @@ const ChatHistoryCard = memo(function ChatHistoryCard({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1.5">
               {chat.isPinned && <Pin className="w-3 h-3 text-gray-400" />}
-              <h4 className="text-sm font-medium text-gray-900 truncate">{chat.title}</h4>
+              <h4 className={cn("text-sm text-gray-900 truncate", isSelected ? "font-semibold" : "font-medium")}>
+                {chat.title}
+              </h4>
             </div>
             <p className="text-xs text-gray-500 line-clamp-2 mb-1.5">{chat.preview}</p>
             <span className="text-xs text-gray-400">{getTimeAgoFn(chat.timestamp)}</span>
@@ -335,6 +338,7 @@ const ChatSection = memo(function ChatSection({
 // Main Component
 export function ChatSidebar({
   conversations = [],
+  activeConversationId = null,
   onNewChat,
   onSelectChat,
   onDeleteChat,
@@ -344,8 +348,8 @@ export function ChatSidebar({
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [activeUserRole, setActiveUserRole] = useState<UserRole>("seller");
+  const [availableRoles, setAvailableRoles] = useState<UserRole[]>(["buyer"]);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   const [userEmail, setUserEmail] = useState("Loading...");
   const [userName, setUserName] = useState("User");
@@ -420,6 +424,11 @@ export function ChatSidebar({
     if (claims?.role) {
       setActiveUserRole(claims.role);
     }
+    if (Array.isArray(claims?.roles)) {
+      setAvailableRoles(
+        claims.roles.filter((role): role is UserRole => role === "buyer" || role === "seller")
+      );
+    }
   }, []);
 
   useEffect(() => {
@@ -439,14 +448,12 @@ export function ChatSidebar({
   }, []);
 
   const handleNewChat = useCallback(() => {
-    setSelectedChatId(null);
     setIsMobileOpen(false);
     onNewChat?.();
   }, [onNewChat]);
 
   const handleSelectChat = useCallback(
     (chatId: string) => {
-      setSelectedChatId(chatId);
       setIsMobileOpen(false);
       onSelectChat?.(chatId);
     },
@@ -456,10 +463,9 @@ export function ChatSidebar({
   const handleDeleteChat = useCallback(
     (chatId: string, e: React.MouseEvent) => {
       e.stopPropagation();
-      if (selectedChatId === chatId) setSelectedChatId(null);
       onDeleteChat?.(chatId);
     },
-    [selectedChatId, onDeleteChat]
+    [onDeleteChat]
   );
 
   const handlePinChat = useCallback(
@@ -482,11 +488,15 @@ export function ChatSidebar({
 
   const handleLogout = useCallback(() => {
     clearStoredAuthToken();
-    window.location.href = "/auth/login";
-  }, []);
+    router.replace("/auth");
+  }, [router]);
 
   const handleSwitchRole = useCallback(async () => {
     const targetRole = switchInfo.role;
+    if (!availableRoles.includes(targetRole)) {
+      router.push("/auth/profile");
+      return;
+    }
     try {
       setIsSwitchingRole(true);
       const response = await apiClient.post("/auth/switch-role", { role: targetRole });
@@ -503,13 +513,13 @@ export function ChatSidebar({
 
       setStoredAuthToken(newToken);
       setActiveUserRole(targetRole);
-      window.location.href = getHomePathByRole(targetRole);
+      router.replace(getHomePathByRole(targetRole));
     } catch (error) {
       console.error("Failed to switch role", error);
     } finally {
       setIsSwitchingRole(false);
     }
-  }, [switchInfo.role]);
+  }, [switchInfo.role, router, availableRoles]);
 
   const shouldShowOnMobile = isMobileOpen;
   const isDesktop = isMounted && typeof window !== "undefined" && window.innerWidth >= 768;
@@ -693,7 +703,7 @@ export function ChatSidebar({
                         title={PINNED_SECTION_LABEL}
                         icon={Pin}
                         chats={pinnedChats}
-                        selectedChatId={selectedChatId}
+                        selectedChatId={activeConversationId || null}
                         onSelectChat={handleSelectChat}
                         onDeleteChat={handleDeleteChat}
                         onPinChat={handlePinChat}
@@ -705,7 +715,7 @@ export function ChatSidebar({
                         title={RECENT_SECTION_LABEL}
                         icon={Clock}
                         chats={unpinnedChats}
-                        selectedChatId={selectedChatId}
+                        selectedChatId={activeConversationId || null}
                         onSelectChat={handleSelectChat}
                         onDeleteChat={handleDeleteChat}
                         onPinChat={handlePinChat}
@@ -780,24 +790,33 @@ export function ChatSidebar({
               <DropdownMenuSeparator />
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
-                <Link href="/profile" className="flex items-center w-full">
+                <Link href="/auth/profile" className="flex items-center w-full">
                   <User className="mr-2 h-4 w-4 text-gray-500" />
                   <span>My Profile</span>
                 </Link>
               </DropdownMenuItem>
 
-              <DropdownMenuItem
-                className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
-                disabled={isSwitchingRole}
-                onClick={handleSwitchRole}
-              >
-                <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                <span>
-                  {isSwitchingRole
-                    ? "Switching role..."
-                    : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
-                </span>
-              </DropdownMenuItem>
+              {availableRoles.includes(switchInfo.role) ? (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-50 rounded-lg m-1"
+                  disabled={isSwitchingRole}
+                  onClick={handleSwitchRole}
+                >
+                  <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>
+                    {isSwitchingRole
+                      ? "Switching role..."
+                      : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
+                  <Link href="/auth/profile" className="flex items-center w-full">
+                    <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Manage Roles</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
                 <Link href="/analytics-dashboard" className="flex items-center w-full">

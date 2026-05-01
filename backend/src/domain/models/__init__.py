@@ -14,6 +14,8 @@ from .order import Order, PaymentDetails, WinsAuction
 from .conversation import Conversation
 from .message import ChatMessage
 from .outbox import AuctionOutbox
+from .admin import Admin
+from .violation import Violation
 
 # Configure Relationships
 from sqlalchemy.orm import relationship

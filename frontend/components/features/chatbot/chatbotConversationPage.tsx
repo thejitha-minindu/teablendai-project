@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedAIChat } from "./chat";
 import { ChatSidebar } from "./chatSidebar";
 import MessageBubble from "./MessageBubble";
-import { chatService, ChatMessage, ConversationSummary } from "@/services/chatService";
+import { chatService, ChatMessage, ConversationSummary } from "@/services/chatbot/chatService";
 import { ArrowDownIcon } from "@/components/ui/arrow-down";
 
 // Constants
@@ -28,9 +28,11 @@ export default function ChatbotConversationPage({
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [isManualNewChat, setIsManualNewChat] = useState(false);
+  const [isConversationLoading, setIsConversationLoading] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const activeHistoryLoadRef = useRef(0);
 
   // Memoized scroll check
   const isNearBottom = useCallback(() => {
@@ -63,6 +65,43 @@ export default function ChatbotConversationPage({
     }
   }, []);
 
+  const loadConversationHistory = useCallback(
+    async (targetConversationId: string, navigate = false) => {
+      if (!targetConversationId) return;
+
+      const requestId = Date.now();
+      activeHistoryLoadRef.current = requestId;
+      setIsConversationLoading(true);
+      setIsManualNewChat(false);
+      setConversationId(targetConversationId);
+
+      try {
+        const history = await chatService.getConversationMessages(targetConversationId);
+
+        // Ignore stale async responses from older selection requests.
+        if (activeHistoryLoadRef.current !== requestId) {
+          return;
+        }
+
+        setMessages(history);
+        setTimeout(scrollToBottom, 100);
+
+        if (navigate) {
+          router.replace(`/chatbot/conversation/${targetConversationId}`, { scroll: false });
+        }
+      } catch (error) {
+        if (activeHistoryLoadRef.current === requestId) {
+          console.error("Failed to load conversation:", error);
+        }
+      } finally {
+        if (activeHistoryLoadRef.current === requestId) {
+          setIsConversationLoading(false);
+        }
+      }
+    },
+    [router, scrollToBottom]
+  );
+
   // Auth check
   useEffect(() => {
     const token =
@@ -72,7 +111,7 @@ export default function ChatbotConversationPage({
 
     if (!token) {
       const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
-      router.push(`/auth/login?redirect=${redirectPath}`);
+      router.push(`/auth?redirect=${redirectPath}`);
     }
   }, [pathname, router]);
 
@@ -85,27 +124,18 @@ export default function ChatbotConversationPage({
   useEffect(() => {
     const loadFromRoute = async () => {
       if (!routeConversationId) {
-        if (conversationId !== null && isManualNewChat) {
+        if (isManualNewChat) {
           setConversationId(null);
           setMessages([]);
         }
         return;
       }
 
-      setIsManualNewChat(false);
-      setConversationId(routeConversationId);
-
-      try {
-        const history = await chatService.getConversationMessages(routeConversationId);
-        setMessages(history);
-        setTimeout(scrollToBottom, 100);
-      } catch (error) {
-        console.error("Failed to load conversation:", error);
-      }
+      await loadConversationHistory(routeConversationId, false);
     };
 
     loadFromRoute();
-  }, [routeConversationId, conversationId, isManualNewChat, scrollToBottom]);
+  }, [routeConversationId, isManualNewChat, loadConversationHistory]);
 
   const handleSendMessage = useCallback(
     async (message: string) => {
@@ -138,11 +168,29 @@ export default function ChatbotConversationPage({
           const newConversationId = response.conversation_id;
           setConversationId(newConversationId);
           setIsManualNewChat(false);
+          setConversations((prev) => {
+            const exists = prev.some(
+              (conversation) => String(conversation.conversation_id) === String(newConversationId)
+            );
+            if (exists) return prev;
+
+            return [
+              {
+                conversation_id: String(newConversationId),
+                title: trimmedMessage.slice(0, 80),
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+                message_count: 1,
+              },
+              ...prev,
+            ];
+          });
           loadConversations();
 
           const currentPathConversationId = pathname?.split("/")[3] || null;
-          if (currentPathConversationId !== newConversationId) {
-            router.push(`/chatbot/conversation/${newConversationId}`);
+          // Keep URL in sync without forcing scroll resets.
+          if (!currentPathConversationId && currentPathConversationId !== newConversationId) {
+            router.replace(`/chatbot/conversation/${newConversationId}`, { scroll: false });
           }
         }
 
@@ -180,7 +228,7 @@ export default function ChatbotConversationPage({
           errorText.includes("Session expired")
         ) {
           const redirectPath = encodeURIComponent(pathname || "/chatbot/conversation");
-          router.push(`/auth/login?redirect=${redirectPath}`);
+          router.push(`/auth?redirect=${redirectPath}`);
           return;
         }
 
@@ -204,35 +252,47 @@ export default function ChatbotConversationPage({
     setIsManualNewChat(true);
     setMessages([]);
     setConversationId(null);
-    router.push("/chatbot/conversation");
+    activeHistoryLoadRef.current = 0;
+    router.replace("/chatbot/conversation", { scroll: false });
   }, [router]);
 
   const handleSelectChat = useCallback(
-    (chatId: string) => {
+    async (chatId: string) => {
       if (!chatId) return;
-      setIsManualNewChat(false);
-      router.push(`/chatbot/conversation/${chatId}`);
+      await loadConversationHistory(chatId, true);
     },
-    [router]
+    [loadConversationHistory]
   );
 
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
       if (!chatId) return;
 
+      const previousConversations = conversations;
+
+      // Optimistic UI update for immediate feedback.
+      setConversations((prev) =>
+        prev.filter((conversation) => String(conversation.conversation_id) !== String(chatId))
+      );
+
       try {
         await chatService.deleteConversation(chatId);
+
         if (conversationId === chatId) {
           setMessages([]);
           setConversationId(null);
-          router.push("/chatbot/conversation");
+          activeHistoryLoadRef.current = 0;
+          router.replace("/chatbot/conversation", { scroll: false });
         }
-        loadConversations();
+
+        await loadConversations();
       } catch (error) {
         console.error("Failed to delete chat:", error);
+        // Roll back optimistic update on failure.
+        setConversations(previousConversations);
       }
     },
-    [conversationId, router, loadConversations]
+    [conversationId, conversations, router, loadConversations]
   );
 
   const handlePinChat = useCallback(
@@ -284,6 +344,7 @@ export default function ChatbotConversationPage({
     <div className="flex h-screen bg-gray-50 overflow-hidden">
       <ChatSidebar
         conversations={conversations}
+        activeConversationId={conversationId || routeConversationId}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
         onDeleteChat={handleDeleteChat}
@@ -339,7 +400,7 @@ export default function ChatbotConversationPage({
         <div className={hasMessages ? "shrink-0" : "flex-1"}>
           <AnimatedAIChat
             onSendMessage={handleSendMessage}
-            isLoading={isLoading}
+            isLoading={isLoading || isConversationLoading}
             showWelcome={!hasMessages}
           />
         </div>
