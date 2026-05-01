@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useParams } from "next/navigation";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 import ChatbotConversationPage from "@/components/features/chatbot/chatbotConversationPage";
 
 export default function ChatbotConversationLayout({ children }: { children: ReactNode }) {
@@ -10,9 +11,9 @@ export default function ChatbotConversationLayout({ children }: { children: Reac
     typeof params?.conversationID === "string" ? params.conversationID : null;
 
   return (
-    <>
+    <ProtectedRoute>
       <ChatbotConversationPage routeConversationId={routeConversationId} />
       {children}
-    </>
+    </ProtectedRoute>
   );
 }

@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { User, HelpCircle, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { clearStoredAuthToken } from "@/lib/auth";
 
 interface ProfileMenuProps {
   isOpen: boolean;
@@ -38,11 +39,8 @@ export function ProfileMenu({
 
   const handleLogout = () => {
     onClose();
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("teablend_token");
-      localStorage.removeItem("role");
-      window.location.href = "/auth";
-    }
+    clearStoredAuthToken();
+    router.replace("/auth");
   };
 
   const handleProfileClick = () => {

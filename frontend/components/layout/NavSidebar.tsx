@@ -156,7 +156,7 @@ export function NavSidebar() {
   // Logout Handler
   const handleLogout = () => {
     clearStoredAuthToken();
-    window.location.href = "/auth";
+    router.replace("/auth");
   };
 
   const handleSwitchRole = async () => {
@@ -186,7 +186,7 @@ export function NavSidebar() {
 
       setStoredAuthToken(newToken);
       setActiveUserRole(targetRole);
-      window.location.href = getHomePathByRole(targetRole);
+      router.replace(getHomePathByRole(targetRole));
     } catch (error) {
       console.error("Failed to switch role", error);
     } finally {

@@ -1,8 +1,21 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import authService, { CurrentUserResponse } from '@/services/authService';
-import { getAuthClaims, AUTH_CHANGED_EVENT } from '@/lib/auth';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
+import { usePathname, useRouter } from "next/navigation";
+import authService, { type CurrentUserResponse } from "@/services/authService";
+import {
+  getAuthClaims,
+  isProtectedPath,
+  subscribeToAuthChanges,
+} from "@/lib/auth";
 
 interface UserContextType {
   user: CurrentUserResponse | null;
@@ -18,7 +31,7 @@ const UserContext = createContext<UserContextType | undefined>(undefined);
 export const useUser = () => {
   const context = useContext(UserContext);
   if (context === undefined) {
-    throw new Error('useUser must be used within a UserProvider');
+    throw new Error("useUser must be used within a UserProvider");
   }
   return context;
 };
@@ -28,82 +41,95 @@ interface UserProviderProps {
 }
 
 export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [user, setUser] = useState<CurrentUserResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const refreshUser = async () => {
+  const redirectToAuthIfNeeded = useCallback(() => {
+    if (!pathname || !isProtectedPath(pathname)) return;
+    router.replace(`/auth?redirect=${encodeURIComponent(pathname)}`);
+  }, [pathname, router]);
+
+  const refreshUser = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const currentUser = await authService.getCurrentUser();
-      console.log('[UserContext] Refreshed user data:', currentUser);
       setUser(currentUser);
-    } catch (err: any) {
-      console.error('[UserContext] Failed to refresh user:', err);
-      setError(err.message || 'Failed to fetch user data');
+    } catch (err: unknown) {
+      if ((err as { code?: string })?.code !== "ERR_CANCELED") {
+        console.error("[UserContext] Failed to refresh user:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to fetch user data",
+        );
+      }
       setUser(null);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Initial load and auth change listener
   useEffect(() => {
     const initializeUser = async () => {
       const claims = getAuthClaims();
       if (claims) {
         await refreshUser();
-      } else {
-        setLoading(false);
+        return;
       }
+
+      setUser(null);
+      setError(null);
+      setLoading(false);
+      redirectToAuthIfNeeded();
     };
 
-    initializeUser();
+    void initializeUser();
 
-    // Listen for auth changes (login/logout)
-    const handleAuthChange = () => {
+    const unsubscribe = subscribeToAuthChanges((detail) => {
       const claims = getAuthClaims();
+
       if (claims) {
-        refreshUser();
-      } else {
-        setUser(null);
-        setLoading(false);
+        void refreshUser();
+        return;
       }
-    };
 
-    window.addEventListener(AUTH_CHANGED_EVENT, handleAuthChange);
-    return () => window.removeEventListener(AUTH_CHANGED_EVENT, handleAuthChange);
-  }, []);
+      setUser(null);
+      setError(null);
+      setLoading(false);
 
-  // Periodic refresh for already logged-in users (every 30 seconds)
+      if (detail.reason === "logout" || detail.reason === "expired") {
+        redirectToAuthIfNeeded();
+      }
+    });
+
+    return unsubscribe;
+  }, [redirectToAuthIfNeeded, refreshUser]);
+
   useEffect(() => {
     if (!user) return;
 
     const interval = setInterval(() => {
-      console.log('[UserContext] Periodic user refresh');
-      refreshUser();
-    }, 30000); // 30 seconds
+      void refreshUser();
+    }, 30000);
 
     return () => clearInterval(interval);
-  }, [user]);
+  }, [refreshUser, user]);
 
-  const isAuthenticated = user !== null;
-  const verificationStatus = user?.verification_status || 'PENDING';
-
-  const value: UserContextType = {
-    user,
-    loading,
-    error,
-    refreshUser,
-    isAuthenticated,
-    verificationStatus,
-  };
-
-  return (
-    <UserContext.Provider value={value}>
-      {children}
-    </UserContext.Provider>
+  const value: UserContextType = useMemo(
+    () => ({
+      user,
+      loading,
+      error,
+      refreshUser,
+      isAuthenticated: user !== null,
+      verificationStatus: user?.verification_status || "PENDING",
+    }),
+    [error, loading, refreshUser, user],
   );
+
+  return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
 };
