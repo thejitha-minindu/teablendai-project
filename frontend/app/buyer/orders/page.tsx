@@ -3,12 +3,14 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { listAuctionsOrder } from "@/services/buyer/auctionService";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
-import { OrderFilterSort, FilterState } from "@/components/features/buyer/OrderFilterSort";
+import {
+  OrderFilterSort,
+  FilterState,
+} from "@/components/features/buyer/OrderFilterSort";
 import { Button } from "@/components/ui/button";
 import { getAuthClaims } from "@/lib/auth";
 
 export default function BuyerOrderPage() {
-
   const [orderData, setOrderData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,17 +49,17 @@ export default function BuyerOrderPage() {
 
   const AUCTION_DATA = orderData;
 
-
   const filteredAndSortedData = useMemo(() => {
     let result = [...AUCTION_DATA];
 
     // Apply search filter
     if (filters.searchQuery) {
       const query = filters.searchQuery.toLowerCase();
-      result = result.filter(item => {
+      result = result.filter((item) => {
         // Defensive: handle missing fields
         const title = item.title || item.auctionName || item.auction_name || "";
-        const company = item.company || item.companyName || item.company_name || "";
+        const company =
+          item.company || item.companyName || item.company_name || "";
         const estate = item.estateName || item.estate_name || "";
         const orderId = item.orderId || item.order_id || "";
         const grade = item.grade || "";
@@ -75,29 +77,59 @@ export default function BuyerOrderPage() {
     switch (sortBy) {
       case "recent":
         result.sort((a, b) => {
-          const dateA = new Date(a.date || a.orderDate || a.order_date || 0).getTime();
-          const dateB = new Date(b.date || b.orderDate || b.order_date || 0).getTime();
+          const dateA = new Date(
+            a.date || a.orderDate || a.order_date || 0,
+          ).getTime();
+          const dateB = new Date(
+            b.date || b.orderDate || b.order_date || 0,
+          ).getTime();
           return dateB - dateA;
         });
         break;
       case "price-high":
         result.sort((a, b) => {
-          const priceA = parseFloat((a.soldPrice || a.totalAmount || a.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
-          const priceB = parseFloat((b.soldPrice || b.totalAmount || b.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
+          const priceA = parseFloat(
+            (a.soldPrice || a.totalAmount || a.total_amount || "0")
+              .toString()
+              .replace(/[^0-9.-]+/g, ""),
+          );
+          const priceB = parseFloat(
+            (b.soldPrice || b.totalAmount || b.total_amount || "0")
+              .toString()
+              .replace(/[^0-9.-]+/g, ""),
+          );
           return priceB - priceA;
         });
         break;
       case "price-low":
         result.sort((a, b) => {
-          const priceA = parseFloat((a.soldPrice || a.totalAmount || a.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
-          const priceB = parseFloat((b.soldPrice || b.totalAmount || b.total_amount || "0").toString().replace(/[^0-9.-]+/g, ""));
+          const priceA = parseFloat(
+            (a.soldPrice || a.totalAmount || a.total_amount || "0")
+              .toString()
+              .replace(/[^0-9.-]+/g, ""),
+          );
+          const priceB = parseFloat(
+            (b.soldPrice || b.totalAmount || b.total_amount || "0")
+              .toString()
+              .replace(/[^0-9.-]+/g, ""),
+          );
           return priceA - priceB;
         });
         break;
       case "name":
         result.sort((a, b) => {
-          const nameA = (a.title || a.auctionName || a.auction_name || "").toLowerCase();
-          const nameB = (b.title || b.auctionName || b.auction_name || "").toLowerCase();
+          const nameA = (
+            a.title ||
+            a.auctionName ||
+            a.auction_name ||
+            ""
+          ).toLowerCase();
+          const nameB = (
+            b.title ||
+            b.auctionName ||
+            b.auction_name ||
+            ""
+          ).toLowerCase();
           return nameA.localeCompare(nameB);
         });
         break;
@@ -111,7 +143,7 @@ export default function BuyerOrderPage() {
   const itemsPerPage = 6;
   const totalItems = filteredAndSortedData.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+
   const paginatedData = useMemo(() => {
     if (isExpanded) {
       const startIndex = (currentPage - 1) * itemsPerPage;
@@ -121,19 +153,25 @@ export default function BuyerOrderPage() {
     return filteredAndSortedData.slice(0, 3);
   }, [filteredAndSortedData, isExpanded, currentPage]);
 
-  const handleFilterChange = useCallback((newFilters: FilterState) => {
-    setFilters(newFilters);
-    if (isExpanded) {
-      setCurrentPage(1);
-    }
-  }, [isExpanded]);
+  const handleFilterChange = useCallback(
+    (newFilters: FilterState) => {
+      setFilters(newFilters);
+      if (isExpanded) {
+        setCurrentPage(1);
+      }
+    },
+    [isExpanded],
+  );
 
-  const handleSortChange = useCallback((newSortBy: string) => {
-    setSortBy(newSortBy);
-    if (isExpanded) {
-      setCurrentPage(1);
-    }
-  }, [isExpanded]);
+  const handleSortChange = useCallback(
+    (newSortBy: string) => {
+      setSortBy(newSortBy);
+      if (isExpanded) {
+        setCurrentPage(1);
+      }
+    },
+    [isExpanded],
+  );
 
   const handleLoadMore = () => {
     setIsExpanded(true);
@@ -168,12 +206,12 @@ export default function BuyerOrderPage() {
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Orders</h1>
         <p className="text-muted-foreground mt-2">
-          {totalItems} order{totalItems !== 1 ? 's' : ''} found
+          {totalItems} order{totalItems !== 1 ? "s" : ""} found
           {filters.searchQuery && ` for "${filters.searchQuery}"`}
         </p>
       </div>
 
-      <OrderFilterSort 
+      <OrderFilterSort
         onFilterChange={handleFilterChange}
         onSortChange={handleSortChange}
         initialFilters={filters}
@@ -193,7 +231,8 @@ export default function BuyerOrderPage() {
         <div className="text-center py-10">
           <h3 className="text-lg font-semibold mb-2">No orders found</h3>
           <p className="text-muted-foreground">
-            Try adjusting your search or filters to find what you're looking for.
+            Try adjusting your search or filters to find what you're looking
+            for.
           </p>
         </div>
       ) : (
@@ -201,7 +240,12 @@ export default function BuyerOrderPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
             {paginatedData.map((auction, index) => (
               <div
-                key={auction.id || auction.orderId || auction.order_id || `auction-${index}`}
+                key={
+                  auction.id ||
+                  auction.orderId ||
+                  auction.order_id ||
+                  `auction-${index}`
+                }
                 className="flex flex-col w-full card-animate"
                 style={{
                   animationDelay: `${index * 80}ms`,
@@ -222,7 +266,9 @@ export default function BuyerOrderPage() {
                   variant="outline"
                   className="px-12 h-11"
                 >
-                  {isExpanded ? "Show Less" : `Load More (${totalItems - 3} more)`}
+                  {isExpanded
+                    ? "Show Less"
+                    : `Load More (${totalItems - 3} more)`}
                 </Button>
               </div>
             )}

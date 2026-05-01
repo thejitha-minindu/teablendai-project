@@ -50,11 +50,13 @@ export default function BuyerAuctionLivePage() {
         setError(null);
         const auctionData = await getAuction(auctionId);
 
+        // Redirect if auction is not live
         const status = String(auctionData?.status || "").trim().toLowerCase();
         if (status === "history") {
           router.replace("/buyer/auctions");
           return;
         }
+        // redirect to live page
         if (status !== "live") {
           router.replace(`/buyer/auction/${auctionId}`);
           return;

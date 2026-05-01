@@ -31,14 +31,15 @@ export default function BuyerHistoryPage() {
   const fetchAuctions = async () => {
     setLoading(true);
     try {
+      // list scheduled and live auctions
       const [scheduledAuctions, liveAuctions] = await Promise.all([
         listAuctions({ status: "Scheduled" }),
         listAuctions({ status: "Live" }),
       ]);
       
       const combinedData = [
-        ...(liveAuctions || []),      // Live auctions first
-        ...(scheduledAuctions || []), // Then scheduled
+        ...(liveAuctions || []),
+        ...(scheduledAuctions || []),
       ];
       
       setAuctionData(combinedData);
@@ -207,7 +208,7 @@ export default function BuyerHistoryPage() {
             {cardsToShow.map((auction, index) => (
               <div
                 key={auction.id ?? `auction-card-${index}`}
-                className="flex flex-col w-full card-animate"
+                className="flex flex-col w-full h-full card-animate"
                 style={{
                   animationDelay: `${index * 80}ms`,
                 }}

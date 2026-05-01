@@ -79,6 +79,7 @@ export default function BuyerAuctionLivePage() {
     return <div className="p-6 text-sm text-red-600">Auction not found.</div>;
   }
 
+  // loack bidding for scheduled auction
   const isBidLocked = true;
   const imageUrl = String(auction.image_url || "").trim();
   const showImage = Boolean(imageUrl) && !imageFailed;
