@@ -31,6 +31,27 @@ import json
 logger = logging.getLogger(__name__)
 
 
+def format_duration_minutes(duration_value: Any) -> str:
+    try:
+        total_minutes = int(round(float(duration_value)))
+    except (TypeError, ValueError):
+        return str(duration_value)
+
+    if total_minutes <= 0:
+        return "0 minutes"
+
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    parts: list[str] = []
+
+    if hours:
+        parts.append(f"{hours} hour" + ("s" if hours != 1 else ""))
+    if minutes:
+        parts.append(f"{minutes} minute" + ("s" if minutes != 1 else ""))
+
+    return " ".join(parts)
+
+
 class ChatService:
     """
     Main chat service - orchestrates all chatbot operations
@@ -772,7 +793,7 @@ class ChatService:
             if "start_time" in auction:
                 response += f"**Start Time:** {auction['start_time']}\n"
             if "duration" in auction:
-                response += f"**Duration:** {auction['duration']} minutes\n"
+                response += f"**Duration:** {format_duration_minutes(auction['duration'])}\n"
             if "description" in auction and auction["description"]:
                 response += f"**Description:** {auction['description']}\n"
             if "seller_brand" in auction:

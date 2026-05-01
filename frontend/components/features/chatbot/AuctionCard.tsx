@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import Link from "next/link";
+import { durationToMinutes, formatDurationFromMinutes } from "@/utils/dateFormatter";
 interface AuctionData {
   auction_id?: string;
   auction_name?: string;
@@ -89,12 +90,6 @@ const parseBackendDateTime = (dateString?: string): Date | null => {
   return new Date(year, (month || 1) - 1, day || 1, Number(hours), Number(minutes), Number(seconds));
 };
 
-const durationToMinutes = (durationValue?: number): number => {
-  if (!Number.isFinite(durationValue) || (durationValue ?? 0) <= 0) return 0;
-  // If duration is > 24, assume it's already in minutes, otherwise treat as hours
-  return (durationValue as number) > 24 ? Math.round(durationValue as number) : Math.round((durationValue as number) * 60);
-};
-
 const formatCountdown = (milliseconds: number): string => {
   if (milliseconds <= 0) return "00:00:00";
   const totalSeconds = Math.floor(milliseconds / 1000);
@@ -106,15 +101,7 @@ const formatCountdown = (milliseconds: number): string => {
 };
 
 const formatDuration = (durationValue?: number): string => {
-  const totalMinutes = durationToMinutes(durationValue);
-  if (!totalMinutes) return "N/A";
-
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (!minutes) return `${hours} hour${hours === 1 ? "" : "s"}`;
-  if (!hours) return `${minutes} minute${minutes === 1 ? "" : "s"}`;
-  return `${hours} hour${hours === 1 ? "" : "s"} ${minutes} minute${minutes === 1 ? "" : "s"}`;
+  return formatDurationFromMinutes(durationValue);
 };
 
 export const AuctionCard = React.memo(function AuctionCard({ auction, index }: AuctionCardProps) {

@@ -1907,18 +1907,14 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
         }
 
     def _format_duration_hours(self, duration_value: Any, input_unit: Optional[str] = None) -> str:
-        """Format duration for output with hour-first display, supporting legacy hour and minute inputs."""
+        """Format a stored minute duration for output with hour-first display."""
         try:
             numeric = float(duration_value)
 
-            # Input may come in legacy "hours" form (e.g., 12) or normalized minutes (e.g., 720).
-            if input_unit == "hours":
-                total_minutes = int(round(numeric * 60)) if numeric <= 24 else int(round(numeric))
-            elif input_unit == "minutes":
-                total_minutes = int(round(numeric))
+            if input_unit == "hours" and numeric < 60:
+                total_minutes = int(round(numeric * 60))
             else:
-                # Heuristic fallback for older states without explicit unit.
-                total_minutes = int(round(numeric * 60)) if numeric <= 24 else int(round(numeric))
+                total_minutes = int(round(numeric))
 
             hours = total_minutes // 60
             minutes = total_minutes % 60

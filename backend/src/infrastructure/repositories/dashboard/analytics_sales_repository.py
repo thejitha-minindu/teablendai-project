@@ -26,7 +26,6 @@ class AnalyticsSalesRepository:
                         CAST(COALESCE(sold_price, 0) AS FLOAT) AS sold_price,
                         CASE
                             WHEN TRY_CAST(duration AS FLOAT) IS NULL OR TRY_CAST(duration AS FLOAT) <= 0 THEN NULL
-                            WHEN TRY_CAST(duration AS FLOAT) <= 24 THEN TRY_CAST(duration AS FLOAT) * 60.0
                             ELSE TRY_CAST(duration AS FLOAT)
                         END AS duration_minutes
                     FROM auctions

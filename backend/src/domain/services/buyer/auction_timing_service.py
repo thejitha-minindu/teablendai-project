@@ -11,8 +11,8 @@ class AuctionTimingService:
     
     @staticmethod
     def calculate_auction_end_time(auction: Auction) -> datetime:
-        """Calculate when an auction ends (start_time + duration)"""
-        return auction.start_time + timedelta(hours=auction.duration)
+        """Calculate when an auction ends using the stored duration in minutes."""
+        return auction.start_time + timedelta(minutes=int(round(float(auction.duration))))
     
     @staticmethod
     def get_remaining_time(auction: Auction, current_time: Optional[datetime] = None) -> timedelta:

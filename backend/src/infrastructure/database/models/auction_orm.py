@@ -17,4 +17,5 @@ class AuctionORM(Base):
     status = Column(String, nullable=False)
     company_name = Column(String, nullable=False)
     origin = Column(String, nullable=False)
+    # Stored in minutes across API, DB writes, and frontend reads.
     duration = Column(Integer, nullable=False)

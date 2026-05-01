@@ -9,6 +9,7 @@ import VisualizationRenderer from "./VisualizationRenderer";
 import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 // Constants
 const AUCTION_INDICATOR_KEYS = [
@@ -123,6 +124,15 @@ const toDisplayValue = (value: unknown): string | number | undefined => {
   if (typeof value === "string" || typeof value === "number") return value;
   if (typeof value === "boolean") return value ? "Yes" : "No";
   return undefined;
+};
+
+const formatStructuredDuration = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (Number.isFinite(numericValue)) {
+    return formatDurationFromMinutes(numericValue);
+  }
+  return String(value);
 };
 
 const extractCreatedAuctionDetails = (content: string): {
@@ -242,11 +252,11 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     structuredDisplay?.start_time ||
     structuredFields?.start_time ||
     parsedAuctionDetails?.start_time;
+  const structuredDuration = formatStructuredDuration(structuredFields?.duration);
   const duration =
     structuredDisplay?.duration ||
-    (structuredFields?.duration !== undefined && structuredFields?.duration !== null
-      ? `${structuredFields.duration} hours`
-      : parsedAuctionDetails?.duration);
+    structuredDuration ||
+    parsedAuctionDetails?.duration;
   const description =
     toDisplayValue(structuredFields?.description) ||
     createdDetails?.description ||

@@ -41,7 +41,7 @@ class BidPlacementUseCase:
         logger.info(f"Auction {auction_id} timing check:")
         logger.info(f"  Current time: {current_time}")
         logger.info(f"  Start time: {auction.start_time}")
-        logger.info(f"  Duration (hours): {auction.duration}")
+        logger.info(f"  Duration (minutes): {auction.duration}")
         logger.info(f"  End time: {end_time}")
         logger.info(f"  Is expired: {is_expired}")
         logger.info(f"  Status: {auction.status}")

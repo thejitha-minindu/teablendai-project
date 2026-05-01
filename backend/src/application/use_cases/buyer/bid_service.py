@@ -33,8 +33,8 @@ class BidService:
         if auction.buyer:  # If buyer is set, auction is won
             raise ValueError("Auction is won, no more bids accepted")
         
-        # Calculate end_time dynamically from start_time + duration (duration is in hours)
-        auction_end_time = auction.start_time + timedelta(hours=auction.duration)
+        # Calculate end_time dynamically from start_time + stored duration minutes
+        auction_end_time = auction.start_time + timedelta(minutes=int(round(float(auction.duration))))
         
         if auction.status == AuctionStatus.SCHEDULE.value and current_time >= auction.start_time:
             auction.status = AuctionStatus.LIVE.value
@@ -48,7 +48,7 @@ class BidService:
         # Debug logging
         logger.info(f"Bid validation - Auction: {auction_id}")
         logger.info(f"  Start time: {auction.start_time}")
-        logger.info(f"  Duration: {auction.duration}s")
+        logger.info(f"  Duration: {auction.duration} minutes")
         logger.info(f"  Computed end time: {auction_end_time}")
         logger.info(f"  Current time: {current_time}")
         logger.info(f"  Time remaining: {(auction_end_time - current_time).total_seconds()}s")
@@ -95,8 +95,8 @@ class BidService:
         remaining_seconds = 0
         
         if auction.status == AuctionStatus.LIVE.value:
-            # Calculate end_time dynamically (duration is in hours)
-            auction_end_time = auction.start_time + timedelta(hours=auction.duration)
+            # Calculate end_time dynamically using stored duration minutes
+            auction_end_time = auction.start_time + timedelta(minutes=int(round(float(auction.duration))))
             remaining = (auction_end_time - current_time).total_seconds()
             remaining_seconds = max(0, remaining)
         

@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
+import { formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 type AuctionDetailLayoutProps = {
   auction: AuctionData;
@@ -96,7 +97,7 @@ export function AuctionDetailLayout({
                 <p><span className="font-medium">Seller:</span> {auction.seller_brand || "N/A"}</p>
                 <div className="mt-3 pt-3 border-t">
                   <p><span className="font-medium">Start Time:</span> {new Date(auction.date).toLocaleString()}</p>
-                  <p><span className="font-medium">Duration:</span> {Math.floor(auction.duration / 60)} minutes</p>
+                  <p><span className="font-medium">Duration:</span> {formatDurationFromMinutes(auction.duration)}</p>
                 </div>
               </div>
               <div className="mt-4 flex-1 min-h-0 p-2">
