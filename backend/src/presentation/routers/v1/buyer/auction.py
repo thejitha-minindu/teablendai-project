@@ -32,15 +32,11 @@ def read_auction(
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
-    auction = service.get_auction(auction_id)
-    if not auction:
-        raise HTTPException(status_code=404, detail="Auction not found")
-    return auction
+    return service.get_auction(auction_id)
 
 # Get auction history for user
 @router.get("/user/{user_id}/history", response_model=List[AuctionData])
 def get_auctions_history(
-    user_id: str,
     as_buyer: bool = False,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
@@ -50,7 +46,6 @@ def get_auctions_history(
 # Get auctions in user's orders
 @router.get("/user/{user_id}/orders", response_model=List[AuctionOrderCard])
 def get_auctions_orders(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -59,7 +54,6 @@ def get_auctions_orders(
 # Get auctions in user's watchlist
 @router.get("/user/{user_id}/watchlist", response_model=List[AuctionData])
 def get_auctions_watchlist(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -68,7 +62,6 @@ def get_auctions_watchlist(
 # Get home preview auctions for user
 @router.get("/user/{user_id}/preview", response_model=List[AuctionData])
 def get_home_preview(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -77,7 +70,6 @@ def get_home_preview(
 # Add to watchlist
 @router.post("/user/{user_id}/watchlist/auctions/{auction_id}")
 def add_to_watchlist(
-    user_id: str,
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
@@ -88,7 +80,6 @@ def add_to_watchlist(
 # Remove from watchlist
 @router.delete("/user/{user_id}/watchlist/auctions/{auction_id}")
 def remove_from_watchlist(
-    user_id: str,
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),

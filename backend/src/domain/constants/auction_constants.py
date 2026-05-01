@@ -10,7 +10,7 @@ class AuctionTimingConstants:
 
 class BidConstraints:
     """Business rules for bid placement"""
-    MINIMUM_BID_INCREMENT = 0.0
+    MINIMUM_BID_INCREMENT = 100.0
     MINIMUM_BID_AMOUNT = 0.0
 
 class AuctionEventType(str, Enum):

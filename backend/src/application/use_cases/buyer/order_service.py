@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.application.schemas.buyer.order import Order, WinsAuction, PaymentDetails
-from src.infrastructure.repositories.order_repository import OrderRepository, WinsAuctionRepository
+from src.infrastructure.repositories.buyer.order_repository import OrderRepository, WinsAuctionRepository
 import logging
 
 logger = logging.getLogger(__name__)
