@@ -19,7 +19,8 @@ import {
   PinOff,
   Clock,
   Trash2,
-  Search,
+  LayoutDashboard,
+  ChartNoAxesCombined
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
@@ -477,6 +478,10 @@ export function ChatSidebar({
     }
   }, [router]);
 
+  const handleBackDashboard = useCallback(() => {
+    router.push(`/${(getRoleDisplayName(activeUserRole)).toLowerCase()}/dashboard`);
+  }, [router]);
+
   const switchInfo = useMemo(() => getSwitchInfo(activeUserRole), [activeUserRole]);
 
   const handleLogout = useCallback(() => {
@@ -579,8 +584,9 @@ export function ChatSidebar({
                       alt="TeaBlend AI Logo"
                       fill
                       sizes="(max-width: 768px) 100vw, 300px"
-                      className="object-contain object-center"
+                      className="object-contain object-center cursor-pointer"
                       priority
+                      onClick={handleBackDashboard}
                     />
                   </div>
                   <Tooltip>
@@ -644,6 +650,21 @@ export function ChatSidebar({
                   </TooltipTrigger>
                   <TooltipContent side="right" sideOffset={8}>
                     Expand sidebar
+                  </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleBackDashboard}
+                      className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                      aria-label="Go back"
+                    >
+                      <LayoutDashboard className="w-5 h-5 text-gray-700" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" sideOffset={8}>
+                    Dashboard
                   </TooltipContent>
                 </Tooltip>
 
@@ -813,7 +834,7 @@ export function ChatSidebar({
 
               <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50 rounded-lg m-1">
                 <Link href="/analytics-dashboard" className="flex items-center w-full">
-                  <History className="mr-2 h-4 w-4 text-gray-500" />
+                  <ChartNoAxesCombined className="mr-2 h-4 w-4 text-gray-500" />
                   <span>Analytics Dashboard</span>
                 </Link>
               </DropdownMenuItem>

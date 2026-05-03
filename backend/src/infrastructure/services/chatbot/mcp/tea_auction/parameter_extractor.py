@@ -356,7 +356,7 @@ class ParameterExtractor:
                 Expected fields:
                 {field_descriptions_text}
 
-                Valid tea grades: BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, FBOP
+                Valid tea grades: BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, FBOP, OPA, Pekoe 1, Dust 1, Silver Tips, Golden Tips
                 Valid origins: Nuwara Eliya, Kandy, Dimbula, Uva, Ruhuna, Sabaragamuwa, Uda Pussellawa, Ratnapura
 
                 Rules:
@@ -440,7 +440,7 @@ class ParameterExtractor:
                     )
 
                     if duration_minutes is None:
-                        error_msg = "Duration must be a valid number (e.g., 2 hours or 30 minutes)"
+                        error_msg = "Duration must be a valid number (e.g., 2 hours)"
                         logger.warning(f"[Extractor] Validation failed for {field}: {error_msg}")
                         validation_errors.append({"field": field, "error": error_msg})
                         continue

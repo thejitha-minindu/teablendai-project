@@ -339,7 +339,7 @@ def validate_field_value(field_name: str, value: Any, reference_time: datetime =
             if duration_minutes > 4320:  # 72 hours
                 return False, "Duration cannot exceed 72 hours"
         except (ValueError, TypeError):
-            return False, "Duration must be a valid value like '2 hours' or '30 minutes'"
+            return False, "Duration must be a valid value like '2 hours'"
     
     elif field_name == "start_time":
         try:

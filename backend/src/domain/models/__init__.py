@@ -15,6 +15,7 @@ from .conversation import Conversation
 from .message import ChatMessage
 from .admin import Admin
 from .violation import Violation
+from .password_reset import PasswordReset
 
 # Configure Relationships
 from sqlalchemy.orm import relationship
@@ -46,4 +47,5 @@ __all__ = [
     "WinsAuction",
     "Conversation",
     "ChatMessage",
+    "PasswordReset",
 ]
