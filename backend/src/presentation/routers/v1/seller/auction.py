@@ -108,8 +108,8 @@ def create_auction(
         if validated_user:
             # Use user's name and origin as defaults for seller profile
             auction.seller_id = user_id
-            auction.seller_brand = auction.seller_brand or f"{validated_user.first_name} {validated_user.last_name}"
-            auction.company_name = auction.company_name or f"{validated_user.first_name}'s Tea Estate"
+            auction.seller_brand = auction.seller_brand or validated_user.seller_name or f"{validated_user.first_name} {validated_user.last_name}"
+            auction.company_name = auction.company_name or validated_user.seller_name or f"{validated_user.first_name}'s Tea Estate"
             auction.estate_name = auction.estate_name or auction.origin
         else:
             # For X-User-ID header calls (MCP), require seller info in request

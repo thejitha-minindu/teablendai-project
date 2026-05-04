@@ -62,6 +62,8 @@ def build_token_response(user: User, active_role: str | None = None) -> dict:
             "role": resolved_role,
             "roles": roles,
             "id": str(user.user_id),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
             "status": (user.verification_status or "PENDING").upper(),
         "seller_status": (
             "APPROVED" if (user.verification_status or "").upper() == "APPROVED" and (user.default_role or "").lower() == "seller"

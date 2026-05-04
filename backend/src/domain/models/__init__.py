@@ -13,6 +13,7 @@ from .bid import Bid
 from .order import Order, PaymentDetails, WinsAuction
 from .conversation import Conversation
 from .message import ChatMessage
+from .outbox import AuctionOutbox
 from .admin import Admin
 from .violation import Violation
 from .notification_model import Notification

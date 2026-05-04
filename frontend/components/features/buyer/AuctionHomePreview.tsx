@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import '../../../app/globals.css';
 import { useEffect, useState } from "react";
 import { getHomePreviewAuctions } from "@/services/buyer/auctionService";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,9 +36,59 @@ export function AuctionHomePreview({ onAuctionClick }: AuctionHomePreviewProps) 
       });
   }, [userId]);
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>{error}</div>;
-  if (!auction) return <div>No auction preview available.</div>;
+  if (loading) {
+    return (
+      <Card className="w-full mx-auto">
+        <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
+          <div className="flex flex-col">
+            <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>Loading...</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-6 justify-between items-center min-h-[200px] justify-center">
+            <div className="text-center text-gray-500">Loading auction preview...</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card className="w-full mx-auto">
+        <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
+          <div className="flex flex-col">
+            <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>Error</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-6 justify-between items-center min-h-[200px] justify-center">
+            <div className="text-center text-red-500">{error}</div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!auction) {
+    return (
+      <Card className="w-full mx-auto">
+        <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start">
+          <div className="flex flex-col">
+            <CardTitle style={{ color: "var(--color4)", fontWeight: "bold" }}>No Auction Available</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col md:flex-row gap-6 justify-between items-center min-h-[200px] justify-center">
+            <div className="text-center text-gray-500">
+              <p>No auction preview available at the moment.</p>
+              <p className="text-sm mt-2">Check back later for upcoming auctions!</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Fallback for image
   const imageUrl = auction.image_url || null;

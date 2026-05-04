@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import func
+from sqlalchemy.exc import SQLAlchemyError
 from src.domain.models.auction import Auction as AuctionModel
 from src.application.schemas.buyer.auction import Auction
 from src.domain.models.user import User, WatchList
@@ -12,118 +13,196 @@ class AuctionRepository(AuctionRepositoryInterface):
     def __init__(self, db: Session):
         self.db = db
     
+    # Helper method to attach buyer names to auctions
     def _attach_buyer_names(self, auctions):
-        if not auctions:
+        try:
+            if not auctions:
+                return auctions
+            
+            auction_list = auctions if isinstance(auctions, list) else [auctions]
+            buyer_ids = [a.buyer for a in auction_list if a.buyer]
+            
+            if not buyer_ids:
+                return auctions
+            
+            buyer_names = {
+                user.user_id: user.user_name 
+                for user in self.db.query(User).filter(User.user_id.in_(buyer_ids)).all()
+            }
+            
+            for auction in auction_list:
+                if auction.buyer and auction.buyer in buyer_names:
+                    auction.buyer_name = buyer_names[auction.buyer]
+            
             return auctions
-        
-        auction_list = auctions if isinstance(auctions, list) else [auctions]
-        buyer_ids = [a.buyer for a in auction_list if a.buyer]
-        
-        if not buyer_ids:
+        except SQLAlchemyError as e:
+            print(f"Database error in _attach_buyer_names: {str(e)}")
             return auctions
-        
-        buyer_names = {
-            user.user_id: user.user_name 
-            for user in self.db.query(User).filter(User.user_id.in_(buyer_ids)).all()
-        }
-        
-        for auction in auction_list:
-            if auction.buyer and auction.buyer in buyer_names:
-                auction.buyer_name = buyer_names[auction.buyer]
-        
-        return auctions
+        except Exception as e:
+            print(f"Unexpected error in _attach_buyer_names: {str(e)}")
+            return auctions
 
-    def get_auction_by_id(self, auction_id: str):
-        auction = self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id).first()
-        return self._attach_buyer_names(auction)
+    # Get Auction Details by ID with optional lock for update
+    def get_auction_by_id(self, auction_id: str, lock_for_update: bool = False):
+        try:
+            query = self.db.query(AuctionModel).filter(AuctionModel.auction_id == auction_id)
+            if lock_for_update:
+                query = query.with_for_update()
+            auction = query.first()
+            return self._attach_buyer_names(auction)
+        except SQLAlchemyError as e:
+            print(f"Database error in get_auction_by_id: {str(e)}")
+            return None
+        except Exception as e:
+            print(f"Unexpected error in get_auction_by_id: {str(e)}")
+            return None
 
-
+    # List auctions with optional filters
     def list_auctions(self, user_id: str = None, as_buyer: bool = False, status: str = None):
-        query = self.db.query(AuctionModel)
-        if user_id:
-            if as_buyer:
-                query = query.filter(AuctionModel.buyer == user_id)
-            else:
-                query = query.filter(AuctionModel.seller_id == user_id)
-        if status:
-            query = query.filter(AuctionModel.status == status)
-        
-        auctions = query.all()
-        return self._attach_buyer_names(auctions)
+        try:
+            query = self.db.query(AuctionModel)
+            if user_id:
+                if as_buyer:
+                    query = query.filter(AuctionModel.buyer == user_id)
+                else:
+                    query = query.filter(AuctionModel.seller_id == user_id)
+            if status:
+                query = query.filter(AuctionModel.status == status)
+            
+            auctions = query.all()
+            return self._attach_buyer_names(auctions)
+        except SQLAlchemyError as e:
+            print(f"Database error in list_auctions: {str(e)}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error in list_auctions: {str(e)}")
+            return []
 
     # List auction history for user
     def list_auctions_history(self, user_id: str, as_buyer: bool = False):
-        # Fetch all auctions where user placed bids
-        bid_auction_ids = self.db.query(Bid.auction_id).filter(
-            Bid.buyer_id == user_id
-        ).distinct().all()
-            
-        auction_ids = [bid[0] for bid in bid_auction_ids]
-            
-        if not auction_ids:
+        try:
+            # Fetch all auctions where user placed bids
+            bid_auction_ids = self.db.query(Bid.auction_id).filter(
+                Bid.buyer_id == user_id
+            ).distinct().all()
+                
+            auction_ids = [bid[0] for bid in bid_auction_ids]
+                
+            if not auction_ids:
+                return []
+                
+            auctions = self.db.query(AuctionModel).filter(
+                AuctionModel.auction_id.in_(auction_ids),
+            ).all()
+                
+            return self._attach_buyer_names(auctions)
+        except SQLAlchemyError as e:
+            print(f"Database error in list_auctions_history: {str(e)}")
             return []
-            
-        auctions = self.db.query(AuctionModel).filter(
-            AuctionModel.auction_id.in_(auction_ids),
-        ).all()
-            
-        return self._attach_buyer_names(auctions)
+        except Exception as e:
+            print(f"Unexpected error in list_auctions_history: {str(e)}")
+            return []
 
     # List auctions for user as buyer with history status
     def list_auctions_order(self, user_id: str):
         """List auctions where user is buyer with order info"""
-        auctions = self.db.query(AuctionModel).filter(
-            AuctionModel.buyer == user_id,
-            AuctionModel.status == AuctionStatus.HISTORY.value
-        ).all()
-        
-        auctions = self._attach_buyer_names(auctions)
-        
-        for auction in (auctions if isinstance(auctions, list) else [auctions]):
-            order = self.db.query(OrderModel).filter(
-                OrderModel.auction_id == auction.auction_id
-            ).first()
-            if order:
-                auction.order_id = str(order.order_id)
-        
-        return auctions
+        try:
+            auctions = self.db.query(AuctionModel).filter(
+                AuctionModel.buyer == user_id,
+                AuctionModel.status == AuctionStatus.HISTORY.value
+            ).all()
+            
+            auctions = self._attach_buyer_names(auctions)
+            
+            for auction in (auctions if isinstance(auctions, list) else [auctions]):
+                order = self.db.query(OrderModel).filter(
+                    OrderModel.auction_id == auction.auction_id
+                ).first()
+                if order:
+                    auction.order_id = str(order.order_id)
+            
+            return auctions
+        except SQLAlchemyError as e:
+            print(f"Database error in list_auctions_order: {str(e)}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error in list_auctions_order: {str(e)}")
+            return []
 
+    # List auctions in user's watchlist
     def list_auctions_watchlist(self, user_id: str):
-        user = self.db.query(User).filter(User.user_id == user_id).first()
-        if not user or not user.watch_list:
+        try:
+            user = self.db.query(User).filter(User.user_id == user_id).first()
+            if not user or not user.watch_list:
+                return []
+            auction_ids = [entry.auction_id for entry in user.watch_list]
+            if not auction_ids:
+                return []
+            auctions = self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
+            return self._attach_buyer_names(auctions)
+        except SQLAlchemyError as e:
+            print(f"Database error in list_auctions_watchlist: {str(e)}")
             return []
-        auction_ids = [entry.auction_id for entry in user.watch_list]
-        if not auction_ids:
+        except Exception as e:
+            print(f"Unexpected error in list_auctions_watchlist: {str(e)}")
             return []
-        auctions = self.db.query(AuctionModel).filter(AuctionModel.auction_id.in_(auction_ids)).all()
-        return self._attach_buyer_names(auctions)
 
+    # Get home preview auctions for user
     def get_home_preview_auctions(self, user_id: str):
-        query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
-        if query.count() == 0:
-            query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
-        if query.count() == 0:
-            query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.SCHEDULE.value).order_by(AuctionModel.created_at.desc())
-        auctions = query.limit(5).all()
-        return self._attach_buyer_names(auctions)
+        try:
+            query = self.db.query(AuctionModel).filter(AuctionModel.seller_id != user_id, AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
+            if query.count() == 0:
+                query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.LIVE.value).order_by(AuctionModel.created_at.desc())
+            if query.count() == 0:
+                query = self.db.query(AuctionModel).filter(AuctionModel.status == AuctionStatus.SCHEDULE.value).order_by(AuctionModel.created_at.desc())
+            auctions = query.limit(5).all()
+            return self._attach_buyer_names(auctions)
+        except SQLAlchemyError as e:
+            print(f"Database error in get_home_preview_auctions: {str(e)}")
+            return []
+        except Exception as e:
+            print(f"Unexpected error in get_home_preview_auctions: {str(e)}")
+            return []
     
     # Add auction to watchlist
     def add_to_watchlist(self, user_id: str, auction_id: str):
-        user = self.db.query(User).filter(User.user_id == user_id).first()
-        if not user:
-            raise ValueError("User not found")
-        if any(entry.auction_id == auction_id for entry in user.watch_list):
-            return  # Already in watchlist
-        watchlist_entry = WatchList(user_id=user_id, auction_id=auction_id)
-        self.db.add(watchlist_entry)
-        self.db.commit()
+        try:
+            user = self.db.query(User).filter(User.user_id == user_id).first()
+            if not user:
+                raise ValueError("User not found")
+            if any(entry.auction_id == auction_id for entry in user.watch_list):
+                return  # Already in watchlist
+            watchlist_entry = WatchList(user_id=user_id, auction_id=auction_id)
+            self.db.add(watchlist_entry)
+            self.db.commit()
+        except ValueError as e:
+            print(f"Validation error in add_to_watchlist: {str(e)}")
+            self.db.rollback()
+            raise
+        except SQLAlchemyError as e:
+            print(f"Database error in add_to_watchlist: {str(e)}")
+            self.db.rollback()
+            raise
+        except Exception as e:
+            print(f"Unexpected error in add_to_watchlist: {str(e)}")
+            self.db.rollback()
+            raise
 
     # Remove auction from watchlist
     def remove_from_watchlist(self, user_id: str, auction_id: str):
-        watchlist_entry = self.db.query(WatchList).filter(
-            WatchList.user_id == user_id,
-            WatchList.auction_id == auction_id
-        ).first()
-        if watchlist_entry:
-            self.db.delete(watchlist_entry)
-            self.db.commit()
+        try:
+            watchlist_entry = self.db.query(WatchList).filter(
+                WatchList.user_id == user_id,
+                WatchList.auction_id == auction_id
+            ).first()
+            if watchlist_entry:
+                self.db.delete(watchlist_entry)
+                self.db.commit()
+        except SQLAlchemyError as e:
+            print(f"Database error in remove_from_watchlist: {str(e)}")
+            self.db.rollback()
+            raise
+        except Exception as e:
+            print(f"Unexpected error in remove_from_watchlist: {str(e)}")
+            self.db.rollback()
+            raise

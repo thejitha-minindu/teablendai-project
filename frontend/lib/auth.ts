@@ -10,6 +10,8 @@ type AuthClaims = {
   status?: UserStatus;
   seller_status?: UserStatus;
   exp?: number;
+  first_name?: string;
+  last_name?: string;
 };
 
 export const AUTH_CHANGED_EVENT = "teablend-auth-changed";
@@ -67,4 +69,8 @@ export function getDisplayNameFromEmail(email?: string): string {
   if (!email) return "User";
   const namePart = email.split("@")[0] || "User";
   return namePart.charAt(0).toUpperCase() + namePart.slice(1);
+}
+
+export function getAuthToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
 }

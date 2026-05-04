@@ -26,7 +26,7 @@ class Auction(BaseModel):
 class AuctionCreate(BaseModel):
     auction_name: Optional[str] = None
     seller_id: Optional[str] = None
-    seller_brand: str 
+    seller_brand: Optional[str] = None 
     grade: str
     company_name: Optional[str] = None
     estate_name: Optional[str] = None

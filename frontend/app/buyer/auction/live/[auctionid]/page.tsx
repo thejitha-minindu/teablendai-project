@@ -1,7 +1,7 @@
 "use client";
 
 import { AuctionDetailLayout } from "@/components/features/buyer/liveauction/AuctionDetailLayout";
-import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
+// import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import { WinnerModal } from "@/components/features/buyer/liveauction/WinnerModal";
 import { getAuction } from "@/services/buyer/auctionService";
 import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
@@ -50,11 +50,13 @@ export default function BuyerAuctionLivePage() {
         setError(null);
         const auctionData = await getAuction(auctionId);
 
+        // Redirect if auction is not live
         const status = String(auctionData?.status || "").trim().toLowerCase();
         if (status === "history") {
           router.replace("/buyer/auctions");
           return;
         }
+        // redirect to live page
         if (status !== "live") {
           router.replace(`/buyer/auction/${auctionId}`);
           return;

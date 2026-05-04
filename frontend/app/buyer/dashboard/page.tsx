@@ -10,7 +10,6 @@ import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
 import { useSidebar } from "@/components/ui/sidebar";
 import { getAuthClaims } from "@/lib/auth";
 
-
 export default function BuyerAuctionPage() {
   const router = useRouter();
   const [currentPage, setCurrentPage] = useState(1);
@@ -32,6 +31,7 @@ export default function BuyerAuctionPage() {
     fetchWatchlist();
   }, [userId]);
 
+  // Fetch watchlist auctions for the authenticated user
   const fetchWatchlist = () => {
     if (!userId) {
       setError("Missing authenticated user");
@@ -56,14 +56,16 @@ export default function BuyerAuctionPage() {
   };
 
   const handleAuctionHomeClick = (auctionId: string, status: string) => {
-    const rawStatus = String(status || "").trim().toLowerCase();
+    const rawStatus = String(status || "")
+      .trim()
+      .toLowerCase();
     const isLive = rawStatus === "live";
     const path = isLive
       ? `/buyer/auction/live/${auctionId}`
       : `/buyer/auction/${auctionId}`;
     router.push(path);
   };
-  
+
   // Filter watchlist by selected date
   const filteredWatchlist = selectedDate
     ? watchlist.filter((item) => {
@@ -75,7 +77,7 @@ export default function BuyerAuctionPage() {
   const itemsPerPage = isSidebarOpen ? 2 : 3;
   const totalItems = filteredWatchlist.length;
   const totalPages = Math.ceil(totalItems / itemsPerPage);
-  
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const paginatedWatchlist = filteredWatchlist.slice(startIndex, endIndex);
@@ -106,27 +108,29 @@ export default function BuyerAuctionPage() {
       <div className="mb-5">
         <h1 className="text-3xl font-bold">Buyer Dashboard</h1>
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-10 mb-10">
-        <div 
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-10 mb-10">
+        <div
           className="flex flex-col md:col-span-1 lg:col-span-1 card-animate"
           style={{ animationDelay: "0ms" }}
         >
           <ChartPie />
           <div>
+            {/* Calendar */}
             <BuyerCalendar
               selectedDate={selectedDate}
               onDateSelect={handleDateSelect}
             />
           </div>
         </div>
-        <div 
+        <div
           className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 gap-10 lg:gap-10 card-animate"
           style={{ animationDelay: "80ms" }}
         >
           <div>
+            {/* Home Preview Auctions */}
             <AuctionHomePreview onAuctionClick={handleAuctionHomeClick} />
           </div>
-            <div>
+          <div>
             <div>
               <h2 className="text-2xl font-bold my-4 mt-5">Watchlist</h2>
             </div>
@@ -140,10 +144,16 @@ export default function BuyerAuctionPage() {
               {loading ? (
                 <div>Loading...</div>
               ) : paginatedWatchlist.length === 0 ? (
-                <div className="text-center w-full col-span-full py-8 text-gray-500">add watch auction to the watchlist</div>
+                <div className="text-center w-full col-span-full py-8 text-gray-500">
+                  add watch auction to the watchlist
+                </div>
               ) : (
                 paginatedWatchlist.map((item, index) => (
-                  <div key={item.id || item.auction_id} className="card-animate" style={{ animationDelay: `${index * 80}ms` }}>
+                  <div
+                    key={item.id || item.auction_id}
+                    className="card-animate"
+                    style={{ animationDelay: `${index * 80}ms` }}
+                  >
                     <AuctionCard
                       cardType="auction"
                       auction={item}
@@ -153,18 +163,19 @@ export default function BuyerAuctionPage() {
                 ))
               )}
             </div>
-            </div>
+          </div>
 
-            <div 
+          <div
             className="flex flex-row justify-center sm:mt-15 lg:mt-0 card-animate"
             style={{ animationDelay: "240ms" }}
-            >
-            <PaginationBuyerAuction 
-              currentPage={currentPage} 
-              totalPages={totalPages} 
+          >
+            {/* Pagination */}
+            <PaginationBuyerAuction
+              currentPage={currentPage}
+              totalPages={totalPages}
               onPageChange={setCurrentPage}
             />
-            </div>
+          </div>
         </div>
       </div>
     </div>

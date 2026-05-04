@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 interface ForgotPasswordResponse {
   status: string;
@@ -90,13 +90,11 @@ class AuthService {
     });
   }
 
-  // ==================== TOKEN MANAGEMENT ====================
+// ==================== TOKEN MANAGEMENT ====================
 
   private getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('teablend_token') || 
-             localStorage.getItem('access_token') || 
-             localStorage.getItem('auth_token');
+      return localStorage.getItem('teablend_token');
     }
     return null;
   }
@@ -104,15 +102,12 @@ class AuthService {
   setToken(token: string): void {
     if (typeof window !== 'undefined') {
       localStorage.setItem('teablend_token', token);
-      localStorage.setItem('auth_token', token); // For legacy compatibility
     }
   }
 
   clearToken(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('teablend_token');
-      localStorage.removeItem('access_token');
-      localStorage.removeItem('auth_token');
     }
   }
 
