@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { UserCard } from "@/components/admincomponents/UserCard";
 import { Loader2, Users, RefreshCw, Filter, Store, ShoppingBag } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 
 export default function VerificationPage() {
     const [users, setUsers] = useState<any[]>([]);
@@ -22,10 +23,8 @@ export default function VerificationPage() {
             }
             setError(null);
 
-            const res = await fetch("http://localhost:8000/admin/users/pending");
-            if (!res.ok) throw new Error("Failed to fetch users");
-            
-            const data = await res.json();
+            const response = await apiClient.get("/admin/users/pending");
+            const data = response.data;
             console.log("API RESPONSE:", data);
             const usersData = data.users || data.data || [];
             setUsers(usersData);

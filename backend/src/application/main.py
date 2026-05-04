@@ -11,7 +11,8 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from .dependencies import get_mcp_client
+from fastapi import Depends
+from .dependencies import get_mcp_client, get_current_admin
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
 from src.presentation.routers.v1.admin import admin_profile
@@ -24,11 +25,8 @@ from src.presentation.routers.v1 import (
     auth,
     profile,
 )
-<<<<<<< HEAD
-=======
 
 from src.presentation.routers.v1.admin import admin_users
->>>>>>> 550740ba511890e3c02e6b8a11fb8bd566bb08b6
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
@@ -170,7 +168,7 @@ app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 
 # Admin routers
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"], dependencies=[Depends(get_current_admin)])
 
 # Buyer routers
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer")
@@ -182,10 +180,10 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
 
 # Admin routers
-app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
-app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"], dependencies=[Depends(get_current_admin)])
+# admin_auction already included above
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"], dependencies=[Depends(get_current_admin)])
+app.include_router(admin_users.router, prefix="/api/v1/admin/users", tags=["Admin Users"], dependencies=[Depends(get_current_admin)])
 
 # Dashboard routers
 app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -263,16 +261,15 @@ if __name__ == "__main__":
 
 # to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
 
-# Register admin dashboard router
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+# Register admin dashboard router (already included above, skipping)
 
 # Register admin user management router
 # app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
 # Backwards-compatible routes used by frontend (legacy path)
-app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])
+# admin_users already included above
 
 # Register admin profile router
-app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"])
+app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"], dependencies=[Depends(get_current_admin)])
 
 # Register admin violation router (mounted under API v1 admin prefix)
-app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])

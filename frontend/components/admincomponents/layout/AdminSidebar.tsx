@@ -1,8 +1,8 @@
 "use client";
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Home,
@@ -10,7 +10,6 @@ import {
   Gavel,
   ScrollText,
   AlertTriangle,
-  MessageSquareWarning,
   Bell,
   User2,
   ChevronUp,
@@ -52,10 +51,27 @@ const adminMenu = [
 
 export function AdminSidebar() {
   const pathname = usePathname();
+  const router = useRouter(); // FIX: Added router for logout redirect
   const { open } = useSidebar();
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const isActivePath = (href: string) => pathname === href;
+
+  // FIX: Proper logout function
+  const handleLogout = () => {
+    // Clear all possible token keys used in the project
+    localStorage.removeItem("teablend_token");
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("admin");
+
+    // optional: clear session storage too
+    sessionStorage.clear();
+
+    // redirect to admin login page
+    router.push("/auth/admin/login");
+  };
 
   return (
     <div className="relative flex h-screen">
@@ -124,7 +140,10 @@ export function AdminSidebar() {
                                   : "text-gray-600 hover:bg-gray-100"
                               }`}
                             >
-                              <Link href={item.href} className="flex gap-3 items-center">
+                              <Link
+                                href={item.href}
+                                className="flex gap-3 items-center"
+                              >
                                 <Icon className="w-5 h-5" />
                                 <span>{item.title}</span>
                               </Link>
@@ -148,24 +167,43 @@ export function AdminSidebar() {
                             <div className="w-8 h-8 rounded-full bg-[#E5F7CB] flex items-center justify-center">
                               <User2 className="w-5 h-5 text-[#3A5A40]" />
                             </div>
+
                             <div className="flex-1 text-left">
                               <p className="font-semibold">Admin</p>
-                              <p className="text-xs text-gray-500">Administrator</p>
+                              <p className="text-xs text-gray-500">
+                                Administrator
+                              </p>
                             </div>
+
                             <ChevronUp className="w-4 h-4" />
                           </div>
                         </SidebarMenuButton>
                       </DropdownMenuTrigger>
 
-                      <DropdownMenuContent side="top" align="end" className="w-56">
-                        <DropdownMenuLabel>Admin Account</DropdownMenuLabel>
+                      <DropdownMenuContent
+                        side="top"
+                        align="end"
+                        className="w-56"
+                      >
+                        <DropdownMenuLabel>
+                          Admin Account
+                        </DropdownMenuLabel>
+
                         <DropdownMenuSeparator />
+
                         <DropdownMenuItem asChild>
                           <Link href="/admin/user">My Profile</Link>
                         </DropdownMenuItem>
+
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-red-600">
-                          <LogOut className="w-4 h-4 mr-2" /> Log out
+
+                        {/* FIX: Logout now works properly */}
+                        <DropdownMenuItem
+                          className="text-red-600 cursor-pointer"
+                          onClick={handleLogout}
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Log out
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

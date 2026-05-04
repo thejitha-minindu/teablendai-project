@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 from src.infrastructure.database.base import get_db
 from src.domain.models.user import User
+from src.domain.models.admin import Admin
 from src.application.schemas.user import Token, UserCreate, GoogleToken, RoleSwitchRequest
 from src.application.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from src.application.dependencies import get_current_user, get_token_payload
@@ -138,6 +139,36 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
     
     return build_token_response(user)
+
+@router.post("/admin/login", response_model=Token)
+def admin_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    admin = db.query(Admin).filter(Admin.email == form_data.username).first()
+    if not admin:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid admin credentials"
+        )
+
+    if not verify_password(form_data.password, admin.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect password. Please try again."
+        )
+    
+    # Update last login
+    admin.last_login = datetime.utcnow()
+    db.commit()
+    
+    access_token = create_access_token(
+        data={
+            "sub": admin.email,
+            "role": "admin",
+            "id": str(admin.admin_id),
+            "status": "APPROVED",
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
 
 @router.post("/google", response_model=Token)
 def google_auth(request: GoogleToken, db: Session = Depends(get_db)):

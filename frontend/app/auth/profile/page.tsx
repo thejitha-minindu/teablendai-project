@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, Calendar, CheckCircle2, Globe, Loader2,
-  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X
+  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X, Bell
 } from "lucide-react"; // UI Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for sending backend requests
 import { API_BASE_URL } from "@/lib/api.config";
@@ -125,6 +125,7 @@ export default function AuthProfilePage() {
   const [isEditingSeller, setIsEditingSeller] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false); // State for notification menu
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -523,17 +524,122 @@ export default function AuthProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 items-center">
                   <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusBadgeClass(profile.verification_status)}`}>
                     Account {profile.verification_status}
                   </span>
                   <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
                     Active: {activeRole === "seller" ? "Seller" : "Buyer"}
                   </span>
+                  
+                  {/* Notification Icon */}
+                  <button
+                    onClick={() => setIsNotificationOpen(true)}
+                    className="relative ml-2 rounded-full bg-white p-2 text-gray-600 shadow-md hover:bg-gray-50 transition-colors border border-gray-200"
+                  >
+                    <Bell className="h-5 w-5" />
+                    {/* Optional: Notification badge - uncomment if you want to show unread count */}
+                    {/* <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+                      3
+                    </span> */}
+                  </button>
                 </div>
               </div>
             </div>
           </section>
+
+          {/* Notification Popup Menu - Full Screen with Blur */}
+          {isNotificationOpen && (
+            <>
+              {/* Backdrop with blur */}
+              <div 
+                className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 transition-all duration-300"
+                onClick={() => setIsNotificationOpen(false)}
+              />
+              
+              {/* Notification Menu */}
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
+                  {/* Header */}
+                  <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4 bg-gradient-to-r from-green-50 to-emerald-50">
+                    <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <Bell className="h-5 w-5 text-green-600" />
+                      Notifications
+                    </h2>
+                    <button
+                      onClick={() => setIsNotificationOpen(false)}
+                      className="rounded-full p-1 text-gray-400 hover:bg-white/50 hover:text-gray-600 transition-colors"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+                  
+                  {/* Notification List */}
+                  <div className="max-h-[60vh] overflow-y-auto">
+                    {/* Sample Notifications - Replace with your actual data */}
+                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">Profile Updated</p>
+                          <p className="text-xs text-gray-500 mt-1">Your profile information has been successfully updated.</p>
+                          <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <Store className="h-5 w-5 text-blue-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">Seller Request Status</p>
+                          <p className="text-xs text-gray-500 mt-1">Your seller account request is under review by the admin.</p>
+                          <p className="text-xs text-gray-400 mt-2">1 day ago</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
+                      <div className="flex gap-3">
+                        <div className="flex-shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <ShoppingBag className="h-5 w-5 text-purple-600" />
+                          </div>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-gray-900">New Order Received</p>
+                          <p className="text-xs text-gray-500 mt-1">You have received a new order for your tea products.</p>
+                          <p className="text-xs text-gray-400 mt-2">3 days ago</p>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Empty State - Uncomment if no notifications */}
+                    {/* <div className="py-12 text-center">
+                      <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-gray-500 text-sm">No notifications yet</p>
+                      <p className="text-gray-400 text-xs mt-1">We'll notify you when something arrives</p>
+                    </div> */}
+                  </div>
+                  
+                  {/* Footer with Mark All Read button */}
+                  <div className="border-t border-gray-200 px-6 py-3 bg-gray-50">
+                    <button className="w-full text-center text-sm text-green-600 hover:text-green-700 font-medium transition-colors">
+                      Mark all as read
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Success / Error Messages */}
           {(errorMsg || successMsg) && (
@@ -644,8 +750,7 @@ export default function AuthProfilePage() {
               <div className="mt-6 flex justify-end gap-3">
                 {!isEditingPersonal ? (
                   <button onClick={() => setIsEditingPersonal(true)} className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700">
-                    <Pencil className="h-4 w-4" /> Edit Profile
-                  </button>
+                    <Pencil className="h-4 w-4" /> Edit Profile                  </button>
                 ) : (
                   <>
                     <button onClick={() => { setIsEditingPersonal(false); if (profile) hydrateForms(profile); }} className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50">

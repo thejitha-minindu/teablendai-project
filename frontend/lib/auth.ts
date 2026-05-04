@@ -1,4 +1,4 @@
-export type UserRole = "buyer" | "seller";
+export type UserRole = "buyer" | "seller" | "admin";
 export type AppRole = UserRole | "analytics";
 export type UserStatus = "PENDING" | "APPROVED" | "REJECTED";
 
@@ -59,6 +59,7 @@ export function clearStoredAuthToken(): void {
 }
 
 export function getHomePathByRole(role?: string | null): string {
+  if (role === "admin") return "/admin/dashboard";
   return role === "seller" ? "/seller/dashboard" : "/buyer/dashboard";
 }
 

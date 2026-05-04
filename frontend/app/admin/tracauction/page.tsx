@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { TrackAuctionCard } from "@/components/admincomponents/TrackAuctionCard";
 import { Search, Filter, Calendar, DollarSign, Package, X, ChevronDown } from "lucide-react";
+import { apiClient } from "@/lib/apiClient";
 
 type Auction = {
     auction_id: string;
@@ -35,8 +36,8 @@ export default function TrackAuctionPage() {
     useEffect(() => {
         const fetchAuctions = async () => {
             try {
-                const res = await fetch("http://localhost:8000/api/v1/admin/auctions");
-                const data = await res.json();
+                const response = await apiClient.get("/admin/auctions");
+                const data = response.data;
                 console.log("API DATA:", data);
                 const auctionsData = Array.isArray(data) ? data : data.auctions || [];
                 setAuctions(auctionsData);

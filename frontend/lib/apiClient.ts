@@ -27,7 +27,7 @@ apiClient.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       // Don't auto-redirect for auth endpoints - let the component handle those errors
       const requestUrl = error.config?.url || '';
-      const isAuthEndpoint = requestUrl.includes('/auth/login') || 
+      const isAuthEndpoint = requestUrl.includes('/auth/admin/login') || 
                              requestUrl.includes('/auth/google') || 
                              requestUrl.includes('/auth/register') ||
                              requestUrl.includes('/auth/forgot-password') ||
@@ -36,7 +36,11 @@ apiClient.interceptors.response.use(
       if (!isAuthEndpoint) {
         localStorage.removeItem('teablend_token');
         localStorage.removeItem('access_token');
-        window.location.href = '/auth/login';
+        
+        const currentPath = window.location.pathname;
+        if (currentPath.startsWith('/admin') || currentPath.startsWith('/auth/admin')) {
+          window.location.href = '/auth/admin/login';
+        }
       }
     }
     // Better diagnostics for network errors

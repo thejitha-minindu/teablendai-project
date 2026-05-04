@@ -2,6 +2,7 @@
 
 import { MoreVertical, User, FileText, Link, CheckCircle, XCircle, Loader2, Eye, EyeOff, Store, ShoppingBag } from "lucide-react";
 import { useState } from "react";
+import { apiClient } from "@/lib/apiClient";
 
 type UserCardProps = {
     name: string;
@@ -11,6 +12,7 @@ type UserCardProps = {
     first_name: string;
     last_name: string;
     role?: string;
+    
     onStatusChange?: (userId: string, status: string) => void;
 };
 
@@ -27,9 +29,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
     const verifyUser = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`http://localhost:8000/admin/users/approve/${id}`, { method: "PUT" });
-
-            if (!res.ok) throw new Error("Verification failed");
+            const res = await apiClient.put(`/admin/users/approve/${id}`);
 
             setStatus("approved");
             onStatusChange?.(id, "approved");
@@ -54,9 +54,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
     const rejectUser = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`http://localhost:8000/admin/users/reject/${id}`, { method: "PUT" });
-
-            if (!res.ok) throw new Error("Reject failed");
+            const res = await apiClient.put(`/admin/users/reject/${id}`);
 
             setStatus("rejected");
             onStatusChange?.(id, "rejected");
@@ -181,9 +179,6 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
                                     }
                                 </button>
                                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors group">
-                                    <Link className="w-4 h-4 text-gray-500 group-hover:text-gray-700" />
-                                </button>
-                                <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors group">
                                     <FileText className="w-4 h-4 text-gray-500 group-hover:text-gray-700" />
                                 </button>
                                 <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors group">
@@ -211,7 +206,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
                                 </p>
                                 <p className="text-sm">
                                     <span className="font-medium text-gray-700">Username:</span>{' '}
-                                    <span className="text-gray-600">@{username}</span>
+                                    <span className="text-gray-600">{username}</span>
                                 </p>
                                 <p className="text-sm">
                                     <span className="font-medium text-gray-700">Role:</span>{' '}

@@ -1,4 +1,5 @@
 "use client";
+import { apiClient } from "@/lib/apiClient";
 
 const requiredFieldsByTable: Record<string, string[]> = {
     TeaPurchase: ["PurchaseDate"],
@@ -32,25 +33,9 @@ export default function Step4Confirm({
         formData.append("mapping", JSON.stringify(mapping));
 
         try {
-            const response = await fetch("http://localhost:8000/api/v1/admin/csv-upload", {
-                method: "POST",
-                body: formData,
-            });
+            const response = await apiClient.post("/admin/csv-upload", formData);
 
-            if (!response.ok) {
-                const errorBody = await response.json().catch(() => null);
-                const firstRowError = errorBody?.detail?.errors?.find((e: any) => e?.row)?.error;
-                const message =
-                    errorBody?.detail?.fatal_error ||
-                    errorBody?.detail?.errors?.[0]?.mapping_error ||
-                    errorBody?.detail?.errors?.[0]?.db_error ||
-                    firstRowError ||
-                    errorBody?.detail?.error ||
-                    "Upload failed";
-                throw new Error(message);
-            }
-
-            const result = await response.json();
+            const result = response.data;
             alert("Upload success!");
             console.log(result);
 

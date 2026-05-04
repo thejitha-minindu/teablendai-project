@@ -27,7 +27,11 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
             const claims = getAuthClaims();
             if (!claims) {
                 clearStoredAuthToken();
-                window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
+                if (requiredRole === "admin") {
+                    window.location.href = `/auth/admin/login?redirect=${encodeURIComponent(pathname)}`;
+                } else {
+                    window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
+                }
                 return;
             }
 
@@ -42,6 +46,10 @@ export default function ProtectedRoute({ children, requiredRole }: ProtectedRout
             }
 
             if (requiredRole && claims.role !== requiredRole) {
+                if (requiredRole === "admin") {
+                    window.location.href = `/auth/admin/login?redirect=${encodeURIComponent(pathname)}`;
+                    return;
+                }
                 window.location.href = getHomePathByRole(claims.role);
                 return;
             }
