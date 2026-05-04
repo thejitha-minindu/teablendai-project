@@ -3,11 +3,40 @@ from sqlalchemy.orm import Session
 
 from src.application.dependencies import get_current_user, get_token_payload
 from src.application.schemas.profile import BecomeSellerRequest, ChangePasswordRequest, UserProfileResponse, UserProfileUpdate
+from src.application.dependencies import get_current_user
+from src.application.schemas.profile import (
+    ChangePasswordRequest,
+    UserLookupResponse,
+    UserProfileResponse,
+    UserProfileUpdate,
+)
 from src.application.use_cases.profile_service import ProfileService
 from src.database import get_db
 from src.domain.models.user import User
 
 router = APIRouter()
+
+
+@router.get("/users", response_model=list[UserLookupResponse])
+def list_users(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    users = (
+        db.query(User)
+        .filter(User.user_id != current_user.user_id)
+        .order_by(User.user_name.asc())
+        .all()
+    )
+    return [
+        UserLookupResponse(
+            user_id=str(user.user_id),
+            user_name=user.user_name,
+            email=user.email,
+            default_role=user.default_role,
+        )
+        for user in users
+    ]
 
 
 @router.get("/profile/me", response_model=UserProfileResponse)

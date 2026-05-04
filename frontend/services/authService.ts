@@ -64,6 +64,9 @@ export interface CurrentUserResponse {
   verification_status?: string;
   // For API that might return status field
   status?: string;
+  // Admin specific fields
+  admin_id?: string;
+  name?: string;
 }
 
 class AuthService {
@@ -87,7 +90,7 @@ class AuthService {
     });
   }
 
-  // ==================== TOKEN MANAGEMENT ====================
+// ==================== TOKEN MANAGEMENT ====================
 
   private getToken(): string | null {
     if (typeof window !== 'undefined') {
@@ -155,6 +158,11 @@ class AuthService {
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
     const response = await this.api.get<CurrentUserResponse>('/users/me');
+    return response.data;
+  }
+
+  async getCurrentAdmin(): Promise<CurrentUserResponse> {
+    const response = await this.api.get<CurrentUserResponse>('/admin/profile/me');
     return response.data;
   }
 
