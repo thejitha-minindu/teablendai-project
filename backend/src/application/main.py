@@ -23,6 +23,7 @@ from src.presentation.routers.v1 import (
     order,
     auth,
     profile,
+    messages,
 )
 
 from src.presentation.routers.v1.admin import admin_users
@@ -176,6 +177,8 @@ app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"]
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
 app.include_router(health.router, prefix="/api/v1")
+# Register messages router
+app.include_router(messages.router, prefix="/api/v1")
 
 # API v1 routers - Chatbot
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
