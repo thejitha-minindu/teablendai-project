@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClient } from "@/lib/apiClient";
 import { HistoryCard } from "@/components/admincomponents/HistoryCard";
 import { 
   Search, 
@@ -17,110 +18,40 @@ export default function NotificationHistoryPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [typeFilter, setTypeFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
+    const [rawNotifications, setRawNotifications] = useState<any[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const itemsPerPage = 5;
 
-    const notifications = [
-        {
-            notifyId: "NOT001NF",
-            date: "2023-10-15",
-            time: "14:30",
-            title: "Auction Registration Reminder",
-            type: "Reminder",
-            revisers: "All Users",
-            content: "Don't forget to register for upcoming auctions",
+
+
+    useEffect(() => {
+        const fetchHistory = async () => {
+            try {
+                const res = await apiClient.get("/notifications/history");
+                setRawNotifications(res.data || []);
+            } catch (error) {
+                console.error("Failed to fetch history:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchHistory();
+    }, []);
+
+    // Format the backend data to match what the UI expects
+    const notifications = rawNotifications.map((n, i) => {
+        const d = new Date(n.created_at);
+        return {
+            notifyId: `NOT-${d.getTime().toString().slice(-6)}-${i}`,
+            date: d.toISOString().split('T')[0],
+            time: d.toTimeString().split(' ')[0].slice(0, 5),
+            title: n.title,
+            type: n.type.charAt(0).toUpperCase() + n.type.slice(1),
+            revisers: `${n.recipient_count} Recipients`,
+            content: n.message,
             status: "sent"
-        },
-        {
-            notifyId: "NOT002NF",
-            date: "2023-10-16",
-            time: "09:15",
-            title: "Bid Submission Deadline",
-            type: "Alert",
-            revisers: "Registered Bidders",
-            content: "Bid submission deadline is approaching",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT003NF",
-            date: "2023-10-17",
-            time: "16:45",
-            title: "Auction Results Announcement",
-            type: "Announcement",
-            revisers: "All Participants",
-            content: "Auction results have been published",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT004NF",
-            date: "2023-10-18",
-            time: "11:20",
-            title: "Payment Due Reminder",
-            type: "Reminder",
-            revisers: "Winning Bidders",
-            content: "Payment is due within 7 days",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT005NF",
-            date: "2023-10-19",
-            time: "13:00",
-            title: "System Maintenance Notification",
-            type: "Maintenance",
-            revisers: "All Users",
-            content: "System will be down for maintenance",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT006NF",
-            date: "2023-10-20",
-            time: "15:30",
-            title: "New Auction Listing",
-            type: "Update",
-            revisers: "Subscribed Users",
-            content: "New auctions are now available",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT007NF",
-            date: "2023-10-21",
-            time: "10:00",
-            title: "Document Verification Required",
-            type: "Action Required",
-            revisers: "Pending Verification",
-            content: "Please verify your documents",
-            status: "pending"
-        },
-        {
-            notifyId: "NOT008NF",
-            date: "2023-10-22",
-            time: "17:45",
-            title: "Auction Extended Notice",
-            type: "Update",
-            revisers: "Active Bidders",
-            content: "Auction has been extended",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT009NF",
-            date: "2023-10-23",
-            time: "12:10",
-            title: "Terms & Conditions Update",
-            type: "Policy Change",
-            revisers: "All Users",
-            content: "Terms and conditions have been updated",
-            status: "sent"
-        },
-        {
-            notifyId: "NOT010NF",
-            date: "2023-10-24",
-            time: "08:30",
-            title: "Weekly Auction Summary",
-            type: "Report",
-            revisers: "Administrators",
-            content: "Weekly auction summary is ready",
-            status: "sent"
-        }
-    ];
+        };
+    });
 
     // Get unique notification types for filter
     const uniqueTypes = Array.from(new Set(notifications.map(n => n.type)));

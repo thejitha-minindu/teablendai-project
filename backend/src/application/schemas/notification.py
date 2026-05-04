@@ -26,6 +26,10 @@ class NotificationCreate(BaseModel):
         None,
         description="Target user. Omit or set null to broadcast to everyone.",
     )
+    target_role: Optional[str] = Field(
+        None,
+        description="Optional role to broadcast to, e.g., 'buyer' or 'seller'."
+    )
     title: str = Field(..., max_length=255)
     message: str
     type: NotificationTypeEnum = NotificationTypeEnum.system

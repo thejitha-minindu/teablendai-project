@@ -39,8 +39,8 @@ from src.application.use_cases.buyer.auction_manager import auction_manager
 from src.application.use_cases.buyer.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
 from src.presentation.routers.v1.buyer import live_auction_socket
 from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
-# from src.presentation.routers.v1.violations_router import router as violations_router
-# from src.presentation.routers.v1.notifications_router import router as notifications_router
+from src.presentation.routers.v1.violations_router import router as violations_router
+from src.presentation.routers.v1.notifications_router import router as notifications_router
 from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
@@ -308,10 +308,17 @@ app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["
 
 # Register admin violation router (mounted under API v1 admin prefix)
 app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
-app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+# app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
 
 # Register notifications router (mounted under API v1)
-app.include_router(notifications_router.router, prefix="/api/v1/notifications", tags=["Notifications"])
-
+app.include_router(
+    notifications_router,
+    prefix="/api/v1/notifications",
+    tags=["Notifications"]
+)
 # Register violation router for users (non-admin) (mounted under API v1)
-app.include_router(violations_router.router, prefix="/api/v1/violations", tags=["Violations"])
+app.include_router(
+    violations_router,
+    prefix="/api/v1/violations",
+    tags=["Violations"]
+)

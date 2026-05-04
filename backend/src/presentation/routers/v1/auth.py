@@ -143,24 +143,38 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
     return build_token_response(user)
 
 @router.post("/admin/login", response_model=Token)
-def admin_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def admin_login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    logger.info(f"Admin login attempt for: {form_data.username}")
+
     admin = db.query(Admin).filter(Admin.email == form_data.username).first()
+
     if not admin:
+        logger.warning("Admin not found")
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin credentials"
         )
 
-    if not verify_password(form_data.password, admin.password):
+    if admin.status != "active":
+        logger.warning(f"Login attempt by non-approved admin: {admin.email}")
         raise HTTPException(
-            status_code=401,
-            detail="Incorrect password. Please try again."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is suspended or inactive"
         )
-    
-    # Update last login
+
+    if not verify_password(form_data.password, admin.password):
+        logger.warning("Invalid password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password"
+        )
+
     admin.last_login = datetime.utcnow()
     db.commit()
-    
+
     access_token = create_access_token(
         data={
             "sub": admin.email,
@@ -170,7 +184,13 @@ def admin_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    logger.info("Admin login successful")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 @router.post("/google", response_model=Token)
 def google_auth(request: GoogleToken, db: Session = Depends(get_db)):

@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.application.dependencies import get_current_user, get_db
+from src.application.dependencies import get_current_user, get_db, get_current_admin
 from src.application.schemas.notification import NotificationCreate, NotificationRead
 from src.infrastructure.repositories.notification_repository import NotificationRepository
 
@@ -75,22 +75,31 @@ def mark_all_read(
 
 @router.post(
     "/",
-    response_model=NotificationRead,
     status_code=status.HTTP_201_CREATED,
     summary="Admin: send a notification to a user or broadcast",
 )
 def send_notification(
     data: NotificationCreate,
     db: Session = Depends(get_db),
-    current_user=Depends(get_current_user),
+    admin=Depends(get_current_admin),
 ):
     """
     Admin-only endpoint used by the sendnotification page.
     Set user_id to a specific UUID to target one user.
     Leave user_id as null to broadcast to all users.
-
-    TODO: Add is_admin check once your admin guard dependency is ready.
-    e.g. current_user = Depends(get_current_admin_user)
     """
     repo = NotificationRepository(db)
-    return repo.create(data=data)
+    result = repo.create(data=data)
+    return {"detail": "Notification sent successfully"}
+
+
+@router.get(
+    "/history",
+    summary="Admin: view notification history",
+)
+def get_notification_history(
+    db: Session = Depends(get_db),
+    admin=Depends(get_current_admin),
+):
+    repo = NotificationRepository(db)
+    return repo.get_history()

@@ -18,6 +18,8 @@ from .order_message import OrderMessage
 from .admin import Admin
 from .violation import Violation
 from .notification_model import Notification
+from .password_reset import PasswordReset
+from .user import PaymentCard
 
 # Configure Relationships
 from sqlalchemy.orm import relationship

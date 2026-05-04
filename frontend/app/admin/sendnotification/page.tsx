@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiClient } from "@/lib/apiClient";
 import { 
   Bell, 
   History, 
@@ -30,6 +31,36 @@ export default function CreateNotificationPage() {
     });
     const [sending, setSending] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
+    
+    // Auto-suggest state
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<any>(null);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Debounced search effect
+    useEffect(() => {
+        if (!formData.reviserSpecify || formData.reviserSpecify.length < 2 || selectedUser) {
+            setSearchResults([]);
+            setShowDropdown(false);
+            return;
+        }
+
+        const timer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const res = await apiClient.get(`/admin/users/search?query=${encodeURIComponent(formData.reviserSpecify)}`);
+                setSearchResults(res.data.users || []);
+                setShowDropdown(true);
+            } catch (err) {
+                console.error("Search failed", err);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 300);
+
+        return () => clearTimeout(timer);
+    }, [formData.reviserSpecify, selectedUser]);
 
     const notificationTypes = [
         { value: "System Notifications", label: "System Notifications", icon: <Bell className="w-4 h-4" />, color: "blue" },
@@ -59,10 +90,27 @@ export default function CreateNotificationPage() {
 
         setSending(true);
         
-        // Simulate API call
-        setTimeout(() => {
-            console.log("Notification sent:", formData);
-            setSending(false);
+        try {
+            // Map frontend type labels to backend NotificationTypeEnum
+            let backendType = "system";
+            if (formData.type.includes("Auction") || formData.type.includes("Bid")) {
+                backendType = "order";
+            } else if (formData.type.includes("Violation") || formData.type.includes("Complaint")) {
+                backendType = "alert";
+            } else if (formData.type.includes("Verification")) {
+                backendType = "system";
+            }
+
+            const payload = {
+                title: formData.title,
+                message: formData.content,
+                type: backendType,
+                user_id: selectedUser ? selectedUser.user_id : null,
+                target_role: formData.revisers === "all" ? null : formData.revisers
+            };
+
+            await apiClient.post("/notifications/", payload);
+            
             setShowSuccess(true);
             
             // Reset form after success
@@ -75,8 +123,14 @@ export default function CreateNotificationPage() {
                     revisers: "",
                     reviserSpecify: ""
                 });
+                setSelectedUser(null);
             }, 2000);
-        }, 1500);
+        } catch (error: any) {
+            console.error("Failed to send notification:", error);
+            alert(error.response?.data?.detail || "Failed to send notification. Please try again.");
+        } finally {
+            setSending(false);
+        }
     };
 
     const handleCancel = () => {
@@ -88,6 +142,7 @@ export default function CreateNotificationPage() {
                 revisers: "",
                 reviserSpecify: ""
             });
+            setSelectedUser(null);
         }
     };
 
@@ -223,22 +278,86 @@ export default function CreateNotificationPage() {
                         </div>
                     </div>
 
-                    {/* Specific User ID */}
+                    {/* Specific User Email */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
                             <UserCheck className="w-4 h-4 text-gray-500" />
                             Specific User (Optional)
                         </label>
-                        <div className="md:col-span-2">
-                            <input
-                                value={formData.reviserSpecify}
-                                onChange={(e) => handleInputChange("reviserSpecify", e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
-                                placeholder="Enter User ID to send to specific user"
-                            />
-                            <p className="text-xs text-gray-400 mt-1">
-                                Leave empty to send to all selected audience
-                            </p>
+                        <div className="md:col-span-2 relative">
+                            {selectedUser ? (
+                                <div className="flex items-center justify-between p-2.5 border border-green-300 bg-green-50 rounded-lg">
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-full bg-green-200 flex items-center justify-center text-green-800 font-bold">
+                                            {selectedUser.first_name[0]}{selectedUser.last_name[0]}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm font-semibold text-gray-800">{selectedUser.first_name} {selectedUser.last_name}</p>
+                                            <p className="text-xs text-gray-500">{selectedUser.email}</p>
+                                        </div>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            setSelectedUser(null);
+                                            setFormData(prev => ({...prev, reviserSpecify: ""}));
+                                        }}
+                                        className="p-1 hover:bg-green-200 rounded-full text-green-700"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <>
+                                    <input
+                                        value={formData.reviserSpecify}
+                                        onChange={(e) => {
+                                            handleInputChange("reviserSpecify", e.target.value);
+                                            setSelectedUser(null);
+                                        }}
+                                        className="w-full border border-gray-300 rounded-lg p-2.5 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                                        placeholder="Search user by email address..."
+                                    />
+                                    {isSearching && (
+                                        <div className="absolute right-3 top-3">
+                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                        </div>
+                                    )}
+                                    
+                                    {/* Auto-suggest Dropdown */}
+                                    {showDropdown && searchResults.length > 0 && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                                            {searchResults.map((user) => (
+                                                <button
+                                                    key={user.user_id}
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setSelectedUser(user);
+                                                        setShowDropdown(false);
+                                                        setFormData(prev => ({...prev, reviserSpecify: user.email}));
+                                                    }}
+                                                    className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3 transition-colors"
+                                                >
+                                                    <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 font-semibold text-sm">
+                                                        {user.first_name[0]}{user.last_name[0]}
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-sm font-semibold text-gray-800">{user.first_name} {user.last_name}</p>
+                                                        <p className="text-xs text-gray-500">{user.email}</p>
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {showDropdown && formData.reviserSpecify.length >= 2 && searchResults.length === 0 && !isSearching && (
+                                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg p-4 text-center text-sm text-gray-500">
+                                            No users found with this email.
+                                        </div>
+                                    )}
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Leave empty to send to all selected audience
+                                    </p>
+                                </>
+                            )}
                         </div>
                     </div>
 
@@ -265,9 +384,9 @@ export default function CreateNotificationPage() {
                                             <span className="text-xs text-gray-400">
                                                 To: {reviserOptions.find(o => o.value === formData.revisers)?.label || "Not selected"}
                                             </span>
-                                            {formData.reviserSpecify && (
+                                            {selectedUser && (
                                                 <span className="text-xs text-gray-400">
-                                                    • User ID: {formData.reviserSpecify}
+                                                    • {selectedUser.email}
                                                 </span>
                                             )}
                                         </div>

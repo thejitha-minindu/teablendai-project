@@ -1,93 +1,65 @@
 import axios from "axios";
 import { API_BASE_URL } from "./api.config";
 
+const TOKEN_KEY = "teablend_token";
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: { "Content-Type": "application/json" },
-  timeout: 60000, // 60s for AI responses
+  timeout: 60000,
 });
 
+// ✅ REQUEST INTERCEPTOR
 apiClient.interceptors.request.use((config) => {
   if (typeof window !== "undefined") {
-    const token =
-      localStorage.getItem("teablend_token") ||
-      localStorage.getItem("access_token");
+    const token = localStorage.getItem(TOKEN_KEY);
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn("[API] No valid token found");
     }
   }
   return config;
 });
 
+// ✅ RESPONSE INTERCEPTOR
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    // If we get a 401 Unauthorized, automatically log the user out
-    if (error.response?.status === 401 && typeof window !== 'undefined') {
-      // Don't auto-redirect for auth endpoints - let the component handle those errors
-      const requestUrl = error.config?.url || '';
-      const isAuthEndpoint = requestUrl.includes('/auth/admin/login') || 
-                             requestUrl.includes('/auth/google') || 
-                             requestUrl.includes('/auth/register') ||
-                             requestUrl.includes('/auth/forgot-password') ||
-                             requestUrl.includes('/auth/verify-otp') ||
-                             requestUrl.includes('/auth/reset-password');
+    const status = error.response?.status;
+    const url = error.config?.url || "";
+
+    if (status === 401 && typeof window !== "undefined") {
+      console.warn("[API] 401 Unauthorized detected");
+
+      // ❗ Skip auth endpoints
+      const isAuthEndpoint =
+        url.includes("/auth/login") ||
+        url.includes("/auth/admin/login") ||
+        url.includes("/auth/google");
+
       if (!isAuthEndpoint) {
-        localStorage.removeItem('teablend_token');
-        localStorage.removeItem('access_token');
-        
+        localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem("access_token");
+
         const currentPath = window.location.pathname;
-        if (currentPath.startsWith('/admin') || currentPath.startsWith('/auth/admin')) {
-          window.location.href = '/auth/admin/login';
+
+        if (currentPath.startsWith("/admin")) {
+          window.location.href = "/auth/admin/login";
         }
       }
     }
-    // Better diagnostics for network errors
-    const url = error.config?.url;
-    const method = error.config?.method;
-    const status = error.response?.status;
-    if (!error.response) {
-        const info = {
-          url: url ?? null,
-          method: method ?? null,
-          message: error.message ?? null,
-          stack: error.stack ?? null,
-        };
-        console.error(`[API Error] Network Error - no response from server: ${error.message}`);
-        console.error("[API Error] Network Info:", JSON.stringify(info, null, 2));
-    } else {
-        const getCircularReplacer = () => {
-          const seen = new WeakSet();
-          return (_key: string, value: any) => {
-            if (typeof value === "object" && value !== null) {
-              if (seen.has(value)) return "[Circular]";
-              seen.add(value);
-            }
-            return value;
-          };
-        };
 
-        let safeData: any = undefined;
-        try {
-          safeData = error.response?.data !== undefined ? JSON.parse(JSON.stringify(error.response.data, getCircularReplacer())) : undefined;
-        } catch (e) {
-          safeData = String(error.response?.data);
-        }
+    // Better logging
+    console.error("[API Error]", {
+      url,
+      method: error.config?.method,
+      status,
+      data: error.response?.data,
+      message: error.message,
+    });
 
-        const payload = {
-          url,
-          method,
-          status,
-          data: safeData,
-          message: error?.message ?? String(error),
-        };
-        try {
-          console.error("[API Error] " + JSON.stringify(payload, null, 2));
-        } catch (e) {
-          console.error("[API Error] (unserializable)", payload);
-        }
-    }
     return Promise.reject(error);
   }
 );

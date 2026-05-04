@@ -35,7 +35,7 @@ export default function AdminProfile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const TEST_ADMIN_ID = process.env.NEXT_PUBLIC_TEST_ADMIN_ID || "138A593A-0DC7-4DF9-9E2A-B798983C939D";
+        const TEST_ADMIN_ID = process.env.NEXT_PUBLIC_TEST_ADMIN_ID || "1";
         const res = await apiClient.get(`/admin/profile/${TEST_ADMIN_ID}`);
         const data = res.data || {};
 

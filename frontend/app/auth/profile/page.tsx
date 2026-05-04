@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, Calendar, CheckCircle2, Globe, Loader2,
-  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X, Bell
+  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X, Bell, AlertCircle, Tag
 } from "lucide-react"; // UI Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for sending backend requests
 import { API_BASE_URL } from "@/lib/api.config";
@@ -45,6 +45,16 @@ type ProfileResponse = {
     seller_city?: string | null;
     seller_postal_code?: string | null;
   } | null;
+};
+
+type NotificationRead = {
+  notification_id: string;
+  user_id: string | null;
+  title: string;
+  message: string;
+  type: string;
+  is_read: boolean;
+  created_at: string;
 };
 
 // The shapes of the data we hold in the forms before saving
@@ -126,8 +136,12 @@ export default function AuthProfilePage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
   const [isNotificationOpen, setIsNotificationOpen] = useState(false); // State for notification menu
+  const [notifications, setNotifications] = useState<NotificationRead[]>([]);
+  const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const unreadCount = useMemo(() => notifications.filter(n => !n.is_read).length, [notifications]);
 
   // Convenience variables calculated from the profile data
   const hasSellerAccess = profile?.available_roles?.includes("seller") ?? false;
@@ -177,11 +191,64 @@ export default function AuthProfilePage() {
       const response = await apiClient.get<ProfileResponse>("/profile");
       setProfile(response.data);
       hydrateForms(response.data); // Fill the forms with this data
+      await loadNotifications(); // Load notifications
     } catch (error: any) {
       console.error("Failed to load profile:", error);
       setErrorMsg(error?.response?.data?.detail || "Failed to load profile details.");
     } finally {
       setIsPageLoading(false);
+    }
+  };
+
+  const loadNotifications = async () => {
+    try {
+      setIsNotificationsLoading(true);
+      const response = await apiClient.get<NotificationRead[]>("/notifications/me");
+      setNotifications(response.data);
+    } catch (error: any) {
+      console.error("Failed to load notifications:", error);
+    } finally {
+      setIsNotificationsLoading(false);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await apiClient.patch("/notifications/mark-all-read");
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    } catch (error: any) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
+
+  const handleNotificationClick = async (notificationId: string, isRead: boolean) => {
+    if (isRead) return;
+    try {
+      await apiClient.patch(`/notifications/${notificationId}/read`);
+      setNotifications(prev => prev.map(n => n.notification_id === notificationId ? { ...n, is_read: true } : n));
+    } catch (error: any) {
+      console.error("Failed to mark notification as read:", error);
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case "order": return <ShoppingBag className="h-5 w-5 text-purple-600" />;
+      case "alert": return <AlertCircle className="h-5 w-5 text-red-600" />;
+      case "promo": return <Tag className="h-5 w-5 text-yellow-600" />;
+      case "system":
+      default: return <Bell className="h-5 w-5 text-blue-600" />;
+    }
+  };
+
+  const getNotificationBg = (type: string, isRead: boolean) => {
+    if (isRead) return "bg-gray-100";
+    switch (type) {
+      case "order": return "bg-purple-100";
+      case "alert": return "bg-red-100";
+      case "promo": return "bg-yellow-100";
+      case "system":
+      default: return "bg-blue-100";
     }
   };
 
@@ -538,10 +605,11 @@ export default function AuthProfilePage() {
                     className="relative ml-2 rounded-full bg-white p-2 text-gray-600 shadow-md hover:bg-gray-50 transition-colors border border-gray-200"
                   >
                     <Bell className="h-5 w-5" />
-                    {/* Optional: Notification badge - uncomment if you want to show unread count */}
-                    {/* <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
-                      3
-                    </span> */}
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+                        {unreadCount > 9 ? "9+" : unreadCount}
+                      </span>
+                    )}
                   </button>
                 </div>
               </div>
@@ -576,66 +644,62 @@ export default function AuthProfilePage() {
                   
                   {/* Notification List */}
                   <div className="max-h-[60vh] overflow-y-auto">
-                    {/* Sample Notifications - Replace with your actual data */}
-                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    {isNotificationsLoading ? (
+                      <div className="flex justify-center items-center py-8">
+                        <Loader2 className="h-6 w-6 animate-spin text-green-600" />
+                      </div>
+                    ) : notifications.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 text-sm">No notifications yet</p>
+                        <p className="text-gray-400 text-xs mt-1">We'll notify you when something arrives</p>
+                      </div>
+                    ) : (
+                      notifications.map((notification) => (
+                        <div 
+                          key={notification.notification_id}
+                          onClick={() => handleNotificationClick(notification.notification_id, notification.is_read)}
+                          className={`border-b border-gray-100 p-4 transition-colors cursor-pointer ${notification.is_read ? 'bg-white hover:bg-gray-50 opacity-70' : 'bg-green-50/30 hover:bg-green-50'}`}
+                        >
+                          <div className="flex gap-3">
+                            <div className="flex-shrink-0">
+                              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${getNotificationBg(notification.type, notification.is_read)}`}>
+                                {getNotificationIcon(notification.type)}
+                              </div>
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex justify-between items-start">
+                                <p className={`text-sm ${notification.is_read ? 'font-medium text-gray-700' : 'font-bold text-gray-900'}`}>
+                                  {notification.title}
+                                </p>
+                                {!notification.is_read && (
+                                  <div className="h-2 w-2 bg-green-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                                )}
+                              </div>
+                              <p className={`text-xs mt-1 line-clamp-2 ${notification.is_read ? 'text-gray-500' : 'text-gray-700'}`}>
+                                {notification.message}
+                              </p>
+                              <p className="text-[10px] text-gray-400 mt-2 font-medium">
+                                {new Date(notification.created_at).toLocaleString()}
+                              </p>
+                            </div>
                           </div>
                         </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">Profile Updated</p>
-                          <p className="text-xs text-gray-500 mt-1">Your profile information has been successfully updated.</p>
-                          <p className="text-xs text-gray-400 mt-2">2 hours ago</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                            <Store className="h-5 w-5 text-blue-600" />
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">Seller Request Status</p>
-                          <p className="text-xs text-gray-500 mt-1">Your seller account request is under review by the admin.</p>
-                          <p className="text-xs text-gray-400 mt-2">1 day ago</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border-b border-gray-100 p-4 hover:bg-gray-50 transition-colors cursor-pointer">
-                      <div className="flex gap-3">
-                        <div className="flex-shrink-0">
-                          <div className="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
-                            <ShoppingBag className="h-5 w-5 text-purple-600" />
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-gray-900">New Order Received</p>
-                          <p className="text-xs text-gray-500 mt-1">You have received a new order for your tea products.</p>
-                          <p className="text-xs text-gray-400 mt-2">3 days ago</p>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    {/* Empty State - Uncomment if no notifications */}
-                    {/* <div className="py-12 text-center">
-                      <Bell className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 text-sm">No notifications yet</p>
-                      <p className="text-gray-400 text-xs mt-1">We'll notify you when something arrives</p>
-                    </div> */}
+                      ))
+                    )}
                   </div>
                   
                   {/* Footer with Mark All Read button */}
-                  <div className="border-t border-gray-200 px-6 py-3 bg-gray-50">
-                    <button className="w-full text-center text-sm text-green-600 hover:text-green-700 font-medium transition-colors">
-                      Mark all as read
-                    </button>
-                  </div>
+                  {notifications.length > 0 && unreadCount > 0 && (
+                    <div className="border-t border-gray-200 px-6 py-3 bg-gray-50">
+                      <button 
+                        onClick={handleMarkAllAsRead}
+                        className="w-full text-center text-sm text-green-600 hover:text-green-700 font-medium transition-colors"
+                      >
+                        Mark all as read
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </>

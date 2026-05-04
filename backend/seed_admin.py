@@ -9,12 +9,16 @@ sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
 from src.infrastructure.database.base import SessionLocal
 from src.domain.models.admin import Admin
 from src.application.security import get_password_hash
+from src.config import settings
 
 def seed_admin():
     db = SessionLocal()
     try:
         # Check if admin already exists
-        admin_email = "admin@teablendai.com"
+        admin_email = settings.ADMIN_EMAIL
+        admin_password = settings.ADMIN_PASSWORD
+        admin_username = settings.ADMIN_USERNAME
+
         existing_admin = db.query(Admin).filter(Admin.email == admin_email).first()
         
         if existing_admin:
@@ -24,9 +28,9 @@ def seed_admin():
         # Create default admin
         new_admin = Admin(
             admin_id=str(uuid4()),
-            username="admin",
+            username=admin_username,
             email=admin_email,
-            password=get_password_hash("admin123"),
+            password=get_password_hash(admin_password),
             first_name="System",
             last_name="Admin",
             role="superadmin",
@@ -38,8 +42,8 @@ def seed_admin():
         db.commit()
         print(f"Default admin account created successfully!")
         print(f"Email: {admin_email}")
-        print(f"Username: admin")
-        print(f"Password: admin123")
+        print(f"Username: {admin_username}")
+        print(f"Password: {admin_password}")
         
     except Exception as e:
         print(f"Error seeding admin: {e}")
