@@ -211,3 +211,19 @@ async def get_ws_current_buyer(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer role required")
 
     return user
+
+
+async def get_ws_current_user(
+    websocket: WebSocket,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+) -> User:
+    """WebSocket dependency for any authenticated user (buyer or seller)."""
+    try:
+        user = _get_ws_user(token, db)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.send_json({"error": "Could not validate credentials"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
+        raise
+    return user
