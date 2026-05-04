@@ -15,6 +15,7 @@ from .conversation import Conversation
 from .message import ChatMessage
 from .admin import Admin
 from .violation import Violation
+from .notification_model import Notification
 
 # Configure Relationships
 from sqlalchemy.orm import relationship
@@ -46,4 +47,6 @@ __all__ = [
     "WinsAuction",
     "Conversation",
     "ChatMessage",
+    "Violation",
+    "Notification",
 ]

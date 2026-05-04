@@ -1,14 +1,13 @@
-from sqlalchemy import Column, Integer, String, DateTime
-from datetime import datetime
-from src.infrastructure.database.connection import Base
+"""
+Domain model for violations.
 
-class Violation(Base):
-    __tablename__ = "violations"
+Re‑exports the canonical Violation model so both
+``from src.domain.models.violation import Violation`` (used by __init__.py)
+and
+``from src.domain.models.violation_model import Violation`` (used by the repository)
+resolve to the same class and SQLAlchemy mapper.
+"""
 
-    violation_id = Column(Integer, primary_key=True, index=True)
-    sender_id = Column(String)
-    violator_id = Column(String)
-    violation_type = Column(String)
-    reason = Column(String)
-    status = Column(String, default="PENDING")
-    created_at = Column(DateTime, default=datetime.utcnow)
+from src.domain.models.violation_model import Violation, ViolationTypeEnum, ViolationStatusEnum
+
+__all__ = ["Violation", "ViolationTypeEnum", "ViolationStatusEnum"]

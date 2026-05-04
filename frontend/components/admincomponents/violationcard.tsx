@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { 
-  AlertTriangle, 
-  Send, 
-  User, 
-  Flag, 
-  FileText, 
-  Clock, 
-  CheckCircle, 
+import {
+  AlertTriangle,
+  Send,
+  User,
+  Flag,
+  FileText,
+  Clock,
+  CheckCircle,
   XCircle,
   Shield,
   Eye,
@@ -19,7 +19,10 @@ import { useState } from "react";
 type ViolationCardProps = {
     violationId: string;
     senderId: string;
+    senderName?: string | null;
+    senderEmail?: string | null;
     violatorId: string;
+    auctionId?: string | null;
     violationType: string;
     reason: string;
     status: string;
@@ -30,7 +33,10 @@ type ViolationCardProps = {
 export function ViolationCard({
     violationId,
     senderId,
+    senderName,
+    senderEmail,
     violatorId,
+    auctionId,
     violationType,
     reason,
     status,

@@ -79,6 +79,12 @@ export function TrackAuctionCard({
                     {statusStyle.icon}
                     {status.charAt(0).toUpperCase() + status.slice(1)}
                 </div>
+                
+                {/* Status Badge */}
+                <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${statusStyle.bg} ${statusStyle.text}`}>
+                    {statusStyle.icon}
+                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                </div>
             </div>
 
             {/* Details Grid */}

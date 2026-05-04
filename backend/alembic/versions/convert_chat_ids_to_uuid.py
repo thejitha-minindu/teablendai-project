@@ -83,17 +83,21 @@ def upgrade() -> None:
     op.execute("ALTER TABLE Messages ALTER COLUMN MessageID_UUID UNIQUEIDENTIFIER NOT NULL")
     op.execute("ALTER TABLE Messages ALTER COLUMN ConversationID_UUID UNIQUEIDENTIFIER NOT NULL")
 
-    # Drop FK from old Messages.ConversationID to old Conversations.ConversationID
+    # Drop FKs from any table that still references the legacy
+    # Conversations.ConversationID integer PK. Some databases contain both
+    # the current Messages table and a legacy ChatMessages table.
     op.execute(
         """
         DECLARE @drop_fk_sql NVARCHAR(MAX) = N'';
         SELECT @drop_fk_sql = @drop_fk_sql +
-            N'ALTER TABLE Messages DROP CONSTRAINT [' + fk.name + N'];'
+            N'ALTER TABLE [' + OBJECT_SCHEMA_NAME(fk.parent_object_id) + N'].[' + OBJECT_NAME(fk.parent_object_id) + N'] DROP CONSTRAINT [' + fk.name + N'];'
         FROM sys.foreign_keys fk
         INNER JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
-        INNER JOIN sys.columns c ON c.object_id = fkc.parent_object_id AND c.column_id = fkc.parent_column_id
-        WHERE fk.parent_object_id = OBJECT_ID('Messages')
-          AND c.name = 'ConversationID';
+        INNER JOIN sys.columns parent_col ON parent_col.object_id = fkc.parent_object_id AND parent_col.column_id = fkc.parent_column_id
+        INNER JOIN sys.columns ref_col ON ref_col.object_id = fkc.referenced_object_id AND ref_col.column_id = fkc.referenced_column_id
+        WHERE fkc.referenced_object_id = OBJECT_ID('Conversations')
+          AND ref_col.name = 'ConversationID'
+          AND parent_col.name = 'ConversationID';
 
         IF LEN(@drop_fk_sql) > 0
             EXEC sp_executesql @drop_fk_sql;

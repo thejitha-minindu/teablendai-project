@@ -18,12 +18,14 @@ from src.presentation.routers.v1.seller.auction import router as auction
 from src.presentation.routers.v1.admin import admin_profile
 from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
-    health, 
-    bid, 
-    user, 
+    health,
+    bid,
+    user,
     order,
     auth,
     profile,
+    violations_router,
+    notifications_router
 )
 
 from src.presentation.routers.v1.admin import admin_users
@@ -36,7 +38,9 @@ from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_da
 from src.presentation.routers.v1.dashboard import analytics_dashboard
 from src.application.services.buyer.auction_manager import auction_manager
 from src.presentation.routers.v1.buyer import live_auction_socket
-
+from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
+# from src.presentation.routers.v1.violations_router import router as violations_router
+# from src.presentation.routers.v1.notifications_router import router as notifications_router
 from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
@@ -57,15 +61,29 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
+    compatibility = None
+
+    try:
+        compatibility = ensure_runtime_schema_compatibility()
+        logger.info("Runtime schema compatibility checks completed.")
+    except Exception:
+        logger.exception("Runtime schema compatibility checks failed; continuing startup.")
 
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_manager_task = auction_manager_task
     logger.info("Auction manager background task started")
 
-    if settings.ANALYTICS_SCHEDULER_ENABLED:
+    if settings.ANALYTICS_SCHEDULER_ENABLED and (
+        compatibility is None or compatibility.analytics_snapshots_available
+    ):
         analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
         app.state.analytics_snapshot_task = analytics_task
         logger.info("Analytics snapshot scheduler started")
+    elif settings.ANALYTICS_SCHEDULER_ENABLED:
+        logger.warning(
+            "Analytics snapshot scheduler disabled because snapshot tables are missing. "
+            "Run Alembic migrations to enable analytics snapshots."
+        )
 
     if settings.INIT_DB_ON_STARTUP:
         try:
@@ -273,3 +291,10 @@ app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["
 
 # Register admin violation router (mounted under API v1 admin prefix)
 app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+
+# Register notifications router (mounted under API v1)
+app.include_router(notifications_router.router, prefix="/api/v1/notifications", tags=["Notifications"])
+
+# Register violation router for users (non-admin) (mounted under API v1)
+app.include_router(violations_router.router, prefix="/api/v1/violations", tags=["Violations"])

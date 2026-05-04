@@ -18,8 +18,6 @@ from src.domain.models.message import ChatMessage
 from src.domain.models.admin import Admin
 from src.domain.models.violation import Violation
 
-from urllib.parse import quote_plus
-
 # Load environment variables from .env file
 load_dotenv()
 
@@ -59,34 +57,7 @@ def include_object(object_, name, type_, reflected, compare_to):
 # ... etc.
 
 
-def _build_db_url() -> str:
-    direct = os.getenv("DATABASE_URL")
-    if direct:
-        return direct
-
-    server = os.getenv("MSSQL_SERVER", "")
-    database = os.getenv("MSSQL_DATABASE", "")
-    username = os.getenv("MSSQL_USERNAME", "")
-    password = os.getenv("MSSQL_PASSWORD", "")
-    trusted = os.getenv("DB_TRUSTED_CONNECTION", "false").lower() == "true"
-
-    if trusted:
-        odbc = (
-            "DRIVER={ODBC Driver 17 for SQL Server};"
-            f"SERVER={server};DATABASE={database};Trusted_Connection=yes;"
-            "TrustServerCertificate=yes;"
-        )
-    else:
-        odbc = (
-            "DRIVER={ODBC Driver 17 for SQL Server};"
-            f"SERVER={server};DATABASE={database};UID={username};PWD={password};"
-            "TrustServerCertificate=yes;"
-        )
-
-    return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc)}"
-
-
-db_url = _build_db_url()
+db_url = get_mssql_connection_string()
 config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
