@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import text
@@ -41,14 +41,7 @@ class AnalyticsPurchasesRepository:
                             WHEN status = 'History' AND sold_price > 0 
                             THEN NULLIF(LTRIM(RTRIM(COALESCE(company_name, estate_name))), '') 
                         END), 0
-                    ) AS unique_suppliers,
-
-                    COALESCE(
-                        COUNT(CASE 
-                            WHEN status = 'History' AND sold_price > 0 
-                            THEN 1 
-                        END), 0
-                    ) AS paid_auctions
+                    ) AS unique_suppliers
                 FROM auctions
             """)
         ).mappings().one()
@@ -57,7 +50,25 @@ class AnalyticsPurchasesRepository:
         order_row = self.db.execute(
             text("""
                 SELECT
-                    COALESCE(COUNT(CASE WHEN status = 'completed' THEN 1 END), 0) AS completed_orders
+                    COALESCE(COUNT(*), 0) AS total_orders,
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN LOWER(CAST(status AS NVARCHAR(50))) IN ('completed', 'orderstatus.completed')
+                                THEN 1 ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS completed_orders,
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN LOWER(CAST(status AS NVARCHAR(50))) IN ('pending', 'orderstatus.pending')
+                                THEN 1 ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS pending_orders
                 FROM orders
             """)
         ).mappings().one()
@@ -65,37 +76,14 @@ class AnalyticsPurchasesRepository:
         # SUPPLIER ACQUISITION
         supplier_row = self.db.execute(
             text("""
-                WITH supplier_first_purchase AS (
-                    SELECT
-                        supplier_name,
-                        MIN(start_time) AS first_purchase_at
-                    FROM (
-                        SELECT
-                            COALESCE(
-                                NULLIF(LTRIM(RTRIM(company_name)), ''),
-                                NULLIF(LTRIM(RTRIM(estate_name)), '')
-                            ) AS supplier_name,
-                            start_time
-                        FROM auctions
-                        WHERE status = 'History'
-                        AND sold_price > 0
-                        AND start_time IS NOT NULL
-                    ) s
-                    WHERE supplier_name IS NOT NULL
-                    GROUP BY supplier_name
-                )
                 SELECT
-                    COALESCE(
-                        SUM(
-                            CASE
-                                WHEN YEAR(first_purchase_at) = YEAR(SYSUTCDATETIME())
-                                AND MONTH(first_purchase_at) = MONTH(SYSUTCDATETIME())
-                                THEN 1 ELSE 0
-                            END
-                        ),
-                        0
-                    ) AS new_suppliers_this_month
-                FROM supplier_first_purchase
+                    COALESCE(COUNT(*), 0) AS new_suppliers_this_month
+                FROM users
+                WHERE LOWER(CAST(default_role AS NVARCHAR(50))) = 'seller'
+                  AND LOWER(CAST(status AS NVARCHAR(50))) = 'approved'
+                  AND LOWER(CAST(seller_verification_status AS NVARCHAR(50))) = 'approved'
+                  AND created_at >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
+                  AND created_at < DATEADD(MONTH, 1, DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1))
             """)
         ).mappings().one()
 
@@ -103,12 +91,8 @@ class AnalyticsPurchasesRepository:
         total_purchased = self._num(auction_row["total_purchased"])
         total_cost = self._num(auction_row["total_cost"])
 
-        paid_auctions = self._num(auction_row["paid_auctions"])
-        completed_orders = self._num(order_row["completed_orders"])
-
-        pending_orders = paid_auctions - completed_orders
-        if pending_orders < 0:
-            pending_orders = 0
+        total_orders = self._num(order_row["total_orders"])
+        pending_orders = self._num(order_row["pending_orders"])
 
         average_price = (total_cost / total_purchased) if total_purchased > 0 else 0.0
 
@@ -120,7 +104,7 @@ class AnalyticsPurchasesRepository:
             "uniqueSuppliers": int(self._num(auction_row["unique_suppliers"])),
             "newSuppliersThisMonth": int(self._num(supplier_row["new_suppliers_this_month"])),
 
-            "purchaseOrders": int(completed_orders),
+            "purchaseOrders": int(total_orders),
             "pendingOrders": int(pending_orders),
         }
 
@@ -367,6 +351,11 @@ class AnalyticsPurchasesRepository:
         generated_at = row["snapshot_at"]
         if generated_at.tzinfo is None:
             generated_at = generated_at.replace(tzinfo=timezone.utc)
+
+        if refresh_interval_ms > 0:
+            stale_before = datetime.now(timezone.utc) - timedelta(milliseconds=refresh_interval_ms)
+            if generated_at < stale_before:
+                return None
 
         summary = json.loads(row["summary_json"])
         # Backward compatibility for older snapshots created before this field existed.

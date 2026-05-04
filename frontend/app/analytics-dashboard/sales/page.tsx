@@ -19,7 +19,6 @@ export default function SalesAuctionAnalytics() {
 
   const summary = data.summary;
   const auctionPerformance = data.auctionPerformance;
-  const gradeWisePrices = data.gradeWisePrices;
   const sellingTrends = data.sellingTrends;
   const sellerPerformance = data.sellerPerformance;
   const bidVolumeAnalysis = data.bidVolumeAnalysis;
@@ -74,24 +73,9 @@ export default function SalesAuctionAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="basePrice" fill="#94a3b8" name="Base Price (LKR/kg)" />
-              <Bar dataKey="closingPrice" fill="#0088FE" name="Closing Price (LKR/kg)" />
+              <Bar dataKey="basePrice" fill="#94a3b8" name="Base Price (LKR)" />
+              <Bar dataKey="closingPrice" fill="#0088FE" name="Closing Price (LKR)" />
             </BarChart>
-          </ResponsiveContainer>
-        </ChartCard>
-
-        <ChartCard title="Price Range by Tea Grade">
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={gradeWisePrices}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="grade" />
-              <YAxis />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="minBid" fill="#cbd5e1" name="Min Bid" />
-              <Bar dataKey="avgBid" fill="#0088FE" name="Avg Bid" />
-              <Bar dataKey="maxBid" fill="#00C49F" name="Max Bid" />
-            </ComposedChart>
           </ResponsiveContainer>
         </ChartCard>
 
@@ -152,53 +136,32 @@ export default function SalesAuctionAnalytics() {
         </ChartCard>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Grade-wise Sales Performance</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Grade</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Sold (kg)</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Price</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Max Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {gradeWisePrices.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.grade}</td>
-                    <td className="text-right py-3 px-2">{item.soldVolume.toLocaleString()}</td>
-                    <td className="text-right py-3 px-2">{item.avgBid.toLocaleString()} LKR/kg</td>
-                    <td className="text-right py-3 px-2 text-green-600 font-medium">
-                      {item.maxBid.toLocaleString()} LKR/kg
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Seller Margin Analysis</h3>
+            <p className="text-sm text-gray-500">Top performers ranked by total revenue</p>
           </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Seller Margin Analysis</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-gray-200">
+                  <th className="text-center py-3 px-2 text-gray-600 font-medium w-12">Place</th>
                   <th className="text-left py-3 px-2 text-gray-600 font-medium">Seller</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Auctions Won</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Margin</th>
+                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Won Auctions</th>
+                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Margin %</th>
                 </tr>
               </thead>
               <tbody>
                 {sellerPerformance.map((item, index) => (
                   <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                    <td className="text-center py-3 px-2 font-semibold text-blue-600">#{index + 1}</td>
                     <td className="py-3 px-2 font-medium">{item.seller}</td>
-                    <td className="text-right py-3 px-2">{item.auctionsWon}</td>
+                    <td className="text-right py-3 px-2 text-gray-700">{item.auctionsWon}</td>
                     <td className="text-right py-3 px-2">
-                      <span className="text-green-600 font-medium">{item.avgMargin.toFixed(2)}%</span>
+                      <span className={item.avgMargin >= 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                        {item.avgMargin.toFixed(2)}%
+                      </span>
                     </td>
                   </tr>
                 ))}
