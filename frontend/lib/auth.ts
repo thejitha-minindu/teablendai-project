@@ -277,3 +277,7 @@ export function getDisplayNameFromEmail(email?: string): string {
   const namePart = email.split("@")[0] || "User";
   return namePart.charAt(0).toUpperCase() + namePart.slice(1);
 }
+
+export function getAuthToken(): string | null {
+  return typeof window !== "undefined" ? localStorage.getItem("teablend_token") : null;
+}

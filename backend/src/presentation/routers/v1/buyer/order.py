@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from src.application.schemas.buyer.order import Order, WinsAuction
-from src.application.use_cases.order_service import OrderService, WinsAuctionService
+from src.application.use_cases.buyer.order_service import OrderService, WinsAuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
@@ -16,7 +16,6 @@ def get_wins_auction_service(db: Session = Depends(get_db)):
     return WinsAuctionService(db)
 
 
-# Order endpoints
 # Create a new order
 @router.post("", response_model=Order)
 def create_order(

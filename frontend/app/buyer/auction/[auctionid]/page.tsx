@@ -13,20 +13,18 @@ export default function BuyerAuctionLivePage() {
   const params = useParams<{ auctionid: string }>();
   const router = useRouter();
   const auctionId = params?.auctionid ?? "";
-  const [userId, setUserId] = useState<string | null>(null);
+  // const [userId, setUserId] = useState<string | null>(null);
 
   const [auction, setAuction] = useState<AuctionData | null>(null);
   const [bids, setBids] = useState<Bid[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedAmount, setSelectedAmount] = useState<string>("");
   const [imageFailed, setImageFailed] = useState(false);
 
-  useEffect(() => {
-    const claims = getAuthClaims();
-    setUserId(claims?.id ?? null);
-  }, []);
+  // useEffect(() => {
+  //   const claims = getAuthClaims();
+  //   setUserId(claims?.id ?? null);
+  // }, []);
 
   useEffect(() => {
     setImageFailed(false);
@@ -64,6 +62,7 @@ export default function BuyerAuctionLivePage() {
     load();
   }, [auctionId, router]);
 
+  // initiate bid submission
   const highestBid = 0;
 
   const myBids = 0;
@@ -80,6 +79,7 @@ export default function BuyerAuctionLivePage() {
     return <div className="p-6 text-sm text-red-600">Auction not found.</div>;
   }
 
+  // loack bidding for scheduled auction
   const isBidLocked = true;
   const imageUrl = String(auction.image_url || "").trim();
   const showImage = Boolean(imageUrl) && !imageFailed;
