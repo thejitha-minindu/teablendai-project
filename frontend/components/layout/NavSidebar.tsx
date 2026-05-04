@@ -141,7 +141,11 @@ export function NavSidebar() {
     const claims = getAuthClaims();
     if (claims?.sub) {
       setUserEmail(claims.sub);
-      setUserName(getDisplayNameFromEmail(claims.sub));
+      if (claims.first_name || claims.last_name) {
+        setUserName(`${claims.first_name || ''} ${claims.last_name || ''}`.trim());
+      } else {
+        setUserName(getDisplayNameFromEmail(claims.sub));
+      }
     }
     if (claims?.role) {
       setActiveUserRole(claims.role);

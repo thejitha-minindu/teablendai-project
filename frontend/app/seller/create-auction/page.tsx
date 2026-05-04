@@ -21,9 +21,7 @@ export default function CreateAuctionPage() {
   const [imagePreview, setImagePreview] = useState<string>('');
 
   const [formData, setFormData] = useState({
-    companyName: '',
     estateName: '',
-    sellerBrand: '',
     grade: '',
     customGrade: '',
     quantity: '',
@@ -42,7 +40,7 @@ export default function CreateAuctionPage() {
 
   const handleNext = () => {
     if (step === 1) {
-      if (!formData.companyName.trim() || !formData.estateName.trim()) {
+      if (!formData.estateName.trim()) {
         toast.error("Please fill in all required fields.");
         return;
       }
@@ -120,8 +118,6 @@ export default function CreateAuctionPage() {
 
       const payload = {
         auction_name: `${finalGrade} - ${formData.origin}`,
-        seller_brand: formData.sellerBrand || "",
-        company_name: formData.companyName,
         estate_name: formData.estateName,
         grade: finalGrade,
         quantity: parseFloat(formData.quantity),
@@ -226,43 +222,15 @@ export default function CreateAuctionPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 ml-1">Company Name <span className="text-red-500">*</span></label>
-                  <input 
-                    required={step === 1}
-                    type="text" 
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                    className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                    placeholder="e.g., Nuwara Eliya Plantations Ltd."
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 ml-1">Estate Name <span className="text-red-500">*</span></label>
-                  <input 
-                    required={step === 1}
-                    type="text" 
-                    value={formData.estateName}
-                    onChange={(e) => setFormData({...formData, estateName: e.target.value})}
-                    className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                    placeholder="e.g., Pedro Estate"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <label className="font-bold text-gray-700 ml-1 flex items-center gap-2">
-                  Seller Brand Name 
-                  <span className="bg-gray-100 text-gray-500 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full">Optional</span>
-                </label>
+                <label className="font-bold text-gray-700 ml-1">Estate Name <span className="text-red-500">*</span></label>
                 <input 
+                  required={step === 1}
                   type="text" 
-                  value={formData.sellerBrand}
-                  onChange={(e) => setFormData({...formData, sellerBrand: e.target.value})}
+                  value={formData.estateName}
+                  onChange={(e) => setFormData({...formData, estateName: e.target.value})}
                   className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                  placeholder="e.g., Lover's Leap Authentic (Leave blank to use default)"
+                  placeholder="e.g., Pedro Estate"
                 />
               </div>
 

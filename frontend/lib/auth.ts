@@ -10,6 +10,8 @@ type AuthClaims = {
   status?: UserStatus;
   seller_status?: UserStatus;
   exp?: number;
+  first_name?: string;
+  last_name?: string;
 };
 
 export const AUTH_CHANGED_EVENT = "teablend-auth-changed";
