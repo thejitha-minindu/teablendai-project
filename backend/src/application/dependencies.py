@@ -10,7 +10,6 @@ from src.database import get_db, get_engine
 from src.application.use_cases.chatbot.chat.chat_use_case import ChatUseCase
 from src.application.security import SECRET_KEY, ALGORITHM
 from src.domain.models.user import User
-from src.domain.models.admin import Admin
 from src.infrastructure.services.chatbot.chat_service import ChatService
 from src.infrastructure.services.chatbot.mcp_client_manager import MCPClientManager
 from src.infrastructure.database.chat_history import ChatHistoryDB
@@ -84,27 +83,6 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     
     return user
-
-
-def get_current_admin(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> Admin:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate admin credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    payload = _decode_token(token)
-    email: str = payload.get("sub")
-    role: str = payload.get("role")
-    
-    if email is None or role != "admin":
-        raise credentials_exception
-        
-    # Find the admin in the database
-    admin = db.query(Admin).filter(Admin.email == email).first()
-    if admin is None:
-        raise credentials_exception
-    
-    return admin
 
 
 def get_active_role(payload: dict = Depends(get_token_payload)) -> Literal["buyer", "seller"]:
@@ -232,4 +210,20 @@ async def get_ws_current_buyer(
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer role required")
 
+    return user
+
+
+async def get_ws_current_user(
+    websocket: WebSocket,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+) -> User:
+    """WebSocket dependency for any authenticated user (buyer or seller)."""
+    try:
+        user = _get_ws_user(token, db)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.send_json({"error": "Could not validate credentials"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
+        raise
     return user

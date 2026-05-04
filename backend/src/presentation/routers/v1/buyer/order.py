@@ -4,7 +4,7 @@ from typing import List, Optional
 from src.application.schemas.buyer.order import Order, WinsAuction
 from src.application.use_cases.buyer.order_service import OrderService, WinsAuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_buyer
+from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
 
 router = APIRouter(prefix="/orders", tags=["orders"])
@@ -37,6 +37,19 @@ def get_order(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
     return order
+
+# Get the order for a specific auction (seller uses this to navigate to messages)
+@router.get("/auction/{auction_id}", response_model=Order)
+def get_order_by_auction(
+    auction_id: str,
+    service: OrderService = Depends(get_order_service),
+    current_user: User = Depends(get_current_user),
+):
+    order = service.get_order_by_auction(auction_id)
+    if not order:
+        raise HTTPException(status_code=404, detail="No order found for this auction")
+    return order
+
 
 # List orders with optional filters
 @router.get("", response_model=List[Order])
