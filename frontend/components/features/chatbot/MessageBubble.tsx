@@ -139,6 +139,7 @@ const extractCreatedAuctionDetails = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -155,6 +156,7 @@ const extractCreatedAuctionDetails = (content: string): {
     grade: extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -167,6 +169,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -183,6 +186,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
     grade: extract("Tea Grade") || extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -245,6 +249,10 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     toDisplayValue(structuredFields?.origin) ||
     createdDetails?.origin ||
     parsedAuctionDetails?.origin;
+  const estateName =
+    toDisplayValue(structuredFields?.estate_name) ||
+    createdDetails?.estate_name ||
+    parsedAuctionDetails?.estate_name;
   const basePrice = formatPriceLkr(
     (structuredFields?.base_price as string | number | undefined) || parsedAuctionDetails?.base_price
   );
@@ -286,6 +294,7 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
           <DetailRow label="Tea Grade" value={grade} />
           <DetailRow label="Quantity" value={quantity} />
           <DetailRow label="Origin" value={origin} />
+          <DetailRow label="Estate Name" value={estateName} />
           <DetailRow label="Starting Price" value={basePrice} />
           <DetailRow label="Start Time" value={startTime as string | undefined} />
           <DetailRow label="Duration" value={duration as string | undefined} />

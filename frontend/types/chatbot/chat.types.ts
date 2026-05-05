@@ -53,6 +53,7 @@ export interface ChatAuctionPayload {
     grade?: string;
     quantity?: number | string;
     origin?: string;
+    estate_name?: string;
     base_price?: number | string;
     start_time?: string;
     duration?: number | string;

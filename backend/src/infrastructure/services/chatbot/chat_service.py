@@ -767,10 +767,10 @@ class ChatService:
 
         for idx, auction in enumerate(rows, 1):
             status_emoji = {
-                "Live": "🔴",
-                "Scheduled": "📅",
-                "History": "✅"
-            }.get(auction.get("status", ""), "📦")
+                "Live": "Live",
+                "Scheduled": "Scheduled",
+                "History": "History"
+            }.get(auction.get("status", ""), "Auction")
 
             response += f"{status_emoji} **Auction #{idx}**\n"
             response += "━━━━━━━━━━━━━━━━━━━━\n"

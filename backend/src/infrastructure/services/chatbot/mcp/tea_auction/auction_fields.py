@@ -56,6 +56,7 @@ CREATE_AUCTION_FIELDS = {
         "grade",           # Tea grade (BOPF, Pekoe, etc.)
         "quantity",        # Quantity in kg
         "origin",          # Region (Nuwara Eliya, Kandy, etc.)
+        "estate_name",     # Estate name (seller-provided)
         "base_price",      # Starting price for entire lot (LKR)
         "start_time",      # Auction start datetime
         "duration"         # Duration in minutes
@@ -70,7 +71,6 @@ CREATE_AUCTION_FIELDS = {
         "seller_id",       # From JWT token
         "seller_brand",    # From user profile (auto-filled)
         "company_name",    # From user profile (auto-filled)
-        "estate_name",     # From user profile (auto-filled)
         "status",          # Initially "Scheduled"
         "created_at"       # Timestamp
     ]
@@ -117,6 +117,7 @@ FIELD_NAME_ALIASES = {
     "grade": ["tea grade", "tea type", "type", "standard", "tea_standard", "tea"],
     "quantity": ["amount", "kg", "kilograms", "weight", "quantity_kg", "kgs"],
     "origin": ["region", "location", "area", "from", "estate region", "place"],
+    "estate_name": ["estate", "estate name", "garden", "tea estate"],
     "base_price": ["price", "starting price", "base", "cost", "starting bid"],
     "start_time": ["start", "begin", "start date", "when", "date and time", "time"],
     "duration": ["length", "how long", "time limit", "minutes", "period"],
@@ -130,6 +131,7 @@ FIELD_DESCRIPTIONS = {
     "grade": "Tea grade (BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, FBOP)",
     "quantity": "Quantity in kilograms",
     "origin": "Tea origin region (Nuwara Eliya, Kandy, Dimbula, Uva, Ruhuna, Sabaragamuwa, Uda Pussellawa, Ratnapura)",
+    "estate_name": "Estate name for this auction lot",
     "base_price": "Starting bid price for entire lot (in LKR)",
     "start_time": f"Auction start date and time (must be at least {MIN_FUTURE_TIME_MINUTES} minutes in the future)",
     "duration": "Auction duration (you can provide in hours or minutes)",
@@ -145,6 +147,7 @@ def get_field_question(field_name: str) -> str:
         "grade": "What tea grade? (BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, or FBOP)",
         "quantity": "How many kilograms?",
         "origin": "What's the origin region? (e.g., Nuwara Eliya, Kandy, Dimbula, Uva, Ratnapura)",
+        "estate_name": "What's the estate name for this lot?",
         "base_price": "What's the starting bid price for the entire lot? (in LKR)",
         "start_time": f"When should the auction start? (Format: YYYY-MM-DD HH:MM, must be at least {MIN_FUTURE_TIME_MINUTES} minutes from now)",
         "duration": "How long should it run? (you can say 2 hours or 30 minutes)",
@@ -302,6 +305,13 @@ def validate_field_value(field_name: str, value: Any, reference_time: datetime =
         if str(value) not in VALID_ORIGINS:
             # Allow it but warn - user might have custom region
             pass
+
+    elif field_name == "estate_name":
+        estate_name = str(value).strip()
+        if not estate_name:
+            return False, "Estate name cannot be empty"
+        if len(estate_name) > 120:
+            return False, "Estate name is too long (max 120 characters)"
     
     # Price validation
     elif field_name == "base_price":

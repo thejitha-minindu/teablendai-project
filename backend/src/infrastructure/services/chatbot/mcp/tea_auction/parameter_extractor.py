@@ -175,6 +175,32 @@ class ParameterExtractor:
 
         return None, None, None
 
+    def _extract_natural_estate_name(self, user_message: str) -> Optional[str]:
+        """Deterministically extract estate name from short free-text replies."""
+        if not user_message:
+            return None
+
+        value = user_message.strip().strip('"').strip("'")
+        if not value:
+            return None
+
+        lowered = value.lower()
+        stop_words = {
+            "skip", "none", "no", "n/a", "na", "not sure", "unknown",
+            "yes", "ok", "okay", "confirm", "cancel", "change",
+        }
+        if lowered in stop_words:
+            return None
+
+        # Handle prefixed forms like: estate: Kandy Valley Estate
+        for prefix in ("estate name", "estate"):
+            if lowered.startswith(prefix):
+                parts = value.split(":", 1)
+                if len(parts) == 2 and parts[1].strip():
+                    return parts[1].strip()
+
+        return value
+
     def _extract_natural_start_time(self, user_message: str) -> Optional[Dict[str, Any]]:
         """
         Deterministically extract natural-language start times.
@@ -427,6 +453,11 @@ class ParameterExtractor:
                 natural_start_time = self._extract_natural_start_time(user_message)
                 if natural_start_time:
                     normalized["start_time"] = natural_start_time["start_time"]
+
+            if "estate_name" in expected_fields and not normalized.get("estate_name"):
+                natural_estate_name = self._extract_natural_estate_name(user_message)
+                if natural_estate_name:
+                    normalized["estate_name"] = natural_estate_name
             
             # Validate extracted values (especially start_time)
             validated = {}

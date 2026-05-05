@@ -346,7 +346,7 @@ class AuctionHandler:
         if validation_errors:
             error_messages = []
             for err in validation_errors:
-                error_messages.append(f"❌ **{err['field'].replace('_', ' ').title()}**: {err['error']}")
+                error_messages.append(f"**{err['field'].replace('_', ' ').title()}**: {err['error']}")
 
             invalid_fields = [err.get("field") for err in validation_errors if err.get("field")]
             next_field = None
@@ -1060,6 +1060,7 @@ Please confirm if this is correct.
             "grade": "select",
             "quantity": "number",
             "origin": "select",
+            "estate_name": "text",
             "base_price": "number",
             "start_time": "datetime",
             "duration": "number",
@@ -1094,6 +1095,11 @@ Please confirm if this is correct.
             "origin": {
                 "required": True,
                 "type": "string"
+            },
+            "estate_name": {
+                "required": True,
+                "type": "string",
+                "maxLength": 120
             },
             "base_price": {
                 "required": True,
@@ -1215,6 +1221,7 @@ Please confirm if this is correct.
                         "grade": data.get("grade"),
                         "quantity": data.get("quantity"),
                         "origin": data.get("origin"),
+                        "estate_name": data.get("estate_name"),
                         "base_price": data.get("base_price"),
                         "start_time": data.get("start_time"),
                         "duration": data.get("duration"),
@@ -1235,6 +1242,7 @@ Please confirm if this is correct.
             **Tea Grade:** {data.get('grade', 'N/A')}
             **Quantity:** {data.get('quantity', 'N/A')} kg
             **Origin:** {data.get('origin', 'N/A')}
+            **Estate Name:** {data.get('estate_name', 'N/A')}
             **Starting Price:** LKR {data.get('base_price', 'N/A'):,}
             **Start Time:** {start_time_display}
             **Duration:** {duration_display}
@@ -1261,6 +1269,7 @@ Please confirm if this is correct.
                 "grade": data.get("grade"),
                 "quantity": data.get("quantity"),
                 "origin": data.get("origin"),
+                "estate_name": data.get("estate_name"),
                 "base_price": data.get("base_price"),
                 "start_time": data.get("start_time"),
                 "duration": data.get("duration"),
@@ -1327,6 +1336,7 @@ Please confirm if this is correct.
             grade=data["grade"],
             quantity=int(data["quantity"]),
             origin=data["origin"],
+            estate_name=data["estate_name"],
             base_price=float(data["base_price"]),
             start_time=data["start_time"],
             duration=int(data["duration"]),
@@ -1356,6 +1366,7 @@ Please confirm if this is correct.
 - **Grade:** {data['grade']}
 - **Quantity:** {data['quantity']} kg
 - **Origin:** {data['origin']}
+- **Estate Name:** {data['estate_name']}
 - **Starting Price:** LKR {float(data['base_price']):,.0f}
 - **Start Time:** {data['start_time']}
 - **Duration:** {duration_display}
@@ -1398,6 +1409,7 @@ Please try again or contact support if the problem persists.
                     "grade": data.get("grade"),
                     "quantity": data.get("quantity"),
                     "origin": data.get("origin"),
+                    "estate_name": data.get("estate_name"),
                     "base_price": data.get("base_price"),
                     "start_time": data.get("start_time"),
                     "duration": data.get("duration"),
