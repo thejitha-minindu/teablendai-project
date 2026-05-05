@@ -484,8 +484,9 @@ class ChatService:
             rows = db_result.get("raw_data", [])
 
             is_auction_data = self._is_auction_query(user_message, columns)
+            use_auction_cards = is_auction_data and self._should_render_auction_cards(user_message, rows)
 
-            if is_auction_data:
+            if use_auction_cards:
                 formatted_answer = self._format_auction_data(rows)
 
                 viz_result = await self.mcp_client.create_visualization(
@@ -757,6 +758,58 @@ class ChatService:
         has_auction_columns = len(auction_columns.intersection(set(columns))) >= 4
 
         return has_auction_keyword or has_auction_columns
+
+    def _should_render_auction_cards(self, query: str, rows: list) -> bool:
+        """
+        Render auction cards only for explicit live/scheduled auction listing requests.
+
+        For analytics questions (compare/average/trends/etc.), return summary + visualization.
+        """
+        query_lower = query.lower()
+
+        listing_intents = [
+            "live auction",
+            "live auctions",
+            "scheduled auction",
+            "scheduled auctions",
+            "show live",
+            "list live",
+            "show scheduled",
+            "list scheduled",
+            "upcoming auctions",
+            "current auctions",
+        ]
+        has_listing_intent = any(term in query_lower for term in listing_intents)
+
+        analytics_terms = [
+            "compare",
+            "comparison",
+            "average",
+            "avg",
+            "trend",
+            "total",
+            "sum",
+            "count",
+            "distribution",
+            "breakdown",
+            "by grade",
+            "by month",
+            "over time",
+            "revenue",
+            "price vs",
+            "sold price",
+            "base price",
+        ]
+        looks_like_analytics = any(term in query_lower for term in analytics_terms)
+
+        # Card rendering expects row-level auction fields, not aggregated metrics.
+        has_row_level_auction_shape = False
+        if rows and isinstance(rows, list) and isinstance(rows[0], dict):
+            first_row = rows[0]
+            row_level_keys = {"auction_id", "auction_name", "status", "start_time", "duration", "origin"}
+            has_row_level_auction_shape = len(row_level_keys.intersection(set(first_row.keys()))) >= 3
+
+        return has_listing_intent and not looks_like_analytics and has_row_level_auction_shape
 
     def _format_auction_data(self, rows: list) -> str:
         """Format auction data for better display."""

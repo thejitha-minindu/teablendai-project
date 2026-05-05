@@ -12,14 +12,15 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 // Constants
-const AUCTION_INDICATOR_KEYS = [
+const AUCTION_ROW_LEVEL_KEYS = [
   "auction_id",
-  "grade",
-  "quantity",
-  "base_price",
-  "origin",
+  "auction_name",
   "status",
   "start_time",
+  "duration",
+  "origin",
+  "seller_brand",
+  "estate_name",
 ] as const;
 
 const AUCTION_CONFIRMATION_PHRASES = [
@@ -199,7 +200,26 @@ const isAuctionDataShape = (data: unknown): boolean => {
   if (!Array.isArray(data) || data.length === 0) return false;
   const firstRow = data[0];
   if (typeof firstRow !== "object" || firstRow === null) return false;
-  return AUCTION_INDICATOR_KEYS.some((key) => key in firstRow);
+
+  const row = firstRow as Record<string, unknown>;
+
+  // Guard against analytics datasets (e.g., avg/total/compare outputs) being rendered as auction cards.
+  const analyticsKeys = [
+    "average_base_price",
+    "average_sold_price",
+    "avg_price",
+    "total",
+    "total_sales",
+    "total_revenue",
+    "total_quantity",
+    "count",
+    "auction_count",
+    "bid_count",
+  ];
+  if (analyticsKeys.some((key) => key in row)) return false;
+
+  const rowLevelMatches = AUCTION_ROW_LEVEL_KEYS.filter((key) => key in row).length;
+  return rowLevelMatches >= 3;
 };
 
 // Detail Row Component
@@ -478,7 +498,13 @@ export default function MessageBubble({
     if (isUser) return false;
     if (message.source !== "database") return false;
     if (!Array.isArray(message.data)) return false;
-    return message.data_type === "auction" || isAuctionDataShape(message.data);
+
+    // Do not trust stale data_type alone; require row-level auction shape as well.
+    if (message.data_type === "auction") {
+      return isAuctionDataShape(message.data);
+    }
+
+    return isAuctionDataShape(message.data);
   }, [isUser, message.source, message.data, message.data_type]);
 
   const normalizedContent = useMemo(() => (message.content || "").toLowerCase(), [message.content]);
