@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -18,11 +19,25 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _column_names() -> set[str]:
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    return {column["name"] for column in inspector.get_columns("users")}
+
+
 def upgrade() -> None:
-    op.add_column("users", sa.Column("shipping_address", sa.String(length=256), nullable=True))
-    op.add_column("users", sa.Column("payment_method", sa.String(length=128), nullable=True))
+    existing_columns = _column_names()
+
+    if "shipping_address" not in existing_columns:
+        op.add_column("users", sa.Column("shipping_address", sa.String(length=256), nullable=True))
+    if "payment_method" not in existing_columns:
+        op.add_column("users", sa.Column("payment_method", sa.String(length=128), nullable=True))
 
 
 def downgrade() -> None:
-    op.drop_column("users", "payment_method")
-    op.drop_column("users", "shipping_address")
+    existing_columns = _column_names()
+
+    if "payment_method" in existing_columns:
+        op.drop_column("users", "payment_method")
+    if "shipping_address" in existing_columns:
+        op.drop_column("users", "shipping_address")

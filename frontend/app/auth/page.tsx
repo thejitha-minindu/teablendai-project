@@ -37,22 +37,22 @@ function AuthSelectContent() {
       </header>
 
       {/* Main Content Area */}
-      <main className="mx-auto flex w-full max-w-6xl flex-1 items-center px-6 py-8 md:px-10 lg:px-12">
+      <main className="mx-auto flex w-full max-w-6xl flex-1 items-center px-4 py-8 md:px-10 lg:px-12">
         <div className="w-full">
           
           {/* Title and Subtitle */}
           <div className="mx-auto max-w-2xl text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl lg:text-5xl">
+            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-5xl lg:text-5xl">
               Choose Your Role & Get Started
             </h1>
-            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-lg">
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-gray-600 sm:text-1xl ">
               Pick the experience that fits you best. Buyers can discover and manage purchases,
               while sellers can run auctions and grow their tea business.
             </p>
           </div>
 
           {/* Cards Container */}
-          <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className="mt-8 grid grid-cols-10 gap-20 lg:grid-cols-2">
             
             {/* Buyer Card */}
             {/* We pass the paths to the buyer login and register pages, including the redirect suffix if it exists */}

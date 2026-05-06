@@ -1,6 +1,5 @@
 import axios, { AxiosInstance } from 'axios';
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+import { API_BASE_URL } from '../lib/api.config';
 
 interface ForgotPasswordResponse {
   status: string;
@@ -66,6 +65,15 @@ export interface CurrentUserResponse {
   status?: string;
 }
 
+export interface GoogleLoginRequest {
+  token: string;
+}
+
+export interface GoogleCredentialResponse {
+  credential: string;
+  select_by?: string;
+}
+
 class AuthService {
   private api: AxiosInstance;
 
@@ -91,19 +99,21 @@ class AuthService {
 
   private getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
+      return localStorage.getItem('teablend_token') || localStorage.getItem('auth_token');
     }
     return null;
   }
 
   setToken(token: string): void {
     if (typeof window !== 'undefined') {
+      localStorage.setItem('teablend_token', token);
       localStorage.setItem('auth_token', token);
     }
   }
 
   clearToken(): void {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('teablend_token');
       localStorage.removeItem('auth_token');
     }
   }
@@ -133,6 +143,7 @@ class AuthService {
     return response.data;
   }
 
+  // Login with email and password
   async login(email: string, password: string): Promise<LoginResponse> {
     const formData = new URLSearchParams();
     formData.append('username', email);
@@ -150,6 +161,22 @@ class AuthService {
 
     return response.data;
   }
+
+  // Login with Google OAuth
+  async googleLogin(token: string): Promise<LoginResponse> {
+    const response = await this.api.post<LoginResponse>(
+      "/auth/google",
+      { token }
+    );
+
+    if(response.data.access_token) {
+      this.setToken(response.data.access_token);
+    }
+
+    return response.data;
+  }
+
+
 
   // ==================== USER DATA ====================
 

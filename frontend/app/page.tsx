@@ -62,20 +62,20 @@ export default function HomePage() {
                     {/* Left: Text Content */}
                     <div className="flex flex-col justify-center space-y-6">
                         <div className="flex items-center gap-3">
-                            <Badge variant="outline" className="px-4 py-1 border-green-300 text-green-700 flex items-center gap-1">
+                            <Badge variant="outline" className="px-4 py-1 border-green-300 text-black-800 text-xs flex items-center gap-1">
                                 <Brain className="w-3 h-3" />
                                 AI-Powered
                             </Badge>
                         </div>
                         
-                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold leading-tight">
+                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold linkedin-light">
                             Welcome to <br />
                             <span className="bg-linear-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">
                                 Tea BlendAI
                             </span>
                         </h1>
                         
-                        <p className="text-xl text-gray-700 max-w-lg leading-relaxed">
+                        <p className="text-xl text-gray-700 max-w-lg leading">
                             Revolutionizing the tea industry with artificial intelligence. 
                             Create perfect blends, analyze market trends, and make data-driven 
                             decisions with our advanced AI platform.

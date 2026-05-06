@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -18,11 +19,19 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _column_names() -> set[str]:
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    return {column["name"] for column in inspector.get_columns("users")}
+
+
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column("users", sa.Column("nic", sa.String(length=32), nullable=True))
+    if "nic" not in _column_names():
+        op.add_column("users", sa.Column("nic", sa.String(length=32), nullable=True))
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("users", "nic")
+    if "nic" in _column_names():
+        op.drop_column("users", "nic")

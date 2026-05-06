@@ -86,8 +86,9 @@ def _build_db_url() -> str:
     return f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc)}"
 
 
-db_url = _build_db_url()
-config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
+if not database_url:
+    db_url = _build_db_url()
+    config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 
 def run_migrations_offline() -> None:
