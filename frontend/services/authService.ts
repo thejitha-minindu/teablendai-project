@@ -1,6 +1,6 @@
 import axios, { AxiosInstance } from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000/api/v1';
 
 interface ForgotPasswordResponse {
   status: string;
@@ -64,6 +64,9 @@ export interface CurrentUserResponse {
   verification_status?: string;
   // For API that might return status field
   status?: string;
+  // Admin specific fields
+  admin_id?: string;
+  name?: string;
 }
 
 class AuthService {
@@ -87,24 +90,24 @@ class AuthService {
     });
   }
 
-  // ==================== TOKEN MANAGEMENT ====================
+// ==================== TOKEN MANAGEMENT ====================
 
   private getToken(): string | null {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('auth_token');
+      return localStorage.getItem('teablend_token');
     }
     return null;
   }
 
   setToken(token: string): void {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('auth_token', token);
+      localStorage.setItem('teablend_token', token);
     }
   }
 
   clearToken(): void {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('auth_token');
+      localStorage.removeItem('teablend_token');
     }
   }
 
@@ -155,6 +158,11 @@ class AuthService {
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
     const response = await this.api.get<CurrentUserResponse>('/users/me');
+    return response.data;
+  }
+
+  async getCurrentAdmin(): Promise<CurrentUserResponse> {
+    const response = await this.api.get<CurrentUserResponse>('/admin/profile/me');
     return response.data;
   }
 

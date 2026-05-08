@@ -19,6 +19,12 @@ class OrderService:
         logger.info(f"Service: Getting order {order_id}")
         return self.order_repo.get_order_details(order_id)
 
+    # Get order linked to a specific auction
+    def get_order_by_auction(self, auction_id: str):
+        logger.info(f"Service: Getting order for auction {auction_id}")
+        return self.order_repo.get_order_by_auction_id(auction_id)
+
+
     # List orders with optional filters
     def list_orders(self, user_id: str = None, status: str = None):
         logger.info(f"Service: Listing orders for user {user_id}")

@@ -19,8 +19,14 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("shipping_address", sa.String(length=256), nullable=True))
-    op.add_column("users", sa.Column("payment_method", sa.String(length=128), nullable=True))
+    try:
+        op.add_column("users", sa.Column("shipping_address", sa.String(length=256), nullable=True))
+    except Exception as e:
+        print(f"Ignoring error adding shipping_address: {e}")
+    try:
+        op.add_column("users", sa.Column("payment_method", sa.String(length=128), nullable=True))
+    except Exception as e:
+        print(f"Ignoring error adding payment_method: {e}")
 
 
 def downgrade() -> None:

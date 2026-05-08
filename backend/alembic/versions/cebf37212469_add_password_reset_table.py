@@ -21,20 +21,29 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema: Add password_resets table."""
-    op.create_table('password_resets',
-        sa.Column('id', mssql.UNIQUEIDENTIFIER(), nullable=False),
-        sa.Column('user_id', mssql.UNIQUEIDENTIFIER(), nullable=False),
-        sa.Column('otp_code', sa.String(length=6), nullable=False),
-        sa.Column('attempts', sa.Integer(), nullable=False),
-        sa.Column('max_attempts', sa.Integer(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=False),
-        sa.Column('expires_at', sa.DateTime(), nullable=False),
-        sa.Column('is_used', sa.Boolean(), nullable=False),
-        sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
-        sa.PrimaryKeyConstraint('id')
-    )
-    op.create_index(op.f('ix_password_resets_id'), 'password_resets', ['id'], unique=False)
-    op.create_index(op.f('ix_password_resets_user_id'), 'password_resets', ['user_id'], unique=False)
+    try:
+        op.create_table('password_resets',
+            sa.Column('id', mssql.UNIQUEIDENTIFIER(), nullable=False),
+            sa.Column('user_id', mssql.UNIQUEIDENTIFIER(), nullable=False),
+            sa.Column('otp_code', sa.String(length=6), nullable=False),
+            sa.Column('attempts', sa.Integer(), nullable=False),
+            sa.Column('max_attempts', sa.Integer(), nullable=False),
+            sa.Column('created_at', sa.DateTime(), nullable=False),
+            sa.Column('expires_at', sa.DateTime(), nullable=False),
+            sa.Column('is_used', sa.Boolean(), nullable=False),
+            sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
+            sa.PrimaryKeyConstraint('id')
+        )
+    except Exception as e:
+        print(f"Ignoring error creating password_resets: {e}")
+    try:
+        op.create_index(op.f('ix_password_resets_id'), 'password_resets', ['id'], unique=False)
+    except Exception as e:
+        pass
+    try:
+        op.create_index(op.f('ix_password_resets_user_id'), 'password_resets', ['user_id'], unique=False)
+    except Exception as e:
+        pass
 
 
 def downgrade() -> None:

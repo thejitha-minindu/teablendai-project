@@ -40,7 +40,10 @@ def upgrade() -> None:
                existing_type=sa.VARCHAR(length=64, collation='SQL_Latin1_General_CP1_CI_AS'),
                type_=mssql.UNIQUEIDENTIFIER(),
                existing_nullable=True)
-    op.add_column('users', sa.Column('verification_status', sa.String(), nullable=True))
+    try:
+        op.add_column('users', sa.Column('verification_status', sa.String(), nullable=True))
+    except Exception as e:
+        print(f"Ignoring error adding verification_status: {e}")
     # ### end Alembic commands ###
 
 

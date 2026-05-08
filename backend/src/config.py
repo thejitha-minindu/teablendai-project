@@ -115,6 +115,11 @@ class Settings(BaseSettings):
     ANALYTICS_KPI_LOOKBACK_DAYS: int = 30
     ANALYTICS_CHART_MONTHS: int = 6
 
+    # Admin Configuration
+    ADMIN_USERNAME: Optional[str] = None
+    ADMIN_PASSWORD: Optional[str] = None
+    ADMIN_EMAIL: Optional[str] = None
+
     class Config:
         env_file = str(BACKEND_DIR / ".env")
         env_file_encoding = "utf-8"

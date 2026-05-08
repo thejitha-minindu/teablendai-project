@@ -10,6 +10,7 @@ from src.database import get_db, get_engine
 from src.application.use_cases.chatbot.chat.chat_use_case import ChatUseCase
 from src.application.security import SECRET_KEY, ALGORITHM
 from src.domain.models.user import User
+from src.domain.models.admin import Admin
 from src.infrastructure.services.chatbot.chat_service import ChatService
 from src.infrastructure.services.chatbot.mcp_client_manager import MCPClientManager
 from src.infrastructure.database.chat_history import ChatHistoryDB
@@ -211,3 +212,36 @@ async def get_ws_current_buyer(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer role required")
 
     return user
+
+
+async def get_ws_current_user(
+    websocket: WebSocket,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+) -> User:
+    """WebSocket dependency for any authenticated user (buyer or seller)."""
+    try:
+        user = _get_ws_user(token, db)
+    except HTTPException:
+        await websocket.accept()
+        await websocket.send_json({"error": "Could not validate credentials"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
+        raise
+    return user
+
+def get_current_admin(token_payload=Depends(get_token_payload), db: Session = Depends(get_db)):
+    email = token_payload.get("sub")
+    role = token_payload.get("role")
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Not an admin")
+
+    admin = db.query(Admin).filter(Admin.email == email).first()
+
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+
+    if admin.status != "active":
+        raise HTTPException(status_code=403, detail="Account is suspended or inactive")
+
+    return admin
