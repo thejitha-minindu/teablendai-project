@@ -36,6 +36,7 @@ from src.presentation.routers.v1.dashboard import analytics_dashboard
 from src.application.use_cases.buyer.auction_manager import auction_manager
 from src.application.use_cases.buyer.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
 from src.presentation.routers.v1.buyer import live_auction_socket
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 
 from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
@@ -57,6 +58,13 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
+
+    # Clean up any stale live auctions that expired while the server was offline
+    try:
+        sync_auction_statuses(SessionLocal())
+        logger.info("Stale auction cleanup completed during startup")
+    except Exception as e:
+        logger.exception(f"Error cleaning up stale auctions on startup: {e}")
 
     # Start auction manager
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
