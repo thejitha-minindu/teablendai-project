@@ -41,6 +41,7 @@ from src.presentation.routers.v1.buyer import live_auction_socket
 from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
 from src.presentation.routers.v1.violations_router import router as violations_router
 from src.presentation.routers.v1.notifications_router import router as notifications_router
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
@@ -68,6 +69,13 @@ async def lifespan(app: FastAPI):
         logger.info("Runtime schema compatibility checks completed.")
     except Exception:
         logger.exception("Runtime schema compatibility checks failed; continuing startup.")
+
+    # Clean up any stale live auctions that expired while the server was offline
+    try:
+        sync_auction_statuses(SessionLocal())
+        logger.info("Stale auction cleanup completed during startup")
+    except Exception as e:
+        logger.exception(f"Error cleaning up stale auctions on startup: {e}")
 
     # Start auction manager
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
