@@ -16,7 +16,7 @@ import {
     HistoryAuctionModal 
 } from "@/components/features/seller/AuctionModal";
 
-import { parseBackendDateTime } from "@/utils/dateFormatter";
+import { parseBackendDateTime, durationToMinutes } from "@/utils/dateFormatter";
 import { getUserFromToken } from "@/utils/auth";
 
 // Helper: Date Formatting
@@ -45,9 +45,9 @@ const calculateCountdown = (auction: any) => {
     let targetTime = 0;
 
     if (auction.type === 'live') {
-        // Safely calculate duration (convert to minutes, then milliseconds)
+        // Stored auction duration is always minutes
         const durationValue = Number(auction.duration) || 0;
-        const durationMinutes = durationValue > 24 ? durationValue : durationValue * 60;
+        const durationMinutes = durationToMinutes(durationValue);
         targetTime = startTime + (durationMinutes * 60 * 1000);
     } else if (auction.type === 'scheduled') {
         targetTime = startTime;

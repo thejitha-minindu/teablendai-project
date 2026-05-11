@@ -1,124 +1,16 @@
 import { apiClient } from "@/lib/apiClient";
-import { AxiosError } from "axios";
+import type { AxiosError } from "axios";
+import type {
+  ChatMessage,
+  ConversationSummary,
+  QueryResponse,
+} from "@/types/chatbot/chat.types";
 
-export interface QueryResponse {
-  success: boolean;
-  conversation_id: string | null;
-  answer: string;
-  source: "database" | "web" | "validation" | "error" | "fallback" | "auction_management";
-  data_type?: string;
-  state?: string;
-  message_type?: string;
-  prompt_type?: string;
-  field_metadata?: {
-    field_name: string;
-    field_type: string;
-    options?: string[];
-    validation?: Record<string, unknown>;
-  };
-  input_request?: {
-    type: "input_request";
-    flow_id?: string;
-    field_name: string;
-    field_type: string;
-    options?: string[];
-    validation?: Record<string, unknown>;
-  };
-  validation_payload?: {
-    type: "validation_error";
-    flow_id?: string;
-    field_errors: Array<{
-      field: string;
-      error: string;
-      value?: unknown;
-    }>;
-    next_field?: string;
-  };
-  auction_payload?: {
-    type: "auction_confirmation";
-    flow_id?: string;
-    subtype?:
-      | "start_time_confirmation"
-      | "delete_confirmation"
-      | "description_generation_choice"
-      | "description_generated_confirmation"
-      | string;
-    fields: {
-      grade?: string;
-      quantity?: number | string;
-      origin?: string;
-      base_price?: number | string;
-      start_time?: string;
-      duration?: number | string;
-      description?: string | null;
-      auction_id?: number | string;
-      expression?: string;
-      display_time_12h?: string;
-    };
-    display?: {
-      start_time?: string;
-      duration?: string;
-    };
-    actions?: Array<"confirm" | "cancel" | "change">;
-  };
-  result_payload?: {
-    type: "result";
-    flow_id?: string;
-    operation: string;
-    status: "success" | "failed";
-    auction_id?: string | number;
-    details?: Record<string, unknown>;
-    error?: string | null;
-  };
-  row_count: number;
-  timestamp: string;
-  sql_query: string | null;
-  data: Record<string, unknown>[] | null;
-  visualization_type: string | null;
-  visualization: string | null;
-  search_results: { title: string; url: string; content: string }[] | null;
-  error: string | null;
-}
-
-export interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
-  sql_query?: string | null;
-  data?: Record<string, unknown>[] | null;
-  visualization_type?: string | null;
-  visualization?: string | null;
-  source?: string;
-  data_type?: string;
-  row_count?: number;
-  search_results?: { title: string; url: string; content: string }[] | null;
-  state?: string;
-  message_type?: string;
-  prompt_type?: string;
-  field_metadata?: {
-    field_name: string;
-    field_type: string;
-    options?: string[];
-    validation?: Record<string, unknown>;
-  };
-  input_request?: QueryResponse["input_request"];
-  validation_payload?: QueryResponse["validation_payload"];
-  auction_payload?: QueryResponse["auction_payload"];
-  result_payload?: QueryResponse["result_payload"];
-  isLoading?: boolean;
-  error?: string | null;
-}
-
-export interface ConversationSummary {
-  conversation_id: string;
-  title: string;
-  created_at: string;
-  updated_at: string;
-  message_count: number;
-  is_pinned?: boolean;
-  pinned_at?: string | null;
-}
+export type {
+  ChatMessage,
+  ConversationSummary,
+  QueryResponse,
+} from "@/types/chatbot/chat.types";
 
 export const chatService = {
   getAuthToken(): string | null {

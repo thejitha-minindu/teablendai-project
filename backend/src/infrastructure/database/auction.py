@@ -10,6 +10,7 @@ class Auction(Base):
     quantity = Column(Float, nullable=False)
     base_price = Column(Float, nullable=False)
     date = Column(DateTime, nullable=False)
+    # Stored in minutes across API, DB writes, and frontend reads.
     duration = Column(Float, nullable=False)
     status = Column(String(64), nullable=False)
     buyer = Column(String(64), nullable=True)

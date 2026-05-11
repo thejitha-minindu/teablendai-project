@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 interface AuctionTimerProps {
   startTime: Date | string;
-  duration: number; // in seconds
+  duration: number; // stored in minutes
   onAuctionEnd?: () => void;
 }
 
@@ -29,7 +29,7 @@ export function AuctionTimer({ startTime, duration, onAuctionEnd }: AuctionTimer
       startTimeMs = startTime.getTime();
     }
 
-    const endTimeMs = startTimeMs + duration * 1000;
+    const endTimeMs = startTimeMs + duration * 60 * 1000;
 
     console.log("AuctionTimer Debug:", {
       startTime,

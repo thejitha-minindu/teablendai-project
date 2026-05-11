@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
-import { parseBackendDateTime, calculateLiveCountdown, durationToMinutes } from "@/utils/dateFormatter";
+import { parseBackendDateTime, calculateLiveCountdown, durationMinutesToHours, formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 const formatDateTimeLocalValue = (date: Date) => {
   const pad = (num: number) => String(num).padStart(2, '0');
@@ -43,18 +43,11 @@ const formatStartTimeForBackend = (localDateTime: string) => {
 };
 
 const durationToHoursForInput = (durationValue: number) => {
-  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
-  return durationValue > 24 ? durationValue / 60 : durationValue;
+  return durationMinutesToHours(durationValue);
 };
 
 const formatDuration = (durationValue: number) => {
-  const totalMinutes = Math.round(durationToMinutes(durationValue));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (minutes === 0) return `${hours} hour${hours === 1 ? '' : 's'}`;
-  if (hours === 0) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  return `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  return formatDurationFromMinutes(durationValue);
 };
 
 // 1. Helper for Input Field (Edit Mode)

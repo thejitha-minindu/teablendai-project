@@ -1,10 +1,13 @@
 # Outbox publisher - publishes events with retry logic.
 import asyncio
 import json
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.orm import Session
 from src.infrastructure.repositories.outbox_repository import OutboxRepository
 from src.domain.services.buyer.connection_manager import IConnectionManager
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
+from src.domain.models.outbox import AuctionOutbox
+from src.infrastructure.database.base import engine
 import logging
 
 logger = logging.getLogger(__name__)
@@ -20,6 +23,7 @@ class OutboxPublisher:
         self.db_session_factory = db_session_factory
         self.manager = manager or auction_ws_manager
         self.running = False
+        self._missing_table_warning_logged = False
     
     async def start(self) -> None:
         # Start background publisher task.
@@ -51,6 +55,18 @@ class OutboxPublisher:
             
             for event in pending:
                 await self._publish_event(event, repo)
+        except ProgrammingError as exc:
+            # Gracefully handle environments where migrations are not applied yet.
+            message = str(exc).lower()
+            if "invalid object name" in message and "auction_outbox" in message:
+                if not self._missing_table_warning_logged:
+                    logger.warning(
+                        "Outbox table 'auction_outbox' is missing. Run DB migrations. "
+                        "Outbox publisher will keep running and retry later."
+                    )
+                    self._missing_table_warning_logged = True
+            else:
+                raise
         finally:
             db.close()
     
@@ -88,6 +104,15 @@ def init_outbox_publisher(db_session_factory, manager: IConnectionManager = None
     # Initialize outbox publisher.
     global _publisher
     _publisher = OutboxPublisher(db_session_factory, manager)
+
+
+def ensure_outbox_table_exists() -> None:
+    """Create outbox table if missing so publisher can start safely."""
+    try:
+        AuctionOutbox.__table__.create(bind=engine, checkfirst=True)
+        logger.info("Outbox table check completed")
+    except Exception:
+        logger.exception("Failed to ensure outbox table exists")
 
 
 async def start_outbox_publisher() -> None:

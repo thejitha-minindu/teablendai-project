@@ -26,7 +26,6 @@ class AnalyticsSalesRepository:
                         CAST(COALESCE(sold_price, 0) AS FLOAT) AS sold_price,
                         CASE
                             WHEN TRY_CAST(duration AS FLOAT) IS NULL OR TRY_CAST(duration AS FLOAT) <= 0 THEN NULL
-                            WHEN TRY_CAST(duration AS FLOAT) <= 24 THEN TRY_CAST(duration AS FLOAT) * 60.0
                             ELSE TRY_CAST(duration AS FLOAT)
                         END AS duration_minutes
                     FROM auctions
@@ -101,45 +100,6 @@ class AnalyticsSalesRepository:
             for r in rows
         ]
 
-    def _grade_wise_prices(self) -> list[dict[str, float | str]]:
-        rows = self.db.execute(
-            text(
-                """
-                WITH sold AS (
-                    SELECT
-                        COALESCE(NULLIF(grade, ''), 'Unknown') AS grade,
-                        CAST(COALESCE(quantity, 0) AS FLOAT) AS quantity,
-                        CAST(COALESCE(sold_price, 0) AS FLOAT) AS sold_price
-                    FROM auctions
-                    WHERE status = 'History'
-                      AND buyer IS NOT NULL
-                      AND sold_price > 0
-                      AND quantity > 0
-                )
-                SELECT
-                    grade,
-                    COALESCE(MIN(sold_price / NULLIF(quantity, 0)), 0) AS min_bid,
-                    COALESCE(AVG(sold_price / NULLIF(quantity, 0)), 0) AS avg_bid,
-                    COALESCE(MAX(sold_price / NULLIF(quantity, 0)), 0) AS max_bid,
-                    COALESCE(SUM(quantity), 0) AS sold_volume
-                FROM sold
-                GROUP BY grade
-                ORDER BY sold_volume DESC
-                """
-            )
-        ).mappings().all()
-
-        return [
-            {
-                "grade": str(r["grade"]),
-                "minBid": round(self._num(r["min_bid"]), 2),
-                "avgBid": round(self._num(r["avg_bid"]), 2),
-                "maxBid": round(self._num(r["max_bid"]), 2),
-                "soldVolume": round(self._num(r["sold_volume"]), 2),
-            }
-            for r in rows
-        ]
-
     def _selling_trends(self, months: int) -> list[dict[str, float | str]]:
         rows = self.db.execute(
             text(
@@ -185,6 +145,7 @@ class AnalyticsSalesRepository:
         return trends
 
     def _seller_performance(self, limit: int = 5) -> list[dict[str, float | int | str]]:
+        # - avg_margin: Average margin % = AVG((sold_price - base_price) / base_price * 100)
         rows = self.db.execute(
             text(
                 """
@@ -288,7 +249,6 @@ class AnalyticsSalesRepository:
     def create_snapshot(self, chart_months: int, refresh_interval_ms: int) -> dict:
         summary = self._summary()
         auction_performance = self._auction_performance()
-        grade_wise_prices = self._grade_wise_prices()
         selling_trends = self._selling_trends(chart_months)
         seller_performance = self._seller_performance()
         bid_volume_analysis = self._bid_volume_analysis()
@@ -322,7 +282,7 @@ class AnalyticsSalesRepository:
                 "snapshot_at": now_utc,
                 "summary_json": json.dumps(summary),
                 "auction_performance_json": json.dumps(auction_performance),
-                "grade_wise_prices_json": json.dumps(grade_wise_prices),
+                "grade_wise_prices_json": json.dumps([]),
                 "selling_trends_json": json.dumps(selling_trends),
                 "seller_performance_json": json.dumps(seller_performance),
                 "bid_volume_analysis_json": json.dumps(bid_volume_analysis),
@@ -362,7 +322,6 @@ class AnalyticsSalesRepository:
             "refreshIntervalMs": refresh_interval_ms,
             "summary": json.loads(row["summary_json"]),
             "auctionPerformance": json.loads(row["auction_performance_json"]),
-            "gradeWisePrices": json.loads(row["grade_wise_prices_json"]),
             "sellingTrends": json.loads(row["selling_trends_json"]),
             "sellerPerformance": json.loads(row["seller_performance_json"]),
             "bidVolumeAnalysis": json.loads(row["bid_volume_analysis_json"]),

@@ -161,6 +161,7 @@ class AuctionRepository(AuctionRepositoryInterface):
 
         new_id = str(uuid.uuid4())
         seller_id = self._resolve_seller_id(auction_data.seller_id)
+        duration_minutes = int(auction_data.duration)
         auction_name = (auction_data.auction_name or "").strip()
         if not auction_name:
             # Keep inserts valid even when legacy clients don't send auction_name.
@@ -200,7 +201,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             image_url=auction_data.image_url,
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
-            duration=auction_data.duration,
+            duration=duration_minutes,
             status=AuctionStatus.SCHEDULE.value
         )
         
@@ -304,6 +305,8 @@ class AuctionRepository(AuctionRepositoryInterface):
         # Update fields dynamically
         for key, value in update_data.items():
             if hasattr(auction, key) and value is not None:
+                if key == "duration":
+                    value = int(round(float(value)))
                 setattr(auction, key, value)
         
         self.db.commit()

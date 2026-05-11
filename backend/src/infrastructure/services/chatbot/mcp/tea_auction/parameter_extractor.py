@@ -9,6 +9,7 @@ import json
 import re
 from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import SystemMessage, HumanMessage
@@ -25,6 +26,7 @@ from .auction_fields import (
 
 settings = get_settings()
 logger = logging.getLogger(__name__)
+COLOMBO_TZ = ZoneInfo("Asia/Colombo")
 
 
 class ParameterExtractor:
@@ -173,6 +175,32 @@ class ParameterExtractor:
 
         return None, None, None
 
+    def _extract_natural_estate_name(self, user_message: str) -> Optional[str]:
+        """Deterministically extract estate name from short free-text replies."""
+        if not user_message:
+            return None
+
+        value = user_message.strip().strip('"').strip("'")
+        if not value:
+            return None
+
+        lowered = value.lower()
+        stop_words = {
+            "skip", "none", "no", "n/a", "na", "not sure", "unknown",
+            "yes", "ok", "okay", "confirm", "cancel", "change",
+        }
+        if lowered in stop_words:
+            return None
+
+        # Handle prefixed forms like: estate: Kandy Valley Estate
+        for prefix in ("estate name", "estate"):
+            if lowered.startswith(prefix):
+                parts = value.split(":", 1)
+                if len(parts) == 2 and parts[1].strip():
+                    return parts[1].strip()
+
+        return value
+
     def _extract_natural_start_time(self, user_message: str) -> Optional[Dict[str, Any]]:
         """
         Deterministically extract natural-language start times.
@@ -192,7 +220,7 @@ class ParameterExtractor:
             }
         """
         message = user_message.lower()
-        now = datetime.now()
+        now = datetime.now(COLOMBO_TZ)
 
         # Relative time expressions: "in 2 hours", "after 30 minutes", "2 hours from now"
         relative_patterns = [
@@ -245,7 +273,10 @@ class ParameterExtractor:
 
             hour_24, minute = parsed_time
             base_date = now.date() + timedelta(days=day_offset)
-            candidate = datetime.combine(base_date, datetime.min.time()).replace(hour=hour_24, minute=minute)
+            candidate = datetime.combine(base_date, datetime.min.time(), tzinfo=COLOMBO_TZ).replace(
+                hour=hour_24,
+                minute=minute,
+            )
             candidate = self._ensure_future_datetime(candidate, timedelta(days=1), now)
 
             return {
@@ -291,7 +322,10 @@ class ParameterExtractor:
                 days_ahead = days_ahead + 7 if days_ahead != 0 else 7
 
             candidate_date = now.date() + timedelta(days=days_ahead)
-            candidate = datetime.combine(candidate_date, datetime.min.time()).replace(hour=hour_24, minute=minute)
+            candidate = datetime.combine(candidate_date, datetime.min.time(), tzinfo=COLOMBO_TZ).replace(
+                hour=hour_24,
+                minute=minute,
+            )
 
             if modifier == "":
                 candidate = self._ensure_future_datetime(candidate, timedelta(days=7), now)
@@ -348,7 +382,7 @@ class ParameterExtractor:
                 Expected fields:
                 {field_descriptions_text}
 
-                Valid tea grades: BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, FBOP
+                Valid tea grades: BOP, BOPF, OP, OP1, Pekoe, Fannings, Dust, FBOP, OPA, Pekoe 1, Dust 1, Silver Tips, Golden Tips
                 Valid origins: Nuwara Eliya, Kandy, Dimbula, Uva, Ruhuna, Sabaragamuwa, Uda Pussellawa, Ratnapura
 
                 Rules:
@@ -419,6 +453,11 @@ class ParameterExtractor:
                 natural_start_time = self._extract_natural_start_time(user_message)
                 if natural_start_time:
                     normalized["start_time"] = natural_start_time["start_time"]
+
+            if "estate_name" in expected_fields and not normalized.get("estate_name"):
+                natural_estate_name = self._extract_natural_estate_name(user_message)
+                if natural_estate_name:
+                    normalized["estate_name"] = natural_estate_name
             
             # Validate extracted values (especially start_time)
             validated = {}
@@ -432,7 +471,7 @@ class ParameterExtractor:
                     )
 
                     if duration_minutes is None:
-                        error_msg = "Duration must be a valid number (e.g., 2 hours or 30 minutes)"
+                        error_msg = "Duration must be a valid number (e.g., 2 hours)"
                         logger.warning(f"[Extractor] Validation failed for {field}: {error_msg}")
                         validation_errors.append({"field": field, "error": error_msg})
                         continue
@@ -453,7 +492,7 @@ class ParameterExtractor:
                         try:
                             parsed_start = parse_datetime(str(value))
                             # Keep timezone information so frontend can convert UTC to local time correctly.
-                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat()
+                            validated[field] = parsed_start.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
                             if natural_start_time and natural_start_time.get("requires_weekday_confirmation"):
                                 validated["_weekday_confirmation_required"] = True
                                 validated["_weekday_confirmation_expression"] = natural_start_time.get("expression")
@@ -493,14 +532,14 @@ class ParameterExtractor:
         """
         msg = user_message.lower()
         
-        if any(word in msg for word in ['create', 'new', 'add', 'start', 'list', 'post']):
-            return "create"
-        elif any(word in msg for word in ['update', 'change', 'modify', 'edit']):
+        if any(word in msg for word in ['update', 'change', 'modify', 'edit']):
             return "update"
-        elif any(word in msg for word in ['delete', 'remove', 'cancel']):
+        elif any(word in msg for word in ['delete', 'remove', 'cancel', 'close']):
             return "delete"
         elif any(word in msg for word in ['schedule', 'set time', 'set date', 'reschedule']):
             return "schedule"
+        elif any(word in msg for word in ['create', 'new', 'add', 'start auction', 'list', 'post']):
+            return "create"
         else:
             return "unknown"
     

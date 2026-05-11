@@ -10,18 +10,6 @@ from src.domain.models.auction_status import AuctionStatus
 SCHEDULE_STATUS_VALUES = {AuctionStatus.SCHEDULE.value, "Scheduled"}
 
 
-def _duration_to_minutes(duration_value: float) -> int:
-    try:
-        duration = float(duration_value)
-    except (TypeError, ValueError):
-        return 0
-    if duration <= 0:
-        return 0
-    if duration <= 24:
-        return int(round(duration * 60))
-    return int(round(duration))
-
-
 def sync_auction_statuses(db: Session) -> dict:
     """Sync all auction statuses and return LIVE→HISTORY transitions for broadcasting"""
     now_utc = datetime.now(timezone.utc)
@@ -52,7 +40,17 @@ def sync_auction_statuses(db: Session) -> dict:
     
     for auction in live_auctions:
         start_time = auction.start_time
-        duration_minutes = _duration_to_minutes(auction.duration)
+        if start_time.tzinfo is None:
+            start_time = start_time.replace(tzinfo=timezone.utc)
+
+        try:
+            duration_minutes = int(round(float(auction.duration)))
+        except (TypeError, ValueError):
+            continue
+
+        if duration_minutes <= 0:
+            continue
+
         end_time = start_time + timedelta(minutes=duration_minutes)
 
         if now_utc >= end_time:

@@ -126,7 +126,7 @@ export default function CreateAuctionPage() {
         image_url: finalImageUrl || undefined,
         base_price: parseInt(formData.startingPrice),
         start_time: new Date(formData.scheduledStart).toISOString(),
-        duration: parseFloat(formData.duration)
+        duration: Math.round(parseFloat(formData.duration) * 60)
       };
 
       const response = await apiClient.post('/auctions', payload);

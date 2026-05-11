@@ -36,7 +36,12 @@ from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
 from src.presentation.routers.v1.dashboard import analytics_dashboard
 from src.application.use_cases.buyer.auction_manager import auction_manager
-from src.application.use_cases.buyer.outbox_publisher import init_outbox_publisher, start_outbox_publisher, stop_outbox_publisher
+from src.application.use_cases.buyer.outbox_publisher import (
+    init_outbox_publisher,
+    start_outbox_publisher,
+    stop_outbox_publisher,
+    ensure_outbox_table_exists,
+)
 from src.presentation.routers.v1.buyer import live_auction_socket
 from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
 from src.presentation.routers.v1.violations_router import router as violations_router
@@ -81,6 +86,9 @@ async def lifespan(app: FastAPI):
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_manager_task = auction_manager_task
     logger.info("Auction manager background task started")
+
+    # Ensure outbox table exists before publisher starts polling.
+    ensure_outbox_table_exists()
     
     # Initialize and start outbox publisher
     init_outbox_publisher(SessionLocal)
@@ -91,18 +99,6 @@ async def lifespan(app: FastAPI):
         analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
         app.state.analytics_snapshot_task = analytics_task
         logger.info("Analytics snapshot scheduler started")
-
-    if settings.ANALYTICS_SCHEDULER_ENABLED and (
-        compatibility is None or compatibility.analytics_snapshots_available
-    ):
-        analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
-        app.state.analytics_snapshot_task = analytics_task
-        logger.info("Analytics snapshot scheduler started")
-    elif settings.ANALYTICS_SCHEDULER_ENABLED:
-        logger.warning(
-            "Analytics snapshot scheduler disabled because snapshot tables are missing. "
-            "Run Alembic migrations to enable analytics snapshots."
-        )
 
     if settings.INIT_DB_ON_STARTUP:
         try:

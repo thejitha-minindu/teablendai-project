@@ -20,6 +20,9 @@ import {
   Search,
   PanelLeftIcon,
   LayoutDashboard,
+  ChartNoAxesCombined,
+  Blend,
+  Users 
 } from "lucide-react";
 
 import {
@@ -88,8 +91,9 @@ const analyticsNavItems: NavItem[] = [
   { name: "Overview", href: "/analytics-dashboard", icon: LayoutDashboard },
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
-  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History},
-  { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
+  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: Blend},
+  { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: Users },
+  { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
 const getSwitchInfo = (
@@ -160,7 +164,7 @@ export function NavSidebar() {
   // Logout Handler
   const handleLogout = () => {
     clearStoredAuthToken();
-    window.location.href = "/auth";
+    router.replace("/auth");
   };
 
   const handleSwitchRole = async () => {
@@ -190,7 +194,7 @@ export function NavSidebar() {
 
       setStoredAuthToken(newToken);
       setActiveUserRole(targetRole);
-      window.location.href = getHomePathByRole(targetRole);
+      router.replace(getHomePathByRole(targetRole));
     } catch (error) {
       console.error("Failed to switch role", error);
     } finally {
@@ -221,73 +225,6 @@ export function NavSidebar() {
   const canSwitchRole = role !== "analytics" && availableRoles.includes(switchInfo.role as AuthUserRole);
   const isAnalyticsPage = pathname.startsWith("/analytics-dashboard");
   const shouldShowProfile = !isAnalyticsPage;
-
-  // Simplified Footer Component for Analytics Page
-  const SimplifiedFooter = () => (
-    <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
-      <SidebarMenu>
-        <SidebarMenuItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
-                <div className="flex items-center gap-3 w-full">
-                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                    <User2 className="w-5 h-5" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold text-gray-800">
-                      {userName}
-                    </span>
-                    <span className="truncate text-xs text-gray-500 capitalize">
-                      {getRoleDisplayName(role)} Account
-                    </span>
-                  </div>
-                  <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
-                </div>
-              </SidebarMenuButton>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent
-              side="top"
-              align="end"
-              className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
-            >
-              <DropdownMenuLabel className="p-0 font-normal">
-                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
-                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                    <User2 className="w-6 h-6" />
-                  </div>
-                  <div className="grid flex-1 text-left text-sm leading-tight">
-                    <span className="truncate font-semibold">{userName}</span>
-                    <span className="truncate text-xs text-gray-500">{userEmail}</span>
-                  </div>
-                </div>
-              </DropdownMenuLabel>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                <Link href="/auth/profile" className="flex items-center w-full">
-                  <User className="mr-2 h-4 w-4 text-gray-500" />
-                  <span>My Profile</span>
-                </Link>
-              </DropdownMenuItem>
-
-              <DropdownMenuSeparator />
-
-              <DropdownMenuItem
-                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
-                onClick={handleLogout}
-              >
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </SidebarMenuItem>
-      </SidebarMenu>
-    </SidebarFooter>
-  );
 
   // Full Footer Component for Other Pages
   const FullFooter = () => (
@@ -367,7 +304,7 @@ export function NavSidebar() {
               {role !== "analytics" && (
                 <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
                   <Link href="/analytics-dashboard" className="flex items-center w-full">
-                    <History className="mr-2 h-4 w-4 text-gray-500" />
+                    <ChartNoAxesCombined className="mr-2 h-4 w-4 text-gray-500" />
                     <span>Analytics Dashboard</span>
                   </Link>
                 </DropdownMenuItem>
@@ -441,8 +378,9 @@ export function NavSidebar() {
                         alt="TeaBlend AI Logo"
                         fill
                         sizes="(max-width: 768px) 100vw, 300px"
-                        className="object-contain object-center"
+                        className="object-contain object-center cursor-pointer"
                         priority
+                        onClick={() => router.push(`/${(getRoleDisplayName(activeUserRole)).toLowerCase()}/dashboard`)}
                       />
                     </div>
                     <TooltipProvider delayDuration={300}>
@@ -503,9 +441,8 @@ export function NavSidebar() {
                 </SidebarGroup>
               </SidebarContent>
 
-              {/* Conditional Footer - Show simplified on analytics page, full on others */}
               {pathname.startsWith("/analytics-dashboard") ? (
-                <SimplifiedFooter />
+                <FullFooter />
               ) : (
                 shouldShowProfile && <FullFooter />
               )}
