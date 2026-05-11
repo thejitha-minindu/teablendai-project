@@ -24,7 +24,16 @@ class SQLGenerator:
         ]
         tea_terms = [
             "blend", "purchase", "teapurchase", "teablendsale", "composition",
-            "customer", "source type", "priceperkg", "quantitykg", "cost", "margin"
+            "customer", "source type", "priceperkg", "quantitykg", "cost", "margin",
+            "tea grade", "standard", "bop", "bopf", "op", "fbop", "dust1", "pekoe",
+            "dust", "opa", "factory", "broker", "blend name", "blendname", "ratio",
+            "blendid", "saledate", "purchasedate", "quantityusedkg", "mappingid",
+            "region", "colombo", "kandy", "galle", "jaffna", "rathnapura", "matara",
+            "nuwara eliya","mathale","sabaragamuwa","dimbula","uva","kandurata",
+            "europe", "middle east", "russia", "japan", "usa", "ceylon gold",
+            "highland premium", "royal bop", "export classic", "silver tips",
+            "supply chain", "traceability", "unused", "utilization", "profitability",
+            "revenue", "margin", "profit"
         ]
 
         auction_score = sum(1 for t in auction_terms if t in q)
@@ -61,6 +70,61 @@ class SQLGenerator:
         - TeaPurchase.PurchaseID = BlendPurchaseMapping.PurchaseID
         - TeaBlendSale.CustomerID = Customer.CustomerID
 
+        Auction Status Values (critical for filtering):
+        - dbo.auctions.status has exactly three valid values: 'Live', 'Scheduled', 'History'
+        - 'Live': Auction is currently active and accepting bids
+        - 'Scheduled': Auction is scheduled for the future but not yet live
+        - 'History': Auction has ended and is in the historical record
+        - When user asks for "live auctions", use WHERE status = 'Live'
+        - When user asks for "scheduled auctions", use WHERE status = 'Scheduled'
+        - When user asks for "past auctions" or "completed auctions", use WHERE status = 'History'
+        - If the user specifies a particular status type, filter explicitly by that status value
+        - If the user does not specify a status, do not filter by status unless the question clearly implies it
+
+        Tea table reference (Sri Lankan tea business domain):
+
+        TeaPurchase (PurchaseID INT PK, SourceType VARCHAR(20), Standard VARCHAR(20),
+                     PricePerKg DECIMAL(10,2), QuantityKg DECIMAL(10,2), PurchaseDate DATE)
+          - SourceType values: 'Factory', 'Broker'
+          - Standard values: 'BOP', 'BOPF', 'OP', 'FBOP', 'Dust1', 'Pekoe', 'Dust', 'OPA'
+          - PricePerKg range: 350–2200 LKR/kg
+          - QuantityKg range: 50–5000 kg
+          - PurchaseDate range: 2015-01-01 to 2026-04-30
+
+        Customer (CustomerID INT PK, Name VARCHAR(100), Region VARCHAR(100))
+          - Region values: 'Colombo', 'Kandy', 'Galle', 'Jaffna', 'Kurunegala', 'Matara',
+                           'Europe', 'Middle East', 'Russia', 'Japan', 'USA'
+
+        TeaBlendSale (SaleID INT PK, CustomerID INT FK→Customer, BlendName VARCHAR(100),
+                      PricePerKg DECIMAL(10,2), QuantityKg DECIMAL(10,2), SaleDate DATE)
+          - BlendName examples: 'Ceylon Gold', 'Highland Premium', 'Royal BOP Blend',
+                                'Export Classic', 'Silver Tips Mix'
+          - PricePerKg range: 900–3500 LKR/kg (always higher than purchase prices)
+          - QuantityKg range: 10–5000 kg
+          - SaleDate range: 2015-01-01 to 2026-04-30
+          - Revenue = PricePerKg * QuantityKg
+
+        BlendComposition (BlendID INT FK→TeaBlendSale.SaleID, Standard VARCHAR(20), Ratio DECIMAL(5,2))
+          - Each BlendID has 2–5 rows; Ratio values for the same BlendID sum to exactly 1.00
+          - Standard values match TeaPurchase.Standard
+
+        BlendPurchaseMapping (MappingID INT PK, SaleID INT FK→TeaBlendSale, PurchaseID INT FK→TeaPurchase,
+                              Standard VARCHAR(20), QuantityUsedKg DECIMAL(10,2))
+          - Standard matches TeaPurchase.Standard for the referenced PurchaseID
+          - QuantityUsedKg is 5–40% of the original purchase QuantityKg
+          - Links blend sales back to raw material purchases (supply chain traceability)
+
+        Tea business logic rules:
+        - "Tea grade" and "standard" are interchangeable — both refer to TeaPurchase.Standard / BlendComposition.Standard.
+        - Total purchase quantity for a grade: SUM(QuantityKg) FROM TeaPurchase GROUP BY Standard.
+        - Blend revenue: SUM(PricePerKg * QuantityKg) FROM TeaBlendSale.
+        - Blend cost (approximate): SUM(tp.PricePerKg * bpm.QuantityUsedKg) via BlendPurchaseMapping JOIN TeaPurchase.
+        - Gross margin per blend: (sale revenue - mapped purchase cost) / sale revenue * 100.
+        - Unused purchase stock: TeaPurchase.QuantityKg - SUM(BlendPurchaseMapping.QuantityUsedKg).
+        - "Utilization rate": SUM(QuantityUsedKg) / TeaPurchase.QuantityKg for a given purchase.
+        - International customers: Region IN ('Europe', 'Middle East', 'Russia', 'Japan', 'USA').
+        - Local customers: Region IN ('Colombo', 'Kandy', 'Galle', 'Jaffna', 'Kurunegala', 'Matara').
+
         Important Rules:
         1. ONLY generate SELECT queries (no INSERT, UPDATE, DELETE, DROP, ALTER, TRUNCATE, MERGE, EXEC).
         2. Use TOP 1000 when no explicit result size is requested.
@@ -77,6 +141,7 @@ class SQLGenerator:
         - "sales volume" means the total quantity sold or the number of sold auctions, depending on the question context.
         - Do not use sold_price when the user asks about volume unless they explicitly ask about revenue, price, value, or sales amount.
         - If the question compares auction volume to sales volume, keep both measures in quantity/count terms.
+        - "total quantity purchased for each tea grade" → SELECT Standard, SUM(QuantityKg) FROM TeaPurchase GROUP BY Standard.
 
         Business logic rules:
         - Revenue = PricePerKg * QuantityKg (for TeaBlendSale).

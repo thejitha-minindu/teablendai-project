@@ -584,9 +584,9 @@ class ChatService:
             response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             no_data_message = (
-                "There are currently no records in the database that match your query. "
-                "This information comes from our live system, so it may not be available at this time. "
-                "Please check back later or try a different query."
+                "There are currently no records in the database that match your question. "
+                "It may not be available at this time. "
+                "Please check back later or try a different question."
             )
 
             assistant_msg = ChatMessage.create_assistant_message(
@@ -752,7 +752,7 @@ class ChatService:
         has_auction_keyword = any(keyword in query_lower for keyword in auction_keywords)
 
         auction_columns = {
-            "auction_id", "auction_name", "grade", "quantity",
+            "auction_id", "custom_auction_id", "auction_name", "grade", "quantity",
             "origin", "base_price", "status", "start_time"
         }
         has_auction_columns = len(auction_columns.intersection(set(columns))) >= 4
@@ -806,7 +806,7 @@ class ChatService:
         has_row_level_auction_shape = False
         if rows and isinstance(rows, list) and isinstance(rows[0], dict):
             first_row = rows[0]
-            row_level_keys = {"auction_id", "auction_name", "status", "start_time", "duration", "origin"}
+            row_level_keys = {"auction_id", "custom_auction_id", "auction_name", "status", "start_time", "duration", "origin"}
             has_row_level_auction_shape = len(row_level_keys.intersection(set(first_row.keys()))) >= 3
 
         return has_listing_intent and not looks_like_analytics and has_row_level_auction_shape
@@ -853,7 +853,9 @@ class ChatService:
                 response += f"**Seller:** {auction['seller_brand']}\n"
             if "estate_name" in auction:
                 response += f"**Estate:** {auction['estate_name']}\n"
-            if "auction_id" in auction:
+            if "custom_auction_id" in auction:
+                response += f"_ID: {auction['custom_auction_id']}_\n"
+            elif "auction_id" in auction:
                 response += f"_ID: {auction['auction_id']}_\n"
 
             response += "\n"
