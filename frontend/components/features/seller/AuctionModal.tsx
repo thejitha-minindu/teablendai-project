@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban } from 'lucide-react';
+import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban, MessageCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
@@ -577,8 +578,10 @@ interface HistoryModalProps {
 }
 
 export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalProps) {
+  const router = useRouter();
   const [auctionDetails, setAuctionDetails] = useState<any>(data);
   const [bidHistory, setBidHistory] = useState<any[]>([]);
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -597,6 +600,16 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
         // Sort bids by amount (highest first) so the winner is always at index 0
         const sortedBids = [...bidsArray].sort((a, b) => b.bid_amount - a.bid_amount);
         setBidHistory(sortedBids);
+
+        // 3. Fetch the order linked to this auction to get the orderId for messaging
+        try {
+          const orderRes = await apiClient.get(`/buyer/orders/auction/${auctionId}`);
+          if (orderRes.data?.order_id) {
+            setOrderId(String(orderRes.data.order_id));
+          }
+        } catch {
+          // Order may not exist if auction wasn't sold — safe to ignore
+        }
       } catch (error) {
         console.error("Failed to load auction history:", error);
       } finally {
@@ -754,8 +767,18 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               {/* Actions */}
               <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {isSold ? (
-                  <Button className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide">
-                    Download Invoice
+                  <Button
+                    onClick={() => {
+                      if (orderId) {
+                        onClose();
+                        router.push(`/messages/${orderId}`);
+                      }
+                    }}
+                    disabled={!orderId}
+                    className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {orderId ? 'Contact Buyer' : 'Loading...'}
                   </Button>
                 ) : (
                   <Button variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">

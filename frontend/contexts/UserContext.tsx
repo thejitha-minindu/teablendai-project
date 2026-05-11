@@ -58,7 +58,16 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const currentUser = await authService.getCurrentUser();
+      const claims = getAuthClaims();
+      let currentUser: CurrentUserResponse | null = null;
+      
+      if (claims?.role === 'admin') {
+        currentUser = await authService.getCurrentAdmin();
+      } else {
+        currentUser = await authService.getCurrentUser();
+      }
+      
+      console.log('[UserContext] Refreshed user data:', currentUser);
       setUser(currentUser);
     } catch (err: unknown) {
       if ((err as { code?: string })?.code !== "ERR_CANCELED") {

@@ -1,5 +1,5 @@
 """Outbox repository for event persistence."""
-from datetime import datetime, timezone
+from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from sqlalchemy import and_
 from src.domain.models.outbox import AuctionOutbox
@@ -60,8 +60,7 @@ class OutboxRepository:
     
     def cleanup_published(self, days: int = 7) -> int:
         """Delete published events older than N days."""
-        from datetime import timedelta
-        cutoff = datetime.now(timezone.utc) - timedelta(days=days)
+        cutoff = datetime.utcnow() - timedelta(days=days)
         result = self.db.query(AuctionOutbox).filter(
             and_(AuctionOutbox.published_at != None, AuctionOutbox.published_at < cutoff)
         ).delete()

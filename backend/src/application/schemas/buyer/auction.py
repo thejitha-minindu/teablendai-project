@@ -159,6 +159,15 @@ class AuctionListResponse(BaseModel):
     page: Optional[int] = None
     page_size: Optional[int] = None
 
+
+class AuctionRemainingTimeResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    auction_id: UUID
+    status: str
+    remaining_seconds: int
+    is_live: bool
+
 # Backward compatibility alias
 Auction = AuctionData
 AuctionCreate = AuctionCreateRequest

@@ -28,16 +28,13 @@ export default function ProtectedRoute({
     const validate = () => {
       if (typeof window === "undefined") return;
 
-      setIsAuthorized(false);
-      const claims = getAuthClaims();
-
-      if (!claims) {
-        if (getStoredToken()) {
-          clearStoredAuthToken("expired");
-        }
-        router.replace(`/auth?redirect=${encodeURIComponent(pathname)}`);
-        return;
-      }
+            setIsAuthorized(false);
+            const claims = getAuthClaims();
+            if (!claims) {
+                clearStoredAuthToken();
+                window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
+                return;
+            }
 
       if (claims.status === "REJECTED") {
         router.replace("/auth/rejected");
@@ -49,10 +46,10 @@ export default function ProtectedRoute({
         return;
       }
 
-      if (requiredRole && claims.role !== requiredRole) {
-        router.replace(getHomePathByRole(claims.role));
-        return;
-      }
+            if (requiredRole && claims.role !== requiredRole) {
+                window.location.href = getHomePathByRole(claims.role);
+                return;
+            }
 
       setIsAuthorized(true);
     };

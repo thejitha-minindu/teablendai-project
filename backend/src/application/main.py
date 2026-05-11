@@ -11,18 +11,20 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from .dependencies import get_mcp_client
+from fastapi import Depends
+from .dependencies import get_mcp_client, get_current_admin
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
 from src.presentation.routers.v1.admin import admin_profile
 from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
-    health, 
-    bid, 
-    user, 
+    health,
+    bid,
+    user,
     order,
     auth,
     profile,
+    messages,
 )
 
 from src.presentation.routers.v1.admin import admin_users
@@ -41,7 +43,10 @@ from src.application.use_cases.buyer.outbox_publisher import (
     ensure_outbox_table_exists,
 )
 from src.presentation.routers.v1.buyer import live_auction_socket
-
+from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
+from src.presentation.routers.v1.violations_router import router as violations_router
+from src.presentation.routers.v1.notifications_router import router as notifications_router
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
@@ -62,6 +67,20 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
+    compatibility = None
+
+    try:
+        compatibility = ensure_runtime_schema_compatibility()
+        logger.info("Runtime schema compatibility checks completed.")
+    except Exception:
+        logger.exception("Runtime schema compatibility checks failed; continuing startup.")
+
+    # Clean up any stale live auctions that expired while the server was offline
+    try:
+        sync_auction_statuses(SessionLocal())
+        logger.info("Stale auction cleanup completed during startup")
+    except Exception as e:
+        logger.exception(f"Error cleaning up stale auctions on startup: {e}")
 
     # Start auction manager
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
@@ -179,6 +198,8 @@ app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"]
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
 app.include_router(health.router, prefix="/api/v1")
+# Register messages router
+app.include_router(messages.router, prefix="/api/v1")
 
 # API v1 routers - Chatbot
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
@@ -186,7 +207,7 @@ app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
 
 # Admin routers
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"], dependencies=[Depends(get_current_admin)])
 
 # Buyer routers
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer")
@@ -198,10 +219,10 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
 
 # Admin routers
-app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
-app.include_router(admin_users.router, prefix="/api/v1/admin", tags=["Admin Users"])
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"], dependencies=[Depends(get_current_admin)])
+# admin_auction already included above
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"], dependencies=[Depends(get_current_admin)])
+app.include_router(admin_users.router, prefix="/api/v1/admin/users", tags=["Admin Users"], dependencies=[Depends(get_current_admin)])
 
 # Dashboard routers
 app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
@@ -279,16 +300,29 @@ if __name__ == "__main__":
 
 # to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
 
-# Register admin dashboard router
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+# Register admin dashboard router (already included above, skipping)
 
 # Register admin user management router
 # app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
 # Backwards-compatible routes used by frontend (legacy path)
-app.include_router(admin_users.router, prefix="/admin/users", tags=["Admin Users"])
+# admin_users already included above
 
 # Register admin profile router
-app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"])
+app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"], dependencies=[Depends(get_current_admin)])
 
 # Register admin violation router (mounted under API v1 admin prefix)
-app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
+# app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+
+# Register notifications router (mounted under API v1)
+app.include_router(
+    notifications_router,
+    prefix="/api/v1/notifications",
+    tags=["Notifications"]
+)
+# Register violation router for users (non-admin) (mounted under API v1)
+app.include_router(
+    violations_router,
+    prefix="/api/v1/violations",
+    tags=["Violations"]
+)

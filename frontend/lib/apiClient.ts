@@ -44,6 +44,7 @@ export const apiClient = axios.create({
   timeout: 60000,
 });
 
+// ✅ REQUEST INTERCEPTOR
 apiClient.interceptors.request.use((config) => {
   const trackedConfig = trackRequestController(config as AuthTrackedConfig);
   config.signal = trackedConfig._authAbortController?.signal;
@@ -53,12 +54,15 @@ apiClient.interceptors.request.use((config) => {
     if (token) {
       config.headers = config.headers ?? {};
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      console.warn("[API] No valid token found");
     }
   }
 
   return config;
 });
 
+// ✅ RESPONSE INTERCEPTOR
 apiClient.interceptors.response.use(
   (response) => {
     untrackRequestController(response.config as AuthTrackedConfig);

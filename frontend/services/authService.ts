@@ -66,6 +66,9 @@ export interface CurrentUserResponse {
   watch_list?: string[];
   verification_status?: string;
   status?: string;
+  // Admin specific fields
+  admin_id?: string;
+  name?: string;
 }
 
 class AuthService {
