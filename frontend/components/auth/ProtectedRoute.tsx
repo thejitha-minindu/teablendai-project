@@ -8,6 +8,7 @@ import {
   getHomePathByRole,
   getStoredToken,
   subscribeToAuthChanges,
+  type AuthChangeReason,
   type UserRole,
 } from "@/lib/auth";
 
@@ -25,16 +26,52 @@ export default function ProtectedRoute({
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const validate = () => {
+    const resolveLoginPath = () => {
+      if (requiredRole === "admin" || pathname.startsWith("/admin")) {
+        return "/auth/admin/login";
+      }
+      return "/auth";
+    };
+
+    const resolveRedirectTarget = () => {
+      if (requiredRole === "admin" && (pathname === "/admin" || pathname === "/admin/")) {
+        return "/admin/dashboard";
+      }
+
+      return pathname;
+    };
+
+    const redirectToAuthHub = () => {
+      router.replace("/auth");
+    };
+
+    const redirectToLogin = () => {
+      const loginPath = resolveLoginPath();
+      const redirectSuffix = `?redirect=${encodeURIComponent(resolveRedirectTarget())}`;
+      router.replace(`${loginPath}${redirectSuffix}`);
+    };
+
+    const validate = (reason?: AuthChangeReason) => {
       if (typeof window === "undefined") return;
 
-            setIsAuthorized(false);
-            const claims = getAuthClaims();
-            if (!claims) {
-                clearStoredAuthToken();
-                window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
-                return;
-            }
+      setIsAuthorized(false);
+      const token = getStoredToken();
+      const claims = token ? getAuthClaims() : null;
+      if (!claims) {
+        if (reason === "logout") {
+          redirectToAuthHub();
+          return;
+        }
+
+        if (!token) {
+          redirectToLogin();
+          return;
+        }
+
+        clearStoredAuthToken("expired");
+        redirectToLogin();
+        return;
+      }
 
       if (claims.status === "REJECTED") {
         router.replace("/auth/rejected");
@@ -46,18 +83,24 @@ export default function ProtectedRoute({
         return;
       }
 
-            if (requiredRole && claims.role !== requiredRole) {
-                window.location.href = getHomePathByRole(claims.role);
-                return;
-            }
+      if (requiredRole && claims.role !== requiredRole) {
+        if (requiredRole === "admin") {
+          clearStoredAuthToken("expired");
+          redirectToLogin();
+          return;
+        }
+
+        router.replace(getHomePathByRole(claims.role));
+        return;
+      }
 
       setIsAuthorized(true);
     };
 
     validate();
 
-    const unsubscribe = subscribeToAuthChanges(() => {
-      validate();
+    const unsubscribe = subscribeToAuthChanges((detail) => {
+      validate(detail.reason);
     });
 
     window.addEventListener("focus", validate);
