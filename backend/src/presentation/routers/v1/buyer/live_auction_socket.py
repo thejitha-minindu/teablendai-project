@@ -2,7 +2,7 @@ import logging
 from fastapi import APIRouter, WebSocket, Query, Depends
 from sqlalchemy.orm import Session
 
-from src.application.dependencies import get_ws_current_buyer
+from src.application.dependencies import get_ws_current_user
 from src.infrastructure.database.base import get_db
 from src.infrastructure.sockets.buyer.connection_manager import auction_ws_manager
 from src.application.use_cases.buyer.live_auction_socket_service import LiveAuctionSocketService
@@ -21,7 +21,7 @@ async def live_auction_websocket(
     websocket: WebSocket,
     auction_id: str,
     token: str = Query(...),
-    current_user: User = Depends(get_ws_current_buyer),
+    current_user: User = Depends(get_ws_current_user),
     service: LiveAuctionSocketService = Depends(get_live_auction_socket_service),
 ):
     await service.handle_connection(websocket, auction_id, str(current_user.user_id))
