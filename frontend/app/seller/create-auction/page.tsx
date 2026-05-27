@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { ArrowRight, ArrowLeft, CheckCircle2, Home, Package, DollarSign } from 'lucide-react'; 
 import { apiClient } from '@/lib/apiClient';
+import axios from 'axios';
 import { toast } from 'sonner';
 
 const SRI_LANKAN_GRADES = [
@@ -19,6 +20,7 @@ export default function CreateAuctionPage() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [existingImageUrl, setExistingImageUrl] = useState<string>('');
 
   const [formData, setFormData] = useState({
     estateName: '',
@@ -36,6 +38,44 @@ export default function CreateAuctionPage() {
     const now = new Date();
     now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
     setMinDateTime(now.toISOString().slice(0, 16));
+  }, []);
+
+  useEffect(() => {
+    try {
+      const relistStr = sessionStorage.getItem('relist_auction');
+      if (relistStr) {
+        const relistData = JSON.parse(relistStr);
+        
+        // Determine grade
+        let gradeVal = relistData.grade || '';
+        let customGradeVal = '';
+        if (gradeVal && !SRI_LANKAN_GRADES.includes(gradeVal)) {
+          customGradeVal = gradeVal;
+          gradeVal = 'Other';
+        }
+
+        setFormData({
+          estateName: relistData.estateName || '',
+          grade: gradeVal,
+          customGrade: customGradeVal,
+          quantity: relistData.quantity || '',
+          origin: relistData.origin || '',
+          description: relistData.description || '',
+          startingPrice: relistData.startingPrice || '',
+          scheduledStart: '',
+          duration: ''
+        });
+
+        if (relistData.image_url) {
+          setImagePreview(relistData.image_url);
+          setExistingImageUrl(relistData.image_url);
+        }
+
+        sessionStorage.removeItem('relist_auction');
+      }
+    } catch (e) {
+      console.error("Failed to load relist data", e);
+    }
   }, []);
 
   const handleNext = () => {
@@ -104,16 +144,40 @@ export default function CreateAuctionPage() {
       }
 
       const finalGrade = formData.grade === "Other" ? formData.customGrade : formData.grade;
-      let finalImageUrl = "";
+      let finalImageUrl = existingImageUrl;
 
       // 1. Upload the image if one is selected
       if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        const uploadRes = await apiClient.post('/auctions/upload-image', imageFormData, {
+        // Client-Side Pre-Upload Validation
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          toast.error("Invalid file type. Only JPEG, PNG, and WEBP are allowed.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (imageFile.size > 5 * 1024 * 1024) {
+          toast.error("File size too large. Maximum allowed is 5MB.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Fetch signature from backend
+        const signatureRes = await apiClient.get('/auctions/cloudinary-signature');
+        const { signature, timestamp, cloud_name, api_key } = signatureRes.data;
+
+        // Upload directly to Cloudinary using standard axios (no auth headers injected)
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+        const uploadData = new FormData();
+        uploadData.append("file", imageFile);
+        uploadData.append("api_key", api_key);
+        uploadData.append("timestamp", timestamp.toString());
+        uploadData.append("signature", signature);
+
+        const uploadRes = await axios.post(cloudinaryUrl, uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        finalImageUrl = uploadRes.data.image_url;
+        finalImageUrl = uploadRes.data.secure_url;
       }
 
       const payload = {
