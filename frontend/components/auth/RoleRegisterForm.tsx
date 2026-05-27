@@ -20,11 +20,11 @@ import type { UserRole } from "@/lib/auth"; // Type definition for 'buyer' | 'se
 // This form can be used for both Buyers and Sellers.
 // We pass the `role` as a property to know which version of the form to show.
 type RoleRegisterFormProps = {
-  role?: UserRole;
+  role?: "buyer" | "seller";
 };
 
 // Text configurations depending on which role we are registering
-const ROLE_COPY: Record<UserRole, { title: string; subtitle: string; loginHref: string }> = {
+const ROLE_COPY: Record<"buyer" | "seller", { title: string; subtitle: string; loginHref: string }> = {
   buyer: {
     title: "Create Buyer Account",
     subtitle: "Join TeaBlend AI to explore auctions, orders, and buyer insights.",
@@ -60,7 +60,7 @@ export function RoleRegisterForm({ role }: RoleRegisterFormProps) {
   
   // What role is the user signing up for? If a role was passed in, use that.
   // Otherwise, default to "buyer".
-  const [selectedRole, setSelectedRole] = useState<UserRole>(role ?? "buyer");
+  const [selectedRole, setSelectedRole] = useState<"buyer" | "seller">(role ?? "buyer");
 
   // Choose the correct text based on the role
   const content = role ? ROLE_COPY[role] : null;
@@ -233,7 +233,7 @@ export function RoleRegisterForm({ role }: RoleRegisterFormProps) {
                       type="radio"
                       value="buyer"
                       checked={selectedRole === "buyer"}
-                      onChange={(e) => setSelectedRole(e.target.value as UserRole)} // Connect radio to state
+                      onChange={(e) => setSelectedRole(e.target.value as "buyer" | "seller")} // Connect radio to state
                     />
                     Buyer
                   </label>
@@ -243,7 +243,7 @@ export function RoleRegisterForm({ role }: RoleRegisterFormProps) {
                       type="radio"
                       value="seller"
                       checked={selectedRole === "seller"}
-                      onChange={(e) => setSelectedRole(e.target.value as UserRole)} // Connect radio to state
+                      onChange={(e) => setSelectedRole(e.target.value as "buyer" | "seller")} // Connect radio to state
                     />
                     Seller
                   </label>

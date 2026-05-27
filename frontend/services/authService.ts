@@ -118,6 +118,11 @@ class AuthService {
     return response.data;
   }
 
+  async getCurrentAdmin(): Promise<CurrentUserResponse> {
+    const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
+    return response.data;
+  }
+
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
     const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
       email,

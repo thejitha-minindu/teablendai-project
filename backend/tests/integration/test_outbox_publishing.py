@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.domain.models.outbox import AuctionOutbox
-from src.domain.models.base import Base
+from src.infrastructure.database.base import Base
 from src.infrastructure.repositories.outbox_repository import OutboxRepository
 from src.application.use_cases.buyer.outbox_publisher import OutboxPublisher
 
@@ -105,8 +105,8 @@ async def test_publisher_marks_dead_letter_after_max_retries(db_session_factory)
     db.commit()
     db.close()
     
-    # Try 3 times
-    for _ in range(3):
+    # Try 4 times (first 3 increment retries, 4th triggers permanent failure)
+    for _ in range(4):
         await publisher._publish_pending()
     
     # Check marked as failed
