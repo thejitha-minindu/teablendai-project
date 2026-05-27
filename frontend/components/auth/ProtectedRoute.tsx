@@ -31,7 +31,9 @@ export default function ProtectedRoute({
             setIsAuthorized(false);
             const claims = getAuthClaims();
             if (!claims) {
-                clearStoredAuthToken();
+                if (getStoredToken()) {
+                    clearStoredAuthToken();
+                }
                 window.location.href = `/auth?redirect=${encodeURIComponent(pathname)}`;
                 return;
             }
