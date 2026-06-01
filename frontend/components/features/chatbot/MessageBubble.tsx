@@ -4,21 +4,23 @@ import Link from "next/link";
 import { useState, useCallback, useMemo, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronUp, Brain, User, Copy, Check } from "lucide-react";
-import { ChatMessage } from "@/services/chatbot/chatService";
+import type { ChatMessage } from "@/types/chatbot/chat.types";
 import VisualizationRenderer from "./VisualizationRenderer";
 import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 // Constants
-const AUCTION_INDICATOR_KEYS = [
+const AUCTION_ROW_LEVEL_KEYS = [
   "auction_id",
-  "grade",
-  "quantity",
-  "base_price",
-  "origin",
+  "auction_name",
   "status",
   "start_time",
+  "duration",
+  "origin",
+  "seller_brand",
+  "estate_name",
 ] as const;
 
 const AUCTION_CONFIRMATION_PHRASES = [
@@ -125,10 +127,20 @@ const toDisplayValue = (value: unknown): string | number | undefined => {
   return undefined;
 };
 
+const formatStructuredDuration = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (Number.isFinite(numericValue)) {
+    return formatDurationFromMinutes(numericValue);
+  }
+  return String(value);
+};
+
 const extractCreatedAuctionDetails = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -145,6 +157,7 @@ const extractCreatedAuctionDetails = (content: string): {
     grade: extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -157,6 +170,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -173,6 +187,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
     grade: extract("Tea Grade") || extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -185,7 +200,26 @@ const isAuctionDataShape = (data: unknown): boolean => {
   if (!Array.isArray(data) || data.length === 0) return false;
   const firstRow = data[0];
   if (typeof firstRow !== "object" || firstRow === null) return false;
-  return AUCTION_INDICATOR_KEYS.some((key) => key in firstRow);
+
+  const row = firstRow as Record<string, unknown>;
+
+  // Guard against analytics datasets (e.g., avg/total/compare outputs) being rendered as auction cards.
+  const analyticsKeys = [
+    "average_base_price",
+    "average_sold_price",
+    "avg_price",
+    "total",
+    "total_sales",
+    "total_revenue",
+    "total_quantity",
+    "count",
+    "auction_count",
+    "bid_count",
+  ];
+  if (analyticsKeys.some((key) => key in row)) return false;
+
+  const rowLevelMatches = AUCTION_ROW_LEVEL_KEYS.filter((key) => key in row).length;
+  return rowLevelMatches >= 3;
 };
 
 // Detail Row Component
@@ -235,6 +269,10 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     toDisplayValue(structuredFields?.origin) ||
     createdDetails?.origin ||
     parsedAuctionDetails?.origin;
+  const estateName =
+    toDisplayValue(structuredFields?.estate_name) ||
+    createdDetails?.estate_name ||
+    parsedAuctionDetails?.estate_name;
   const basePrice = formatPriceLkr(
     (structuredFields?.base_price as string | number | undefined) || parsedAuctionDetails?.base_price
   );
@@ -242,11 +280,11 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     structuredDisplay?.start_time ||
     structuredFields?.start_time ||
     parsedAuctionDetails?.start_time;
+  const structuredDuration = formatStructuredDuration(structuredFields?.duration);
   const duration =
     structuredDisplay?.duration ||
-    (structuredFields?.duration !== undefined && structuredFields?.duration !== null
-      ? `${structuredFields.duration} hours`
-      : parsedAuctionDetails?.duration);
+    structuredDuration ||
+    parsedAuctionDetails?.duration;
   const description =
     toDisplayValue(structuredFields?.description) ||
     createdDetails?.description ||
@@ -276,6 +314,7 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
           <DetailRow label="Tea Grade" value={grade} />
           <DetailRow label="Quantity" value={quantity} />
           <DetailRow label="Origin" value={origin} />
+          <DetailRow label="Estate Name" value={estateName} />
           <DetailRow label="Starting Price" value={basePrice} />
           <DetailRow label="Start Time" value={startTime as string | undefined} />
           <DetailRow label="Duration" value={duration as string | undefined} />
@@ -459,7 +498,13 @@ export default function MessageBubble({
     if (isUser) return false;
     if (message.source !== "database") return false;
     if (!Array.isArray(message.data)) return false;
-    return message.data_type === "auction" || isAuctionDataShape(message.data);
+
+    // Do not trust stale data_type alone; require row-level auction shape as well.
+    if (message.data_type === "auction") {
+      return isAuctionDataShape(message.data);
+    }
+
+    return isAuctionDataShape(message.data);
   }, [isUser, message.source, message.data, message.data_type]);
 
   const normalizedContent = useMemo(() => (message.content || "").toLowerCase(), [message.content]);

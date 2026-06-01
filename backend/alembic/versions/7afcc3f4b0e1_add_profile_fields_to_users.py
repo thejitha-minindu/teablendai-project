@@ -18,17 +18,31 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    bind = op.get_bind()
+    result = bind.execute(
+        sa.text(
+            """
+            SELECT 1
+            FROM INFORMATION_SCHEMA.COLUMNS
+            WHERE TABLE_NAME = :table_name
+              AND COLUMN_NAME = :column_name
+            """
+        ),
+        {"table_name": table_name, "column_name": column_name},
+    ).first()
+    return result is not None
+
+
 def upgrade() -> None:
-    try:
+    if not _column_exists("users", "shipping_address"):
         op.add_column("users", sa.Column("shipping_address", sa.String(length=256), nullable=True))
-    except Exception as e:
-        print(f"Ignoring error adding shipping_address: {e}")
-    try:
+    if not _column_exists("users", "payment_method"):
         op.add_column("users", sa.Column("payment_method", sa.String(length=128), nullable=True))
-    except Exception as e:
-        print(f"Ignoring error adding payment_method: {e}")
 
 
 def downgrade() -> None:
-    op.drop_column("users", "payment_method")
-    op.drop_column("users", "shipping_address")
+    if _column_exists("users", "payment_method"):
+        op.drop_column("users", "payment_method")
+    if _column_exists("users", "shipping_address"):
+        op.drop_column("users", "shipping_address")

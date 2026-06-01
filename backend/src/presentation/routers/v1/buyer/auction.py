@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.buyer.auction import Auction, AuctionData, AuctionOrderCard
+from src.application.schemas.buyer.auction import Auction, AuctionData, AuctionOrderCard, AuctionRemainingTimeResponse
 from src.application.use_cases.buyer.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
+from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 
 router = APIRouter(prefix="/auctions", tags=["auctions"])
 router.router = router
@@ -33,6 +34,27 @@ def read_auction(
     current_user: User = Depends(get_current_buyer),
 ):
     return service.get_auction(auction_id)
+
+
+@router.get("/{auction_id}/remaining-time", response_model=AuctionRemainingTimeResponse)
+def read_remaining_time(
+    auction_id: str,
+    service: AuctionService = Depends(get_auction_service),
+    current_user: User = Depends(get_current_buyer),
+):
+    auction = service.get_auction(auction_id)
+    if not auction:
+        raise HTTPException(status_code=404, detail="Auction not found")
+
+    remaining_seconds = int(AuctionTimingService.get_remaining_time(auction).total_seconds())
+    is_live = str(auction.status).lower() == "live"
+
+    return AuctionRemainingTimeResponse(
+        auction_id=auction.auction_id,
+        status=str(auction.status),
+        remaining_seconds=remaining_seconds,
+        is_live=is_live,
+    )
 
 # Get auction history for user
 @router.get("/user/{user_id}/history", response_model=List[AuctionData])

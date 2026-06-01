@@ -29,9 +29,27 @@ export const parseBackendDateTime = (dateString?: string | null): Date | null =>
   return Number.isNaN(manual.getTime()) ? null : manual;
 };
 
-export const durationToMinutes = (durationValue: number) => {
-  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
-  return durationValue > 24 ? durationValue : durationValue * 60;
+export const durationToMinutes = (durationValue?: number | null) => {
+  const numericValue = Number(durationValue);
+  if (!Number.isFinite(numericValue) || numericValue <= 0) return 0;
+  return Math.round(numericValue);
+};
+
+export const durationMinutesToHours = (durationValue?: number | null) => {
+  const totalMinutes = durationToMinutes(durationValue);
+  return totalMinutes > 0 ? totalMinutes / 60 : 0;
+};
+
+export const formatDurationFromMinutes = (durationValue?: number | null) => {
+  const totalMinutes = durationToMinutes(Number(durationValue ?? 0));
+  if (!totalMinutes) return "N/A";
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+
+  if (!minutes) return `${hours} hour${hours === 1 ? '' : 's'}`;
+  if (!hours) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
+  return `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}`;
 };
 
 export const calculateLiveCountdown = (startTime: string, durationValue: number) => {

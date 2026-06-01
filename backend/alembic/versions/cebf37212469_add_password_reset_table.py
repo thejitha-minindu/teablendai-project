@@ -19,9 +19,40 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _table_exists(table_name: str) -> bool:
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            """
+            SELECT 1
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_NAME = :table_name
+            """
+        ),
+        {"table_name": table_name},
+    ).first()
+    return result is not None
+
+
+def _index_exists(table_name: str, index_name: str) -> bool:
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            """
+            SELECT 1
+            FROM sys.indexes
+            WHERE object_id = OBJECT_ID(:table_name)
+              AND name = :index_name
+            """
+        ),
+        {"table_name": table_name, "index_name": index_name},
+    ).first()
+    return result is not None
+
+
 def upgrade() -> None:
     """Upgrade schema: Add password_resets table."""
-    try:
+    if not _table_exists('password_resets'):
         op.create_table('password_resets',
             sa.Column('id', mssql.UNIQUEIDENTIFIER(), nullable=False),
             sa.Column('user_id', mssql.UNIQUEIDENTIFIER(), nullable=False),
@@ -34,20 +65,15 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
             sa.PrimaryKeyConstraint('id')
         )
-    except Exception as e:
-        print(f"Ignoring error creating password_resets: {e}")
-    try:
         op.create_index(op.f('ix_password_resets_id'), 'password_resets', ['id'], unique=False)
-    except Exception as e:
-        pass
-    try:
         op.create_index(op.f('ix_password_resets_user_id'), 'password_resets', ['user_id'], unique=False)
-    except Exception as e:
-        pass
 
 
 def downgrade() -> None:
     """Downgrade schema: Drop password_resets table."""
-    op.drop_index(op.f('ix_password_resets_user_id'), table_name='password_resets')
-    op.drop_index(op.f('ix_password_resets_id'), table_name='password_resets')
-    op.drop_table('password_resets')
+    if _index_exists('password_resets', op.f('ix_password_resets_user_id')):
+        op.drop_index(op.f('ix_password_resets_user_id'), table_name='password_resets')
+    if _index_exists('password_resets', op.f('ix_password_resets_id')):
+        op.drop_index(op.f('ix_password_resets_id'), table_name='password_resets')
+    if _table_exists('password_resets'):
+        op.drop_table('password_resets')

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, LogOut } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for backend requests
-import { getStoredToken } from "@/lib/auth"; // Utility to get the user's JWT token
+import { clearStoredAuthToken, getStoredToken, setStoredAuthToken } from "@/lib/auth"; // Utility to get the user's JWT token
 
 function PendingApprovalContent() {
   // --- Next.js Hooks ---
@@ -56,8 +56,8 @@ function PendingApprovalContent() {
   // --- Logout Logic ---
   const handleLogout = () => {
     setIsLoading(true);
-    localStorage.removeItem("teablend_token"); // Clear the token
-    router.push("/auth"); // Send back to login page
+    clearStoredAuthToken();
+    router.replace("/auth"); // Send back to login page
   };
 
   // --- Polling (Checking Status Automatically) ---
@@ -75,8 +75,7 @@ function PendingApprovalContent() {
       }
 
       // 2. Save the fresh token and notify the rest of the app
-      localStorage.setItem("teablend_token", refreshResponse.data.access_token);
-      window.dispatchEvent(new Event("teablend-auth-changed"));
+      setStoredAuthToken(refreshResponse.data.access_token, "refresh");
 
       // 3. Decode the token to read the status directly from it
       const payloadBase64 = refreshResponse.data.access_token.split(".")[1];

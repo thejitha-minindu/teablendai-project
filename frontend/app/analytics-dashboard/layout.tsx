@@ -3,6 +3,7 @@
 import React from "react";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { NavSidebar } from "@/components/layout/NavSidebar";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 
 export default function AnalyticsLayout({
@@ -11,11 +12,13 @@ export default function AnalyticsLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
-      <NavSidebar />
-      <main className="p-10 m-7 h-max-screen w-full">
-        {children}
-      </main>
-    </SidebarProvider>
-);
+    <ProtectedRoute>
+      <SidebarProvider>
+        <NavSidebar />
+        <main className="p-10 m-7 h-max-screen w-full">
+          {children}
+        </main>
+      </SidebarProvider>
+    </ProtectedRoute>
+  );
 }

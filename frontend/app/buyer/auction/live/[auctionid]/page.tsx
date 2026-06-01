@@ -3,12 +3,12 @@
 import { AuctionDetailLayout } from "@/components/features/buyer/liveauction/AuctionDetailLayout";
 // import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import { WinnerModal } from "@/components/features/buyer/liveauction/WinnerModal";
-import { getAuction } from "@/services/buyer/auctionService";
+import { getAuction, getAuctionRemainingTime } from "@/services/buyer/auctionService";
 import { createBid, listBidsByAuction } from "@/services/buyer/bidService";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
 import { useAuctionBidsSocket } from "@/hooks/live-auction-socket";
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { getAuthClaims } from "@/lib/auth";
 import { toast  } from "sonner";
@@ -28,9 +28,24 @@ export default function BuyerAuctionLivePage() {
   const [imageFailed, setImageFailed] = useState(false);
   const [showWinnerModal, setShowWinnerModal] = useState(false);
   const [winner, setWinner] = useState<{ winnerId: string | null; winnerName?: string; finalPrice: number } | null>(null);
+  const [hasAuctionEnded, setHasAuctionEnded] = useState(false);
 
   const processedBidIds = useRef(new Set<string>());
   const { connected, events } = useAuctionBidsSocket(auctionId);
+
+  const syncAuctionState = useCallback(async (options?: { notifyOnError?: boolean }) => {
+    if (!auctionId) return;
+
+    try {
+      const remainingTime = await getAuctionRemainingTime(auctionId);
+      setHasAuctionEnded(!remainingTime.is_live || remainingTime.remaining_seconds <= 0);
+    } catch (loadError) {
+      if (options?.notifyOnError) {
+        setError(loadError instanceof Error ? loadError.message : "Failed to refresh auction timer");
+        toast.error("Failed to refresh auction timer", { position: "top-right" });
+      }
+    }
+  }, [auctionId, router]);
 
   useEffect(() => {
     const claims = getAuthClaims();
@@ -45,32 +60,33 @@ export default function BuyerAuctionLivePage() {
     if (!auctionId) return;
 
     const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const auctionData = await getAuction(auctionId);
+      setLoading(true);
+      setError(null);
 
-        // Redirect if auction is not live
+      try {
+        const auctionData = await getAuction(auctionId);
+        setAuction(auctionData);
+
         const status = String(auctionData?.status || "").trim().toLowerCase();
         if (status === "history") {
+          setHasAuctionEnded(true);
           router.replace("/buyer/auctions");
           return;
         }
-        // redirect to live page
+
         if (status !== "live") {
-          router.replace(`/buyer/auction/${auctionId}`);
+          setHasAuctionEnded(true);
           return;
         }
 
-        setAuction(auctionData);
         const bidData = await listBidsByAuction(auctionId);
-        setBids(
-          (bidData || []).sort((a, b) => b.bid_amount - a.bid_amount)
-        );
-        
+        setBids((bidData || []).sort((a, b) => b.bid_amount - a.bid_amount));
+
         bidData?.forEach((bid) => {
           processedBidIds.current.add(bid.bid_id);
         });
+
+        void syncAuctionState({ notifyOnError: true });
       } catch (loadError) {
         setError(loadError instanceof Error ? loadError.message : "Failed to load auction");
         toast.error("Failed to load auction", { position: "top-right" });
@@ -80,7 +96,13 @@ export default function BuyerAuctionLivePage() {
     };
 
     load();
-  }, [auctionId, router]);
+  }, [auctionId, router, syncAuctionState]);
+
+  useEffect(() => {
+    if (!connected || !auction || hasAuctionEnded) return;
+
+    void syncAuctionState();
+  }, [connected, auction, hasAuctionEnded, syncAuctionState]);
 
   useEffect(() => {
     console.log("WebSocket connected:", connected);
@@ -242,14 +264,15 @@ export default function BuyerAuctionLivePage() {
         connected={connected}
         error={error}
         submitBid={submitBid}
-        isBidLocked={false}
-        statusLabel="Live"
+        isBidLocked={hasAuctionEnded}
+        statusLabel={hasAuctionEnded ? "Ended" : "Live"}
         imageUrl={imageUrl}
         showImage={showImage}
         onImageError={() => setImageFailed(true)}
         startTime={auction.date}
         duration={auction.duration}
         onAuctionEnd={() => {
+          setHasAuctionEnded(true);
           toast.info("Auction time has elapsed", { position: "top-right" });
         }}
       />

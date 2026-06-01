@@ -83,6 +83,13 @@ class IntentClassifier:
         'describe the tea and list',
     }
 
+    AUCTION_ACTION_PATTERNS = [
+        r"\b(?:create|new|add|start|post|schedule)\b[\w\s#:\-]{0,120}\bauction\b",
+        r"\b(?:update|change|modify|edit)\b[\w\s#:\-]{0,120}\bauction\b",
+        r"\b(?:delete|remove|cancel|close)\b[\w\s#:\-]{0,120}\bauction\b",
+        r"\bauction\b[\w\s#:\-]{0,120}\b(?:update|change|modify|edit|delete|remove|cancel|close)\b",
+    ]
+
     @classmethod
     def classify(cls, question: str) -> QueryIntent:
         """
@@ -95,9 +102,8 @@ class IntentClassifier:
             "hybrid" - Need both sources
         """
         q = question.lower().strip()
-        
-        # Check for auction actions FIRST (highest priority)
-        if cls._is_auction_action(q):
+
+        if cls.is_auction_management_request(q):
             logger.info(f"[Intent] AUCTION_MANAGEMENT: {question[:60]}")
             return "auction_management"
         
@@ -156,32 +162,25 @@ class IntentClassifier:
         if any(keyword in question for keyword in cls.AUCTION_ACTION_KEYWORDS):
             return True
 
-        # Natural-language action phrases (e.g., "i want to create an auction")
-        action_phrase_patterns = [
-            r"\b(?:i\s+want\s+to\s+|please\s+)?create\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?create\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?add\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?add\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?start\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?post\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?post\s+(?:an?\s+)?(?:tea\s+)?auction\s+listing\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?schedule\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?update\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?change\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?modify\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?edit\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?delete\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?remove\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?cancel\s+(?:an?\s+)?auction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?close\s+(?:an?\s+)?auction\b",
-            # Allow an auction identifier between action verb and "auction"
-            r"\b(?:i\s+want\s+to\s+|please\s+)?delete\b[\w\s#:\-]{0,120}\bauction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?remove\b[\w\s#:\-]{0,120}\bauction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?cancel\b[\w\s#:\-]{0,120}\bauction\b",
-            r"\b(?:i\s+want\s+to\s+|please\s+)?close\b[\w\s#:\-]{0,120}\bauction\b",
-        ]
+        return cls.is_auction_management_request(question)
 
-        return any(re.search(pattern, question) for pattern in action_phrase_patterns)
+    @classmethod
+    def is_auction_management_request(cls, question: str) -> bool:
+        """Detect auction management requests, including action verbs near the word auction."""
+        q = question.lower().strip()
+
+        if 'auction' not in q:
+            return False
+
+        if any(phrase in q for phrase in [
+            'show my auction', 'list my auction', 'view my auction', 'display my auction',
+            'show me my auction', 'give me my auction', 'tell me my auction',
+            'auction history', 'scheduled auction', 'live auction', 'history auction',
+            'active auction', 'auction details', 'auction status',
+        ]):
+            return False
+
+        return any(re.search(pattern, q) for pattern in cls.AUCTION_ACTION_PATTERNS)
 
     @classmethod
     def _contains_hybrid_indicators(cls, question: str) -> bool:

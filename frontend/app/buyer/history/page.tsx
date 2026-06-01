@@ -57,6 +57,13 @@ export default function BuyerHistoryPage() {
   const filteredAndSortedData = useMemo(() => {
     let result = [...AUCTION_DATA];
 
+    const getPrice = (auction: any) => {
+      const basePrice = auction.base_price ?? auction.basePrice ?? 0;
+      return typeof basePrice === "number"
+        ? basePrice
+        : parseFloat(String(basePrice).replace(/[^\d.]/g, "")) || 0;
+    };
+
     if (filters.searchQuery) {
       const searchLower = filters.searchQuery.toLowerCase();
       result = result.filter(
@@ -78,15 +85,9 @@ export default function BuyerHistoryPage() {
     result.sort((a, b) => {
       switch (sortBy) {
         case "price-high":
-          return (
-            parseFloat(b.basePrice.replace("$", "")) -
-            parseFloat(a.basePrice.replace("$", ""))
-          );
+          return getPrice(b) - getPrice(a);
         case "price-low":
-          return (
-            parseFloat(a.basePrice.replace("$", "")) -
-            parseFloat(b.basePrice.replace("$", ""))
-          );
+          return getPrice(a) - getPrice(b);
         case "grade":
           return a.grade.localeCompare(b.grade);
         case "name":

@@ -10,11 +10,8 @@ class AuctionTimingService:
     # Service for calculating auction timing, remaining time, and grace periods 
     @staticmethod
     def calculate_auction_end_time(auction: Auction) -> datetime:
-        try:
-            return auction.start_time + timedelta(hours=auction.duration)
-        except (AttributeError, TypeError) as e:
-            logger.error(f"Error calculating auction end time: {e}")
-            raise
+        """Calculate when an auction ends using the stored duration in minutes."""
+        return auction.start_time + timedelta(minutes=int(round(float(auction.duration))))
     
     # Calculate the remaining time for an auction
     @staticmethod

@@ -36,7 +36,7 @@ class AuctionCreate(BaseModel):
     image_url: Optional[str] = None
     base_price: float = Field(ge=0, description="Base price cannot be negative")
     start_time: datetime
-    duration: float = Field(gt=0, description="Duration must be greater than 0")
+    duration: int = Field(gt=0, description="Auction duration in minutes")
     
     @field_validator('start_time')
     def validate_start_time(cls, v: datetime):
@@ -52,6 +52,21 @@ class AuctionCreate(BaseModel):
         if v_utc < now_utc:
             raise ValueError("Scheduled start time cannot be in the past.")
         return v
+
+    @field_validator('duration', mode='before')
+    @classmethod
+    def validate_duration_minutes(cls, value):
+        try:
+            duration_minutes = int(round(float(value)))
+        except (TypeError, ValueError):
+            raise ValueError("Duration must be provided in minutes.")
+
+        if duration_minutes < 60:
+            raise ValueError("Duration must be at least 60 minutes.")
+        if duration_minutes > 4320:
+            raise ValueError("Duration cannot exceed 4320 minutes (72 hours).")
+
+        return duration_minutes
 
 # 2. Output Schema (Backend -> Frontend)
 # This defines what the API sends back to the React app.
@@ -71,7 +86,7 @@ class AuctionResponse(BaseModel):
     image_url: Optional[str] = None
     base_price: float
     start_time: datetime
-    duration: float
+    duration: int
     status: str
     buyer: Optional[str] = None
     buyer_name: Optional[str] = None

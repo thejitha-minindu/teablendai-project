@@ -14,14 +14,6 @@ export interface AuctionPerformanceItem {
   bidCount: number;
 }
 
-export interface GradeWisePriceItem {
-  grade: string;
-  minBid: number;
-  avgBid: number;
-  maxBid: number;
-  soldVolume: number;
-}
-
 export interface SellingTrendItem {
   month: string;
   revenue: number;
@@ -48,7 +40,6 @@ export interface AnalyticsSalesResponse {
   refreshIntervalMs: number;
   summary: SalesSummary;
   auctionPerformance: AuctionPerformanceItem[];
-  gradeWisePrices: GradeWisePriceItem[];
   sellingTrends: SellingTrendItem[];
   sellerPerformance: SellerPerformanceItem[];
   bidVolumeAnalysis: BidVolumeAnalysisItem[];

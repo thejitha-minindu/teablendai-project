@@ -343,6 +343,7 @@ class MCPClientManager:
         grade: str,
         quantity: int,
         origin: str,
+        estate_name: str,
         base_price: float,
         start_time: str,
         duration: int,
@@ -359,6 +360,7 @@ class MCPClientManager:
                 "grade": grade,
                 "quantity": quantity,
                 "origin": origin,
+                "estate_name": estate_name,
                 "base_price": base_price,
                 "start_time": start_time,
                 "duration": duration

@@ -8,7 +8,7 @@ Multi-turn conversation flow for creating/updating/deleting auctions.
 import logging
 import re
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
@@ -56,10 +56,14 @@ class AuctionHandler:
         flow_started_at = state.partial_data.get("_flow_started_at") if state else None
         if isinstance(flow_started_at, str):
             try:
-                return datetime.fromisoformat(flow_started_at)
+                parsed_time = datetime.fromisoformat(flow_started_at)
+                return parsed_time if parsed_time.tzinfo is not None else parsed_time.replace(tzinfo=timezone.utc)
             except ValueError:
                 pass
-        return state.created_at if state else datetime.now()
+        if state and getattr(state, "created_at", None):
+            created_at = state.created_at
+            return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=timezone.utc)
+        return datetime.now(timezone.utc)
 
     def _prompt_for_custom_description(
         self,
@@ -229,7 +233,6 @@ class AuctionHandler:
         Returns:
             Response dictionary
         """
-        start_time = datetime.utcnow()
         action = parameter_extractor.detect_action_type(user_message)
         state = state_manager.get_state(conversation.conversation_id)
 
@@ -294,7 +297,7 @@ class AuctionHandler:
         
         # Extract any parameters from initial message
         required_fields = CREATE_AUCTION_FIELDS["required"].copy()
-        flow_started_at = datetime.now()
+        flow_started_at = datetime.now(timezone.utc)
         
         extracted = await parameter_extractor.extract_parameters(
             user_message,
@@ -343,7 +346,7 @@ class AuctionHandler:
         if validation_errors:
             error_messages = []
             for err in validation_errors:
-                error_messages.append(f"❌ **{err['field'].replace('_', ' ').title()}**: {err['error']}")
+                error_messages.append(f"**{err['field'].replace('_', ' ').title()}**: {err['error']}")
 
             invalid_fields = [err.get("field") for err in validation_errors if err.get("field")]
             next_field = None
@@ -962,10 +965,11 @@ class AuctionHandler:
     ) -> Dict[str, Any]:
         """Ask user to confirm interpreted weekday datetime before proceeding."""
 
-        expression_text = expression or f"weekday at {display_time_12h or resolved_start_time}"
+        resolved_start_time_display = format_datetime_for_display(resolved_start_time)
+        expression_text = expression or f"weekday at {display_time_12h or resolved_start_time_display}"
         confirmation_text = f"""
 You asked to schedule the auction on **{expression_text}**.
-That corresponds to **{resolved_start_time}**.
+    That corresponds to **{resolved_start_time_display}**.
 Please confirm if this is correct.
 
 - Reply **'yes'** to confirm this start time
@@ -1056,6 +1060,7 @@ Please confirm if this is correct.
             "grade": "select",
             "quantity": "number",
             "origin": "select",
+            "estate_name": "text",
             "base_price": "number",
             "start_time": "datetime",
             "duration": "number",
@@ -1090,6 +1095,11 @@ Please confirm if this is correct.
             "origin": {
                 "required": True,
                 "type": "string"
+            },
+            "estate_name": {
+                "required": True,
+                "type": "string",
+                "maxLength": 120
             },
             "base_price": {
                 "required": True,
@@ -1211,6 +1221,7 @@ Please confirm if this is correct.
                         "grade": data.get("grade"),
                         "quantity": data.get("quantity"),
                         "origin": data.get("origin"),
+                        "estate_name": data.get("estate_name"),
                         "base_price": data.get("base_price"),
                         "start_time": data.get("start_time"),
                         "duration": data.get("duration"),
@@ -1231,6 +1242,7 @@ Please confirm if this is correct.
             **Tea Grade:** {data.get('grade', 'N/A')}
             **Quantity:** {data.get('quantity', 'N/A')} kg
             **Origin:** {data.get('origin', 'N/A')}
+            **Estate Name:** {data.get('estate_name', 'N/A')}
             **Starting Price:** LKR {data.get('base_price', 'N/A'):,}
             **Start Time:** {start_time_display}
             **Duration:** {duration_display}
@@ -1257,6 +1269,7 @@ Please confirm if this is correct.
                 "grade": data.get("grade"),
                 "quantity": data.get("quantity"),
                 "origin": data.get("origin"),
+                "estate_name": data.get("estate_name"),
                 "base_price": data.get("base_price"),
                 "start_time": data.get("start_time"),
                 "duration": data.get("duration"),
@@ -1323,6 +1336,7 @@ Please confirm if this is correct.
             grade=data["grade"],
             quantity=int(data["quantity"]),
             origin=data["origin"],
+            estate_name=data["estate_name"],
             base_price=float(data["base_price"]),
             start_time=data["start_time"],
             duration=int(data["duration"]),
@@ -1352,6 +1366,7 @@ Please confirm if this is correct.
 - **Grade:** {data['grade']}
 - **Quantity:** {data['quantity']} kg
 - **Origin:** {data['origin']}
+- **Estate Name:** {data['estate_name']}
 - **Starting Price:** LKR {float(data['base_price']):,.0f}
 - **Start Time:** {data['start_time']}
 - **Duration:** {duration_display}
@@ -1394,6 +1409,7 @@ Please try again or contact support if the problem persists.
                     "grade": data.get("grade"),
                     "quantity": data.get("quantity"),
                     "origin": data.get("origin"),
+                    "estate_name": data.get("estate_name"),
                     "base_price": data.get("base_price"),
                     "start_time": data.get("start_time"),
                     "duration": data.get("duration"),
@@ -1903,18 +1919,14 @@ Reply **'yes'** to confirm deletion, or **'no'** to cancel.
         }
 
     def _format_duration_hours(self, duration_value: Any, input_unit: Optional[str] = None) -> str:
-        """Format duration for output with hour-first display, supporting legacy hour and minute inputs."""
+        """Format a stored minute duration for output with hour-first display."""
         try:
             numeric = float(duration_value)
 
-            # Input may come in legacy "hours" form (e.g., 12) or normalized minutes (e.g., 720).
-            if input_unit == "hours":
-                total_minutes = int(round(numeric * 60)) if numeric <= 24 else int(round(numeric))
-            elif input_unit == "minutes":
-                total_minutes = int(round(numeric))
+            if input_unit == "hours" and numeric < 60:
+                total_minutes = int(round(numeric * 60))
             else:
-                # Heuristic fallback for older states without explicit unit.
-                total_minutes = int(round(numeric * 60)) if numeric <= 24 else int(round(numeric))
+                total_minutes = int(round(numeric))
 
             hours = total_minutes // 60
             minutes = total_minutes % 60

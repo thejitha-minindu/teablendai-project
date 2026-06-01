@@ -4,6 +4,7 @@ from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from uuid import uuid4
 from datetime import datetime
 from src.infrastructure.database.base import Base
+from .password_reset import PasswordReset
 
 class User(Base):
     __tablename__ = "users"
@@ -42,7 +43,7 @@ class User(Base):
     auctions = relationship("Auction", backref="seller", foreign_keys="Auction.seller_id")
     bids = relationship("Bid", back_populates="user")
     verification_status = Column(String, default="PENDING")
-    password_resets = relationship("PasswordReset", back_populates="user", cascade="all, delete-orphan")
+    password_resets = relationship(PasswordReset, back_populates="user", cascade="all, delete-orphan")
     payment_cards = relationship("PaymentCard", back_populates="user", cascade="all, delete-orphan")
 
 class FinancialDetails(Base):

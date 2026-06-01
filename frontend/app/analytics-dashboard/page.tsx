@@ -67,7 +67,7 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Tea Grade Distribution">
+        <ChartCard title="Tea Grade Distribution(Live + Scheduled)">
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
               <Pie

@@ -31,6 +31,27 @@ import json
 logger = logging.getLogger(__name__)
 
 
+def format_duration_minutes(duration_value: Any) -> str:
+    try:
+        total_minutes = int(round(float(duration_value)))
+    except (TypeError, ValueError):
+        return str(duration_value)
+
+    if total_minutes <= 0:
+        return "0 minutes"
+
+    hours = total_minutes // 60
+    minutes = total_minutes % 60
+    parts: list[str] = []
+
+    if hours:
+        parts.append(f"{hours} hour" + ("s" if hours != 1 else ""))
+    if minutes:
+        parts.append(f"{minutes} minute" + ("s" if minutes != 1 else ""))
+
+    return " ".join(parts)
+
+
 class ChatService:
     """
     Main chat service - orchestrates all chatbot operations
@@ -183,6 +204,9 @@ class ChatService:
 
             # INTENT CLASSIFICATION & ROUTING
             intent: QueryIntent = intent_classifier.classify(user_message)
+            if intent == "database" and intent_classifier.is_auction_management_request(user_message):
+                logger.info("[Chat] Overriding database intent with auction_management due to auction action context")
+                intent = "auction_management"
             logger.info(f"[Chat] Query intent: {intent}")
 
             # Route based on intent
@@ -460,8 +484,9 @@ class ChatService:
             rows = db_result.get("raw_data", [])
 
             is_auction_data = self._is_auction_query(user_message, columns)
+            use_auction_cards = is_auction_data and self._should_render_auction_cards(user_message, rows)
 
-            if is_auction_data:
+            if use_auction_cards:
                 formatted_answer = self._format_auction_data(rows)
 
                 viz_result = await self.mcp_client.create_visualization(
@@ -559,9 +584,9 @@ class ChatService:
             response_time = int((datetime.now(timezone.utc) - start_time).total_seconds() * 1000)
 
             no_data_message = (
-                "There are currently no records in the database that match your query. "
-                "This information comes from our live system, so it may not be available at this time. "
-                "Please check back later or try a different query."
+                "There are currently no records in the database that match your question. "
+                "It may not be available at this time. "
+                "Please check back later or try a different question."
             )
 
             assistant_msg = ChatMessage.create_assistant_message(
@@ -727,12 +752,64 @@ class ChatService:
         has_auction_keyword = any(keyword in query_lower for keyword in auction_keywords)
 
         auction_columns = {
-            "auction_id", "auction_name", "grade", "quantity",
+            "auction_id", "custom_auction_id", "auction_name", "grade", "quantity",
             "origin", "base_price", "status", "start_time"
         }
         has_auction_columns = len(auction_columns.intersection(set(columns))) >= 4
 
         return has_auction_keyword or has_auction_columns
+
+    def _should_render_auction_cards(self, query: str, rows: list) -> bool:
+        """
+        Render auction cards only for explicit live/scheduled auction listing requests.
+
+        For analytics questions (compare/average/trends/etc.), return summary + visualization.
+        """
+        query_lower = query.lower()
+
+        listing_intents = [
+            "live auction",
+            "live auctions",
+            "scheduled auction",
+            "scheduled auctions",
+            "show live",
+            "list live",
+            "show scheduled",
+            "list scheduled",
+            "upcoming auctions",
+            "current auctions",
+        ]
+        has_listing_intent = any(term in query_lower for term in listing_intents)
+
+        analytics_terms = [
+            "compare",
+            "comparison",
+            "average",
+            "avg",
+            "trend",
+            "total",
+            "sum",
+            "count",
+            "distribution",
+            "breakdown",
+            "by grade",
+            "by month",
+            "over time",
+            "revenue",
+            "price vs",
+            "sold price",
+            "base price",
+        ]
+        looks_like_analytics = any(term in query_lower for term in analytics_terms)
+
+        # Card rendering expects row-level auction fields, not aggregated metrics.
+        has_row_level_auction_shape = False
+        if rows and isinstance(rows, list) and isinstance(rows[0], dict):
+            first_row = rows[0]
+            row_level_keys = {"auction_id", "custom_auction_id", "auction_name", "status", "start_time", "duration", "origin"}
+            has_row_level_auction_shape = len(row_level_keys.intersection(set(first_row.keys()))) >= 3
+
+        return has_listing_intent and not looks_like_analytics and has_row_level_auction_shape
 
     def _format_auction_data(self, rows: list) -> str:
         """Format auction data for better display."""
@@ -743,10 +820,10 @@ class ChatService:
 
         for idx, auction in enumerate(rows, 1):
             status_emoji = {
-                "Live": "🔴",
-                "Scheduled": "📅",
-                "History": "✅"
-            }.get(auction.get("status", ""), "📦")
+                "Live": "Live",
+                "Scheduled": "Scheduled",
+                "History": "History"
+            }.get(auction.get("status", ""), "Auction")
 
             response += f"{status_emoji} **Auction #{idx}**\n"
             response += "━━━━━━━━━━━━━━━━━━━━\n"
@@ -769,14 +846,16 @@ class ChatService:
             if "start_time" in auction:
                 response += f"**Start Time:** {auction['start_time']}\n"
             if "duration" in auction:
-                response += f"**Duration:** {auction['duration']} minutes\n"
+                response += f"**Duration:** {format_duration_minutes(auction['duration'])}\n"
             if "description" in auction and auction["description"]:
                 response += f"**Description:** {auction['description']}\n"
             if "seller_brand" in auction:
                 response += f"**Seller:** {auction['seller_brand']}\n"
             if "estate_name" in auction:
                 response += f"**Estate:** {auction['estate_name']}\n"
-            if "auction_id" in auction:
+            if "custom_auction_id" in auction:
+                response += f"_ID: {auction['custom_auction_id']}_\n"
+            elif "auction_id" in auction:
                 response += f"_ID: {auction['auction_id']}_\n"
 
             response += "\n"

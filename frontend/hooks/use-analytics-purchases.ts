@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAnalyticsPurchases } from "@/services/dashboard/analyticsService";
 import type { AnalyticsPurchasesResponse } from "@/types/dashboard/analytics-purchases.types";
 
@@ -13,14 +13,17 @@ export function useAnalyticsPurchases(refreshMs: number = DEFAULT_REFRESH_MS) {
   const [error, setError] = useState<string | null>(null);
   const [isStale, setIsStale] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
+  const hasForcedInitialRefresh = useRef(false);
 
   useEffect(() => {
     let mounted = true;
 
     const load = async () => {
       try {
-        const payload = await getAnalyticsPurchases(false);
+        const forceRefresh = !hasForcedInitialRefresh.current;
+        const payload = await getAnalyticsPurchases(forceRefresh);
         if (!mounted) return;
+        hasForcedInitialRefresh.current = true;
         setData(payload);
         setLastUpdated(payload.generatedAt);
         setError(null);

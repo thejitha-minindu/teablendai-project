@@ -13,6 +13,7 @@ import { Separator } from "@/components/ui/separator";
 import { AuctionTimer } from "@/components/features/buyer/liveauction/AuctionTimer";
 import type { AuctionData } from "@/types/buyer/auction.types";
 import type { Bid } from "@/types/buyer/bid.types";
+import { formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 type AuctionDetailLayoutProps = {
   auction: AuctionData;
@@ -27,7 +28,7 @@ type AuctionDetailLayoutProps = {
   error: string | null;
   submitBid?: () => Promise<void>;
   isBidLocked: boolean;
-  statusLabel: "Live" | "Scheduled";
+  statusLabel: "Live" | "Scheduled" | "Ended";
   imageUrl: string;
   showImage: boolean;
   onImageError: () => void;
@@ -60,7 +61,9 @@ export function AuctionDetailLayout({
   const statusClassName =
     statusLabel === "Live"
       ? "rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700"
-      : "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700";
+      : statusLabel === "Ended"
+        ? "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700"
+        : "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700";
 
   return (
     <div className="px-4 py-4 md:px-6 lg:px-8">
@@ -96,7 +99,7 @@ export function AuctionDetailLayout({
                 <p><span className="font-medium">Seller:</span> {auction.seller_brand || "N/A"}</p>
                 <div className="mt-3 pt-3 border-t">
                   <p><span className="font-medium">Start Time:</span> {new Date(auction.date).toLocaleString()}</p>
-                  <p><span className="font-medium">Duration:</span> {Math.floor(auction.duration / 60)} minutes</p>
+                  <p><span className="font-medium">Duration:</span> {formatDurationFromMinutes(auction.duration)}</p>
                 </div>
               </div>
               <div className="mt-4 flex-1 min-h-0 p-2">
@@ -148,9 +151,15 @@ export function AuctionDetailLayout({
                   <p className="text-xs text-amber-700">Live connection unavailable. Reconnect to place bids.</p>
                 )}
 
-                {isBidLocked && (
+                {isBidLocked && statusLabel === "Scheduled" && (
                   <p className="text-xs text-muted-foreground">
                     Scheduled auctions cannot be bid on yet. Bidding controls unlock automatically when status becomes live.
+                  </p>
+                )}
+
+                {isBidLocked && statusLabel === "Ended" && (
+                  <p className="text-xs text-muted-foreground">
+                    This auction has ended. Bidding controls are closed.
                   </p>
                 )}
 
