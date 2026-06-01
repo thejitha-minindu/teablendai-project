@@ -1,5 +1,11 @@
 import axios, { AxiosInstance } from 'axios';
 import { API_BASE_URL } from '../lib/api.config';
+import { apiClient } from "@/lib/apiClient";
+import {
+  clearStoredAuthToken,
+  getStoredToken,
+  setStoredAuthToken,
+} from "@/lib/auth";
 
 interface ForgotPasswordResponse {
   status: string;
@@ -35,9 +41,9 @@ export interface CurrentUserResponse {
   user_name: string;
   first_name: string;
   last_name: string;
-  default_role: 'buyer' | 'seller';
-  active_role?: 'buyer' | 'seller';
-  available_roles?: Array<'buyer' | 'seller'>;
+  default_role: "buyer" | "seller";
+  active_role?: "buyer" | "seller";
+  available_roles?: Array<"buyer" | "seller">;
   profile_image_url?: string;
   nic?: string;
   shipping_address?: string;
@@ -58,10 +64,9 @@ export interface CurrentUserResponse {
     seller_city?: string;
     seller_postal_code?: string;
   };
-  financial_details?: any;
+  financial_details?: unknown;
   watch_list?: string[];
   verification_status?: string;
-  // For API that might return status field
   status?: string;
 }
 
@@ -127,10 +132,10 @@ class AuthService {
     firstName: string,
     lastName: string,
     phoneNum: string,
-    defaultRole: 'buyer' | 'seller' = 'buyer',
-    shippingAddress?: string
+    defaultRole: "buyer" | "seller" = "buyer",
+    shippingAddress?: string,
   ): Promise<RegisterResponse> {
-    const response = await this.api.post<RegisterResponse>('/auth/register', {
+    const response = await apiClient.post<RegisterResponse>("/auth/register", {
       email,
       password,
       user_name: userName,
@@ -146,17 +151,17 @@ class AuthService {
   // Login with email and password
   async login(email: string, password: string): Promise<LoginResponse> {
     const formData = new URLSearchParams();
-    formData.append('username', email);
-    formData.append('password', password);
+    formData.append("username", email);
+    formData.append("password", password);
 
-    const response = await this.api.post<LoginResponse>('/auth/login', formData, {
+    const response = await apiClient.post<LoginResponse>("/auth/login", formData, {
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "Content-Type": "application/x-www-form-urlencoded",
       },
     });
 
     if (response.data.access_token) {
-      this.setToken(response.data.access_token);
+      setStoredAuthToken(response.data.access_token, "login");
     }
 
     return response.data;
@@ -181,21 +186,24 @@ class AuthService {
   // ==================== USER DATA ====================
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
-    const response = await this.api.get<CurrentUserResponse>('/users/me');
+    const response = await apiClient.get<CurrentUserResponse>("/users/me");
     return response.data;
   }
 
-  // ==================== PASSWORD RESET ====================
+  async getCurrentAdmin(): Promise<CurrentUserResponse> {
+    const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
+    return response.data;
+  }
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
-    const response = await this.api.post<ForgotPasswordResponse>('/auth/forgot-password', {
+    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
       email,
     });
     return response.data;
   }
 
   async verifyOTP(email: string, otpCode: string): Promise<VerifyOTPResponse> {
-    const response = await this.api.post<VerifyOTPResponse>('/auth/verify-otp', {
+    const response = await apiClient.post<VerifyOTPResponse>("/auth/verify-otp", {
       email,
       otp_code: otpCode,
     });
@@ -206,9 +214,9 @@ class AuthService {
     email: string,
     otpCode: string,
     newPassword: string,
-    confirmPassword: string
+    confirmPassword: string,
   ): Promise<ResetPasswordResponse> {
-    const response = await this.api.post<ResetPasswordResponse>('/auth/reset-password', {
+    const response = await apiClient.post<ResetPasswordResponse>("/auth/reset-password", {
       email,
       otp_code: otpCode,
       new_password: newPassword,
@@ -217,16 +225,12 @@ class AuthService {
     return response.data;
   }
 
-  // ==================== LOGOUT ====================
-
   logout(): void {
-    this.clearToken();
+    clearStoredAuthToken("logout");
   }
 
-  // ==================== UTILITY ====================
-
   isAuthenticated(): boolean {
-    return this.getToken() !== null;
+    return getStoredToken() !== null;
   }
 }
 

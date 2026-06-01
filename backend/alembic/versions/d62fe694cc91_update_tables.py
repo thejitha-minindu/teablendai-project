@@ -19,18 +19,35 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _inspector():
-    return inspect(op.get_bind())
-
-
 def _table_exists(table_name: str) -> bool:
-    return table_name in _inspector().get_table_names()
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            """
+            SELECT 1
+            FROM INFORMATION_SCHEMA.TABLES
+            WHERE TABLE_NAME = :table_name
+            """
+        ),
+        {"table_name": table_name},
+    ).first()
+    return result is not None
 
 
 def _index_exists(table_name: str, index_name: str) -> bool:
-    if not _table_exists(table_name):
-        return False
-    return any(index["name"] == index_name for index in _inspector().get_indexes(table_name))
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            """
+            SELECT 1
+            FROM sys.indexes
+            WHERE object_id = OBJECT_ID(:table_name)
+              AND name = :index_name
+            """
+        ),
+        {"table_name": table_name, "index_name": index_name},
+    ).first()
+    return result is not None
 
 
 def _drop_index_if_exists(table_name: str, index_name: str) -> None:

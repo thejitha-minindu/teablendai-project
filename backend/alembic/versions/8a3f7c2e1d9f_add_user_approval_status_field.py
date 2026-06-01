@@ -32,14 +32,14 @@ def _index_exists(index_name: str) -> bool:
 
 
 def upgrade() -> None:
-    if "status" not in _column_names():
+    if not _column_exists("users", "status"):
         op.add_column("users", sa.Column("status", sa.String(length=16), nullable=False, server_default="PENDING"))
-    if not _index_exists("ix_users_status"):
+    if not _index_exists("users", "ix_users_status"):
         op.create_index("ix_users_status", "users", ["status"])
 
 
 def downgrade() -> None:
-    if _index_exists("ix_users_status"):
+    if _index_exists("users", "ix_users_status"):
         op.drop_index("ix_users_status", "users")
-    if "status" in _column_names():
+    if _column_exists("users", "status"):
         op.drop_column("users", "status")

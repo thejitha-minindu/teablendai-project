@@ -25,6 +25,21 @@ export async function getAuction(auctionId: string): Promise<AuctionData> {
     return response.data;
 }
 
+export async function getAuctionRemainingTime(auctionId: string): Promise<{
+    auction_id: string;
+    status: string;
+    remaining_seconds: number;
+    is_live: boolean;
+}> {
+    const response = await apiClient.get<{
+        auction_id: string;
+        status: string;
+        remaining_seconds: number;
+        is_live: boolean;
+    }>(`${BUYER_API_BASE}/auctions/${auctionId}/remaining-time`);
+    return response.data;
+}
+
 // List auctions (optionally filtered)
 export async function listAuctions(params?: {
     userId?: string;

@@ -61,7 +61,7 @@ function PendingApprovalContent() {
   // --- Logout Logic ---
   const handleLogout = () => {
     setIsLoading(true);
-    clearStoredAuthToken(); // Clear the token and notify the rest of the app
+    localStorage.removeItem("teablend_token"); // Clear the token
     router.push("/auth"); // Send back to login page
   };
 
@@ -80,7 +80,8 @@ function PendingApprovalContent() {
       }
 
       // 2. Save the fresh token and notify the rest of the app
-      setStoredAuthToken(refreshResponse.data.access_token);
+      localStorage.setItem("teablend_token", refreshResponse.data.access_token);
+      window.dispatchEvent(new Event("teablend-auth-changed"));
 
       // 3. Decode the token to read the status directly from it
       const claims = getAuthClaimsFromToken(refreshResponse.data.access_token);

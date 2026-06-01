@@ -24,7 +24,7 @@ function getSafeRedirectPath(redirectPath: string | null) {
 }
 
 interface RoleLoginFormProps {
-  role: UserRole;
+  role: "buyer" | "seller";
 }
 
 const ROLE_CONFIG = {

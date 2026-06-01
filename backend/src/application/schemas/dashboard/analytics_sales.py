@@ -18,14 +18,6 @@ class AuctionPerformanceItem(BaseModel):
     bidCount: int
 
 
-class GradeWisePriceItem(BaseModel):
-    grade: str
-    minBid: float
-    avgBid: float
-    maxBid: float
-    soldVolume: float
-
-
 class SellingTrendItem(BaseModel):
     month: str
     revenue: float
@@ -52,7 +44,6 @@ class AnalyticsSalesResponse(BaseModel):
     refreshIntervalMs: int
     summary: SalesSummary
     auctionPerformance: list[AuctionPerformanceItem]
-    gradeWisePrices: list[GradeWisePriceItem]
     sellingTrends: list[SellingTrendItem]
     sellerPerformance: list[SellerPerformanceItem]
     bidVolumeAnalysis: list[BidVolumeAnalysisItem]

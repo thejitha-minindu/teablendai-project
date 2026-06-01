@@ -46,6 +46,32 @@ def get_pending_users():
     return users
 
 
+def search_users_by_email(email_query: str):
+    query = text(
+        """
+        SELECT TOP 10
+            user_id,
+            email,
+            first_name,
+            last_name
+        FROM dbo.users
+        WHERE LOWER(email) LIKE :query
+        """
+    )
+    users = []
+    with engine.connect() as conn:
+        result = conn.execute(query, {"query": f"%{email_query.lower()}%"})
+        rows = result.fetchall()
+        for row in rows:
+            users.append({
+                "user_id": str(row[0]),
+                "email": row[1],
+                "first_name": row[2],
+                "last_name": row[3]
+            })
+    return users
+
+
 def approve_user(user_id: str):
     query = text(
         """

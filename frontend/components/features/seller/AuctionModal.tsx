@@ -1,7 +1,9 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban } from 'lucide-react';
+import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban, MessageCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/apiClient';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
 import { toast } from 'sonner';
@@ -9,7 +11,7 @@ import { toast } from 'sonner';
 // ==========================================
 // HELPER FUNCTIONS
 // ==========================================
-import { parseBackendDateTime, calculateLiveCountdown, durationToMinutes } from "@/utils/dateFormatter";
+import { parseBackendDateTime, calculateLiveCountdown, durationMinutesToHours, formatDurationFromMinutes } from "@/utils/dateFormatter";
 
 const formatDateTimeLocalValue = (date: Date) => {
   const pad = (num: number) => String(num).padStart(2, '0');
@@ -42,18 +44,11 @@ const formatStartTimeForBackend = (localDateTime: string) => {
 };
 
 const durationToHoursForInput = (durationValue: number) => {
-  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
-  return durationValue > 24 ? durationValue / 60 : durationValue;
+  return durationMinutesToHours(durationValue);
 };
 
 const formatDuration = (durationValue: number) => {
-  const totalMinutes = Math.round(durationToMinutes(durationValue));
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-
-  if (minutes === 0) return `${hours} hour${hours === 1 ? '' : 's'}`;
-  if (hours === 0) return `${minutes} minute${minutes === 1 ? '' : 's'}`;
-  return `${hours} hour${hours === 1 ? '' : 's'} ${minutes} minute${minutes === 1 ? '' : 's'}`;
+  return formatDurationFromMinutes(durationValue);
 };
 
 // 1. Helper for Input Field (Edit Mode)
@@ -124,12 +119,34 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
       // Upload newly selected image if it exists
       if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        const uploadRes = await apiClient.post('/auctions/upload-image', imageFormData, {
+        // Client-Side Pre-Upload Validation
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          toast.error("Invalid file type. Only JPEG, PNG, and WEBP are allowed.");
+          return;
+        }
+
+        if (imageFile.size > 5 * 1024 * 1024) {
+          toast.error("File size too large. Maximum allowed is 5MB.");
+          return;
+        }
+
+        // Fetch signature from backend
+        const signatureRes = await apiClient.get('/auctions/cloudinary-signature');
+        const { signature, timestamp, cloud_name, api_key } = signatureRes.data;
+
+        // Upload directly to Cloudinary using standard axios (no auth headers injected)
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+        const uploadData = new FormData();
+        uploadData.append("file", imageFile);
+        uploadData.append("api_key", api_key);
+        uploadData.append("timestamp", timestamp.toString());
+        uploadData.append("signature", signature);
+
+        const uploadRes = await axios.post(cloudinaryUrl, uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        finalImageUrl = uploadRes.data.image_url;
+        finalImageUrl = uploadRes.data.secure_url;
       }
 
       const payload = {
@@ -584,8 +601,10 @@ interface HistoryModalProps {
 }
 
 export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalProps) {
+  const router = useRouter();
   const [auctionDetails, setAuctionDetails] = useState<any>(data);
   const [bidHistory, setBidHistory] = useState<any[]>([]);
+  const [orderId, setOrderId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -604,6 +623,16 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
         // Sort bids by amount (highest first) so the winner is always at index 0
         const sortedBids = [...bidsArray].sort((a, b) => b.bid_amount - a.bid_amount);
         setBidHistory(sortedBids);
+
+        // 3. Fetch the order linked to this auction to get the orderId for messaging
+        try {
+          const orderRes = await apiClient.get(`/buyer/orders/auction/${auctionId}`);
+          if (orderRes.data?.order_id) {
+            setOrderId(String(orderRes.data.order_id));
+          }
+        } catch {
+          // Order may not exist if auction wasn't sold — safe to ignore
+        }
       } catch (error) {
         console.error("Failed to load auction history:", error);
       } finally {
@@ -761,11 +790,38 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               {/* Actions */}
               <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {isSold ? (
-                  <Button className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide">
-                    Download Invoice
+                  <Button
+                    onClick={() => {
+                      if (orderId) {
+                        onClose();
+                        router.push(`/messages/${orderId}`);
+                      }
+                    }}
+                    disabled={!orderId}
+                    className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    {orderId ? 'Contact Buyer' : 'Loading...'}
                   </Button>
                 ) : (
-                  <Button variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const relistData = {
+                        estateName: auctionDetails.estate_name || '',
+                        grade: auctionDetails.grade || '',
+                        quantity: String(auctionDetails.quantity || ''),
+                        origin: auctionDetails.origin || '',
+                        description: auctionDetails.description || '',
+                        startingPrice: String(auctionDetails.base_price || ''),
+                        image_url: auctionDetails.image_url || ''
+                      };
+                      sessionStorage.setItem('relist_auction', JSON.stringify(relistData));
+                      onClose();
+                      router.push('/seller/create-auction');
+                    }}
+                    className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide"
+                  >
                     Relist Item
                   </Button>
                 )}

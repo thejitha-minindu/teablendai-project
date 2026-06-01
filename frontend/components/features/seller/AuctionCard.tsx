@@ -25,8 +25,8 @@ interface ExtendedAuctionCardProps {
 }
 
 function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAuctionCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
   const validAuctionId = useMemo(() => {
     if (type === 'live' && auctionId) return String(auctionId).trim();

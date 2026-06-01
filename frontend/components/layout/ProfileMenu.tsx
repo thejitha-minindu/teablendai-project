@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { User, HelpCircle, LogOut } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { clearStoredAuthToken } from "@/lib/auth";
 
 interface ProfileMenuProps {
   isOpen: boolean;
@@ -27,8 +28,14 @@ export function ProfileMenu({
           const payload = JSON.parse(atob(token.split('.')[1]));
           const email = payload.sub;
           setUserEmail(email);
-          const namePart = email.split('@')[0];
-          setUserName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+          const firstName = payload.first_name || '';
+          const lastName = payload.last_name || '';
+          if (firstName || lastName) {
+            setUserName(`${firstName} ${lastName}`.trim());
+          } else {
+            const namePart = email.split('@')[0];
+            setUserName(namePart.charAt(0).toUpperCase() + namePart.slice(1));
+          }
         } catch (e) {
           console.error("Failed to decode token", e);
         }
@@ -38,11 +45,8 @@ export function ProfileMenu({
 
   const handleLogout = () => {
     onClose();
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("teablend_token");
-      localStorage.removeItem("role");
-      window.location.href = "/auth";
-    }
+    clearStoredAuthToken();
+    router.replace("/auth");
   };
 
   const handleProfileClick = () => {

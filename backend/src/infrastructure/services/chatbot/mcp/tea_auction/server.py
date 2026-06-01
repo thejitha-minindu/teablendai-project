@@ -18,6 +18,8 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.config import get_settings
+from src.domain.models.user import User
+from src.infrastructure.database.base import SessionLocal
 
 settings = get_settings()
 
@@ -55,6 +57,47 @@ def _candidate_base_urls() -> List[str]:
         if normalized not in unique:
             unique.append(normalized)
     return unique
+
+
+def _get_user_profile(user_id: str) -> Optional[User]:
+    if not user_id:
+        return None
+
+    db = SessionLocal()
+    try:
+        return db.query(User).filter(User.user_id == user_id).first()
+    finally:
+        db.close()
+
+
+def _build_seller_payload(user_id: str, origin: str, fallback_seller_brand: Optional[str] = None) -> Dict[str, str]:
+    user = _get_user_profile(user_id)
+
+    if not user:
+        return {
+            "seller_brand": fallback_seller_brand or "TeaBlend Seller",
+            "company_name": fallback_seller_brand or "TeaBlend Seller",
+            "estate_name": origin,
+        }
+
+    full_name = " ".join(
+        part for part in [getattr(user, "first_name", None), getattr(user, "last_name", None)] if part
+    ).strip()
+    seller_name = str(getattr(user, "seller_name", "") or "").strip()
+    seller_brand = seller_name or full_name or fallback_seller_brand or "TeaBlend Seller"
+    company_name = seller_name or full_name or fallback_seller_brand or "TeaBlend Seller"
+    estate_name = (
+        str(getattr(user, "seller_city", "") or "").strip()
+        or str(getattr(user, "seller_province", "") or "").strip()
+        or str(getattr(user, "shipping_address", "") or "").strip()
+        or origin
+    )
+
+    return {
+        "seller_brand": seller_brand,
+        "company_name": company_name,
+        "estate_name": estate_name,
+    }
 
 
 async def _request_with_base_url_fallback(
@@ -103,6 +146,9 @@ async def create_auction(
     base_price: float,
     start_time: str,
     duration: int,
+    seller_brand: Optional[str] = None,
+    company_name: Optional[str] = None,
+    estate_name: Optional[str] = None,
     description: str = None,
 ) -> Dict[str, Any]:
     """
@@ -124,13 +170,15 @@ async def create_auction(
     try:
         logger.info("[Auction] Creating auction: %s %skg from %s (seller: %s)", grade, quantity, origin, user_id)
 
-        # Core auction details only - backend will fetch seller info from user profile
+        seller_payload = _build_seller_payload(user_id=user_id, origin=origin)
+
+        # Core auction details + seller profile data resolved from the backend user table
         payload = {
             "auction_name": f"{grade} - {origin}",
             "seller_id": user_id,
-            "seller_brand": "TeaBlend Seller",
-            "company_name": "TeaBlend Seller",
-            "estate_name": origin,
+            "seller_brand": seller_brand or seller_payload["seller_brand"],
+            "company_name": company_name or seller_payload["company_name"],
+            "estate_name": estate_name or seller_payload["estate_name"],
             "grade": grade,
             "quantity": quantity,
             "origin": origin,
@@ -315,9 +363,6 @@ async def update_auction(
         payload: Dict[str, Any] = {
             "auction_name": existing.get("auction_name") or f"{existing.get('grade')} - {existing.get('origin')}",
             "seller_id": str(existing.get("seller_id") or user_id),
-            "seller_brand": existing.get("seller_brand") or "TeaBlend Seller",
-            "company_name": existing.get("company_name") or "TeaBlend Seller",
-            "estate_name": existing.get("estate_name") or existing.get("origin"),
             "grade": existing.get("grade"),
             "quantity": existing.get("quantity"),
             "origin": existing.get("origin"),
@@ -326,6 +371,17 @@ async def update_auction(
             "duration": existing.get("duration"),
             "description": existing.get("description"),
         }
+
+        seller_payload = _build_seller_payload(
+            user_id=str(existing.get("seller_id") or user_id),
+            origin=str(existing.get("origin") or ""),
+            fallback_seller_brand=str(existing.get("seller_brand") or "") or None,
+        )
+        payload.update({
+            "seller_brand": existing.get("seller_brand") or seller_payload["seller_brand"],
+            "company_name": existing.get("company_name") or seller_payload["company_name"],
+            "estate_name": existing.get("estate_name") or seller_payload["estate_name"],
+        })
 
         update_payload: Dict[str, Any] = {}
         if grade is not None:
@@ -511,6 +567,9 @@ async def list_tools() -> List[Tool]:
                     "base_price": {"type": "number", "description": "Starting bid price (LKR)"},
                     "start_time": {"type": "string", "description": "Auction start time (YYYY-MM-DD HH:MM)"},
                     "duration": {"type": "integer", "description": "Duration in minutes"},
+                    "seller_brand": {"type": "string", "description": "Optional seller brand override"},
+                    "company_name": {"type": "string", "description": "Optional company name override"},
+                    "estate_name": {"type": "string", "description": "Optional estate name override"},
                     "description": {"type": "string", "description": "Optional description"},
                 },
                 "required": ["user_id", "grade", "quantity", "origin", "base_price", "start_time", "duration"],
@@ -583,6 +642,9 @@ async def call_tool(name: str, arguments: Dict[str, Any]) -> List[TextContent]:
                 base_price=arguments["base_price"],
                 start_time=arguments["start_time"],
                 duration=arguments["duration"],
+                seller_brand=arguments.get("seller_brand"),
+                company_name=arguments.get("company_name"),
+                estate_name=arguments.get("estate_name"),
                 description=arguments.get("description"),
             )
         elif name == "get_auction":

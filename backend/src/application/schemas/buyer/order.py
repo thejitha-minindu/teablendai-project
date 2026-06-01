@@ -21,6 +21,14 @@ class PaymentDetails(BaseModel):
             return str(value)
         return value
 
+    @field_validator('payment_method', 'status', mode='before')
+    @classmethod
+    def convert_enum_to_string(cls, value):
+        if hasattr(value, 'value'):
+            return value.value
+        return value
+
+
 # Wins auction model
 class WinsAuction(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -54,6 +62,15 @@ class OrderData(BaseModel):
         if isinstance(value, UUID):
             return str(value)
         return value
+
+    @field_validator('status', mode='before')
+    @classmethod
+    def convert_enum_to_string(cls, value):
+        # SQLAlchemy Enum columns return Python enum objects — extract the value
+        if hasattr(value, 'value'):
+            return value.value
+        return value
+
 
 # For create order requests
 class OrderCreateRequest(BaseModel):

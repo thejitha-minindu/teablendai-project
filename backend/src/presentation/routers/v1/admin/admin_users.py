@@ -9,6 +9,14 @@ def get_pending():
     return {"users": users}
 
 
+@router.get("/search")
+def search_users(query: str):
+    if not query or len(query) < 2:
+        return {"users": []}
+    users = search_users_by_email(query)
+    return {"users": users}
+
+
 @router.put("/approve/{user_id}")
 def approve(user_id: str):
     approve_user(user_id)

@@ -22,6 +22,7 @@ class Auction(Base):
     description = Column(Text, nullable=True)
     base_price = Column(Float, nullable=False)
     start_time = Column(DateTime(timezone=True), nullable=False)
+    # Stored in minutes across API, DB writes, and frontend reads.
     duration = Column(Float, nullable=False)
     status = Column(String(20), default=AuctionStatus.SCHEDULE.value)
     buyer = Column(UNIQUEIDENTIFIER, nullable=True)

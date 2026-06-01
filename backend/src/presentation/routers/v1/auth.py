@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 from src.infrastructure.database.base import get_db
 from src.domain.models.user import User
+from src.domain.models.admin import Admin
 from src.application.schemas.user import Token, UserCreate, GoogleToken, RoleSwitchRequest
 from src.application.security import verify_password, get_password_hash, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from src.application.dependencies import get_current_user, get_token_payload
@@ -61,6 +62,8 @@ def build_token_response(user: User, active_role: str | None = None) -> dict:
             "role": resolved_role,
             "roles": roles,
             "id": str(user.user_id),
+            "first_name": user.first_name,
+            "last_name": user.last_name,
             "status": (user.verification_status or "PENDING").upper(),
         "seller_status": (
             "APPROVED" if (user.verification_status or "").upper() == "APPROVED" and (user.default_role or "").lower() == "seller"
@@ -138,6 +141,56 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
     
     return build_token_response(user)
+
+@router.post("/admin/login", response_model=Token)
+def admin_login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    logger.info(f"Admin login attempt for: {form_data.username}")
+
+    admin = db.query(Admin).filter(Admin.email == form_data.username).first()
+
+    if not admin:
+        logger.warning("Admin not found")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid admin credentials"
+        )
+
+    if admin.status != "active":
+        logger.warning(f"Login attempt by non-approved admin: {admin.email}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is suspended or inactive"
+        )
+
+    if not verify_password(form_data.password, admin.password):
+        logger.warning("Invalid password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect password"
+        )
+
+    admin.last_login = datetime.utcnow()
+    db.commit()
+
+    access_token = create_access_token(
+        data={
+            "sub": admin.email,
+            "role": "admin",
+            "id": str(admin.admin_id),
+            "status": "APPROVED",
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
+
+    logger.info("Admin login successful")
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
 
 @router.post("/google", response_model=Token)
 def google_auth(request: GoogleToken, db: Session = Depends(get_db)):

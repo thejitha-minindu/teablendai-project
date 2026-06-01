@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, LogOut, Home, Mail } from "lucide-react"; // Icons
-import { getStoredToken } from "@/lib/auth"; // Utility to check if user is logged in
+import { clearStoredAuthToken, getStoredToken } from "@/lib/auth"; // Utility to check if user is logged in
 
 function RejectedAccountContent() {
     // --- Next.js Hooks ---
@@ -53,8 +53,8 @@ function RejectedAccountContent() {
     // --- Logout Logic ---
     const handleLogout = () => {
         setIsLoading(true); // Show loading spinner
-        localStorage.removeItem("teablend_token"); // Delete the saved token
-        router.push("/auth"); // Send them back to the login page
+        clearStoredAuthToken();
+        router.replace("/auth"); // Send them back to the login page
     };
 
     // --- UI Render ---

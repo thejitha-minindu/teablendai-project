@@ -1,3 +1,5 @@
+import { clearStoredAuthToken } from "@/lib/auth";
+
 export const getUserFromToken = () => {
     try {
       if (typeof window === 'undefined') return null;
@@ -12,8 +14,7 @@ export const getUserFromToken = () => {
       return payload;
     } catch (error) {
       console.error("Failed to decode token", error);
-      // Optional: Clear corrupted token
-      localStorage.removeItem("teablend_token");
+      clearStoredAuthToken("expired");
       return null;
     }
 };

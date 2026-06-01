@@ -1,5 +1,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +22,7 @@ interface OrderCardDialogProps {
 }
 
 export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -157,15 +160,17 @@ export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
                   Go to Payment
                 </Button>
                 <Button
-                  variant="outline"
-                  className="hover:text-white hover:cursor-pointer"
-                  style={{ transition: "background 0.2s" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--color3)")
-                  }
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                  onClick={() => {
+                    if (orderId) {
+                      setIsOpen(false);
+                      router.push(`/messages/${orderId}`);
+                    }
+                  }}
+                  disabled={!orderId}
+                  className="bg-[#3A5A40] text-white hover:bg-[#1A2F1C] hover:cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
-                  Download Invoice
+                  <MessageCircle className="w-4 h-4" />
+                  Contact Seller
                 </Button>
               </DialogFooter>
             </div>

@@ -92,6 +92,13 @@ class UserProfileResponse(BaseModel):
     watch_list: list[str] = []
 
 
+class UserLookupResponse(BaseModel):
+    user_id: str
+    user_name: str
+    email: str
+    default_role: Literal["buyer", "seller"]
+
+
 class ChangePasswordRequest(BaseModel):
     current_password: str
     new_password: str

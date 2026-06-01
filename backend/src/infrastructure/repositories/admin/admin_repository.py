@@ -2,7 +2,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from src.infrastructure.database.models.auction_orm import AuctionORM
 from sqlalchemy import text
-from src.infrastructure.database.models.violation import Violation
 
 
 class AdminRepository:

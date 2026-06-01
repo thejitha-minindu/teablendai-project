@@ -51,6 +51,7 @@ class Settings(BaseSettings):
 
     TAVILY_API_KEY: Optional[str] = None
     AUCTION_API_BASE_URL: Optional[str] = None
+    CLOUDINARY_URL: Optional[str] = None
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
@@ -114,6 +115,11 @@ class Settings(BaseSettings):
     ANALYTICS_SNAPSHOT_RETENTION_DAYS: int = 90
     ANALYTICS_KPI_LOOKBACK_DAYS: int = 30
     ANALYTICS_CHART_MONTHS: int = 6
+
+    # Admin Configuration
+    ADMIN_USERNAME: Optional[str] = None
+    ADMIN_PASSWORD: Optional[str] = None
+    ADMIN_EMAIL: Optional[str] = None
 
     class Config:
         env_file = str(BACKEND_DIR / ".env")

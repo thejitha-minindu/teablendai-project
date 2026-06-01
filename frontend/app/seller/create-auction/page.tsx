@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation'; 
 import { ArrowRight, ArrowLeft, CheckCircle2, Home, Package, DollarSign } from 'lucide-react'; 
 import { apiClient } from '@/lib/apiClient';
+import axios from 'axios';
 import { toast } from 'sonner';
 
 const SRI_LANKAN_GRADES = [
@@ -19,11 +20,10 @@ export default function CreateAuctionPage() {
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [existingImageUrl, setExistingImageUrl] = useState<string>('');
 
   const [formData, setFormData] = useState({
-    companyName: '',
     estateName: '',
-    sellerBrand: '',
     grade: '',
     customGrade: '',
     quantity: '',
@@ -40,9 +40,47 @@ export default function CreateAuctionPage() {
     setMinDateTime(now.toISOString().slice(0, 16));
   }, []);
 
+  useEffect(() => {
+    try {
+      const relistStr = sessionStorage.getItem('relist_auction');
+      if (relistStr) {
+        const relistData = JSON.parse(relistStr);
+        
+        // Determine grade
+        let gradeVal = relistData.grade || '';
+        let customGradeVal = '';
+        if (gradeVal && !SRI_LANKAN_GRADES.includes(gradeVal)) {
+          customGradeVal = gradeVal;
+          gradeVal = 'Other';
+        }
+
+        setFormData({
+          estateName: relistData.estateName || '',
+          grade: gradeVal,
+          customGrade: customGradeVal,
+          quantity: relistData.quantity || '',
+          origin: relistData.origin || '',
+          description: relistData.description || '',
+          startingPrice: relistData.startingPrice || '',
+          scheduledStart: '',
+          duration: ''
+        });
+
+        if (relistData.image_url) {
+          setImagePreview(relistData.image_url);
+          setExistingImageUrl(relistData.image_url);
+        }
+
+        sessionStorage.removeItem('relist_auction');
+      }
+    } catch (e) {
+      console.error("Failed to load relist data", e);
+    }
+  }, []);
+
   const handleNext = () => {
     if (step === 1) {
-      if (!formData.companyName.trim() || !formData.estateName.trim()) {
+      if (!formData.estateName.trim()) {
         toast.error("Please fill in all required fields.");
         return;
       }
@@ -106,22 +144,44 @@ export default function CreateAuctionPage() {
       }
 
       const finalGrade = formData.grade === "Other" ? formData.customGrade : formData.grade;
-      let finalImageUrl = "";
+      let finalImageUrl = existingImageUrl;
 
       // 1. Upload the image if one is selected
       if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        const uploadRes = await apiClient.post('/auctions/upload-image', imageFormData, {
+        // Client-Side Pre-Upload Validation
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          toast.error("Invalid file type. Only JPEG, PNG, and WEBP are allowed.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        if (imageFile.size > 5 * 1024 * 1024) {
+          toast.error("File size too large. Maximum allowed is 5MB.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Fetch signature from backend
+        const signatureRes = await apiClient.get('/auctions/cloudinary-signature');
+        const { signature, timestamp, cloud_name, api_key } = signatureRes.data;
+
+        // Upload directly to Cloudinary using standard axios (no auth headers injected)
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+        const uploadData = new FormData();
+        uploadData.append("file", imageFile);
+        uploadData.append("api_key", api_key);
+        uploadData.append("timestamp", timestamp.toString());
+        uploadData.append("signature", signature);
+
+        const uploadRes = await axios.post(cloudinaryUrl, uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        finalImageUrl = uploadRes.data.image_url;
+        finalImageUrl = uploadRes.data.secure_url;
       }
 
       const payload = {
         auction_name: `${finalGrade} - ${formData.origin}`,
-        seller_brand: formData.sellerBrand || "",
-        company_name: formData.companyName,
         estate_name: formData.estateName,
         grade: finalGrade,
         quantity: parseFloat(formData.quantity),
@@ -130,7 +190,7 @@ export default function CreateAuctionPage() {
         image_url: finalImageUrl || undefined,
         base_price: parseInt(formData.startingPrice),
         start_time: new Date(formData.scheduledStart).toISOString(),
-        duration: parseFloat(formData.duration)
+        duration: Math.round(parseFloat(formData.duration) * 60)
       };
 
       const response = await apiClient.post('/auctions', payload);
@@ -226,43 +286,15 @@ export default function CreateAuctionPage() {
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 ml-1">Company Name <span className="text-red-500">*</span></label>
-                  <input 
-                    required={step === 1}
-                    type="text" 
-                    value={formData.companyName}
-                    onChange={(e) => setFormData({...formData, companyName: e.target.value})}
-                    className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                    placeholder="e.g., Nuwara Eliya Plantations Ltd."
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <label className="font-bold text-gray-700 ml-1">Estate Name <span className="text-red-500">*</span></label>
-                  <input 
-                    required={step === 1}
-                    type="text" 
-                    value={formData.estateName}
-                    onChange={(e) => setFormData({...formData, estateName: e.target.value})}
-                    className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                    placeholder="e.g., Pedro Estate"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-2">
-                <label className="font-bold text-gray-700 ml-1 flex items-center gap-2">
-                  Seller Brand Name 
-                  <span className="bg-gray-100 text-gray-500 text-[10px] uppercase font-bold tracking-wider px-2 py-1 rounded-full">Optional</span>
-                </label>
+                <label className="font-bold text-gray-700 ml-1">Estate Name <span className="text-red-500">*</span></label>
                 <input 
+                  required={step === 1}
                   type="text" 
-                  value={formData.sellerBrand}
-                  onChange={(e) => setFormData({...formData, sellerBrand: e.target.value})}
+                  value={formData.estateName}
+                  onChange={(e) => setFormData({...formData, estateName: e.target.value})}
                   className="w-full bg-gray-50/80 border-2 border-gray-200 rounded-xl p-4 text-gray-800 focus:bg-white focus:ring-4 focus:ring-[#E5F7CB] focus:border-[#3A5A40] transition-all outline-none shadow-sm" 
-                  placeholder="e.g., Lover's Leap Authentic (Leave blank to use default)"
+                  placeholder="e.g., Pedro Estate"
                 />
               </div>
 

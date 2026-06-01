@@ -9,6 +9,7 @@ export default function BuyerLayout({
   children: React.ReactNode;
 }) {
   return (
+    // Buyer routes are protected and require authentication
     <ProtectedRoute requiredRole="buyer">
       <SidebarProvider>
         <NavSidebar />

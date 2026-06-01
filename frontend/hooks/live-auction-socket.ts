@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createAuctionBidSocket } from "@/services/buyer/LiveAuctionSocketService";
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
+import { subscribeToAuthChanges } from "@/lib/auth";
 
 export function useAuctionBidsSocket(auctionId: string) {
   const [connected, setConnected] = useState(false);
@@ -19,6 +20,14 @@ export function useAuctionBidsSocket(auctionId: string) {
 
   useEffect(() => {
     if (!auctionId) return;
+
+    const cleanupSocket = (socket: WebSocket) => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (extensionTimeoutRef.current) clearTimeout(extensionTimeoutRef.current);
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    };
 
     const ws = createAuctionBidSocket(
       auctionId,
@@ -87,11 +96,16 @@ export function useAuctionBidsSocket(auctionId: string) {
       });
     }, 1000);
 
+    const unsubscribe = subscribeToAuthChanges((detail) => {
+      if (detail.reason === "logout" || detail.reason === "expired") {
+        cleanupSocket(ws);
+      }
+    });
+
     return () => {
+      unsubscribe();
       clearInterval(ping);
-      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-      if (extensionTimeoutRef.current) clearTimeout(extensionTimeoutRef.current);
-      ws.close();
+      cleanupSocket(ws);
     };
   }, [auctionId]);
 
