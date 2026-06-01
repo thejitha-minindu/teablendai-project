@@ -2,22 +2,22 @@
 
 import { useState } from "react";
 import { UseractivityCard } from "@/components/admincomponents/systemactivity";
-import { 
-  Search, 
-  Filter, 
-  Activity, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight,
-  Download,
-  X,
-  TrendingUp,
-  Users,
-  FileText,
-  CreditCard,
-  Settings,
-  CheckCircle,
-  Clock
+import {
+    Search,
+    Filter,
+    Activity,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    X,
+    TrendingUp,
+    Users,
+    FileText,
+    CreditCard,
+    Settings,
+    CheckCircle,
+    Clock
 } from "lucide-react";
 
 export default function SystemActivityPage() {
@@ -144,10 +144,10 @@ export default function SystemActivityPage() {
     // Filter activities
     const filteredActivities = activities.filter(activity => {
         const matchesSearch = activity.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             activity.activityType.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             activity.id.toLowerCase().includes(searchTerm.toLowerCase());
+            activity.activityType.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            activity.id.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesActivity = activityFilter === "all" || activity.activityType === activityFilter;
-        
+
         let matchesDate = true;
         if (dateRange.start) {
             matchesDate = matchesDate && activity.timestamp >= dateRange.start;
@@ -155,7 +155,7 @@ export default function SystemActivityPage() {
         if (dateRange.end) {
             matchesDate = matchesDate && activity.timestamp <= `${dateRange.end} 23:59:59`;
         }
-        
+
         return matchesSearch && matchesActivity && matchesDate;
     });
 
@@ -270,7 +270,7 @@ export default function SystemActivityPage() {
                             className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
                         />
                     </div>
-                    
+
                     <select
                         value={activityFilter}
                         onChange={(e) => {
@@ -340,7 +340,7 @@ export default function SystemActivityPage() {
             ) : (
                 <div className="space-y-4">
                     {paginatedActivities.map((activity) => (
-                        <UseractivityCard 
+                        <UseractivityCard
                             key={activity.id}
                             id={activity.id}
                             userName={activity.userName}
@@ -369,11 +369,10 @@ export default function SystemActivityPage() {
                             <button
                                 key={page}
                                 onClick={() => handlePageChange(page)}
-                                className={`px-3 py-1 rounded-lg transition-all ${
-                                    currentPage === page
+                                className={`px-3 py-1 rounded-lg transition-all ${currentPage === page
                                         ? "bg-green-600 text-white"
                                         : "border border-gray-300 hover:bg-gray-100"
-                                }`}
+                                    }`}
                             >
                                 {page}
                             </button>
