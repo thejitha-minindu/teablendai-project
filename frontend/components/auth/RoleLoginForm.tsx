@@ -12,7 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { getAuthClaims, getHomePathByRole, setStoredAuthToken, type UserRole } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
-import authService from "@/services/authService";
+import authService, { GoogleCredentialResponse } from "@/services/authService";
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -32,7 +32,6 @@ const ROLE_CONFIG = {
     title: "Buyer Sign In",
     subtitle: "Access auctions, orders, and your TeaBlend AI dashboard",
     description: "Please sign in to continue your tea blending journey",
-    icon: User,
     imageAlt: "Tea buyer exploring products",
     registerPath: "/auth/buyer/register",
     forgotPasswordPath: "/auth/forgot-password?role=buyer",
@@ -43,7 +42,6 @@ const ROLE_CONFIG = {
     title: "Seller Sign In",
     subtitle: "Manage auctions, listings, and your seller workspace",
     description: "Please sign in to manage your tea business",
-    icon: Store,
     imageAlt: "Tea seller managing inventory",
     registerPath: "/auth/seller/register",
     forgotPasswordPath: "/auth/forgot-password?role=seller",
@@ -124,16 +122,14 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       formData.append("username", email);
       formData.append("password", password);
 
-      const response = await apiClient.post("/auth/login", formData, {
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      });
+      const response = await authService.login(email, password);
 
-      setStoredAuthToken(response.data.access_token);
-      
+      setStoredAuthToken(response.access_token);
+
       if (rememberMe) {
         localStorage.setItem("remember_me", "true");
       }
-      
+
       await routeApprovedUser();
     } catch (error: any) {
       console.error("Login failed:", error);
@@ -143,18 +139,19 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: any) => {
+  const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse ) => {
+    setIsLoading(true);
     setErrorMsg("");
-    try {
-      const response = await apiClient.post("/auth/google", {
-        token: credentialResponse.credential,
-      });
 
-      setStoredAuthToken(response.data.access_token);
+    try {
+      const data = await authService.googleLogin(credentialResponse.credential);
+
       await routeApprovedUser();
     } catch (error) {
       console.error("Google login failed:", error);
       setErrorMsg("Google authentication failed. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -263,7 +260,7 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@example.com"
+                          placeholder="name@gmail.com"
                           className="h-10 rounded-lg border pl-9 text-sm focus:border-green-500 focus:ring-green-500/20"
                           required
                         />
@@ -349,7 +346,7 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
                   <div className="rounded-lg border border-gray-200 bg-gray-50/80 p-3 text-center">
                     <p className="text-xs text-gray-600">
-                      Don&apos;t have a {role} account?{" "}
+                      Don't have a {role} account?{" "}
                       <Link
                         href={`${config.registerPath}${redirectPath ? `?redirect=${encodeURIComponent(redirectPath)}` : ""}`}
                         className="inline-flex items-center gap-1 font-semibold text-green-700 transition-colors hover:text-green-800 hover:underline"
