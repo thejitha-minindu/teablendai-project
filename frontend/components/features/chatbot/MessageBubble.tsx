@@ -10,6 +10,7 @@ import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { formatDurationFromMinutes } from "@/utils/dateFormatter";
+import { highlightText } from "./chatSearchUtils";
 
 // Constants
 const AUCTION_ROW_LEVEL_KEYS = [
@@ -44,20 +45,22 @@ interface MessageBubbleProps {
   message: ChatMessage;
   onSendMessage?: (message: string) => void;
   isActionEnabled?: boolean;
+  highlightTerms?: string[];
+  isHighlighted?: boolean;
 }
 
 // Utility Functions
-const renderInlineMarkdown = (text: string): ReactNode[] => {
+const renderInlineMarkdown = (text: string, highlightTerms: string[] = []): ReactNode[] => {
   const segments = text.split(/(\*\*[^*]+\*\*)/g);
   return segments.map((segment, index) => {
     if (segment.startsWith("**") && segment.endsWith("**") && segment.length > 4) {
-      return <strong key={`b-${index}`}>{segment.slice(2, -2)}</strong>;
+      return <strong key={`b-${index}`}>{highlightText(segment.slice(2, -2), highlightTerms)}</strong>;
     }
-    return <span key={`t-${index}`}>{segment}</span>;
+    return <span key={`t-${index}`}>{highlightText(segment, highlightTerms)}</span>;
   });
 };
 
-const renderMessageContent = (content: string): ReactNode => {
+const renderMessageContent = (content: string, highlightTerms: string[] = []): ReactNode => {
   const lines = content
     .split("\n")
     .map((line) => line.trim())
@@ -71,7 +74,7 @@ const renderMessageContent = (content: string): ReactNode => {
     nodes.push(
       <ul key={`ul-${keySuffix}`} className="list-disc pl-5 space-y-1">
         {bullets.map((item, idx) => (
-          <li key={`li-${keySuffix}-${idx}`}>{renderInlineMarkdown(item)}</li>
+          <li key={`li-${keySuffix}-${idx}`}>{renderInlineMarkdown(item, highlightTerms)}</li>
         ))}
       </ul>
     );
@@ -84,7 +87,7 @@ const renderMessageContent = (content: string): ReactNode => {
       return;
     }
     flushBullets(index);
-    nodes.push(<p key={`p-${index}`}>{renderInlineMarkdown(line)}</p>);
+    nodes.push(<p key={`p-${index}`}>{renderInlineMarkdown(line, highlightTerms)}</p>);
   });
 
   flushBullets(lines.length + 1);
@@ -233,8 +236,8 @@ const DetailRow = memo(function DetailRow({
   if (!value && value !== 0) return null;
   return (
     <div className="grid grid-cols-[140px_1fr] gap-2">
-      <dt className="font-medium text-gray-600">{label}</dt>
-      <dd>{value}</dd>
+      <span className="font-medium text-gray-600">{label}</span>
+      <span>{value}</span>
     </div>
   );
 });
@@ -378,18 +381,23 @@ const LoadingBubble = memo(function LoadingBubble() {
 });
 
 // User Message Component
-const UserMessage = memo(function UserMessage({ content }: { content: string }) {
+interface UserMessageProps {
+  content: string;
+  highlightTerms?: string[];
+}
+
+const UserMessage = memo(function UserMessage({ content: messageContent, highlightTerms = [] }: UserMessageProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(messageContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Copy failed", err);
     }
-  }, [content]);
+  }, [messageContent]);
 
   return (
     <div className="flex justify-end">
@@ -413,7 +421,7 @@ const UserMessage = memo(function UserMessage({ content }: { content: string }) 
           </TooltipContent>
         </Tooltip>
 
-        <p className="text-sm whitespace-pre-wrap pr-6">{content}</p>
+        <p className="text-sm whitespace-pre-wrap pr-6">{renderInlineMarkdown(messageContent, highlightTerms)}</p>
       </div>
 
       <div className="w-8 h-8 ml-2 rounded-full bg-[#558332] flex items-center justify-center text-white shrink-0">
@@ -483,6 +491,8 @@ export default function MessageBubble({
   message,
   onSendMessage,
   isActionEnabled = true,
+  highlightTerms = [],
+  isHighlighted = false,
 }: MessageBubbleProps) {
   const [actionClicked, setActionClicked] = useState(false);
 
@@ -618,7 +628,7 @@ export default function MessageBubble({
 
   // User message
   if (isUser) {
-    return <UserMessage content={message.content} />;
+    return <UserMessage content={message.content} highlightTerms={highlightTerms} />;
   }
 
   // Field input prompt
@@ -637,7 +647,7 @@ export default function MessageBubble({
         <div className="max-w-[85%] space-y-2">
           <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
             <div className="text-sm text-gray-800 leading-relaxed">
-              {renderMessageContent(message.content)}
+              {renderMessageContent(message.content, highlightTerms)}
             </div>
             {validationPayload?.field_errors?.length ? (
               <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
@@ -718,7 +728,7 @@ export default function MessageBubble({
         />
       );
     }
-    return renderMessageContent(message.content);
+    return renderMessageContent(message.content, highlightTerms);
   }, [
     showStructuredAuctionConfirmation,
     showStructuredCreatedMessage,
@@ -730,6 +740,7 @@ export default function MessageBubble({
     structuredCardTitle,
     structuredDisplay,
     message.content,
+    highlightTerms,
   ]);
 
   return (
@@ -741,9 +752,9 @@ export default function MessageBubble({
       <div className="flex-1 max-w-[85%] space-y-3">
         {/* Main Message Bubble */}
         <div
-          className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border ${
+          className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border transition-all duration-200 ${
             isAuctionMessage ? "bg-purple-50 border-purple-200" : "bg-white border-gray-200"
-          }`}
+          } ${isHighlighted ? "ring-2 ring-[#D6B25E] shadow-lg" : ""}`}
         >
           {/* Copy Button */}
           <Tooltip>
