@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 from sqlalchemy.dialects import mssql
 
 
@@ -19,35 +20,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _inspector():
+    return inspect(op.get_bind())
+
+
 def _table_exists(table_name: str) -> bool:
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text(
-            """
-            SELECT 1
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_NAME = :table_name
-            """
-        ),
-        {"table_name": table_name},
-    ).first()
-    return result is not None
+    return table_name in _inspector().get_table_names()
 
 
 def _index_exists(table_name: str, index_name: str) -> bool:
-    conn = op.get_bind()
-    result = conn.execute(
-        sa.text(
-            """
-            SELECT 1
-            FROM sys.indexes
-            WHERE object_id = OBJECT_ID(:table_name)
-              AND name = :index_name
-            """
-        ),
-        {"table_name": table_name, "index_name": index_name},
-    ).first()
-    return result is not None
+    if not _table_exists(table_name):
+        return False
+    return any(index["name"] == index_name for index in _inspector().get_indexes(table_name))
 
 
 def upgrade() -> None:
@@ -65,7 +49,10 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(['user_id'], ['users.user_id'], ),
             sa.PrimaryKeyConstraint('id')
         )
+
+    if not _index_exists('password_resets', op.f('ix_password_resets_id')):
         op.create_index(op.f('ix_password_resets_id'), 'password_resets', ['id'], unique=False)
+    if not _index_exists('password_resets', op.f('ix_password_resets_user_id')):
         op.create_index(op.f('ix_password_resets_user_id'), 'password_resets', ['user_id'], unique=False)
 
 

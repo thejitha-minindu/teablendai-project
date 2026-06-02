@@ -69,7 +69,7 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-type UserRole = "seller" | "buyer" | "analytics";
+type UserRole = "seller" | "buyer" | "analytics" | "admin";
 
 const sellerNavItems: NavItem[] = [
   { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
@@ -117,6 +117,8 @@ const getRoleDisplayName = (role: UserRole): string => {
       return "Seller";
     case "buyer":
       return "Buyer";
+    case "admin":
+      return "Admin";
     default:
       return "User";
   }

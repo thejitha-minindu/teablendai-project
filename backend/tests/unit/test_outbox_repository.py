@@ -5,7 +5,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from src.domain.models.outbox import AuctionOutbox
 from src.infrastructure.repositories.outbox_repository import OutboxRepository
-from src.domain.models.base import Base
+from src.infrastructure.database.base import Base
 import json
 
 
@@ -30,6 +30,7 @@ def test_save_event(db_session):
         event_type="BID_CREATED",
         payload='{"bid_id":"bid-1","amount":150}'
     )
+    db_session.flush()
     
     assert event.event_id == "evt-1"
     assert event.auction_id == "auc-1"
@@ -80,7 +81,7 @@ def test_mark_published(db_session):
     
     event = repo.get_event_by_id("evt-1")
     assert event.published_at is not None
-    assert event.published_at.replace(tzinfo=None) > datetime.now(timezone.utc).replace(tzinfo=None) - timezone.utc.localize(datetime.now()).utcoffset()
+    assert abs((event.published_at - datetime.utcnow()).total_seconds()) < 5
 
 
 def test_increment_retry(db_session):

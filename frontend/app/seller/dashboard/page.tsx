@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Plus, Leaf, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';
@@ -31,9 +31,9 @@ const isSameDay = (d1: Date, d2: Date) => {
          d1.getDate() === d2.getDate();
 };
 
-// --- HELPER: Calculate Countdown ---
+// HELPER: Calculate Countdown for both live and scheduled auctions
 const calculateCountdown = (auction: any) => {
-    // 1. Use the safe parsing function already in your file!
+    // 1. Use the safe parsing function already in the file!
     const startDate = parseBackendDateTime(auction.rawStart);
     
     // If it completely fails to parse, return a safe fallback instead of NaN
@@ -76,9 +76,8 @@ export default function SellerDashboardPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [allAuctions, setAllAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // --- NEW STATE: Selected Auction for Modal ---
   const [selectedAuction, setSelectedAuction] = useState<any | null>(null);
+  const isFetching = useRef(false);
 
   // Today's date
   const today = useMemo(() => {
@@ -87,15 +86,18 @@ export default function SellerDashboardPage() {
     return d;
   }, []);
 
-  // --- 1. FETCH DATA ---
+  // FETCH DATA FUNCTION
   const fetchAllData = async () => {
+      if (isFetching.current) return;
       try {
+        isFetching.current = true;
         setLoading(true);
 
         // 1. Decode the token to get YOUR specific user ID
         const payload = getUserFromToken();
         if (!payload || !payload.id) {
           setLoading(false);
+          isFetching.current = false;
           return;
         }
         const myUserId = payload.id;
@@ -107,7 +109,6 @@ export default function SellerDashboardPage() {
             apiClient.get(`/auctions/status/history?seller_id=${myUserId}`)
         ]);
 
-        // Axios automatically parses JSON, so we just grab the .data property
         const liveData = liveRes.data;
         const schedData = schedRes.data;
         const histData = histRes.data;
@@ -115,8 +116,7 @@ export default function SellerDashboardPage() {
         const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
             const dateObj = parseBackendDateTime(item.start_time) || new Date();
             
-            // Map the backend status (which might be "SCHEDULE", "Scheduled", "live", "Live") 
-            // to the exact string your UI expects.
+            // Map the backend status to the exact string the UI expects.
             let displayStatus = 'Scheduled';
             if (type === 'live') displayStatus = 'Live';
             if (type === 'history') displayStatus = item.status ? item.status : 'Sold';
@@ -161,6 +161,7 @@ export default function SellerDashboardPage() {
         console.error("Failed to load dashboard data", error);
       } finally {
         setLoading(false);
+        isFetching.current = false;
       }
   };
 
@@ -171,10 +172,35 @@ export default function SellerDashboardPage() {
   // --- 2. TIMER EFFECT ---
   useEffect(() => {
     const timer = setInterval(() => {
+        let transitionDetected = false;
+
         setAllAuctions(prevAuctions => 
             prevAuctions.map(auc => {
                 if (auc.type === 'history') return auc;
                 const newCountdown = calculateCountdown(auc);
+                
+                // Detect transitions
+                if (auc.type === 'scheduled') {
+                    const startDate = parseBackendDateTime(auc.rawStart);
+                    if (startDate) {
+                        const diff = startDate.getTime() - Date.now();
+                        if (diff <= 0) {
+                            transitionDetected = true;
+                        }
+                    }
+                } else if (auc.type === 'live') {
+                    const startDate = parseBackendDateTime(auc.rawStart);
+                    if (startDate) {
+                        const durationValue = Number(auc.duration) || 0;
+                        const durationMinutes = durationToMinutes(durationValue);
+                        const targetTime = startDate.getTime() + (durationMinutes * 60 * 1000);
+                        const diff = targetTime - Date.now();
+                        if (diff <= 0) {
+                            transitionDetected = true;
+                        }
+                    }
+                }
+
                 if (newCountdown === auc.countdown) {
                   // No change, return same reference
                   return auc;
@@ -182,6 +208,10 @@ export default function SellerDashboardPage() {
                 return { ...auc, countdown: newCountdown };
             })
         );
+
+        if (transitionDetected && !isFetching.current) {
+            fetchAllData();
+        }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -211,6 +241,46 @@ export default function SellerDashboardPage() {
       if (isSameDay(targetDate, today) && a.type === 'live') return true;
       return isSameDay(a.dateObj, targetDate);
   });
+
+  const headerAction = useMemo(() => {
+    const targetDateTime = new Date(targetDate);
+    targetDateTime.setHours(0, 0, 0, 0);
+    const todayTime = new Date(today);
+    todayTime.setHours(0, 0, 0, 0);
+
+    if (targetDateTime.getTime() > todayTime.getTime()) {
+      return (
+        <Link 
+          href="/seller/scheduled" 
+          className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+        >
+          View Scheduled
+        </Link>
+      );
+    } else if (targetDateTime.getTime() < todayTime.getTime()) {
+      return (
+        <Link 
+          href="/seller/history" 
+          className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+        >
+          View History
+        </Link>
+      );
+    } else {
+      const hasLiveAuctions = allAuctions.some(a => a.type === 'live');
+      if (hasLiveAuctions) {
+        return (
+          <Link 
+            href="/seller/live" 
+            className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+          >
+            View Live
+          </Link>
+        );
+      }
+      return null;
+    }
+  }, [targetDate, today, allAuctions]);
 
   return (
     <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
@@ -312,9 +382,7 @@ export default function SellerDashboardPage() {
                         {isSameDay(targetDate, today) ? "Today's Auctions" : `Auctions on ${formatDateTitle(targetDate)}`}
                     </h2>
                 </div>
-                {!isSameDay(targetDate, today) && (
-                    <Link href="/seller/history" className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline">View History</Link>
-                )}
+                {headerAction}
             </div>
 
             {loading ? (

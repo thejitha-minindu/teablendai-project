@@ -83,6 +83,7 @@ class Settings(BaseSettings):
 
     TAVILY_API_KEY: Optional[str] = None
     AUCTION_API_BASE_URL: Optional[str] = None
+    CLOUDINARY_URL: Optional[str] = None
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
