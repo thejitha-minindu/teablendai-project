@@ -3,21 +3,21 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { 
-  Bell, 
-  History, 
-  Send, 
-  X, 
-  Mail, 
-  Users, 
-  AlertCircle,
-  CheckCircle,
-  Tag,
-  UserCheck,
-  FileText,
-  MessageSquare,
-  Scale,
-  ShoppingBag
+import {
+    Bell,
+    History,
+    Send,
+    X,
+    Mail,
+    Users,
+    AlertCircle,
+    CheckCircle,
+    Tag,
+    UserCheck,
+    FileText,
+    MessageSquare,
+    Scale,
+    ShoppingBag
 } from "lucide-react";
 
 export default function CreateNotificationPage() {
@@ -31,7 +31,7 @@ export default function CreateNotificationPage() {
     });
     const [sending, setSending] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    
+
     // Auto-suggest state
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
@@ -89,7 +89,7 @@ export default function CreateNotificationPage() {
         }
 
         setSending(true);
-        
+
         try {
             // Map frontend type labels to backend NotificationTypeEnum
             let backendType = "system";
@@ -110,9 +110,9 @@ export default function CreateNotificationPage() {
             };
 
             await apiClient.post("/notifications/", payload);
-            
+
             setShowSuccess(true);
-            
+
             // Reset form after success
             setTimeout(() => {
                 setShowSuccess(false);
@@ -264,11 +264,10 @@ export default function CreateNotificationPage() {
                                         key={option.value}
                                         type="button"
                                         onClick={() => handleInputChange("revisers", option.value)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
-                                            formData.revisers === option.value
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${formData.revisers === option.value
                                                 ? "bg-green-600 border-green-600 text-white"
                                                 : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                                        }`}
+                                            }`}
                                     >
                                         {option.icon}
                                         {option.label}
@@ -296,10 +295,10 @@ export default function CreateNotificationPage() {
                                             <p className="text-xs text-gray-500">{selectedUser.email}</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setSelectedUser(null);
-                                            setFormData(prev => ({...prev, reviserSpecify: ""}));
+                                            setFormData(prev => ({ ...prev, reviserSpecify: "" }));
                                         }}
                                         className="p-1 hover:bg-green-200 rounded-full text-green-700"
                                     >
@@ -322,7 +321,7 @@ export default function CreateNotificationPage() {
                                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
                                         </div>
                                     )}
-                                    
+
                                     {/* Auto-suggest Dropdown */}
                                     {showDropdown && searchResults.length > 0 && (
                                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -333,7 +332,7 @@ export default function CreateNotificationPage() {
                                                     onClick={() => {
                                                         setSelectedUser(user);
                                                         setShowDropdown(false);
-                                                        setFormData(prev => ({...prev, reviserSpecify: user.email}));
+                                                        setFormData(prev => ({ ...prev, reviserSpecify: user.email }));
                                                     }}
                                                     className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3 transition-colors"
                                                 >

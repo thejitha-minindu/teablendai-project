@@ -1,5 +1,4 @@
 "use client";
-import { useEffect } from "react";
 
 const tableFields: Record<string, string[]> = {
     TeaPurchase: [
@@ -35,10 +34,6 @@ export default function Step2Mapping({
     mapping,
     setMapping,
 }: any) {
-    useEffect(() => {
-        setMapping({});
-    }, [table, setMapping]);
-
     return (
         <div>
             <h2 className="font-semibold mb-4">Map Columns</h2>

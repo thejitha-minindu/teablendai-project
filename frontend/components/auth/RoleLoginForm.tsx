@@ -64,7 +64,6 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
   const redirectPath = getSafeRedirectPath(searchParams.get("redirect"));
   const config = ROLE_CONFIG[role];
-  const IconComponent = config.icon;
 
   const routeApprovedUser = async () => {
     try {
@@ -139,7 +138,11 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse ) => {
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    if (!credentialResponse?.credential) {
+      setErrorMsg("Google authentication failed. No credentials returned.");
+      return;
+    }
     setIsLoading(true);
     setErrorMsg("");
 
@@ -155,8 +158,10 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
     }
   };
 
+  const HAS_GOOGLE_CLIENT = !!GOOGLE_CLIENT_ID;
+
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <>
       <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-green-50">
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
@@ -226,19 +231,29 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
                 <div className="space-y-4">
                   {/* Google Sign-In */}
-                  <div className="flex justify-center w-full">
-                    <div className="w-full flex justify-center bg-white border hover:bg-gray-50 transition-colors rounded-full overflow-hidden [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full">
-                      <GoogleLogin
-                        onSuccess={handleGoogleLogin}
-                        onError={() => setErrorMsg("Google Login Failed")}
-                        useOneTap
-                        theme="outline"
-                        size="large"
-                        shape="pill"
-                        text="continue_with"
-                      />
+                  {HAS_GOOGLE_CLIENT ? (
+                    <div className="flex justify-center w-full">
+                      <div className="w-full flex justify-center bg-white border hover:bg-gray-50 transition-colors rounded-full overflow-hidden [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full">
+                        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                          <GoogleLogin
+                            onSuccess={handleGoogleLogin}
+                            onError={() => setErrorMsg("Google Login Failed")}
+                            useOneTap
+                            theme="outline"
+                            size="large"
+                            shape="pill"
+                            text="continue_with"
+                          />
+                        </GoogleOAuthProvider>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex justify-center w-full">
+                      <div className="w-full flex justify-center bg-white border rounded-full p-3 text-sm text-gray-500">
+                        Google Sign-In not configured.
+                      </div>
+                    </div>
+                  )}
 
                   <div className="relative">
                     <Separator className="my-4" />
@@ -362,6 +377,6 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
           </div>
         </main>
       </div>
-    </GoogleOAuthProvider>
+    </>
   );
 }

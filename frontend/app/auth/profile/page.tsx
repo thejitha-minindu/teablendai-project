@@ -433,7 +433,7 @@ export default function AuthProfilePage() {
     try {
       const response = await apiClient.post<{ profile_image_url: string }>("/profile/upload-image", formData, {
         headers: {
-          "Content-Type": "multipart/form-data",
+          "Content-Type": undefined,
         },
       });
 

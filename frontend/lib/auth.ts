@@ -19,7 +19,9 @@ export type AuthChangeReason =
   | "logout"
   | "expired"
   | "refresh"
-  | "switch-role";
+  | "switch-role"
+  | "google"
+  | "manual";
 
 export type AuthChangeDetail = {
   at: number;

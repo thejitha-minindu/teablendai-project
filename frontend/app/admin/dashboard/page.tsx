@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Bell, 
-  Database, 
-  AlertTriangle, 
-  ShoppingBag, 
-  Store, 
-  Gavel, 
-  TrendingUp, 
+import {
+  Bell,
+  Database,
+  AlertTriangle,
+  ShoppingBag,
+  Store,
+  Gavel,
+  TrendingUp,
   BarChart3,
   Users,
   Send,
@@ -65,23 +65,23 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Buyers" 
-          value={String(totalBuyers)} 
+        <StatCard
+          title="Total Buyers"
+          value={String(totalBuyers)}
           sub={`Pending: ${pendingBuyers}`}
           icon={<ShoppingBag className="w-6 h-6 text-green-600" />}
           iconBg="bg-green-100"
         />
-        <StatCard 
-          title="Total Sellers" 
-          value={String(totalSellers)} 
+        <StatCard
+          title="Total Sellers"
+          value={String(totalSellers)}
           sub={`Pending: ${pendingSellers}`}
           icon={<Store className="w-6 h-6 text-purple-600" />}
           iconBg="bg-purple-100"
         />
-        <StatCard 
-          title="Total Auctions" 
-          value={String(totalAuctions)} 
+        <StatCard
+          title="Total Auctions"
+          value={String(totalAuctions)}
           sub={`Live: ${liveAuctions}`}
           icon={<Gavel className="w-6 h-6 text-blue-600" />}
           iconBg="bg-blue-100"
