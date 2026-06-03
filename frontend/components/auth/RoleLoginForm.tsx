@@ -64,7 +64,6 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
   const redirectPath = getSafeRedirectPath(searchParams.get("redirect"));
   const config = ROLE_CONFIG[role];
-  const IconComponent = config.icon;
 
   const routeApprovedUser = async () => {
     try {
@@ -139,7 +138,11 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse ) => {
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    if (!credentialResponse?.credential) {
+      setErrorMsg("Google authentication failed. No credentials returned.");
+      return;
+    }
     setIsLoading(true);
     setErrorMsg("");
 

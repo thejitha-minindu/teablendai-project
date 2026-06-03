@@ -103,11 +103,12 @@ export default function ProtectedRoute({
       validate(detail.reason);
     });
 
-    window.addEventListener("focus", validate);
+    const handleFocus = () => validate();
+    window.addEventListener("focus", handleFocus);
 
     return () => {
       unsubscribe();
-      window.removeEventListener("focus", validate);
+      window.removeEventListener("focus", handleFocus);
     };
   }, [pathname, requiredRole, router]);
 

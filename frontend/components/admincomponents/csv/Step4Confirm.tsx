@@ -33,7 +33,11 @@ export default function Step4Confirm({
         formData.append("mapping", JSON.stringify(mapping));
 
         try {
-            const response = await apiClient.post("/admin/csv-upload", formData);
+            const response = await apiClient.post("/admin/csv-upload", formData, {
+                headers: {
+                    "Content-Type": undefined,
+                },
+            });
 
             const result = response.data;
             alert("Upload success!");

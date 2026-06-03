@@ -5,6 +5,7 @@ import {
   clearStoredAuthToken,
   getStoredToken,
   setStoredAuthToken,
+  AuthChangeReason,
 } from "@/lib/auth";
 
 interface ForgotPasswordResponse {
@@ -104,11 +105,11 @@ class AuthService {
     return getStoredToken();
   }
 
-  setToken(token: string, source = 'manual'): void {
+  setToken(token: string, source: AuthChangeReason = 'manual'): void {
     setStoredAuthToken(token, source);
   }
 
-  clearToken(source = 'logout'): void {
+  clearToken(source: AuthChangeReason = 'logout'): void {
     clearStoredAuthToken(source);
   }
 
