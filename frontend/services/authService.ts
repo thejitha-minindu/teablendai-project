@@ -44,9 +44,6 @@ export interface CurrentUserResponse {
   default_role: "buyer" | "seller";
   active_role?: "buyer" | "seller";
   available_roles?: Array<"buyer" | "seller">;
-  default_role: "buyer" | "seller";
-  active_role?: "buyer" | "seller";
-  available_roles?: Array<"buyer" | "seller">;
   profile_image_url?: string;
   nic?: string;
   shipping_address?: string;
@@ -138,10 +135,7 @@ class AuthService {
     phoneNum: string,
     defaultRole: "buyer" | "seller" = "buyer",
     shippingAddress?: string,
-    defaultRole: "buyer" | "seller" = "buyer",
-    shippingAddress?: string,
   ): Promise<RegisterResponse> {
-    const response = await apiClient.post<RegisterResponse>("/auth/register", {
     const response = await apiClient.post<RegisterResponse>("/auth/register", {
       email,
       password,
@@ -160,13 +154,9 @@ class AuthService {
     const formData = new URLSearchParams();
     formData.append("username", email);
     formData.append("password", password);
-    formData.append("username", email);
-    formData.append("password", password);
 
     const response = await apiClient.post<LoginResponse>("/auth/login", formData, {
-    const response = await apiClient.post<LoginResponse>("/auth/login", formData, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
@@ -198,14 +188,9 @@ class AuthService {
 
   async getCurrentUser(): Promise<CurrentUserResponse> {
     const response = await apiClient.get<CurrentUserResponse>("/users/me");
-    const response = await apiClient.get<CurrentUserResponse>("/users/me");
     return response.data;
   }
 
-  async getCurrentAdmin(): Promise<CurrentUserResponse> {
-    const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
-    return response.data;
-  }
   async getCurrentAdmin(): Promise<CurrentUserResponse> {
     const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
     return response.data;
@@ -213,14 +198,12 @@ class AuthService {
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
     const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
-    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
       email,
     });
     return response.data;
   }
 
   async verifyOTP(email: string, otpCode: string): Promise<VerifyOTPResponse> {
-    const response = await apiClient.post<VerifyOTPResponse>("/auth/verify-otp", {
     const response = await apiClient.post<VerifyOTPResponse>("/auth/verify-otp", {
       email,
       otp_code: otpCode,
@@ -233,9 +216,7 @@ class AuthService {
     otpCode: string,
     newPassword: string,
     confirmPassword: string,
-    confirmPassword: string,
   ): Promise<ResetPasswordResponse> {
-    const response = await apiClient.post<ResetPasswordResponse>("/auth/reset-password", {
     const response = await apiClient.post<ResetPasswordResponse>("/auth/reset-password", {
       email,
       otp_code: otpCode,
@@ -247,11 +228,9 @@ class AuthService {
 
   logout(): void {
     clearStoredAuthToken("logout");
-    clearStoredAuthToken("logout");
   }
 
   isAuthenticated(): boolean {
-    return getStoredToken() !== null;
     return getStoredToken() !== null;
   }
 }
