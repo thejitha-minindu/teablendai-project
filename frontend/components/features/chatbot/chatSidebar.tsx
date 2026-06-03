@@ -37,8 +37,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type {
   ChatHistoryItem,
+  ChatMessage,
   ConversationSummary,
 } from "@/types/chatbot/chat.types";
+import { chatService } from "@/services/chatbot/chatService";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
@@ -57,15 +59,222 @@ const PINNED_SECTION_LABEL = "Pinned";
 const RECENT_SECTION_LABEL = "Recent";
 const SEARCH_DEBOUNCE_DELAY = 300;
 
+type SearchMatchKind = "title" | "message";
+
+interface ChatSearchResultItem {
+  conversationId: string;
+  conversationTitle: string;
+  conversationTimestamp: Date;
+  messageIndex: number | null;
+  messageRole: ChatMessage["role"] | null;
+  matchKind: SearchMatchKind;
+  score: number;
+  snippet: string;
+  matchedTerms: string[];
+}
+
 interface ChatSidebarProps {
   conversations?: ConversationSummary[];
   activeConversationId?: string | null;
   onNewChat?: () => void;
   onSelectChat?: (chatId: string) => void;
+  onSelectSearchResult?: (result: ChatSearchResultItem) => void;
   onDeleteChat?: (chatId: string) => void;
   onPinChat?: (chatId: string, isPinned: boolean) => void;
   className?: string;
 }
+
+const normalizeSearchText = (value: string): string => value.toLowerCase().replace(/\s+/g, " ").trim();
+
+const tokenizeSearchQuery = (value: string): string[] =>
+  normalizeSearchText(value)
+    .split(/\s+/)
+    .map((term) => term.replace(/[^a-z0-9]/gi, ""))
+    .filter(Boolean);
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+const getHighlightedNodes = (text: string, terms: string[]) => {
+  if (!terms.length) return text;
+
+  const sortedTerms = [...new Set(terms.map((term) => term.trim()).filter(Boolean))].sort(
+    (a, b) => b.length - a.length
+  );
+  if (!sortedTerms.length) return text;
+
+  const pattern = new RegExp(`(${sortedTerms.map(escapeRegExp).join("|")})`, "ig");
+  return text.split(pattern).map((part, index) => {
+    if (sortedTerms.some((term) => part.toLowerCase() === term.toLowerCase())) {
+      return (
+        <mark key={`${part}-${index}`} className="rounded bg-yellow-200 px-0.5 text-gray-900">
+          {part}
+        </mark>
+      );
+    }
+
+    return <span key={`${part}-${index}`}>{part}</span>;
+  });
+};
+
+const getSnippetFromText = (text: string, terms: string[], maxLength = 120): string => {
+  if (!text) return "";
+  const normalized = text.toLowerCase();
+  const firstMatch = terms
+    .map((term) => normalized.indexOf(term))
+    .filter((index) => index >= 0)
+    .sort((a, b) => a - b)[0];
+
+  if (firstMatch === undefined) {
+    return text.length > maxLength ? `${text.slice(0, maxLength - 1).trimEnd()}…` : text;
+  }
+
+  const start = Math.max(0, firstMatch - 40);
+  const end = Math.min(text.length, start + maxLength);
+  const prefix = start > 0 ? "…" : "";
+  const suffix = end < text.length ? "…" : "";
+  return `${prefix}${text.slice(start, end).trim()}${suffix}`;
+};
+
+const scoreTextMatch = (
+  text: string,
+  query: string,
+  terms: string[],
+  baseScore: number
+): { score: number; matchedTerms: string[] } | null => {
+  const normalizedText = normalizeSearchText(text);
+  const normalizedQuery = normalizeSearchText(query);
+  if (!normalizedText || !normalizedQuery) return null;
+
+  const matchedTerms = terms.filter((term) => normalizedText.includes(term));
+  const phraseMatch = normalizedText.includes(normalizedQuery);
+  if (!phraseMatch && matchedTerms.length === 0) return null;
+
+  const coverage = terms.length > 0 ? matchedTerms.length / terms.length : 1;
+  const exactMatch = normalizedText === normalizedQuery;
+  const startsWithMatch = normalizedText.startsWith(normalizedQuery);
+  const score =
+    baseScore +
+    (exactMatch ? 300 : startsWithMatch ? 220 : phraseMatch ? 140 : 0) +
+    Math.round(coverage * 100);
+
+  return { score, matchedTerms: matchedTerms.length ? matchedTerms : terms };
+};
+
+const buildConversationSearchResults = async (
+  conversations: ConversationSummary[],
+  query: string,
+  getConversationMessages: (conversationId: string) => Promise<ChatMessage[]>,
+  messageCache: Map<string, ChatMessage[]>
+): Promise<ChatSearchResultItem[]> => {
+  const normalizedQuery = normalizeSearchText(query);
+  const searchTerms = tokenizeSearchQuery(query);
+  if (!normalizedQuery || !searchTerms.length) return [];
+
+  const results: ChatSearchResultItem[] = [];
+
+  await Promise.all(
+    conversations.map(async (conversation) => {
+      const conversationId = String(conversation.conversation_id || "");
+      if (!conversationId) return;
+
+      const titleText = String(conversation.title || "");
+      const timestamp = new Date(conversation.updated_at || conversation.created_at || Date.now());
+      const normalizedTitle = normalizeSearchText(titleText);
+
+      const titleMatch = scoreTextMatch(titleText, query, searchTerms, 4000);
+      if (titleMatch) {
+        results.push({
+          conversationId,
+          conversationTitle: titleText,
+          conversationTimestamp: timestamp,
+          messageIndex: 0,
+          messageRole: null,
+          matchKind: "title",
+          score: titleMatch.score,
+          snippet: `Conversation title: ${titleText}`,
+          matchedTerms: titleMatch.matchedTerms,
+        });
+      }
+
+      const shouldSearchMessages = normalizedTitle.includes(normalizedQuery) || searchTerms.length > 0;
+      if (!shouldSearchMessages) return;
+
+      const cachedMessages = messageCache.get(conversationId) ?? (await getConversationMessages(conversationId));
+      messageCache.set(conversationId, cachedMessages);
+
+      cachedMessages.forEach((message, index) => {
+        const contentText = String(message.content || "");
+        const messageMatch = scoreTextMatch(
+          contentText,
+          query,
+          searchTerms,
+          message.role === "user" ? 2600 : 2800
+        );
+
+        if (!messageMatch) return;
+
+        results.push({
+          conversationId,
+          conversationTitle: titleText,
+          conversationTimestamp: timestamp,
+          messageIndex: index,
+          messageRole: message.role,
+          matchKind: "message",
+          score: messageMatch.score,
+          snippet: getSnippetFromText(contentText, messageMatch.matchedTerms),
+          matchedTerms: messageMatch.matchedTerms,
+        });
+      });
+    })
+  );
+
+  return results.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return b.conversationTimestamp.getTime() - a.conversationTimestamp.getTime();
+  });
+};
+
+const SearchResultCard = memo(function SearchResultCard({
+  result,
+  isSelected,
+  onSelect,
+}: {
+  result: ChatSearchResultItem;
+  isSelected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onSelect}
+      whileHover={{ scale: 1.01 }}
+      whileTap={{ scale: 0.99 }}
+      className={cn(
+        "w-full text-left rounded-xl border p-3 transition-all duration-200",
+        isSelected
+          ? "border-[#7BAE3F] bg-[#EEF8E2] shadow-sm"
+          : "border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50"
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <h4 className="truncate text-sm font-semibold text-gray-900">
+              {getHighlightedNodes(result.conversationTitle, result.matchedTerms)}
+            </h4>
+            <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+              {result.matchKind === "title" ? "Title" : result.messageRole === "user" ? "User" : "Assistant"}
+            </span>
+          </div>
+          <p className="text-xs text-gray-500">
+            {getHighlightedNodes(result.snippet, result.matchedTerms)}
+          </p>
+        </div>
+        <span className="shrink-0 text-[11px] text-gray-400">{getTimeAgo(result.conversationTimestamp)}</span>
+      </div>
+    </motion.button>
+  );
+});
 
 const getSwitchInfo = (currentRole: UserRole): { role: UserRole; path: string } => {
   switch (currentRole) {
@@ -335,6 +544,7 @@ export function ChatSidebar({
   activeConversationId = null,
   onNewChat,
   onSelectChat,
+  onSelectSearchResult,
   onDeleteChat,
   onPinChat,
   className,
@@ -350,6 +560,10 @@ export function ChatSidebar({
   const [isMounted, setIsMounted] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<ChatSearchResultItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRequestIdRef = useRef(0);
+  const conversationMessagesCacheRef = useRef<Map<string, ChatMessage[]>>(new Map());
 
   // Debounce search query
   useEffect(() => {
@@ -359,6 +573,36 @@ export function ChatSidebar({
 
     return () => clearTimeout(timer);
   }, [searchQuery]);
+
+  useEffect(() => {
+    const query = debouncedSearchQuery.trim();
+    if (!query) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const requestId = ++searchRequestIdRef.current;
+    setIsSearching(true);
+
+    const runSearch = async () => {
+      const results = await buildConversationSearchResults(
+        conversations,
+        query,
+        chatService.getConversationMessages,
+        conversationMessagesCacheRef.current
+      );
+
+      if (searchRequestIdRef.current !== requestId) {
+        return;
+      }
+
+      setSearchResults(results);
+      setIsSearching(false);
+    };
+
+    void runSearch();
+  }, [conversations, debouncedSearchQuery]);
 
   // Map real conversation data to chat history format
   const chatHistory = useMemo<ChatHistoryItem[]>(() => {
@@ -376,19 +620,8 @@ export function ChatSidebar({
       .filter((item) => item.id !== "");
   }, [conversations]);
 
-  // Filter chats based on search query
-  const filteredChats = useMemo(() => {
-    const query = debouncedSearchQuery.toLowerCase().trim();
-    if (!query) return chatHistory;
-    return chatHistory.filter(
-      (chat) =>
-        chat.title.toLowerCase().includes(query) || chat.preview.toLowerCase().includes(query)
-    );
-  }, [chatHistory, debouncedSearchQuery]);
-
-  // Sort and categorize chats
-  const { pinnedChats, unpinnedChats } = useMemo(() => {
-    const sorted = [...filteredChats].sort((a, b) => {
+  const sortedHistoryChats = useMemo(() => {
+    return [...chatHistory].sort((a, b) => {
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
       if (a.isPinned && b.isPinned) {
@@ -398,12 +631,18 @@ export function ChatSidebar({
       }
       return b.timestamp.getTime() - a.timestamp.getTime();
     });
+  }, [chatHistory]);
+
+  const { pinnedChats, unpinnedChats } = useMemo(() => {
+    const sorted = sortedHistoryChats;
 
     return {
       pinnedChats: sorted.filter((chat) => chat.isPinned),
       unpinnedChats: sorted.filter((chat) => !chat.isPinned),
     };
-  }, [filteredChats]);
+  }, [sortedHistoryChats]);
+
+  const isSearchActive = debouncedSearchQuery.trim().length > 0;
 
   useEffect(() => {
     setIsMounted(true);
@@ -456,6 +695,14 @@ export function ChatSidebar({
       onSelectChat?.(chatId);
     },
     [onSelectChat]
+  );
+
+  const handleSelectSearchResult = useCallback(
+    (result: ChatSearchResultItem) => {
+      setIsMobileOpen(false);
+      onSelectSearchResult?.(result);
+    },
+    [onSelectSearchResult]
   );
 
   const handleDeleteChat = useCallback(
@@ -702,19 +949,78 @@ export function ChatSidebar({
                 exit={{ opacity: 0 }}
                 className="p-4 h-full"
               >
+                <div className="mb-4">
+                  <label className="sr-only" htmlFor="chat-history-search">
+                    Search chats
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="chat-history-search"
+                      type="search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search conversations and messages"
+                      className="w-full rounded-xl border border-gray-200 bg-white px-4 py-2.5 pr-10 text-sm text-gray-900 shadow-sm outline-none transition focus:border-[#7BAE3F] focus:ring-2 focus:ring-[#7BAE3F]/20"
+                    />
+                    {searchQuery ? (
+                      <button
+                        type="button"
+                        onClick={() => setSearchQuery("")}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-700"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
+
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <History className="w-4 h-4 text-gray-500" />
                     <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">
-                      Chat History
+                      {isSearchActive ? "Search Results" : "Chat History"}
                     </h2>
                   </div>
                   <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
-                    {filteredChats.length} chats
+                    {isSearchActive ? `${searchResults.length} results` : `${chatHistory.length} chats`}
                   </span>
                 </div>
 
-                {filteredChats.length > 0 ? (
+                {isSearchActive ? (
+                  isSearching ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center"
+                    >
+                      <p className="text-sm font-medium text-gray-700">Searching conversations...</p>
+                      <p className="mt-1 text-xs text-gray-500">Checking titles and message history.</p>
+                    </motion.div>
+                  ) : searchResults.length > 0 ? (
+                    <div className="space-y-2">
+                      {searchResults.map((result, index) => (
+                        <SearchResultCard
+                          key={`${result.conversationId}-${result.matchKind}-${result.messageIndex ?? "title"}-${index}`}
+                          result={result}
+                          isSelected={activeConversationId === result.conversationId}
+                          onSelect={() => handleSelectSearchResult(result)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-center py-12"
+                    >
+                      <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <History className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <p className="text-gray-500 text-sm font-medium mb-1">No matching chats found</p>
+                      <p className="text-gray-400 text-xs">Try a different search term</p>
+                    </motion.div>
+                  )
+                ) : sortedHistoryChats.length > 0 ? (
                   <div className="space-y-4">
                     {pinnedChats.length > 0 && (
                       <ChatSection
@@ -750,12 +1056,10 @@ export function ChatSidebar({
                       <History className="w-8 h-8 text-gray-400" />
                     </div>
                     <p className="text-gray-500 text-sm font-medium mb-1">
-                      {debouncedSearchQuery ? "No matching chats found" : "No chat history yet"}
+                      {isSearchActive ? "No matching chats found" : "No chat history yet"}
                     </p>
                     <p className="text-gray-400 text-xs">
-                      {debouncedSearchQuery
-                        ? "Try a different search term"
-                        : "Start a new conversation to begin"}
+                      {isSearchActive ? "Try a different search term" : "Start a new conversation to begin"}
                     </p>
                   </motion.div>
                 )}
