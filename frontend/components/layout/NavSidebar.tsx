@@ -76,6 +76,7 @@ const sellerNavItems: NavItem[] = [
   { name: "Auction History", href: "/seller/history", icon: History },
   { name: "Live Auction", href: "/seller/live", icon: Gavel },
   { name: "Scheduled Auction", href: "/seller/scheduled", icon: CalendarClock },
+  { name: "Orders", href: "/seller/orders", icon: ShoppingBag },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 

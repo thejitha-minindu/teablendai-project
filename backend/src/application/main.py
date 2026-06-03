@@ -15,6 +15,7 @@ from fastapi import Depends
 from .dependencies import get_mcp_client, get_current_admin
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
+from src.presentation.routers.v1.seller.order import router as seller_order
 from src.presentation.routers.v1.admin import admin_profile
 from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
@@ -217,6 +218,9 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
 # WebSocket routers
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
+
+# Seller routers
+app.include_router(seller_order, prefix="/api/v1/seller")
 
 # Admin routers
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"], dependencies=[Depends(get_current_admin)])

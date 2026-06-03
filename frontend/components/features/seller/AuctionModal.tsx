@@ -790,19 +790,33 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               {/* Actions */}
               <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {isSold ? (
-                  <Button
-                    onClick={() => {
-                      if (orderId) {
-                        onClose();
-                        router.push(`/messages/${orderId}`);
-                      }
-                    }}
-                    disabled={!orderId}
-                    className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    {orderId ? 'Contact Buyer' : 'Loading...'}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/orders/${orderId}?auctionId=${auctionId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="w-full bg-blue-600 text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-blue-700 border border-blue-600 text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      See Order Details
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/messages/${orderId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      {orderId ? 'Contact Buyer' : 'Loading...'}
+                    </Button>
+                  </>
                 ) : (
                   <Button 
                     variant="outline" 

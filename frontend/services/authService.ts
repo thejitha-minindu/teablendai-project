@@ -37,10 +37,10 @@ interface RegisterResponse {
 export interface CurrentUserResponse {
   user_id: string;
   email: string;
-  phone_num?: string;
-  user_name?: string;
-  first_name?: string;
-  last_name?: string;
+  phone_num: string;
+  user_name: string;
+  first_name: string;
+  last_name: string;
   default_role: "buyer" | "seller";
   active_role?: "buyer" | "seller";
   available_roles?: Array<"buyer" | "seller">;

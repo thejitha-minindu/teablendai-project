@@ -19,6 +19,14 @@ function getSafeRedirectPath(redirectPath: string | null) {
   return redirectPath;
 }
 
+function normalizeAdminRedirectPath(redirectPath: string | null) {
+  const safeRedirect = getSafeRedirectPath(redirectPath);
+  if (!safeRedirect || safeRedirect === "/admin") {
+    return "/admin/dashboard";
+  }
+  return safeRedirect;
+}
+
 export function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +60,7 @@ export function AdminLoginForm() {
         localStorage.setItem("remember_me", "true");
       }
       
-      router.push("/admin/dashboard");
+      router.replace(normalizeAdminRedirectPath(redirectPath));
     } catch (error: any) {
       console.error("Admin login failed:", error);
       setErrorMsg(error.response?.data?.detail || "Invalid admin credentials. Please try again.");

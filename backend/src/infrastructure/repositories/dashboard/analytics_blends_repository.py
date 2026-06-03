@@ -40,8 +40,8 @@ class AnalyticsBlendsRepository:
                 WITH sold_window AS (
                     SELECT
                         {self.BLEND_EXPR} AS blend,
-                        CAST(COALESCE(quantity, 0) AS FLOAT) AS quantity_kg,
-                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price_per_kg,
+                        -- base_price is already the total lot cost; do not multiply by quantity.
+                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price,
                         CAST(COALESCE(sold_price, 0) AS FLOAT) AS revenue
                     FROM auctions
                     WHERE status = 'History'
@@ -58,38 +58,34 @@ class AnalyticsBlendsRepository:
                     SELECT
                         blend,
                         SUM(revenue) AS total_revenue,
-                        SUM(base_price_per_kg * quantity_kg) AS total_cost
+                        SUM(base_price) AS total_cost
                     FROM sold_window
                     GROUP BY blend
                 ),
-                top_blends AS (
-                    SELECT TOP (:top_blends_limit)
+                best_performer AS (
+                    SELECT TOP 1
                         blend,
                         total_revenue,
                         CASE
                             WHEN total_revenue > 0
-                            THEN ((total_revenue - total_cost) / total_revenue) * 100.0
+                            THEN ((total_revenue - total_cost) / NULLIF(total_revenue, 0)) * 100.0
                             ELSE 0
                         END AS margin_pct
                     FROM blend_metrics
-                    ORDER BY total_revenue DESC
+                    ORDER BY margin_pct DESC, total_revenue DESC
                 )
                 SELECT
                     COALESCE((SELECT COUNT(DISTINCT blend) FROM blend_metrics), 0) AS total_blends,
                     COALESCE(
                         (
                             SELECT
-                                CASE
-                                    WHEN SUM(total_revenue) > 0
-                                    THEN (SUM(total_revenue - total_cost) / SUM(total_revenue)) * 100.0
-                                    ELSE 0
-                                END
+                                (SUM(total_revenue - total_cost) / NULLIF(SUM(total_revenue), 0)) * 100.0
                             FROM blend_metrics
                         ),
                         0
                     ) AS average_profit_margin_pct,
-                    COALESCE((SELECT TOP 1 blend FROM top_blends ORDER BY margin_pct DESC, total_revenue DESC), 'N/A') AS best_performer_blend,
-                    COALESCE((SELECT TOP 1 margin_pct FROM top_blends ORDER BY margin_pct DESC, total_revenue DESC), 0) AS best_performer_margin_pct,
+                    COALESCE((SELECT blend FROM best_performer), 'N/A') AS best_performer_blend,
+                    COALESCE((SELECT margin_pct FROM best_performer), 0) AS best_performer_margin_pct,
                     COALESCE((SELECT SUM(total_revenue) FROM blend_metrics), 0) AS total_blend_revenue_lkr
                 """
             ),
@@ -230,8 +226,8 @@ class AnalyticsBlendsRepository:
                 WITH sold_window AS (
                     SELECT
                         {self.BLEND_EXPR} AS blend,
-                        CAST(COALESCE(quantity, 0) AS FLOAT) AS quantity_kg,
-                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price_per_kg,
+                        -- Each auction row already stores lot-level prices; quantity is informational only.
+                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price,
                         CAST(COALESCE(sold_price, 0) AS FLOAT) AS revenue
                     FROM auctions
                     WHERE status = 'History'
@@ -248,26 +244,24 @@ class AnalyticsBlendsRepository:
                 blend_metrics AS (
                     SELECT
                         blend,
-                        SUM(quantity_kg) AS total_qty,
-                        SUM(base_price_per_kg * quantity_kg) AS total_cost,
+                        SUM(base_price) AS total_cost,
                         SUM(revenue) AS total_revenue
                     FROM sold_window
                     GROUP BY blend
                 )
                 SELECT
                     blend,
-                    COALESCE(total_cost / NULLIF(total_qty, 0), 0) AS avg_cost_per_kg,
-                    COALESCE(total_revenue / NULLIF(total_qty, 0), 0) AS avg_sell_price_per_kg,
+                    COALESCE(total_cost, 0) AS total_cost,
+                    COALESCE(total_revenue, 0) AS total_revenue,
                     COALESCE(
                         CASE
-                            WHEN total_revenue > 0 THEN ((total_revenue - total_cost) / total_revenue) * 100.0
+                            WHEN total_revenue > 0 THEN ((total_revenue - total_cost) / NULLIF(total_revenue, 0)) * 100.0
                             ELSE 0
                         END,
                         0
                     ) AS margin_pct,
                     COALESCE(total_revenue, 0) AS total_revenue
                 FROM blend_metrics
-                ORDER BY total_revenue DESC
                 """
             ).bindparams(bindparam("blend_series", expanding=True)),
             {"months": months, "blend_series": blend_series},
@@ -276,8 +270,8 @@ class AnalyticsBlendsRepository:
         return [
             {
                 "blend": str(r["blend"]),
-                "cost": round(self._num(r["avg_cost_per_kg"]), 2),
-                "sellPrice": round(self._num(r["avg_sell_price_per_kg"]), 2),
+                "cost": round(self._num(r["total_cost"]), 2),
+                "sellPrice": round(self._num(r["total_revenue"]), 2),
                 "margin": round(self._num(r["margin_pct"]), 2),
                 "revenue": round(self._num(r["total_revenue"]) / 1_000_000.0, 2),
             }
@@ -367,8 +361,8 @@ class AnalyticsBlendsRepository:
                         {self.BLEND_EXPR} AS blend,
                         YEAR(start_time) AS year_num,
                         MONTH(start_time) AS month_num,
-                        CAST(COALESCE(quantity, 0) AS FLOAT) AS quantity_kg,
-                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price_per_kg,
+                        -- base_price is the lot total, not a per-kg value.
+                        CAST(COALESCE(base_price, 0) AS FLOAT) AS base_price,
                         CAST(COALESCE(sold_price, 0) AS FLOAT) AS revenue
                     FROM auctions
                     WHERE status = 'History'
@@ -388,7 +382,7 @@ class AnalyticsBlendsRepository:
                         year_num,
                         month_num,
                         SUM(revenue) AS total_revenue,
-                        SUM(base_price_per_kg * quantity_kg) AS total_cost
+                        SUM(base_price) AS total_cost
                     FROM sold_window
                     GROUP BY blend, year_num, month_num
                 )
@@ -397,7 +391,7 @@ class AnalyticsBlendsRepository:
                     month_num,
                     blend,
                     CASE
-                        WHEN total_revenue > 0 THEN ((total_revenue - total_cost) / total_revenue) * 100.0
+                        WHEN total_revenue > 0 THEN ((total_revenue - total_cost) / NULLIF(total_revenue, 0)) * 100.0
                         ELSE 0
                     END AS margin_pct
                 FROM month_blend_metrics

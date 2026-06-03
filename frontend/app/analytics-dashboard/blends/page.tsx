@@ -108,8 +108,8 @@ export default function BlendPerformanceAnalytics() {
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="cost" fill="#94a3b8" name="Cost (LKR/kg)" />
-              <Bar dataKey="sellPrice" fill="#00C49F" name="Sell Price (LKR/kg)" />
+              <Bar dataKey="cost" fill="#94a3b8" name="Cost (LKR)" />
+              <Bar dataKey="sellPrice" fill="#00C49F" name="Sell Price (LKR)" />
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>

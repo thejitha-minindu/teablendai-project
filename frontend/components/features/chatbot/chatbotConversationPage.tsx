@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedAIChat } from "./chat";
 import { ChatSidebar } from "./chatSidebar";
@@ -25,6 +25,7 @@ export default function ChatbotConversationPage({
 }: ChatbotConversationPageProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,8 +37,11 @@ export default function ChatbotConversationPage({
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const messageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const activeHistoryLoadRef = useRef(0);
   const lastSyncedRouteConversationIdRef = useRef<string | null>(null);
+  const highlightTimeoutRef = useRef<number | null>(null);
+  const [highlightedMessageIndex, setHighlightedMessageIndex] = useState<number | null>(null);
 
   // Memoized scroll check
   const isNearBottom = useCallback(() => {
@@ -60,6 +64,44 @@ export default function ChatbotConversationPage({
       scrollToBottom();
     }
   }, [messages, isNearBottom, scrollToBottom]);
+
+  useEffect(() => {
+    if (highlightTimeoutRef.current !== null) {
+      window.clearTimeout(highlightTimeoutRef.current);
+      highlightTimeoutRef.current = null;
+    }
+
+    const matchParam = searchParams?.get("match");
+    if (!matchParam) {
+      setHighlightedMessageIndex(null);
+      return;
+    }
+
+    const parsedIndex = Number(matchParam);
+    if (!Number.isInteger(parsedIndex) || parsedIndex < 0) {
+      setHighlightedMessageIndex(null);
+      return;
+    }
+
+    setHighlightedMessageIndex(parsedIndex);
+
+    const targetElement = messageRefs.current[parsedIndex];
+    if (targetElement) {
+      targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+
+    highlightTimeoutRef.current = window.setTimeout(() => {
+      setHighlightedMessageIndex(null);
+      highlightTimeoutRef.current = null;
+    }, 1800);
+
+    return () => {
+      if (highlightTimeoutRef.current !== null) {
+        window.clearTimeout(highlightTimeoutRef.current);
+        highlightTimeoutRef.current = null;
+      }
+    };
+  }, [messages, searchParams, conversationId, routeConversationId]);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -277,6 +319,17 @@ export default function ChatbotConversationPage({
     [loadConversationHistory]
   );
 
+  const handleSelectSearchResult = useCallback(
+    (result: { conversationId: string; messageIndex: number | null }) => {
+      if (!result.conversationId) return;
+
+      const matchQuery =
+        result.messageIndex !== null ? `?match=${encodeURIComponent(String(result.messageIndex))}` : "";
+      router.push(`/chatbot/conversation/${result.conversationId}${matchQuery}`, { scroll: false });
+    },
+    [router]
+  );
+
   const handleDeleteChat = useCallback(
     async (chatId: string) => {
       if (!chatId) return;
@@ -360,6 +413,7 @@ export default function ChatbotConversationPage({
         activeConversationId={conversationId || routeConversationId}
         onNewChat={handleNewChat}
         onSelectChat={handleSelectChat}
+        onSelectSearchResult={handleSelectSearchResult}
         onDeleteChat={handleDeleteChat}
         onPinChat={handlePinChat}
       />
@@ -375,9 +429,13 @@ export default function ChatbotConversationPage({
               {messages.map((message, index) => (
                 <motion.div
                   key={message.id}
+                  ref={(element) => {
+                    messageRefs.current[index] = element;
+                  }}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.2 }}
+                  className={highlightedMessageIndex === index ? "rounded-2xl ring-2 ring-[#D6B25E] ring-offset-2" : undefined}
                 >
                   <MessageBubble
                     message={message}
@@ -387,6 +445,7 @@ export default function ChatbotConversationPage({
                       index === latestAssistantIndex &&
                       !message.isLoading
                     }
+                    isHighlighted={highlightedMessageIndex === index}
                   />
                 </motion.div>
               ))}
