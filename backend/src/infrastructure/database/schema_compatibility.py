@@ -147,6 +147,96 @@ def ensure_runtime_schema_compatibility() -> RuntimeSchemaCompatibility:
             )
         )
 
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE system_logs (
+                        log_id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                        display_id VARCHAR(16) NOT NULL UNIQUE,
+                        user_name VARCHAR(128) NOT NULL,
+                        user_id UNIQUEIDENTIFIER NULL,
+                        activity_type VARCHAR(64) NOT NULL,
+                        status VARCHAR(16) NOT NULL CONSTRAINT DF_system_logs_status DEFAULT 'success',
+                        ip_address VARCHAR(45) NULL,
+                        details VARCHAR(512) NOT NULL,
+                        created_at DATETIME NOT NULL CONSTRAINT DF_system_logs_created_at DEFAULT GETUTCDATE(),
+                        CONSTRAINT FK_system_logs_users FOREIGN KEY (user_id) REFERENCES users(user_id)
+                    )
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_created_at'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_created_at ON system_logs(created_at DESC)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_activity_type'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_activity_type ON system_logs(activity_type)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_status'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_status ON system_logs(status)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_user_id'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_user_id ON system_logs(user_id)
+                END
+                """
+            )
+        )
+
         db.commit()
 
         analytics_snapshots_available = all(

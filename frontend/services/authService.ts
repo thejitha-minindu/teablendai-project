@@ -33,17 +33,14 @@ interface RegisterResponse {
   message: string;
   user_id: string;
 }
-
+ 
 export interface CurrentUserResponse {
   user_id: string;
   email: string;
-  phone_num: string;
-  user_name: string;
-  first_name: string;
-  last_name: string;
-  default_role: "buyer" | "seller";
-  active_role?: "buyer" | "seller";
-  available_roles?: Array<"buyer" | "seller">;
+  phone_num?: string;
+  user_name?: string;
+  first_name?: string;
+  last_name?: string;
   default_role: "buyer" | "seller";
   active_role?: "buyer" | "seller";
   available_roles?: Array<"buyer" | "seller">;
@@ -67,7 +64,6 @@ export interface CurrentUserResponse {
     seller_city?: string;
     seller_postal_code?: string;
   };
-  financial_details?: unknown;
   financial_details?: unknown;
   watch_list?: string[];
   verification_status?: string;
@@ -94,41 +90,29 @@ class AuthService {
       },
     });
 
-    // Add token to requests if available
     this.api.interceptors.request.use((config) => {
-      const token = this.getToken();
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+      const token = getStoredToken();
+      if (token && config.headers) {
+        (config.headers as any).Authorization = `Bearer ${token}`;
       }
       return config;
     });
   }
 
-  // ==================== TOKEN MANAGEMENT ====================
-
-  private getToken(): string | null {
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('teablend_token') || localStorage.getItem('auth_token');
-    }
-    return null;
+  // TOKEN MANAGEMENT
+  getToken(): string | null {
+    return getStoredToken();
   }
 
-  setToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('teablend_token', token);
-      localStorage.setItem('auth_token', token);
-    }
+  setToken(token: string, source = 'manual'): void {
+    setStoredAuthToken(token, source);
   }
 
-  clearToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('teablend_token');
-      localStorage.removeItem('auth_token');
-    }
+  clearToken(source = 'logout'): void {
+    clearStoredAuthToken(source);
   }
 
-  // ==================== AUTHENTICATION ====================
-
+  // AUTHENTICATION
   async register(
     email: string,
     password: string,
@@ -138,10 +122,7 @@ class AuthService {
     phoneNum: string,
     defaultRole: "buyer" | "seller" = "buyer",
     shippingAddress?: string,
-    defaultRole: "buyer" | "seller" = "buyer",
-    shippingAddress?: string,
   ): Promise<RegisterResponse> {
-    const response = await apiClient.post<RegisterResponse>("/auth/register", {
     const response = await apiClient.post<RegisterResponse>("/auth/register", {
       email,
       password,
@@ -155,18 +136,13 @@ class AuthService {
     return response.data;
   }
 
-  // Login with email and password
   async login(email: string, password: string): Promise<LoginResponse> {
     const formData = new URLSearchParams();
     formData.append("username", email);
     formData.append("password", password);
-    formData.append("username", email);
-    formData.append("password", password);
 
     const response = await apiClient.post<LoginResponse>("/auth/login", formData, {
-    const response = await apiClient.post<LoginResponse>("/auth/login", formData, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
         "Content-Type": "application/x-www-form-urlencoded",
       },
     });
@@ -178,49 +154,31 @@ class AuthService {
     return response.data;
   }
 
-  // Login with Google OAuth
   async googleLogin(token: string): Promise<LoginResponse> {
-    const response = await this.api.post<LoginResponse>(
-      "/auth/google",
-      { token }
-    );
-
-    if(response.data.access_token) {
-      this.setToken(response.data.access_token);
+    const response = await apiClient.post<LoginResponse>("/auth/google", { token });
+    if (response.data.access_token) {
+      setStoredAuthToken(response.data.access_token, "google");
     }
-
     return response.data;
   }
 
-
-
-  // ==================== USER DATA ====================
-
+  // USER DATA
   async getCurrentUser(): Promise<CurrentUserResponse> {
     const response = await apiClient.get<CurrentUserResponse>("/users/me");
-    const response = await apiClient.get<CurrentUserResponse>("/users/me");
     return response.data;
   }
 
-  async getCurrentAdmin(): Promise<CurrentUserResponse> {
-    const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
-    return response.data;
-  }
   async getCurrentAdmin(): Promise<CurrentUserResponse> {
     const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
     return response.data;
   }
 
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
-    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
-    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
-      email,
-    });
+    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", { email });
     return response.data;
   }
 
   async verifyOTP(email: string, otpCode: string): Promise<VerifyOTPResponse> {
-    const response = await apiClient.post<VerifyOTPResponse>("/auth/verify-otp", {
     const response = await apiClient.post<VerifyOTPResponse>("/auth/verify-otp", {
       email,
       otp_code: otpCode,
@@ -233,9 +191,7 @@ class AuthService {
     otpCode: string,
     newPassword: string,
     confirmPassword: string,
-    confirmPassword: string,
   ): Promise<ResetPasswordResponse> {
-    const response = await apiClient.post<ResetPasswordResponse>("/auth/reset-password", {
     const response = await apiClient.post<ResetPasswordResponse>("/auth/reset-password", {
       email,
       otp_code: otpCode,
@@ -247,11 +203,9 @@ class AuthService {
 
   logout(): void {
     clearStoredAuthToken("logout");
-    clearStoredAuthToken("logout");
   }
 
   isAuthenticated(): boolean {
-    return getStoredToken() !== null;
     return getStoredToken() !== null;
   }
 }

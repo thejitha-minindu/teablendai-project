@@ -9,9 +9,9 @@ from sqlalchemy.orm import Session
 class AnalyticsBlendsRepository:
     BLEND_EXPR = """
         COALESCE(
-            NULLIF(LTRIM(RTRIM(auction_name)), ''),
-            NULLIF(LTRIM(RTRIM(custom_auction_id)), ''),
-            CAST(auction_id AS VARCHAR(64))
+            NULLIF(LTRIM(RTRIM(auction_name)) COLLATE DATABASE_DEFAULT, ''),
+            NULLIF(LTRIM(RTRIM(custom_auction_id)) COLLATE DATABASE_DEFAULT, ''),
+            CAST(auction_id AS VARCHAR(64)) COLLATE DATABASE_DEFAULT
         )
     """
 

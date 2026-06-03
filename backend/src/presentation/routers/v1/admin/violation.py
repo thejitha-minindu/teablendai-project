@@ -3,11 +3,13 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.application.dependencies import get_db
+from src.application.dependencies import get_db, get_current_admin, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.application.schemas.violation import (
     AdminViolationRead,
     AdminViolationStatusUpdate,
     ViolationRead,
+    ViolationStatusEnum,
 )
 from src.infrastructure.repositories.violation_repository import ViolationRepository
 
@@ -39,6 +41,8 @@ def update_violation_status(
     violation_id: uuid.UUID,
     payload: AdminViolationStatusUpdate,
     db: Session = Depends(get_db),
+    admin = Depends(get_current_admin),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     repo = ViolationRepository(db)
     violation = repo.update_status(violation_id, payload.status)
@@ -47,6 +51,12 @@ def update_violation_status(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Violation not found.",
+        )
+
+    if payload.status == ViolationStatusEnum.resolved:
+        log_service.log_violation_resolved(
+            admin_name=admin.username or admin.email,
+            target_ref=f"Violation #{violation_id}"
         )
 
     return violation
