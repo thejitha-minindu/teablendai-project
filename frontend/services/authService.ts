@@ -44,9 +44,6 @@ export interface CurrentUserResponse {
   default_role: "buyer" | "seller";
   active_role?: "buyer" | "seller";
   available_roles?: Array<"buyer" | "seller">;
-  default_role: "buyer" | "seller";
-  active_role?: "buyer" | "seller";
-  available_roles?: Array<"buyer" | "seller">;
   profile_image_url?: string;
   nic?: string;
   shipping_address?: string;
