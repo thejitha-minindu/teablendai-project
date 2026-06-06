@@ -79,6 +79,7 @@ export async function listAuctionsOrder(userId: string): Promise<AuctionOrderDia
         sold_price: order.sold_price || 0,
         date: order.date,
         base_price: order.base_price || 0,
+        seller_id: order.seller_id,
         order_id: order.order_id || "",
     }));
 }
@@ -140,6 +141,7 @@ export async function getAuctionOrderDialog(auctionId: string, userId: string): 
         sold_price: order.sold_price || 0,
         date: order.date,
         base_price: order.base_price || 0,
+        seller_id: order.seller_id,
         order_id: order.order_id || "",
     };
 }

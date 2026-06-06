@@ -22,7 +22,8 @@ import {
   LayoutDashboard,
   ChartNoAxesCombined,
   Blend,
-  Users 
+  Users,
+  AlertTriangle 
 } from "lucide-react";
 
 import {
@@ -78,6 +79,7 @@ const sellerNavItems: NavItem[] = [
   { name: "Scheduled Auction", href: "/seller/scheduled", icon: CalendarClock },
   { name: "Orders", href: "/seller/orders", icon: ShoppingBag },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
+  { name: "Report Violation", href: "/seller/violations", icon: AlertTriangle },
 ];
 
 const buyerNavItems: NavItem[] = [
@@ -86,6 +88,7 @@ const buyerNavItems: NavItem[] = [
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
   { name: "Auctions", href: "/buyer/auctions", icon: Search },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
+  { name: "Report Violation", href: "/buyer/violations", icon: AlertTriangle },
 ];
 
 const analyticsNavItems: NavItem[] = [

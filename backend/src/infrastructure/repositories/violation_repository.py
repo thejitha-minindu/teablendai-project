@@ -27,27 +27,7 @@ class ViolationRepository:
             reason=data.reason,
         )
         self.db.add(violation)
-        try:
-            self.db.commit()
-        except DataError as e:
-            # Handle legacy DB schemas where users PK is an integer `id` and
-            # the violations.sender_id column expects an int. Attempt to resolve
-            # the numeric user id and retry the insert as a fallback.
-            self.db.rollback()
-            try:
-                uid_str = str(sender_id)
-                row = self.db.execute(text("SELECT id FROM users WHERE user_id = :uid"), {"uid": uid_str}).fetchone()
-                if row and row[0] is not None:
-                    # replace the sender_id on the pending violation and retry
-                    violation.sender_id = row[0]
-                    self.db.add(violation)
-                    self.db.commit()
-                else:
-                    # re-raise if we cannot resolve a numeric id
-                    raise
-            except Exception:
-                # Surface original DB error for visibility
-                raise
+        self.db.commit()
         self.db.refresh(violation)
         return violation
 
