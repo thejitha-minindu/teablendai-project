@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
 import { apiClient } from "@/lib/apiClient";
 import {
     Bell,
@@ -20,8 +20,9 @@ import {
     ShoppingBag
 } from "lucide-react";
 
-export default function CreateNotificationPage() {
+function CreateNotificationForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [formData, setFormData] = useState({
         title: "",
         content: "",
@@ -37,6 +38,30 @@ export default function CreateNotificationPage() {
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [showDropdown, setShowDropdown] = useState(false);
+
+    // Prefill user if passed via URL parameters
+    useEffect(() => {
+        const prefillUserId = searchParams.get("prefillUserId");
+        const prefillUserEmail = searchParams.get("prefillUserEmail");
+        const prefillFirstName = searchParams.get("prefillFirstName");
+        const prefillLastName = searchParams.get("prefillLastName");
+
+        if (prefillUserId) {
+            setSelectedUser({
+                user_id: prefillUserId,
+                email: prefillUserEmail || "",
+                first_name: prefillFirstName || "User",
+                last_name: prefillLastName || ""
+            });
+            setFormData(prev => ({
+                ...prev,
+                type: "Violation & Compliance Notifications",
+                title: "Policy Violation Warning",
+                revisers: "all",
+                reviserSpecify: prefillUserEmail || ""
+            }));
+        }
+    }, [searchParams]);
 
     // Debounced search effect
     useEffect(() => {
@@ -446,3 +471,18 @@ export default function CreateNotificationPage() {
 
 // Import Eye icon
 import { Eye } from "lucide-react";
+
+export default function CreateNotificationPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                    <p className="text-gray-500">Loading form...</p>
+                </div>
+            </div>
+        }>
+            <CreateNotificationForm />
+        </Suspense>
+    );
+}
