@@ -6,6 +6,8 @@ from src.application.use_cases.buyer.order_service import OrderService, WinsAuct
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_buyer, get_current_user
 from src.domain.models.user import User
+from src.domain.models.order import Order as OrderModel
+from src.domain.models.auction import Auction
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -14,6 +16,37 @@ def get_order_service(db: Session = Depends(get_db)):
 
 def get_wins_auction_service(db: Session = Depends(get_db)):
     return WinsAuctionService(db)
+
+def _build_buyer_order(order: OrderModel, db: Session) -> dict:
+    """Build an order response dict with seller + auction details for buyer view."""
+    auction = order.auction
+    buyer = db.query(User).filter(User.user_id == order.user_id).first()
+    seller = db.query(User).filter(User.user_id == order.seller_id).first() if order.seller_id else None
+
+    buyer_name = " ".join(filter(None, [buyer.first_name, buyer.last_name])) if buyer else ""
+    seller_name = " ".join(filter(None, [seller.first_name, seller.last_name])) if seller else ""
+
+    return {
+        "order_id": str(order.order_id).lower(),
+        "display_order_id": order.display_order_id,
+        "buyer_id": str(order.user_id).lower(),
+        "buyer_name": buyer_name,
+        "buyer_email": buyer.email if buyer else None,
+        "seller_id": str(order.seller_id).lower() if order.seller_id else None,
+        "seller_name": seller_name,
+        "auction_id": str(order.auction_id).lower(),
+        "auction_name": auction.auction_name if auction else None,
+        "estate_name": auction.estate_name if auction else None,
+        "grade": auction.grade if auction else None,
+        "quantity": auction.quantity if auction else None,
+        "total_amount": order.total_amount,
+        "sold_price": auction.sold_price if auction else None,
+        "order_date": order.order_date.isoformat() if order.order_date else None,
+        "order_status": order.order_status or "pending",
+        "payment_status": order.payment_status or "pending",
+        "created_at": order.created_at.isoformat() if order.created_at else None,
+        "updated_at": order.updated_at.isoformat() if order.updated_at else None,
+    }
 
 
 # Create a new order
@@ -25,6 +58,22 @@ def create_order(
 ):
     order.user_id = str(current_user.user_id)
     return service.create_order(order)
+
+# List detailed orders for buyer
+@router.get("/detailed", response_model=List[dict])
+def list_buyer_orders_detailed(
+    status: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_buyer),
+):
+    buyer_id = str(current_user.user_id)
+    query = db.query(OrderModel).filter(OrderModel.user_id == buyer_id)
+
+    if status:
+        query = query.filter(OrderModel.order_status == status.lower())
+
+    orders = query.order_by(OrderModel.order_date.desc()).all()
+    return [_build_buyer_order(o, db) for o in orders]
 
 # Get order details by ID
 @router.get("/{order_id}", response_model=Order)
