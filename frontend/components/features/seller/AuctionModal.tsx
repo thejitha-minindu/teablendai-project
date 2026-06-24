@@ -443,7 +443,6 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
           {/* Countdown Banner */}
           <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-red-600" />
               <div>
                 <p className="font-bold text-red-600">Auction in Progress</p>
                 <p className="text-sm text-red-500">Time Remaining</p>
@@ -468,7 +467,6 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                   <span className="text-gray-700 font-semibold uppercase tracking-wider text-sm">
                     {rawBuyer ? "Current Highest Bid" : "Starting Price"}
                   </span>
-                  <TrendingUp className="w-6 h-6 text-green-600" />
                 </div>
                 <div className="text-5xl font-bold text-green-700 mb-3">LKR {currentPrice}</div>
                 <div className="flex items-center gap-2 text-sm text-gray-600 bg-white/60 w-max px-3 py-1.5 rounded-full">
@@ -519,7 +517,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
             {/* Right Column - REAL Bidding Activity */}
             <div className="space-y-4 flex flex-col h-full">
               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" /> Live Activity Feed
+                <div className="w-5 h-5" /> Live Activity Feed
               </h3>
 
               <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-y-auto max-h-[400px] space-y-3 shadow-inner">
