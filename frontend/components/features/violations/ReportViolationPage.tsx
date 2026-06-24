@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { toast } from \'sonner\';
+import { toast } from 'sonner';
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import {
