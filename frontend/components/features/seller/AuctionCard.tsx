@@ -126,54 +126,54 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
 
   return (
     <Card 
-      className={`w-full mx-auto hover:shadow-lg transition-all duration-300 ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : ''}`}
+      className={`w-full mx-auto hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : 'bg-white'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative w-full h-40 overflow-hidden bg-gray-50 border-b border-gray-100 rounded-t-xl flex items-center justify-center">
+      <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0">
         {data.image_url ? (
           <img src={data.image_url} alt="Tea Lot" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
         ) : (
           <Package className="w-16 h-16 text-gray-300" />
         )}
       </div>
-      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2 pt-4">
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>
+            <CardTitle className="text-black text-xl font-bold">{id}</CardTitle>
             {type === 'live' && (
-              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center">
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-bold bg-red-600">
                 LIVE {connected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
               </Badge>
             )}
           </div>
-          <CardDescription>{data.grade} Grade</CardDescription>
+          <p className="text-black font-medium text-sm">{data.grade} Grade</p>
         </div>
 
-        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
-          <p>{String(data.date || "Date N/A")}</p>
-          {data.time && <p>{String(data.time)}</p>}
+        <div className="flex flex-col items-start sm:items-end text-sm text-black">
+          <p className="font-medium">{String(data.date || "Date N/A")}</p>
+          {data.time && <p className="font-medium">{String(data.time)}</p>}
         </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center mb-1">
-                 <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
-                 <span className={`text-lg font-bold transition-colors duration-300 ${isFlashing ? 'text-green-600 scale-110 transform' : 'text-[#1A2F1C]'}`}>
+      <CardContent className="px-5 pb-4 pt-4 flex-grow">
+        <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
+                 <span className="text-sm font-medium text-black">{getPriceLabel()}:</span>
+                 <span className={`text-lg font-bold transition-colors duration-300 ${isFlashing ? 'text-green-600 scale-110 transform' : 'text-black'}`}>
                     LKR {displayPrice} 
                  </span>
             </div>
 
-            <p className="flex justify-between text-sm">
-                <span className="font-medium text-muted-foreground">Quantity:</span>
-                <span>{data.quantity} kg</span>
+            <p className="flex justify-between text-sm items-center">
+                <span className="font-medium text-black">Quantity:</span>
+                <span className="font-medium text-black">{data.quantity} kg</span>
             </p>
 
             {type === 'history' && (
-                <p className="flex justify-between text-sm">
-                    <span className="font-medium text-muted-foreground">Status:</span>
-                    <span className={`font-bold ${rawBuyer !== "No Bids Yet" ? 'text-green-600' : 'text-red-600'}`}>
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-medium text-black">Status:</span>
+                    <span className={`font-semibold ${rawBuyer !== "No Bids Yet" ? 'text-black' : 'text-red-600'}`}>
                         {rawBuyer !== "No Bids Yet" ? 'Sold' : 'Unsold'}
                     </span>
                 </p>
@@ -181,19 +181,19 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
 
             {/* Always Display Leading Buyer / Winner row to prevent layout shifts */}
             {(type === 'live' || type === 'history') && (
-                <p className="flex justify-between text-sm">
-                    <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
-                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-500' : 'text-blue-600'}`}>
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-medium text-black">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
+                    <span className={`font-semibold ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-500' : 'text-black'}`}>
                       {safeBuyerDisplay}
                     </span>
                 </p>
             )}
 
             {(type === 'live' || type === 'scheduled') && data.countdown && (
-                <div className={`mt-2 p-2 rounded-md flex justify-between items-center ${
+                <div className={`mt-3 p-3 rounded-lg flex justify-between items-center ${
                     type === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                 }`}>
-                    <span className="text-xs font-bold uppercase">
+                    <span className="text-xs font-bold uppercase tracking-wider">
                         {type === 'live' ? 'Ending In' : 'Starts In'}
                     </span>
                     <span className="text-sm font-mono font-bold">
@@ -204,10 +204,10 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
         </div>
       </CardContent>
 
-      <CardFooter className="flex justify-end pt-2">
+      <CardFooter className="flex justify-center pb-6 pt-2 px-5">
         <Button 
             onClick={() => onViewClick?.()}
-            className="bg-[#E5F7CB] hover:bg-[#3A5A40] text-[#3A5A40] hover:text-white font-bold transition-colors"
+            className="w-full bg-[#E5F7CB] hover:bg-[#d4eab6] text-black font-bold rounded-xl py-5 text-sm transition-colors"
         >
             View Details
         </Button>
