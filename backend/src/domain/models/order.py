@@ -1,6 +1,9 @@
+# pyrefly: ignore [missing-import]
 from sqlalchemy import Column, String, Float, DateTime, Enum, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
+from uuid import uuid4
 from src.infrastructure.database.base import Base
 import enum
 
@@ -32,8 +35,6 @@ class PaymentStatus(enum.Enum):
 	failed = "failed"
 	pending = "pending"
 
-from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
-from uuid import uuid4
 
 class WinsAuction(Base):
 	__tablename__ = "wins_auction"
@@ -70,5 +71,7 @@ class PaymentDetails(Base):
 	order_id = Column(UNIQUEIDENTIFIER, ForeignKey("orders.order_id"), nullable=False, unique=True)
 	amount = Column(Float, nullable=False)
 	status = Column(Enum(PaymentStatus), nullable=False)
+	stripe_session_id = Column(String(255), nullable=True)
+	stripe_payment_intent_id = Column(String(255), nullable=True)
 
 	order = relationship("Order", back_populates="payment_details")

@@ -193,8 +193,10 @@ app.include_router(user.router, prefix="/api/v1")
 app.include_router(profile.router, prefix="/api/v1")
 
 # Register payment card router
-from src.presentation.routers.v1 import payment_card
+from src.presentation.routers.v1 import payment_card, payment
 app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"])
+# Register Stripe payment router
+app.include_router(payment.router, prefix="/api/v1")
 # Register order router
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router

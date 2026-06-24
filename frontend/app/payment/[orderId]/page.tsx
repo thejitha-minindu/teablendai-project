@@ -44,7 +44,6 @@ interface OrderData {
 export default function CheckoutPage({ params }: PaymentPageProps) {
   const resolvedParams = React.use(params);
   const router = useRouter();
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
   const [isProcessing, setIsProcessing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -105,13 +104,16 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
     setIsProcessing(true);
 
     try {
-      // Update payment status to 'paid' via API
-      await apiClient.patch(`/orders/${orderId}/payment`, {
-        payment_status: "paid",
+      // Call backend to create checkout session
+      const response = await apiClient.post(`/payment/create-checkout-session`, {
+        order_id: orderId,
       });
 
-      // Redirect to success page
-      router.push(`/payment/success?orderId=${orderId}`);
+      if (response.data?.checkout_url) {
+        window.location.href = response.data.checkout_url;
+      } else {
+        throw new Error("Invalid response from server");
+      }
     } catch (err: any) {
       console.error("Payment failed:", err);
       alert("Payment processing failed. Please try again.");
@@ -168,107 +170,29 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
 
         <div className="grid lg:grid-cols-3 gap-8 lg:gap-12 items-start">
           
-          {/* LEFT COLUMN: Payment Form */}
+          {/* LEFT COLUMN: Payment Information */}
           <div className="lg:col-span-2 space-y-8">
             <div>
               <h2 className="text-3xl text-slate-900 font-black mb-2 tracking-tight">Checkout</h2>
               <p className="text-slate-500 font-medium">Complete your purchase for {orderData?.auction_name || "your order"}.</p>
             </div>
             
-            <form onSubmit={processPayment} className="space-y-10">
-              {/* Payment Method Selector */}
-              <div className="flex gap-4 flex-row flex-nowrap overflow-x-auto">
-                {/* Card Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`relative flex-1 min-w-0 flex flex-col p-5 rounded-2xl border-2 text-left transition-all ${
-                    paymentMethod === 'card'
-                    ? 'bg-white border-[#588157] shadow-md ring-4 ring-[#588157]/5'
-                    : 'bg-slate-100/50 border-transparent hover:border-slate-300 text-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'card' ? 'border-[#588157]' : 'border-slate-300'}`}>
-                      {paymentMethod === 'card' && <div className="w-2.5 h-2.5 bg-[#588157] rounded-full" />}
-                    </div>
-                    <div className="flex gap-1.5 opacity-80">
-                      <img src="https://readymadeui.com/images/visa.webp" className="w-8" alt="Visa" />
-                      <img src="https://readymadeui.com/images/master.webp" className="w-8" alt="MasterCard" />
-                    </div>
-                  </div>
-                  <span className={`font-bold text-sm ${paymentMethod === 'card' ? 'text-slate-900' : ''}`}>Credit / Debit Card</span>
-                  <span className="text-[11px] mt-1 font-medium">Pay securely via Stripe</span>
-                </button>
-
-                {/* PayPal Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('paypal')}
-                  className={`relative flex-1 min-w-0 flex flex-col p-5 rounded-2xl border-2 text-left transition-all ${
-                    paymentMethod === 'paypal'
-                    ? 'bg-white border-[#588157] shadow-md ring-4 ring-[#588157]/5'
-                    : 'bg-slate-100/50 border-transparent hover:border-slate-300 text-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'paypal' ? 'border-[#588157]' : 'border-slate-300'}`}>
-                      {paymentMethod === 'paypal' && <div className="w-2.5 h-2.5 bg-[#588157] rounded-full" />}
-                    </div>
-                    <img src="https://readymadeui.com/images/paypal.webp" className="w-14" alt="PayPal" />
-                  </div>
-                  <span className={`font-bold text-sm ${paymentMethod === 'paypal' ? 'text-slate-900' : ''}`}>PayPal Account</span>
-                  <span className="text-[11px] mt-1 font-medium">Log in to your account</span>
-                </button>
+            <div className="bg-white p-8 sm:p-10 rounded-3xl border border-slate-200 shadow-sm text-center">
+              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                <CreditCard className="w-10 h-10 text-blue-600" />
               </div>
-
-              {/* Conditional Content */}
-              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm transition-all">
-                {paymentMethod === 'card' ? (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="col-span-full">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Cardholder Name</label>
-                      <input required type="text" placeholder="Johnathan Doe"
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                    <div className="col-span-full">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Card Number</label>
-                      <div className="relative">
-                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input required type="text" placeholder="0000 0000 0000 0000"
-                          className="pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Expiry Date</label>
-                      <input required type="text" placeholder="MM / YY"
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">CVV Code</label>
-                      <input required type="password" placeholder="***" maxLength={3}
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-6 text-center">
-                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <img src="https://readymadeui.com/images/paypal.webp" className="w-10" alt="PayPal" />
-                    </div>
-                    <p className="text-sm text-slate-600 font-medium max-w-xs mx-auto">
-                      Click "Pay Now" to open the PayPal secure portal and complete your purchase.
-                    </p>
-                  </div>
-                )}
-              </div>
-
+              <h3 className="text-xl font-bold text-slate-900 mb-4">Secure Payment via Stripe</h3>
+              <p className="text-slate-600 font-medium max-w-md mx-auto mb-8">
+                We use Stripe to process payments securely. When you click "Pay Now", you will be redirected to Stripe's secure checkout portal to complete your transaction.
+              </p>
+              
               {/* Secure Badges */}
               <div className="flex flex-wrap items-center justify-center gap-6 pt-4 grayscale opacity-60">
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><ShieldCheck className="w-4 h-4 text-[#588157]" /> SSL Encrypted</span>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><CheckCircle2 className="w-4 h-4 text-[#588157]" /> PCI Compliant</span>
                 <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Lock className="w-4 h-4 text-[#588157]" /> Secure Gateway</span>
               </div>
-            </form>
+            </div>
           </div>
 
           {/* RIGHT COLUMN: Summary (Sticky) */}

@@ -153,6 +153,10 @@ class Settings(BaseSettings):
     ADMIN_PASSWORD: Optional[str] = None
     ADMIN_EMAIL: Optional[str] = None
 
+    # Stripe Configuration
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+
     class Config:
         env_file = str(BACKEND_DIR / ".env")
         env_file_encoding = "utf-8"
