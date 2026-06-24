@@ -168,12 +168,6 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
     loadUserSuggestions();
   }, []);
 
-  // Clear expanded report and scroll to top when switching tabs
-  useEffect(() => {
-    setExpandedReport(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeTab]);
-
   const loadViolations = async () => {
     setReportsLoading(true);
     try {
