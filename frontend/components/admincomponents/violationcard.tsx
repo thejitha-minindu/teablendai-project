@@ -210,32 +210,6 @@ export function ViolationCard({
                 </div>
             </div>
 
-            {/* Expandable Details */}
-            <div className="mt-3">
-                <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="text-xs text-green-600 hover:text-green-700 transition-colors flex items-center gap-1"
-                >
-                    <Eye className="w-3 h-3" />
-                    {expanded ? "Show less" : "View evidence"}
-                </button>
-                {expanded && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-slideDown">
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500">Additional evidence will be displayed here</p>
-                            <div className="flex gap-2">
-                                <button className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition">
-                                    View Screenshot
-                                </button>
-                                <button className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition">
-                                    View Chat Log
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* Status Update Actions */}
             {currentStatus !== "Resolved" && currentStatus !== "Closed" && (
                 <div className="mt-4 pt-3 border-t border-gray-100">

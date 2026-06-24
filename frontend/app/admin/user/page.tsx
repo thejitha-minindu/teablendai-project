@@ -115,7 +115,7 @@ export default function AdminProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-10 px-4">
+    <div className="min-h-screen py-10 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Notifications */}
         {error && (
@@ -200,26 +200,6 @@ export default function AdminProfile() {
                 <Clock className="w-3 h-3" />
                 Last login: {admin.lastLogin}
               </div>
-            </div>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 border-b border-gray-100">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-700">{admin.totalActions}</p>
-              <p className="text-xs text-gray-500">Actions Performed</p>
-            </div>
-            <div className="text-center border-l border-r border-gray-200">
-              <p className="text-2xl font-bold text-green-700">
-                {new Date(admin.joined).getFullYear()}
-              </p>
-              <p className="text-xs text-gray-500">Member Since</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-700">
-                {admin.status === "active" ? "✓" : "•"}
-              </p>
-              <p className="text-xs text-gray-500">Account Status</p>
             </div>
           </div>
 

@@ -160,16 +160,26 @@ function CreateNotificationForm() {
     };
 
     const handleCancel = () => {
-        if (confirm("Are you sure you want to cancel? All unsaved data will be lost.")) {
-            setFormData({
-                title: "",
-                content: "",
-                type: "",
-                revisers: "",
-                reviserSpecify: ""
-            });
-            setSelectedUser(null);
-        }
+        toast.info("Are you sure you want to cancel? All unsaved data will be lost.", {
+            action: {
+                label: "Yes",
+                onClick: () => {
+                    setFormData({
+                        title: "",
+                        content: "",
+                        type: "",
+                        revisers: "",
+                        reviserSpecify: ""
+                    });
+                    setSelectedUser(null);
+                }
+            },
+            cancel: {
+                label: "No",
+                onClick: () => {}
+            },
+            duration: 5000,
+        });
     };
 
     const getTypeIcon = (typeValue: string) => {
@@ -178,12 +188,11 @@ function CreateNotificationForm() {
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto bg-gray-50 min-h-screen">
+        <div className="p-6 max-w-5xl mx-auto min-h-screen">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Bell className="w-7 h-7 text-green-700" />
                         Notification Manager
                     </h1>
                     <p className="text-gray-500 mt-1">Create and manage system notifications</p>
@@ -291,8 +300,8 @@ function CreateNotificationForm() {
                                         type="button"
                                         onClick={() => handleInputChange("revisers", option.value)}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${formData.revisers === option.value
-                                                ? "bg-green-600 border-green-600 text-white"
-                                                : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                                            ? "bg-green-600 border-green-600 text-white"
+                                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
                                             }`}
                                     >
                                         {option.icon}

@@ -158,7 +158,7 @@ export default function TrackAuctionPage() {
     }
 
     return (
-        <div className="flex flex-col p-6 bg-gray-50 min-h-screen">
+        <div className="flex flex-col p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Track Auctions</h1>

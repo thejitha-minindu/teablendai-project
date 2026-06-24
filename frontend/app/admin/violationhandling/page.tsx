@@ -134,11 +134,10 @@ export default function ViolationHandlingPage() {
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <AlertTriangle className="w-7 h-7 text-red-600" />
                     Violation Handling
                 </h1>
                 <p className="text-gray-500 mt-1">Monitor and manage user violations</p>
