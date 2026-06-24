@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -48,10 +49,17 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Use a ref for redirect so the fetch effect doesn't depend on pathname
+  const pathnameRef = useRef(pathname);
+  const routerRef = useRef(router);
+  pathnameRef.current = pathname;
+  routerRef.current = router;
+
   const redirectToAuthIfNeeded = useCallback(() => {
-    if (!pathname || !isProtectedPath(pathname)) return;
-    router.replace(`/auth?redirect=${encodeURIComponent(pathname)}`);
-  }, [pathname, router]);
+    const currentPath = pathnameRef.current;
+    if (!currentPath || !isProtectedPath(currentPath)) return;
+    routerRef.current.replace(`/auth?redirect=${encodeURIComponent(currentPath)}`);
+  }, []); // Stable — uses refs, no deps on pathname/router
 
   const refreshUser = useCallback(async () => {
     try {
@@ -82,6 +90,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     }
   }, []);
 
+  // Initialize user on mount — runs ONCE, not on every pathname change
   useEffect(() => {
     const initializeUser = async () => {
       const claims = getAuthClaims();
@@ -118,6 +127,7 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
     return unsubscribe;
   }, [redirectToAuthIfNeeded, refreshUser]);
 
+  // Periodic refresh every 30s (only when user is authenticated)
   useEffect(() => {
     if (!user) return;
 
