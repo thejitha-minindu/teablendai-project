@@ -163,13 +163,23 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
     } catch (error) { toast.error("Update failed."); }
   };
 
-  const handleCancelAuction = async () => {
-    if (!confirm("Cancel this auction?")) return;
-    try {
-      await apiClient.delete(`/auctions/${auctionId}`);
-      toast.success("Cancelled.");
-      onClose();
-    } catch (error) { toast.error("Cancel failed."); }
+  const handleCancelAuction = () => {
+    toast("Cancel this auction?", {
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          try {
+            await apiClient.delete(`/auctions/${auctionId}`);
+            toast.success("Cancelled.");
+            onClose();
+          } catch (error) { toast.error("Cancel failed."); }
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    });
   };
 
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"><div className="bg-white p-6 rounded">Loading...</div></div>;

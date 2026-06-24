@@ -129,7 +129,7 @@ export default function CreateAuctionPage() {
     try {
       // Validate scheduled start is in the future (client-side guard)
       if (!formData.scheduledStart) {
-        alert('Please select a scheduled start time.');
+        toast.error('Please select a scheduled start time.');
         setIsSubmitting(false);
         return;
       }
@@ -138,7 +138,7 @@ export default function CreateAuctionPage() {
       const now = Date.now();
       // require at least 30 seconds in the future to account for small clock skew
       if (selected <= now + 30 * 1000) {
-        alert('Scheduled start time must be in the future. Please choose a later time.');
+        toast.error('Scheduled start time must be in the future. Please choose a later time.');
         setIsSubmitting(false);
         return;
       }

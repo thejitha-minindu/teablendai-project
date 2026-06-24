@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { toast } from \'sonner\';
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -215,11 +216,11 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
     e.preventDefault();
 
     if (!violatorId.trim()) {
-      alert("Please enter the ID of the user you want to report.");
+      toast.error("Please enter the ID of the user you want to report.");
       return;
     }
     if (!reason.trim() || reason.trim().length < 5) {
-      alert("Please provide a detailed reason (at least 5 characters).");
+      toast.error("Please provide a detailed reason (at least 5 characters).");
       return;
     }
 
@@ -258,7 +259,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
     } catch (error: any) {
       const message =
         error?.response?.data?.detail || "Failed to submit report.";
-      alert(message);
+      toast.error(message);
     } finally {
       setSubmitting(false);
     }

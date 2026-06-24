@@ -7,6 +7,7 @@ import {
   ChevronDown, RefreshCw, MessageCircle, Eye, Flag
 } from "lucide-react";
 import { getSellerOrders, updateOrderStatus, type OrderDetail } from "@/services/orderService";
+import { toast } from 'sonner';
 
 const STATUS_FLOW = [
   "pending", "confirmed", "processing", "packed",
@@ -62,9 +63,10 @@ export default function SellerOrdersPage() {
     try {
       const updated = await updateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(o => o.order_id === orderId ? updated : o));
+      toast.success(`Order status updated.`);
     } catch (err) {
       console.error("Failed to update order status:", err);
-      alert("Failed to update order status. Please try again.");
+      toast.error("Failed to update order status. Please try again.");
     } finally {
       setUpdatingOrderId(null);
     }
