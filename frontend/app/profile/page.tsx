@@ -1,6 +1,6 @@
 "use client";
 import { redirect } from "next/navigation";
-import { toast } from \'sonner\';
+import { toast } from 'sonner';
 
 import React, { useEffect, useState } from 'react';
 import {
