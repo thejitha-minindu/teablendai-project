@@ -14,21 +14,21 @@ const STATUS_FLOW = [
   "shipped", "out_for_delivery", "delivered"
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
-  pending:          { label: "Pending",          color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200", icon: <Clock className="w-4 h-4" /> },
-  confirmed:        { label: "Confirmed",        color: "text-blue-700",   bg: "bg-blue-50 border-blue-200",     icon: <CheckCircle className="w-4 h-4" /> },
-  processing:       { label: "Processing",       color: "text-indigo-700", bg: "bg-indigo-50 border-indigo-200", icon: <RefreshCw className="w-4 h-4" /> },
-  packed:           { label: "Packed",           color: "text-purple-700", bg: "bg-purple-50 border-purple-200", icon: <Package className="w-4 h-4" /> },
-  shipped:          { label: "Shipped",          color: "text-sky-700",    bg: "bg-sky-50 border-sky-200",       icon: <Truck className="w-4 h-4" /> },
-  out_for_delivery: { label: "Out for Delivery", color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: <Truck className="w-4 h-4" /> },
-  delivered:        { label: "Delivered",        color: "text-green-700",  bg: "bg-green-50 border-green-200",   icon: <CheckCircle className="w-4 h-4" /> },
-  canceled:         { label: "Cancelled",        color: "text-red-700",    bg: "bg-red-50 border-red-200",       icon: <AlertCircle className="w-4 h-4" /> },
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string; icon?: React.ReactNode }> = {
+  pending:          { label: "Pending",          color: "text-gray-700", bg: "bg-white border-gray-200" },
+  confirmed:        { label: "Confirmed",        color: "text-gray-700", bg: "bg-white border-gray-200" },
+  processing:       { label: "Processing",       color: "text-gray-700", bg: "bg-white border-gray-200", icon: <RefreshCw className="w-4 h-4" /> },
+  packed:           { label: "Packed",           color: "text-gray-700", bg: "bg-white border-gray-200", icon: <Package className="w-4 h-4" /> },
+  shipped:          { label: "Shipped",          color: "text-gray-700", bg: "bg-white border-gray-200", icon: <Truck className="w-4 h-4" /> },
+  out_for_delivery: { label: "Out for Delivery", color: "text-gray-700", bg: "bg-white border-gray-200", icon: <Truck className="w-4 h-4" /> },
+  delivered:        { label: "Delivered",        color: "text-gray-700", bg: "bg-white border-gray-200", icon: <CheckCircle className="w-4 h-4" /> },
+  canceled:         { label: "Cancelled",        color: "text-gray-700", bg: "bg-white border-gray-200", icon: <AlertCircle className="w-4 h-4" /> },
 };
 
 const PAYMENT_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  pending: { label: "Awaiting Payment", color: "text-yellow-700", bg: "bg-yellow-50 border-yellow-200" },
-  paid:    { label: "Paid",             color: "text-green-700",  bg: "bg-green-50 border-green-200" },
-  failed:  { label: "Failed",           color: "text-red-700",    bg: "bg-red-50 border-red-200" },
+  pending: { label: "Awaiting Payment", color: "text-gray-700", bg: "bg-white border-gray-200" },
+  paid:    { label: "Paid",             color: "text-gray-700", bg: "bg-white border-gray-200" },
+  failed:  { label: "Failed",           color: "text-gray-700", bg: "bg-white border-gray-200" },
 };
 
 export default function BuyerOrdersPage() {
@@ -83,7 +83,7 @@ export default function BuyerOrdersPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-[#588157] animate-spin mx-auto mb-3" />
+          <RefreshCw className="w-8 h-8 text-gray-500 animate-spin mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Loading orders...</p>
         </div>
       </div>
@@ -93,23 +93,27 @@ export default function BuyerOrdersPage() {
   return (
     <div className="space-y-8 sm:px-4 lg:px-10 lg:pt-10 mb-10">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-black text-gray-900 tracking-tight">My Orders</h1>
-        <p className="text-gray-500 mt-1">Track and manage all your purchases</p>
+      <div className="mb-5 items-start">
+        <h1 className="text-3xl font-bold">My Orders</h1>
+        <p className="text-muted-foreground mt-2">Track and manage all your purchases</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          { label: "Total Orders", value: stats.total, color: "bg-gray-50 border-gray-200 text-gray-700" },
-          { label: "Pending", value: stats.pending, color: "bg-yellow-50 border-yellow-200 text-yellow-700" },
-          { label: "Processing", value: stats.processing, color: "bg-indigo-50 border-indigo-200 text-indigo-700" },
-          { label: "Shipped", value: stats.shipped, color: "bg-sky-50 border-sky-200 text-sky-700" },
-          { label: "Delivered", value: stats.delivered, color: "bg-green-50 border-green-200 text-green-700" },
+          { label: "Total Orders", value: stats.total, color: "bg-white border-gray-200 text-gray-700" },
+          { label: "Pending", value: stats.pending, color: "bg-white border-gray-200 text-gray-700" },
+          { label: "Processing", value: stats.processing, color: "bg-white border-gray-200 text-gray-700" },
+          { label: "Shipped", value: stats.shipped, color: "bg-white border-gray-200 text-gray-700" },
+          { label: "Delivered", value: stats.delivered, color: "bg-white border-gray-200 text-gray-700" },
         ].map((stat) => (
-          <div key={stat.label} className={`p-4 rounded-2xl border ${stat.color}`}>
-            <p className="text-2xl font-black">{stat.value}</p>
-            <p className="text-xs font-bold uppercase tracking-wider mt-1 opacity-70">{stat.label}</p>
+          <div key={stat.label} className={`p-4 rounded-2xl border flex flex-col gap-3 ${stat.color}`}>
+            <div className="flex items-center">
+              <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-xs font-medium uppercase tracking-wider">
+                {stat.label}
+              </span>
+            </div>
+            <span className="text-3xl font-semibold">{stat.value}</span>
           </div>
         ))}
       </div>
@@ -163,12 +167,12 @@ export default function BuyerOrdersPage() {
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-4 flex-1">
-                      <div className="bg-[#E5F7CB] p-3 rounded-xl">
-                        <Package className="w-6 h-6 text-[#3A5A40]" />
+                      <div className="bg-gray-50 border border-gray-200 p-3 rounded-xl">
+                        <Package className="w-6 h-6 text-gray-600" />
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-gray-900">{order.auction_name || "Tea Lot"}</h3>
+                          <span className="text-lg font-semibold text-gray-900 line-clamp-1">{order.auction_name || "N/A"}</span>
                           <span className="text-xs text-gray-400 font-mono">{order.display_order_id || order.order_id.slice(0, 8)}</span>
                         </div>
                         <p className="text-sm text-gray-500 mt-0.5">
@@ -181,16 +185,16 @@ export default function BuyerOrdersPage() {
 
                     <div className="flex items-center gap-3 flex-shrink-0">
                       {/* Payment Badge */}
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border ${paymentCfg.bg} ${paymentCfg.color}`}>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-medium border ${paymentCfg.bg} ${paymentCfg.color}`}>
                         {paymentCfg.label}
                       </span>
                       {/* Status Badge */}
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-bold border flex items-center gap-1.5 ${statusCfg.bg} ${statusCfg.color}`}>
+                      <span className={`px-3 py-1.5 rounded-full text-xs font-medium border flex items-center gap-1.5 ${statusCfg.bg} ${statusCfg.color}`}>
                         {statusCfg.icon}
                         {statusCfg.label}
                       </span>
                       {/* Price */}
-                      <span className="font-bold text-[#344e41] text-lg min-w-[100px] text-right">
+                      <span className="font-semibold text-gray-900 text-lg min-w-[100px] text-right">
                         LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}
                       </span>
                       <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
@@ -204,33 +208,33 @@ export default function BuyerOrdersPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       {/* Order Info */}
                       <div className="space-y-2">
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Order Details</h4>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Details</h4>
                         <div className="space-y-1.5 text-sm">
                           <p><span className="text-gray-500">Order ID:</span> <span className="font-medium text-gray-800 font-mono">{order.display_order_id || order.order_id.slice(0, 8)}</span></p>
                           <p><span className="text-gray-500">Date:</span> <span className="font-medium text-gray-800">{order.order_date ? new Date(order.order_date).toLocaleDateString() : "N/A"}</span></p>
                           <p><span className="text-gray-500">Estate:</span> <span className="font-medium text-gray-800">{order.estate_name || "N/A"}</span></p>
-                          <p><span className="text-gray-500">Amount:</span> <span className="font-bold text-[#344e41]">LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}</span></p>
+                          <p><span className="text-gray-500">Amount:</span> <span className="font-semibold text-gray-900">LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}</span></p>
                         </div>
                       </div>
 
                       {/* Seller Info */}
                       <div className="space-y-2">
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Seller Info</h4>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Seller Info</h4>
                         <div className="space-y-1.5 text-sm">
                           <p><span className="text-gray-500">Name:</span> <span className="font-medium text-gray-800">{order.seller_name || "N/A"}</span></p>
-                          <p><span className="text-gray-500">Payment:</span> <span className={`font-bold ${paymentCfg.color}`}>{paymentCfg.label}</span></p>
+                          <p><span className="text-gray-500">Payment:</span> <span className={`font-semibold ${paymentCfg.color}`}>{paymentCfg.label}</span></p>
                         </div>
                       </div>
 
                       {/* Actions */}
                       <div className="space-y-3">
-                        <h4 className="text-xs font-black text-gray-400 uppercase tracking-wider">Actions</h4>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Actions</h4>
 
                         {/* Pay Now Button */}
                         {!isPaid && (
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(`/payment?orderId=${order.order_id}`); }}
-                            className="w-full bg-[#3A5A40] text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:bg-[#2A402E] transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-white text-gray-700 border border-gray-200 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                           >
                             <CreditCard className="w-4 h-4" /> Pay Now
                           </button>
