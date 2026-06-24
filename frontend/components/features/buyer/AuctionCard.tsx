@@ -116,7 +116,7 @@ export function AuctionCard({
             </div>
             <Button
               variant="outline"
-              className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-bold rounded-xl py-5 text-sm transition-colors"
+              className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold rounded-xl py-5 text-sm transition-colors"
               title="Report Seller"
               onClick={(e) => {
                 e.stopPropagation();
@@ -137,7 +137,7 @@ export function AuctionCard({
               onWatchlistChange={onWatchlistChange}
             />
             <Button
-              className="flex-1 min-w-[120px] bg-[#E5F7CB] hover:bg-[#d4eab6] text-black font-bold rounded-xl py-5 text-sm transition-colors"
+              className="flex-1 min-w-[120px] bg-[#E5F7CB] hover:bg-[#d4eab6] text-gray-900 font-semibold rounded-xl py-5 text-sm transition-colors"
               onClick={() => {
                 if (!auctionId) return;
                 window.location.href = getAuctionTargetPath(auctionId);
@@ -185,67 +185,67 @@ export function AuctionCard({
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <CardTitle className="text-black text-xl font-bold break-all">
+            <CardTitle className="text-gray-900 text-xl font-semibold break-all">
               {safeAuction.title}
             </CardTitle>
             {safeAuction.status?.toLowerCase() === "live" && (
-              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-bold bg-red-600">
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
                 LIVE
               </Badge>
             )}
           </div>
-          <p className="text-black font-medium text-sm">
+          <p className="text-gray-700 font-normal text-sm">
             {safeAuction.grade} Grade <span className="text-gray-500 font-normal ml-1">(by {safeAuction.company})</span>
           </p>
         </div>
-        <div className="flex flex-col items-start sm:items-end text-sm text-black shrink-0">
-          <p className="font-medium">{displayDate}</p>
-          {displayTime !== "-" && <p className="font-medium">{displayTime}</p>}
+        <div className="flex flex-col items-start sm:items-end text-sm text-gray-600 shrink-0">
+          <p className="font-normal">{displayDate}</p>
+          {displayTime !== "-" && <p className="font-normal">{displayTime}</p>}
         </div>
       </CardHeader>
 
       <CardContent className="px-5 pb-4 pt-4 flex-grow">
         <div className="flex flex-col gap-3">
           <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
-            <span className="text-sm font-medium text-black">
+            <span className="text-sm font-normal text-gray-500">
               {(cardType === "history" || cardType === "order") ? "Sold Price" : "Base Price"}:
             </span>
-            <span className="text-lg font-bold text-black">
+            <span className="text-lg font-semibold text-gray-900">
               {(cardType === "history" || cardType === "order") ? safeAuction.soldPrice : safeAuction.basePrice}
             </span>
           </div>
 
           <p className="flex justify-between text-sm items-center">
-            <span className="font-medium text-black">Estate:</span>
-            <span className="font-medium text-black break-all text-right max-w-[60%]">{safeAuction.estateName}</span>
+            <span className="font-normal text-gray-500">Estate:</span>
+            <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.estateName}</span>
           </p>
 
           <p className="flex justify-between text-sm items-center">
-            <span className="font-medium text-black">Quantity:</span>
-            <span className="font-medium text-black">{safeAuction.quantity}</span>
+            <span className="font-normal text-gray-500">Quantity:</span>
+            <span className="font-medium text-gray-800">{safeAuction.quantity}</span>
           </p>
 
           {(cardType === "history" || cardType === "order") && (
             <p className="flex justify-between text-sm items-center">
-              <span className="font-medium text-black">Winner:</span>
-              <span className="font-semibold text-black break-all text-right max-w-[60%]">{safeAuction.winnerName}</span>
+              <span className="font-normal text-gray-500">Winner:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.winnerName}</span>
             </p>
           )}
 
           {safeAuction.customAuctionId && (
             <p className="flex justify-between text-sm items-center">
-              <span className="font-medium text-black">Ref ID:</span>
-              <span className="font-medium text-black break-all text-right max-w-[60%]">{safeAuction.customAuctionId}</span>
+              <span className="font-normal text-gray-500">Ref ID:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.customAuctionId}</span>
             </p>
           )}
 
           {safeAuction.countdown && (
             <div className={`mt-3 p-3 rounded-lg flex justify-between items-center ${safeAuction.status?.toLowerCase() === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
               }`}>
-              <span className="text-xs font-bold uppercase tracking-wider">
+              <span className="text-xs font-semibold uppercase tracking-wider">
                 {safeAuction.status?.toLowerCase() === 'live' ? 'Ending In' : 'Starts In'}
               </span>
-              <span className="text-sm font-mono font-bold">
+              <span className="text-sm font-mono font-semibold">
                 {safeAuction.countdown}
               </span>
             </div>
