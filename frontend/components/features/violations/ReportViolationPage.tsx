@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { toast } from \'sonner\';
+import { toast } from 'sonner';
 import { useSearchParams } from "next/navigation";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -169,6 +169,12 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
     loadUserSuggestions();
   }, []);
 
+  // Clear expanded report and scroll to top when switching tabs
+  useEffect(() => {
+    setExpandedReport(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [activeTab]);
+
   const loadViolations = async () => {
     setReportsLoading(true);
     try {
@@ -255,6 +261,8 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
       setReason("");
       setAuctionId("");
       setSubmitSuccess(true);
+      toast.success("Report submitted successfully!");
+      setActiveTab("history");
       setTimeout(() => setSubmitSuccess(false), 4000);
     } catch (error: any) {
       const message =
