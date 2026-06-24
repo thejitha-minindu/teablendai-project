@@ -14,7 +14,8 @@ import {
   Clock,
   Users,
   TrendingUp,
-  FileText
+  FileText,
+  AlertTriangle
 } from "lucide-react";
 
 export default function SystemActivityPage() {
@@ -35,7 +36,7 @@ export default function SystemActivityPage() {
     total: total,
     login: logs.filter(a => a.activityType === "Login").length,
     bids: logs.filter(a => a.activityType === "Bid Placed").length,
-    uploads: logs.filter(a => a.activityType === "Document Upload").length
+    violations: logs.filter(a => a.activityType.toLowerCase().includes("violation")).length
   };
 
   const hasActiveFilters =
@@ -158,10 +159,10 @@ export default function SystemActivityPage() {
         </div>
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
           <div>
-            <p className="text-xs font-semibold text-gray-405 uppercase tracking-wider">Doc Uploads (Cached)</p>
-            <p className="text-2xl font-bold text-orange-600 mt-1">{stats.uploads}</p>
+            <p className="text-xs font-semibold text-gray-405 uppercase tracking-wider">violations (Cached)</p>
+            <p className="text-2xl font-bold text-orange-600 mt-1">{stats.violations}</p>
           </div>
-          <FileText className="w-8 h-8 text-orange-500" />
+          <AlertTriangle className="w-8 h-8 text-orange-500" />
         </div>
       </div>
 

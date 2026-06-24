@@ -15,6 +15,7 @@ import {
   MessageCircle
 } from "lucide-react";
 import { useState } from "react";
+import { apiClient } from "@/lib/apiClient";
 
 type ViolationCardProps = {
     violationId: string;
@@ -22,6 +23,10 @@ type ViolationCardProps = {
     senderName?: string | null;
     senderEmail?: string | null;
     violatorId: string;
+    violatorName?: string | null;
+    violatorEmail?: string | null;
+    violatorFirstName?: string | null;
+    violatorLastName?: string | null;
     auctionId?: string | null;
     violationType: string;
     reason: string;
@@ -36,6 +41,10 @@ export function ViolationCard({
     senderName,
     senderEmail,
     violatorId,
+    violatorName,
+    violatorEmail,
+    violatorFirstName,
+    violatorLastName,
     auctionId,
     violationType,
     reason,
@@ -49,12 +58,14 @@ export function ViolationCard({
 
     const getStatusColor = () => {
         switch (currentStatus.toLowerCase()) {
+            case "open":
             case "pending":
                 return { bg: "bg-yellow-100", text: "text-yellow-700", icon: <Clock className="w-3 h-3" /> };
             case "resolved":
                 return { bg: "bg-green-100", text: "text-green-700", icon: <CheckCircle className="w-3 h-3" /> };
             case "under review":
                 return { bg: "bg-blue-100", text: "text-blue-700", icon: <Shield className="w-3 h-3" /> };
+            case "closed":
             case "dismissed":
                 return { bg: "bg-gray-100", text: "text-gray-700", icon: <XCircle className="w-3 h-3" /> };
             default:
@@ -80,12 +91,14 @@ export function ViolationCard({
     const handleStatusChange = async (newStatus: string) => {
         try {
             setUpdating(true);
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await apiClient.patch(`/admin/violations/${violationId}`, {
+                status: newStatus,
+            });
             setCurrentStatus(newStatus);
             onStatusUpdate?.(violationId, newStatus);
         } catch (error) {
             console.error("Failed to update status:", error);
+            alert("Failed to update violation status. Please try again.");
         } finally {
             setUpdating(false);
         }
@@ -141,15 +154,23 @@ export function ViolationCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                        <User className="w-4 h-4 text-gray-400" />
+                        <Send className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
-                            <span className="font-medium">Sender ID:</span> {senderId}
+                            <span className="font-medium">Reported By:</span>{" "}
+                            {senderName || senderId}
+                            {senderEmail && (
+                                <span className="text-gray-400 text-xs ml-1">({senderEmail})</span>
+                            )}
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                         <User className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
-                            <span className="font-medium">Violator ID:</span> {violatorId}
+                            <span className="font-medium">Violator:</span>{" "}
+                            {violatorName || violatorId}
+                            {violatorEmail && (
+                                <span className="text-gray-400 text-xs ml-1">({violatorEmail})</span>
+                            )}
                         </span>
                     </div>
                 </div>
@@ -160,6 +181,14 @@ export function ViolationCard({
                             <span className="font-medium">Violation Type:</span> {violationType}
                         </span>
                     </div>
+                    {auctionId && (
+                        <div className="flex items-center gap-2 text-sm">
+                            <FileText className="w-4 h-4 text-gray-400" />
+                            <span className="text-gray-600">
+                                <span className="font-medium">Auction ID:</span> {auctionId}
+                            </span>
+                        </div>
+                    )}
                     <div className="flex items-center gap-2 text-sm">
                         <Shield className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
@@ -207,16 +236,16 @@ export function ViolationCard({
             </div>
 
             {/* Status Update Actions */}
-            {currentStatus !== "resolved" && currentStatus !== "dismissed" && (
+            {currentStatus !== "Resolved" && currentStatus !== "Closed" && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
                         <MessageCircle className="w-3 h-3" />
                         Update Violation Status:
                     </p>
                     <div className="flex gap-2">
-                        {currentStatus !== "under review" && (
+                        {currentStatus !== "Under Review" && (
                             <button
-                                onClick={() => handleStatusChange("under review")}
+                                onClick={() => handleStatusChange("Under Review")}
                                 disabled={updating}
                                 className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
                             >
@@ -224,14 +253,14 @@ export function ViolationCard({
                             </button>
                         )}
                         <button
-                            onClick={() => handleStatusChange("resolved")}
+                            onClick={() => handleStatusChange("Resolved")}
                             disabled={updating}
                             className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition disabled:opacity-50"
                         >
                             Resolve Issue
                         </button>
                         <button
-                            onClick={() => handleStatusChange("dismissed")}
+                            onClick={() => handleStatusChange("Closed")}
                             disabled={updating}
                             className="text-xs px-3 py-1 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
                         >
@@ -243,16 +272,10 @@ export function ViolationCard({
 
             {/* Footer Buttons */}
             <div className="mt-4 flex justify-end gap-3">
-                <Link href={`/admin/sendnotification?senderId=${senderId}&violatorId=${violatorId}&type=${violationType}`}>
+                <Link href={`/admin/sendnotification?prefillUserId=${violatorId}&prefillUserEmail=${encodeURIComponent(violatorEmail || "")}&prefillFirstName=${encodeURIComponent(violatorFirstName || "")}&prefillLastName=${encodeURIComponent(violatorLastName || "")}`}>
                     <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-green-600 text-green-600 hover:bg-green-50 transition-all duration-200">
                         <Send className="w-4 h-4" />
                         Send Notification
-                    </button>
-                </Link>
-                <Link href={`/admin/userprofile/${violatorId}`}>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all duration-200">
-                        <User className="w-4 h-4" />
-                        View Violator Profile
                     </button>
                 </Link>
             </div>
