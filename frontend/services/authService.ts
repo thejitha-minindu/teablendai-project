@@ -1,8 +1,11 @@
+import axios, { AxiosInstance } from 'axios';
+import { API_BASE_URL } from '../lib/api.config';
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
   getStoredToken,
   setStoredAuthToken,
+  AuthChangeReason,
 } from "@/lib/auth";
 
 interface ForgotPasswordResponse {
@@ -31,7 +34,7 @@ interface RegisterResponse {
   message: string;
   user_id: string;
 }
-
+ 
 export interface CurrentUserResponse {
   user_id: string;
   email: string;
@@ -66,12 +69,51 @@ export interface CurrentUserResponse {
   watch_list?: string[];
   verification_status?: string;
   status?: string;
-  // Admin specific fields
-  admin_id?: string;
-  name?: string;
+}
+
+export interface GoogleLoginRequest {
+  token: string;
+}
+
+export interface GoogleCredentialResponse {
+  credential: string;
+  select_by?: string;
 }
 
 class AuthService {
+  private api: AxiosInstance;
+
+  constructor() {
+    this.api = axios.create({
+      baseURL: API_BASE_URL,
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    this.api.interceptors.request.use((config) => {
+      const token = getStoredToken();
+      if (token && config.headers) {
+        (config.headers as any).Authorization = `Bearer ${token}`;
+      }
+      return config;
+    });
+  }
+
+  // TOKEN MANAGEMENT
+  getToken(): string | null {
+    return getStoredToken();
+  }
+
+  setToken(token: string, source: AuthChangeReason = 'manual'): void {
+    setStoredAuthToken(token, source);
+  }
+
+  clearToken(source: AuthChangeReason = 'logout'): void {
+    clearStoredAuthToken(source);
+  }
+
+  // AUTHENTICATION
   async register(
     email: string,
     password: string,
@@ -113,15 +155,27 @@ class AuthService {
     return response.data;
   }
 
+  async googleLogin(token: string): Promise<LoginResponse> {
+    const response = await apiClient.post<LoginResponse>("/auth/google", { token });
+    if (response.data.access_token) {
+      setStoredAuthToken(response.data.access_token, "google");
+    }
+    return response.data;
+  }
+
+  // USER DATA
   async getCurrentUser(): Promise<CurrentUserResponse> {
     const response = await apiClient.get<CurrentUserResponse>("/users/me");
     return response.data;
   }
 
+  async getCurrentAdmin(): Promise<CurrentUserResponse> {
+    const response = await apiClient.get<CurrentUserResponse>("/admin/profile/me");
+    return response.data;
+  }
+
   async requestPasswordReset(email: string): Promise<ForgotPasswordResponse> {
-    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", {
-      email,
-    });
+    const response = await apiClient.post<ForgotPasswordResponse>("/auth/forgot-password", { email });
     return response.data;
   }
 

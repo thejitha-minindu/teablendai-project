@@ -20,6 +20,38 @@ load_dotenv(dotenv_path=BACKEND_DIR / ".env")
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 
 
+def _get_available_odbc_drivers() -> List[str]:
+    try:
+        import pyodbc
+
+        return [driver.strip() for driver in pyodbc.drivers()]
+    except Exception:
+        return []
+
+
+def _resolve_mssql_driver(preferred_driver: Optional[str]) -> str:
+    preferred_driver = (preferred_driver or "").strip()
+    available_drivers = _get_available_odbc_drivers()
+
+    candidate_drivers = [
+        preferred_driver,
+        "ODBC Driver 18 for SQL Server",
+        "ODBC Driver 17 for SQL Server",
+    ]
+
+    for candidate in candidate_drivers:
+        if candidate and candidate in available_drivers:
+            if preferred_driver and candidate != preferred_driver:
+                logger.warning(
+                    "Configured MSSQL driver '%s' is not installed; using '%s' instead.",
+                    preferred_driver,
+                    candidate,
+                )
+            return candidate
+
+    return preferred_driver or "ODBC Driver 18 for SQL Server"
+
+
 def resolve_model_name(raw_model_name: Optional[str]) -> str:
     """Normalize model names from env and apply safe fallback."""
     if not raw_model_name:
@@ -51,6 +83,7 @@ class Settings(BaseSettings):
 
     TAVILY_API_KEY: Optional[str] = None
     AUCTION_API_BASE_URL: Optional[str] = None
+    CLOUDINARY_URL: Optional[str] = None
 
     # CORS Configuration
     CORS_ORIGINS: List[str] = [
@@ -181,7 +214,7 @@ def get_mssql_connection_string(
     username = username or settings.MSSQL_USERNAME
     password = password or settings.MSSQL_PASSWORD
     trusted = settings.DB_TRUSTED_CONNECTION if trusted is None else trusted
-    driver = driver or settings.MSSQL_DRIVER
+    driver = _resolve_mssql_driver(driver or settings.MSSQL_DRIVER)
     encrypt = settings.MSSQL_ENCRYPT if encrypt is None else encrypt
     trust_server_certificate = (
         settings.MSSQL_TRUST_SERVER_CERTIFICATE

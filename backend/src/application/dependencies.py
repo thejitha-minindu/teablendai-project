@@ -3,7 +3,7 @@ from typing import Callable, Literal, Optional, Dict, Any
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status, WebSocket, Query
+from fastapi import Depends, HTTPException, status, WebSocket, Query, WebSocketException
 
 from src.database import get_db, get_engine
 
@@ -200,16 +200,10 @@ async def get_ws_current_buyer(
     try:
         user = _get_ws_user(token, db)
     except HTTPException:
-        await websocket.accept()
-        await websocket.send_json({"error": "Could not validate credentials"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
-        raise
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
 
     if user.default_role.lower() != "buyer":
-        await websocket.accept()
-        await websocket.send_json({"error": "Buyer role required"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Forbidden")
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Buyer role required")
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Buyer role required")
 
     return user
 
@@ -223,10 +217,7 @@ async def get_ws_current_user(
     try:
         user = _get_ws_user(token, db)
     except HTTPException:
-        await websocket.accept()
-        await websocket.send_json({"error": "Could not validate credentials"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
-        raise
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
     return user
 
 def get_current_admin(token_payload=Depends(get_token_payload), db: Session = Depends(get_db)):
@@ -245,3 +236,8 @@ def get_current_admin(token_payload=Depends(get_token_payload), db: Session = De
         raise HTTPException(status_code=403, detail="Account is suspended or inactive")
 
     return admin
+
+
+def get_system_log_service(db: Session = Depends(get_db)):
+    from src.infrastructure.services.system_log_service import SystemLogService
+    return SystemLogService(db)

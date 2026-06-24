@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from src.application.dependencies import get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from google.oauth2 import id_token
@@ -61,7 +63,7 @@ def build_token_response(user: User, active_role: str | None = None) -> dict:
             "sub": user.email,
             "role": resolved_role,
             "roles": roles,
-            "id": str(user.user_id),
+            "id": str(user.user_id).lower(),
             "first_name": user.first_name,
             "last_name": user.last_name,
             "status": (user.verification_status or "PENDING").upper(),
@@ -126,26 +128,36 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
     return {"message": "User registered successfully", "user_id": str(db_user.user_id)}
 
 @router.post("/login", response_model=Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db),
+    request: Request = None,
+    log_service: SystemLogService = Depends(get_system_log_service),
+):
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user:
+        log_service.log_login(user_name=form_data.username, status="error", ip=request.client.host if request and request.client else None)
         raise HTTPException(
             status_code=401,
             detail="This email is not registered. Please sign up first"
         )
 
     if not verify_password(form_data.password, user.hashed_password):
+        log_service.log_login(user_name=user.user_name, user_id=user.user_id, status="error", ip=request.client.host if request and request.client else None)
         raise HTTPException(
             status_code=401,
             detail="Incorrect password. Please try again."
         )
     
+    log_service.log_login(user_name=user.user_name, user_id=user.user_id, status="success", ip=request.client.host if request and request.client else None)
     return build_token_response(user)
 
 @router.post("/admin/login", response_model=Token)
 def admin_login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    request: Request = None,
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     logger.info(f"Admin login attempt for: {form_data.username}")
 
@@ -153,6 +165,7 @@ def admin_login(
 
     if not admin:
         logger.warning("Admin not found")
+        log_service.log_login(user_name=form_data.username, status="error", ip=request.client.host if request and request.client else None)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid admin credentials"
@@ -160,6 +173,7 @@ def admin_login(
 
     if admin.status != "active":
         logger.warning(f"Login attempt by non-approved admin: {admin.email}")
+        log_service.log_login(user_name=admin.username or admin.email, status="error", ip=request.client.host if request and request.client else None)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Account is suspended or inactive"
@@ -167,6 +181,7 @@ def admin_login(
 
     if not verify_password(form_data.password, admin.password):
         logger.warning("Invalid password")
+        log_service.log_login(user_name=admin.username or admin.email, status="error", ip=request.client.host if request and request.client else None)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect password"
@@ -186,6 +201,7 @@ def admin_login(
     )
 
     logger.info("Admin login successful")
+    log_service.log_login(user_name=admin.username or admin.email, status="success", ip=request.client.host if request and request.client else None)
 
     return {
         "access_token": access_token,
@@ -430,7 +446,8 @@ def test_email(request: TestEmailRequest):
 @router.post("/reset-password")
 def reset_password(
     request: ResetPasswordRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Reset password with verified OTP.
@@ -497,6 +514,8 @@ def reset_password(
         # Log the error but don't fail the request
         logger.warning(f"Failed to send confirmation email: {str(e)}")
     
+    log_service.log("Password Reset", f"Password reset for {request.email}", status="success", user_name=user.user_name or user.email, user_id=user.user_id)
+
     return {
         "status": "success",
         "message": "Password reset successfully. You can now log in with your new password."

@@ -52,7 +52,7 @@ export default function BuyerBehaviorAnalytics() {
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
         <InfoCard title="Total Buyers" value={summary.totalBuyers.toLocaleString()} icon={<Users size={20} />} />
         <InfoCard title="Active Buyers" value={summary.activeBuyers.toLocaleString()} subtitle="This month" />
-        <InfoCard title="Avg Participation" value={`${summary.avgParticipation} bids`} subtitle={data.summaryWindowLabel} />
+        <InfoCard title="Avg Participation" value={`${summary.avgParticipation.toFixed()} bids`} subtitle={data.summaryWindowLabel} />
         <InfoCard title="Repeat Rate" value={`${summary.repeatRate.toFixed(1)}%`} icon={<TrendingUp size={20} />} />
         <InfoCard title="New Buyers" value={summary.newBuyersThisMonth.toLocaleString()} subtitle="This month" />
       </div>

@@ -22,7 +22,8 @@ import {
   LayoutDashboard,
   ChartNoAxesCombined,
   Blend,
-  Users 
+  Users,
+  AlertTriangle 
 } from "lucide-react";
 
 import {
@@ -69,14 +70,16 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-type UserRole = "seller" | "buyer" | "analytics";
+type UserRole = "seller" | "buyer" | "analytics" | "admin";
 
 const sellerNavItems: NavItem[] = [
   { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { name: "Auction History", href: "/seller/history", icon: History },
   { name: "Live Auction", href: "/seller/live", icon: Gavel },
   { name: "Scheduled Auction", href: "/seller/scheduled", icon: CalendarClock },
+  { name: "Orders", href: "/seller/orders", icon: ShoppingBag },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
+  { name: "Report Violation", href: "/seller/violations", icon: AlertTriangle },
 ];
 
 const buyerNavItems: NavItem[] = [
@@ -85,6 +88,7 @@ const buyerNavItems: NavItem[] = [
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
   { name: "Auctions", href: "/buyer/auctions", icon: Search },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
+  { name: "Report Violation", href: "/buyer/violations", icon: AlertTriangle },
 ];
 
 const analyticsNavItems: NavItem[] = [
@@ -117,6 +121,8 @@ const getRoleDisplayName = (role: UserRole): string => {
       return "Seller";
     case "buyer":
       return "Buyer";
+    case "admin":
+      return "Admin";
     default:
       return "User";
   }

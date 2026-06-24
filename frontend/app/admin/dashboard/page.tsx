@@ -1,20 +1,29 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { 
-  Bell, 
-  Database, 
-  AlertTriangle, 
-  ShoppingBag, 
-  Store, 
-  Gavel, 
-  TrendingUp, 
+import {
+  Bell,
+  Database,
+  AlertTriangle,
+  ShoppingBag,
+  Store,
+  Gavel,
+  TrendingUp,
   BarChart3,
   Users,
   Send,
   PlusCircle
 } from "lucide-react";
 import Link from "next/link";
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip
+} from "recharts";
 
 export default function AdminDashboard() {
 
@@ -25,6 +34,7 @@ export default function AdminDashboard() {
   const [pendingBuyers, setPendingBuyers] = useState(0);
   const [totalViolations, setTotalViolations] = useState(0);
   const [liveAuctions, setLiveAuctions] = useState(0);
+  const [weeklyActivity, setWeeklyActivity] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -42,6 +52,7 @@ export default function AdminDashboard() {
         setPendingBuyers(data.pending_buyers || 0);
         setTotalViolations(data.total_violations || 0);
         setLiveAuctions(data.live_auctions || 0);
+        setWeeklyActivity(data.weekly_activity || []);
 
       } catch (error) {
         console.error("Error fetching stats:", error);
@@ -65,23 +76,23 @@ export default function AdminDashboard() {
 
       {/* STATS GRID */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard 
-          title="Total Buyers" 
-          value={String(totalBuyers)} 
+        <StatCard
+          title="Total Buyers"
+          value={String(totalBuyers)}
           sub={`Pending: ${pendingBuyers}`}
           icon={<ShoppingBag className="w-6 h-6 text-green-600" />}
           iconBg="bg-green-100"
         />
-        <StatCard 
-          title="Total Sellers" 
-          value={String(totalSellers)} 
+        <StatCard
+          title="Total Sellers"
+          value={String(totalSellers)}
           sub={`Pending: ${pendingSellers}`}
           icon={<Store className="w-6 h-6 text-purple-600" />}
           iconBg="bg-purple-100"
         />
-        <StatCard 
-          title="Total Auctions" 
-          value={String(totalAuctions)} 
+        <StatCard
+          title="Total Auctions"
+          value={String(totalAuctions)}
           sub={`Live: ${liveAuctions}`}
           icon={<Gavel className="w-6 h-6 text-blue-600" />}
           iconBg="bg-blue-100"
@@ -98,12 +109,44 @@ export default function AdminDashboard() {
             <h2 className="font-semibold text-gray-800">System Activity</h2>
           </div>
           <p className="text-sm text-gray-500 mb-4">
-            Monthly system activity overview
+            Weekly system activity overview
           </p>
 
-          <div className="h-52 flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 border-2 border-dashed border-gray-200">
-            <BarChart3 className="w-12 h-12 text-gray-300 mb-2" />
-            <p className="text-sm text-gray-400">Analytics Chart Coming Soon</p>
+          <div className="h-52 w-full mt-2">
+            {weeklyActivity.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={weeklyActivity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#15803d" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#15803d" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="week" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6b7280', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                    labelStyle={{ fontWeight: 'bold', color: '#1f2937' }}
+                  />
+                  <Bar dataKey="count" fill="url(#colorActivity)" radius={[4, 4, 0, 0]} name="Operations" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 border border-gray-100">
+                <BarChart3 className="w-10 h-10 text-gray-300 mb-2 animate-pulse" />
+                <p className="text-sm font-medium text-gray-400">No activity data recorded yet</p>
+              </div>
+            )}
           </div>
         </div>
 

@@ -14,6 +14,11 @@ export default function AdminCsvWizard() {
     const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
     const [previewData, setPreviewData] = useState<any[]>([]);
 
+    const handleSetTable = (newTable: string) => {
+        setTable(newTable);
+        setMapping({});
+    };
+
     return (
         <div className="max-w-6xl mx-auto p-6 bg-gray-50 rounded-xl shadow">
             <Stepper current={step} />
@@ -25,7 +30,7 @@ export default function AdminCsvWizard() {
                         setCsvHeaders={setCsvHeaders}
                         setPreviewData={setPreviewData}
                         table={table}
-                        setTable={setTable}
+                        setTable={handleSetTable}
                     />
                 )}
 

@@ -4,10 +4,12 @@ import cloudinary.uploader
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import logging
+from src.config import settings
 from src.application.schemas.seller.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload
+from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.domain.models.user import User
 from src.domain.models.auction_status import AuctionStatus
 from uuid import UUID
@@ -19,6 +21,54 @@ router.router = router
 
 def get_auction_service(db: Session = Depends(get_db)):
     return AuctionService(db)
+
+@router.get("/auctions/cloudinary-signature")
+def get_cloudinary_signature(
+    current_user: Optional[User] = Depends(get_optional_current_user),
+    token_payload: Optional[dict] = Depends(get_optional_token_payload)
+):
+    if not current_user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required to generate upload signature."
+        )
+        
+    import time
+    import cloudinary.utils
+    import urllib.parse
+    import os
+    
+    config = cloudinary.config()
+    cloud_name = config.cloud_name
+    api_key = config.api_key
+    api_secret = config.api_secret
+    
+    if not api_secret or not api_key or not cloud_name:
+        cloudinary_url = settings.CLOUDINARY_URL
+        if cloudinary_url:
+            parsed = urllib.parse.urlparse(cloudinary_url)
+            cloud_name = parsed.hostname
+            api_key = parsed.username
+            api_secret = parsed.password
+            
+    if not api_secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cloudinary credentials not configured on the server."
+        )
+        
+    timestamp = int(time.time())
+    params = {
+        "timestamp": timestamp
+    }
+    signature = cloudinary.utils.api_sign_request(params, api_secret)
+    
+    return {
+        "signature": signature,
+        "timestamp": timestamp,
+        "cloud_name": cloud_name,
+        "api_key": api_key
+    }
 
 @router.post("/auctions/upload-image", status_code=status.HTTP_200_OK)
 def upload_auction_image(
@@ -71,7 +121,8 @@ def create_auction(
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
     token_payload: Optional[dict] = Depends(get_optional_token_payload),
-    x_user_id: Optional[str] = Header(None)
+    x_user_id: Optional[str] = Header(None),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Create a new auction.
@@ -125,7 +176,21 @@ def create_auction(
             f"by user {user_id} ({auction.seller_brand})"
         )
         
-        return service.create_auction(auction)
+        result = service.create_auction(auction)
+        
+        # Log system activity
+        seller_name = "System"
+        if current_user:
+            seller_name = current_user.user_name or current_user.email
+        elif auction.seller_brand:
+            seller_name = auction.seller_brand
+            
+        log_service.log_auction_created(
+            seller_name=seller_name,
+            auction_ref=str(result.auction_id) if hasattr(result, "auction_id") else ""
+        )
+        
+        return result
         
     except HTTPException:
         raise
@@ -166,6 +231,7 @@ def delete_auction(
     current_user: Optional[User] = Depends(get_optional_current_user),
     token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Delete an auction.
@@ -204,6 +270,18 @@ def delete_auction(
     success = service.delete_auction(auction_id)
     if not success:
         raise HTTPException(status_code=404, detail="Auction not found")
+        
+    # Log cancellation
+    user_name = "System"
+    if current_user:
+        user_name = current_user.user_name or current_user.email
+    elif x_user_id:
+        user_name = f"User {x_user_id}"
+        
+    log_service.log_auction_cancelled(
+        admin_name=user_name,
+        auction_ref=auction_id
+    )
     return None
 
 @router.put("/auctions/{auction_id}", response_model=AuctionResponse)

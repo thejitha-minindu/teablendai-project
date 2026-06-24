@@ -9,6 +9,7 @@ from typing import Sequence, Union
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -18,36 +19,16 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _column_exists(table_name: str, column_name: str) -> bool:
-    bind = op.get_bind()
-    result = bind.execute(
-        sa.text(
-            """
-            SELECT 1
-            FROM INFORMATION_SCHEMA.COLUMNS
-            WHERE TABLE_NAME = :table_name
-              AND COLUMN_NAME = :column_name
-            """
-        ),
-        {"table_name": table_name, "column_name": column_name},
-    ).first()
-    return result is not None
+def _inspector():
+    return inspect(op.get_bind())
 
 
-def _index_exists(table_name: str, index_name: str) -> bool:
-    bind = op.get_bind()
-    result = bind.execute(
-        sa.text(
-            """
-            SELECT 1
-            FROM sys.indexes
-            WHERE object_id = OBJECT_ID(:table_name)
-              AND name = :index_name
-            """
-        ),
-        {"table_name": table_name, "index_name": index_name},
-    ).first()
-    return result is not None
+def _column_names() -> set[str]:
+    return {column["name"] for column in _inspector().get_columns("users")}
+
+
+def _index_exists(index_name: str) -> bool:
+    return any(index["name"] == index_name for index in _inspector().get_indexes("users"))
 
 
 def upgrade() -> None:

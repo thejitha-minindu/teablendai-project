@@ -9,7 +9,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Home, LogOut } from "lucide-react"; // Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for backend requests
-import { clearStoredAuthToken, getStoredToken, setStoredAuthToken } from "@/lib/auth"; // Utility to get the user's JWT token
+import {
+  clearStoredAuthToken,
+  getAuthClaimsFromToken,
+  getStoredToken,
+  setStoredAuthToken,
+} from "@/lib/auth"; // Utility to manage the user's JWT token
 
 function PendingApprovalContent() {
   // --- Next.js Hooks ---
@@ -78,9 +83,8 @@ function PendingApprovalContent() {
       setStoredAuthToken(refreshResponse.data.access_token, "refresh");
 
       // 3. Decode the token to read the status directly from it
-      const payloadBase64 = refreshResponse.data.access_token.split(".")[1];
-      if (!payloadBase64) return;
-      const payload = JSON.parse(atob(payloadBase64));
+      const claims = getAuthClaimsFromToken(refreshResponse.data.access_token);
+      if (!claims) return;
 
       // 4. Also fetch the full profile to check specific seller status
       const profileResponse = await apiClient.get("/profile");
@@ -90,7 +94,7 @@ function PendingApprovalContent() {
       // --- Routing Logic based on Status ---
 
       // If they were completely rejected, send to rejected page
-      if (payload.status === "REJECTED" || sellerStatus === "REJECTED") {
+      if (claims.status === "REJECTED" || sellerStatus === "REJECTED") {
         router.push(sellerStatus === "REJECTED" ? "/auth/rejected?context=seller-upgrade" : "/auth/rejected");
         return;
       }
@@ -102,8 +106,8 @@ function PendingApprovalContent() {
       }
 
       // If they are approved as a buyer (and not waiting for seller approval)
-      if (payload.status === "APPROVED" && sellerStatus !== "PENDING") {
-        router.push(payload.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
+      if (claims.status === "APPROVED" && sellerStatus !== "PENDING") {
+        router.push(claims.role === "seller" ? "/seller/dashboard" : "/buyer/dashboard");
         return;
       }
     } catch (error) {
@@ -112,8 +116,9 @@ function PendingApprovalContent() {
   };
 
   // --- Interval Setup ---
-  // Run the checkApprovalStatus function every 5 seconds
+  // Run the check immediately, then poll every 5 seconds
   useEffect(() => {
+    checkApprovalStatus();
     const intervalId = setInterval(checkApprovalStatus, 5000);
     return () => clearInterval(intervalId); // Cleanup the timer when the user leaves the page
   }, [isSellerUpgradeFlow]);

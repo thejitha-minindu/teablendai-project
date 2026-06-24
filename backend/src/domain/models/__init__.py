@@ -20,6 +20,7 @@ from .violation import Violation
 from .notification_model import Notification
 from .password_reset import PasswordReset
 from .user import PaymentCard
+from .system_log import SystemLog
 
 # Configure Relationships
 from sqlalchemy.orm import relationship
@@ -54,4 +55,5 @@ __all__ = [
     "ChatMessage",
     "Violation",
     "Notification",
+    "SystemLog",
 ]

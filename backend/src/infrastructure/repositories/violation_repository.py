@@ -8,7 +8,7 @@ from sqlalchemy.orm import aliased
 from src.application.schemas.violation import ViolationCreate, ViolationStatusEnum
 from src.domain.models.violation_model import Violation
 from src.domain.models.user import User
-from sqlalchemy import text
+from sqlalchemy import text, cast, String
 from sqlalchemy.exc import DataError
 # from src.infrastructure.repositories.violation_repository import ViolationRepository
 
@@ -27,27 +27,7 @@ class ViolationRepository:
             reason=data.reason,
         )
         self.db.add(violation)
-        try:
-            self.db.commit()
-        except DataError as e:
-            # Handle legacy DB schemas where users PK is an integer `id` and
-            # the violations.sender_id column expects an int. Attempt to resolve
-            # the numeric user id and retry the insert as a fallback.
-            self.db.rollback()
-            try:
-                uid_str = str(sender_id)
-                row = self.db.execute(text("SELECT id FROM users WHERE user_id = :uid"), {"uid": uid_str}).fetchone()
-                if row and row[0] is not None:
-                    # replace the sender_id on the pending violation and retry
-                    violation.sender_id = row[0]
-                    self.db.add(violation)
-                    self.db.commit()
-                else:
-                    # re-raise if we cannot resolve a numeric id
-                    raise
-            except Exception:
-                # Surface original DB error for visibility
-                raise
+        self.db.commit()
         self.db.refresh(violation)
         return violation
 
@@ -70,14 +50,20 @@ class ViolationRepository:
 
     def list_all(self) -> list[dict]:
         sender = aliased(User)
+        violator = aliased(User)
 
         rows = (
             self.db.query(
                 Violation,
                 sender.user_name.label("sender_name"),
                 sender.email.label("sender_email"),
+                violator.user_name.label("violator_name"),
+                violator.email.label("violator_email"),
+                violator.first_name.label("violator_first_name"),
+                violator.last_name.label("violator_last_name"),
             )
             .outerjoin(sender, sender.user_id == Violation.sender_id)
+            .outerjoin(violator, cast(violator.user_id, String(255)) == Violation.violator_id)
             .order_by(Violation.created_at.desc())
             .all()
         )
@@ -89,13 +75,17 @@ class ViolationRepository:
                 "sender_name": sender_name,
                 "sender_email": sender_email,
                 "violator_id": violation.violator_id,
+                "violator_name": violator_name,
+                "violator_email": violator_email,
+                "violator_first_name": violator_first_name,
+                "violator_last_name": violator_last_name,
                 "auction_id": violation.auction_id,
                 "violation_type": violation.violation_type,
                 "reason": violation.reason,
                 "status": violation.status,
                 "created_at": violation.created_at,
             }
-            for violation, sender_name, sender_email in rows
+            for violation, sender_name, sender_email, violator_name, violator_email, violator_first_name, violator_last_name in rows
         ]
 
     def update_status(

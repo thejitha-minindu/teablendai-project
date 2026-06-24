@@ -5,7 +5,8 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.application.dependencies import get_current_user, get_db
+from src.application.dependencies import get_current_user, get_db, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.application.schemas.violation import ViolationCreate, ViolationRead
 from src.infrastructure.repositories.violation_repository import ViolationRepository
 
@@ -24,13 +25,24 @@ def submit_violation(
     data: ViolationCreate,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Authenticated users submit a violation against another user or auction.
     sender_id is injected automatically from the auth token — never sent by the client.
     """
     repo = ViolationRepository(db)
-    return repo.create(sender_id=current_user.user_id, data=data)
+    result = repo.create(sender_id=current_user.user_id, data=data)
+    
+    target_ref = f"User {data.violator_id}"
+    if data.auction_id:
+        target_ref += f" on Auction #{data.auction_id}"
+        
+    log_service.log_violation_flagged(
+        user_name=current_user.user_name or current_user.email,
+        target_ref=target_ref
+    )
+    return result
 
 
 @router.get(

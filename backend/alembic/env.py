@@ -17,6 +17,7 @@ from src.domain.models.conversation import Conversation
 from src.domain.models.message import ChatMessage
 from src.domain.models.admin import Admin
 from src.domain.models.violation import Violation
+from src.domain.models.system_log import SystemLog
 
 # Load environment variables from .env file
 load_dotenv()

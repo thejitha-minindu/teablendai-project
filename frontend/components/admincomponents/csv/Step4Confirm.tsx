@@ -1,5 +1,6 @@
 "use client";
 import { apiClient } from "@/lib/apiClient";
+import { toast } from \'sonner\';
 
 const requiredFieldsByTable: Record<string, string[]> = {
     TeaPurchase: ["PurchaseDate"],
@@ -13,7 +14,7 @@ export default function Step4Confirm({
 }: any) {
     const handleUpload = async () => {
         if (!file || !table) {
-            alert("Missing file or table");
+            toast.error("Missing file or table");
             return;
         }
 
@@ -33,17 +34,21 @@ export default function Step4Confirm({
         formData.append("mapping", JSON.stringify(mapping));
 
         try {
-            const response = await apiClient.post("/admin/csv-upload", formData);
+            const response = await apiClient.post("/admin/csv-upload", formData, {
+                headers: {
+                    "Content-Type": undefined,
+                },
+            });
 
             const result = response.data;
-            alert("Upload success!");
+            toast.success("Upload success!");
             console.log(result);
 
         } catch (error) {
             console.error(error);
             const message =
                 error instanceof Error ? error.message : "Upload error!";
-            alert(`Upload error: ${message}`);
+            toast.error(`Upload error: ${message}`);
         }
     };
 

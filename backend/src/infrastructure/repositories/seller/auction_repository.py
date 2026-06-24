@@ -167,11 +167,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             # Keep inserts valid even when legacy clients don't send auction_name.
             auction_name = f"{auction_data.grade} - {auction_data.origin}"
         company_name = (auction_data.company_name or auction_data.seller_brand or "").strip()
-        if not company_name:
-            company_name = "TeaBlendAI Company"
         estate_name = (auction_data.estate_name or auction_data.seller_brand or auction_data.origin or "").strip()
-        if not estate_name:
-            estate_name = "Tea Estate"
 
         seller_name_for_custom_id = (
             (auction_data.seller_brand or "").strip()

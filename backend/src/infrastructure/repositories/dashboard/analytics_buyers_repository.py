@@ -26,9 +26,9 @@ class AnalyticsBuyersRepository:
     def _month_label(year_num: int, month_num: int) -> str:
         return datetime(int(year_num), int(month_num), 1).strftime("%b %y")
 
-    BID_BUYER_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(b.buyer_id AS VARCHAR(64)))"
-    AUCTION_BUYER_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(a.buyer AS VARCHAR(64)))"
-    WIN_BUYER_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(wa.user_id AS VARCHAR(64)))"
+    BUYER_FULL_NAME_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))), ''), NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(b.buyer_id AS VARCHAR(64)))"
+    AUCTION_BUYER_FULL_NAME_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))), ''), NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(a.buyer AS VARCHAR(64)))"
+    WIN_BUYER_FULL_NAME_EXPR = "COALESCE(NULLIF(LTRIM(RTRIM(CONCAT(COALESCE(u.first_name, ''), ' ', COALESCE(u.last_name, '')))), ''), NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(wa.user_id AS VARCHAR(64)))"
 
     def _buyer_series(self, months: int, limit: int) -> list[str]:
         months = self._normalize_months(months)
@@ -39,7 +39,7 @@ class AnalyticsBuyersRepository:
                 f"""
                 WITH bid_window AS (
                     SELECT
-                        {self.BID_BUYER_EXPR} AS buyer,
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer,
                         COUNT(*) AS total_bids
                     FROM bids b
                     LEFT JOIN users u ON u.user_id = b.buyer_id
@@ -48,7 +48,7 @@ class AnalyticsBuyersRepository:
                         -:months + 1,
                         DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                     )
-                    GROUP BY b.buyer_id, u.user_name
+                    GROUP BY b.buyer_id, u.user_name, u.first_name, u.last_name
                 )
                 SELECT TOP (:limit)
                     buyer
@@ -72,7 +72,7 @@ class AnalyticsBuyersRepository:
                 f"""
                 WITH bid_metrics AS (
                     SELECT
-                        {self.BID_BUYER_EXPR} AS buyer,
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer,
                         COUNT(DISTINCT b.auction_id) AS frequency,
                         COUNT(*) AS total_bids
                     FROM bids b
@@ -82,11 +82,11 @@ class AnalyticsBuyersRepository:
                         -:months + 1,
                         DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                     )
-                    GROUP BY b.buyer_id, u.user_name
+                    GROUP BY b.buyer_id, u.user_name, u.first_name, u.last_name
                 ),
                 win_metrics AS (
                     SELECT
-                        {self.WIN_BUYER_EXPR} AS buyer,
+                        {self.WIN_BUYER_FULL_NAME_EXPR} AS buyer,
                         COUNT(DISTINCT wa.auction_id) AS won_auctions
                     FROM wins_auction wa
                     INNER JOIN orders o ON o.order_id = wa.order_id
@@ -96,7 +96,7 @@ class AnalyticsBuyersRepository:
                         -:months + 1,
                         DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                     )
-                    GROUP BY wa.user_id, u.user_name
+                    GROUP BY wa.user_id, u.user_name, u.first_name, u.last_name
                 )
                 SELECT
                     b.buyer,
@@ -139,7 +139,7 @@ class AnalyticsBuyersRepository:
                 f"""
                 WITH sold_metrics AS (
                     SELECT
-                        {self.AUCTION_BUYER_EXPR} AS buyer,
+                        {self.AUCTION_BUYER_FULL_NAME_EXPR} AS buyer,
                         SUM(CAST(COALESCE(a.quantity, 0) AS FLOAT)) AS volume,
                         SUM(CAST(COALESCE(a.sold_price, 0) AS FLOAT)) AS spend
                     FROM auctions a
@@ -153,11 +153,11 @@ class AnalyticsBuyersRepository:
                             -:months + 1,
                             DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                       )
-                    GROUP BY a.buyer, u.user_name
+                    GROUP BY a.buyer, u.user_name, u.first_name, u.last_name
                 ),
                 bid_avg AS (
                     SELECT
-                        {self.BID_BUYER_EXPR} AS buyer,
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer,
                         AVG(CAST(COALESCE(b.bid_amount, 0) AS FLOAT)) AS avg_bid
                     FROM bids b
                     LEFT JOIN users u ON u.user_id = b.buyer_id
@@ -166,7 +166,7 @@ class AnalyticsBuyersRepository:
                         -:months + 1,
                         DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                     )
-                    GROUP BY b.buyer_id, u.user_name
+                    GROUP BY b.buyer_id, u.user_name, u.first_name, u.last_name
                 )
                 SELECT
                     b.buyer,
@@ -203,7 +203,7 @@ class AnalyticsBuyersRepository:
                 f"""
                 WITH buyer_bids AS (
                     SELECT
-                        {self.BID_BUYER_EXPR} AS buyer,
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer,
                         CAST(COALESCE(b.bid_amount, 0) AS FLOAT) AS bid_amount,
                         LAG(CAST(COALESCE(b.bid_amount, 0) AS FLOAT)) OVER (
                             PARTITION BY b.buyer_id
@@ -269,7 +269,7 @@ class AnalyticsBuyersRepository:
                 f"""
                 SELECT
                     COALESCE(NULLIF(LTRIM(RTRIM(a.grade)), ''), 'Unknown') AS grade,
-                    {self.AUCTION_BUYER_EXPR} AS buyer,
+                    {self.AUCTION_BUYER_FULL_NAME_EXPR} AS buyer,
                     SUM(CAST(COALESCE(a.quantity, 0) AS FLOAT)) AS demand_qty
                 FROM auctions a
                 LEFT JOIN users u ON u.user_id = a.buyer
@@ -282,11 +282,13 @@ class AnalyticsBuyersRepository:
                         -:months + 1,
                         DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                   )
-                  AND {self.AUCTION_BUYER_EXPR} IN :buyer_series
+                  AND {self.AUCTION_BUYER_FULL_NAME_EXPR} IN :buyer_series
                 GROUP BY
                     COALESCE(NULLIF(LTRIM(RTRIM(a.grade)), ''), 'Unknown'),
                     a.buyer,
-                    u.user_name
+                    u.user_name,
+                    u.first_name,
+                    u.last_name
                 ORDER BY grade ASC, buyer ASC
                 """
             ).bindparams(bindparam("buyer_series", expanding=True)),
@@ -317,7 +319,7 @@ class AnalyticsBuyersRepository:
                 WITH buyer_month_activity AS (
                     SELECT
                         b.buyer_id AS buyer_key,
-                        {self.BID_BUYER_EXPR} AS buyer,
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer,
                         YEAR(b.bid_time) AS year_num,
                         MONTH(b.bid_time) AS month_num,
                         DATEFROMPARTS(YEAR(b.bid_time), MONTH(b.bid_time), 1) AS month_start
@@ -331,6 +333,8 @@ class AnalyticsBuyersRepository:
                     GROUP BY
                         b.buyer_id,
                         u.user_name,
+                        u.first_name,
+                        u.last_name,
                         YEAR(b.bid_time),
                         MONTH(b.bid_time),
                         DATEFROMPARTS(YEAR(b.bid_time), MONTH(b.bid_time), 1)
@@ -382,7 +386,7 @@ class AnalyticsBuyersRepository:
                 WITH buyer_bid_pool AS (
                     SELECT DISTINCT
                         b.buyer_id AS buyer_key,
-                        {self.BID_BUYER_EXPR} AS buyer
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer
                     FROM bids b
                     LEFT JOIN users u ON u.user_id = b.buyer_id
                     WHERE b.bid_time >= DATEADD(
@@ -394,7 +398,7 @@ class AnalyticsBuyersRepository:
                 buyer_spend AS (
                     SELECT
                         a.buyer AS buyer_key,
-                        {self.AUCTION_BUYER_EXPR} AS buyer,
+                        {self.AUCTION_BUYER_FULL_NAME_EXPR} AS buyer,
                         SUM(CAST(COALESCE(a.sold_price, 0) AS FLOAT)) AS spend
                     FROM auctions a
                     LEFT JOIN users u ON u.user_id = a.buyer
@@ -407,7 +411,7 @@ class AnalyticsBuyersRepository:
                             -:months + 1,
                             DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
                       )
-                    GROUP BY a.buyer, u.user_name
+                    GROUP BY a.buyer, u.user_name, u.first_name, u.last_name
                 ),
                 avg_spend AS (
                     SELECT AVG(spend) AS avg_value
@@ -530,7 +534,7 @@ class AnalyticsBuyersRepository:
                 WITH buyer_pool AS (
                     SELECT DISTINCT
                         b.buyer_id AS buyer_key,
-                        {self.BID_BUYER_EXPR} AS buyer
+                        {self.BUYER_FULL_NAME_EXPR} AS buyer
                     FROM bids b
                     LEFT JOIN users u ON u.user_id = b.buyer_id
                     WHERE b.bid_time >= DATEADD(

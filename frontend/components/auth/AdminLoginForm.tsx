@@ -19,6 +19,14 @@ function getSafeRedirectPath(redirectPath: string | null) {
   return redirectPath;
 }
 
+function normalizeAdminRedirectPath(redirectPath: string | null) {
+  const safeRedirect = getSafeRedirectPath(redirectPath);
+  if (!safeRedirect || safeRedirect === "/admin") {
+    return "/admin/dashboard";
+  }
+  return safeRedirect;
+}
+
 export function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,7 +60,7 @@ export function AdminLoginForm() {
         localStorage.setItem("remember_me", "true");
       }
       
-      router.push("/admin/dashboard");
+      router.replace(normalizeAdminRedirectPath(redirectPath));
     } catch (error: any) {
       console.error("Admin login failed:", error);
       setErrorMsg(error.response?.data?.detail || "Invalid admin credentials. Please try again.");
@@ -66,7 +74,7 @@ export function AdminLoginForm() {
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/Tealogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
+          <img src="/Tealogo.png" className="h-25 w-auto object-contain" alt="Tea Blend AI Logo" />
         </Link>
 
         <Link

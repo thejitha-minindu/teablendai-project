@@ -1,6 +1,7 @@
 import csv
 import logging
 from datetime import datetime, date
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DataError
 from src.infrastructure.database.base import Base
@@ -154,7 +155,17 @@ class AdminCSVUploadService:
 
         if objects:
             try:
+                pk_name = list(orm_class.__table__.primary_key.columns)[0].name
+                has_explicit_id = any(getattr(obj, pk_name, None) is not None for obj in objects)
+
+                if has_explicit_id:
+                    self.db.execute(text(f"SET IDENTITY_INSERT {table} ON"))
+
                 self.db.bulk_save_objects(objects)
+
+                if has_explicit_id:
+                    self.db.execute(text(f"SET IDENTITY_INSERT {table} OFF"))
+
                 self.db.commit()
                 logger.info(f"Inserted {len(objects)} rows into {table}.")
             except (IntegrityError, DataError) as e:

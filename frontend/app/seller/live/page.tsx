@@ -31,7 +31,7 @@ export default function LiveAuctionsPage() {
         }
       });
 
-      const data = res.data; // Axios puts the JSON in .data
+      const data = res.data;
 
       const formattedData = data.map((item: any) => {
         // Parse the date just like the dashboard does

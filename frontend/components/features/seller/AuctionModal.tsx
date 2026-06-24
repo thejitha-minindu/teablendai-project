@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { apiClient } from '@/lib/apiClient';
+import axios from 'axios';
 import { Button } from '@/components/ui/button';
 import { useAuctionBidsSocket } from '@/hooks/live-auction-socket';
 import { toast } from 'sonner';
@@ -118,12 +119,34 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
       // Upload newly selected image if it exists
       if (imageFile) {
-        const imageFormData = new FormData();
-        imageFormData.append("file", imageFile);
-        const uploadRes = await apiClient.post('/auctions/upload-image', imageFormData, {
+        // Client-Side Pre-Upload Validation
+        const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowedTypes.includes(imageFile.type)) {
+          toast.error("Invalid file type. Only JPEG, PNG, and WEBP are allowed.");
+          return;
+        }
+
+        if (imageFile.size > 5 * 1024 * 1024) {
+          toast.error("File size too large. Maximum allowed is 5MB.");
+          return;
+        }
+
+        // Fetch signature from backend
+        const signatureRes = await apiClient.get('/auctions/cloudinary-signature');
+        const { signature, timestamp, cloud_name, api_key } = signatureRes.data;
+
+        // Upload directly to Cloudinary using standard axios (no auth headers injected)
+        const cloudinaryUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/image/upload`;
+        const uploadData = new FormData();
+        uploadData.append("file", imageFile);
+        uploadData.append("api_key", api_key);
+        uploadData.append("timestamp", timestamp.toString());
+        uploadData.append("signature", signature);
+
+        const uploadRes = await axios.post(cloudinaryUrl, uploadData, {
           headers: { 'Content-Type': 'multipart/form-data' }
         });
-        finalImageUrl = uploadRes.data.image_url;
+        finalImageUrl = uploadRes.data.secure_url;
       }
 
       const payload = {
@@ -140,13 +163,23 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
     } catch (error) { toast.error("Update failed."); }
   };
 
-  const handleCancelAuction = async () => {
-    if (!confirm("Cancel this auction?")) return;
-    try {
-      await apiClient.delete(`/auctions/${auctionId}`);
-      toast.success("Cancelled.");
-      onClose();
-    } catch (error) { toast.error("Cancel failed."); }
+  const handleCancelAuction = () => {
+    toast("Cancel this auction?", {
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          try {
+            await apiClient.delete(`/auctions/${auctionId}`);
+            toast.success("Cancelled.");
+            onClose();
+          } catch (error) { toast.error("Cancel failed."); }
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    });
   };
 
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"><div className="bg-white p-6 rounded">Loading...</div></div>;
@@ -767,21 +800,52 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               {/* Actions */}
               <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {isSold ? (
-                  <Button
-                    onClick={() => {
-                      if (orderId) {
-                        onClose();
-                        router.push(`/messages/${orderId}`);
-                      }
-                    }}
-                    disabled={!orderId}
-                    className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    {orderId ? 'Contact Buyer' : 'Loading...'}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/orders/${orderId}?auctionId=${auctionId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="w-full bg-blue-600 text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-blue-700 border border-blue-600 text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      See Order Details
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/messages/${orderId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MessageCircle className="w-5 h-5" />
+                      {orderId ? 'Contact Buyer' : 'Loading...'}
+                    </Button>
+                  </>
                 ) : (
-                  <Button variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      const relistData = {
+                        estateName: auctionDetails.estate_name || '',
+                        grade: auctionDetails.grade || '',
+                        quantity: String(auctionDetails.quantity || ''),
+                        origin: auctionDetails.origin || '',
+                        description: auctionDetails.description || '',
+                        startingPrice: String(auctionDetails.base_price || ''),
+                        image_url: auctionDetails.image_url || ''
+                      };
+                      sessionStorage.setItem('relist_auction', JSON.stringify(relistData));
+                      onClose();
+                      router.push('/seller/create-auction');
+                    }}
+                    className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide"
+                  >
                     Relist Item
                   </Button>
                 )}

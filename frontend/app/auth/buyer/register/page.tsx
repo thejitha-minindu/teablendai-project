@@ -7,7 +7,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import {
   ArrowLeft, Eye, EyeOff, Lock, Mail, MapPin, Phone, User
 } from "lucide-react"; // Icons for the form fields
-import { apiClient } from "@/lib/apiClient"; // Tool for sending requests to our backend
+import authService from "@/services/authService"; // Service layer for auth API calls
+import { setStoredAuthToken } from "@/lib/auth"; // Auth tools
 
 // --- Types ---
 // This defines exactly what information we need to collect for a buyer
@@ -117,24 +118,37 @@ function BuyerRegisterContent() {
     try {
       // 2. Prepare Data
       // The backend requires a `user_name`, so we generate one automatically from their email
-      const userName = `${formData.email.split("@")[0]}${Math.floor(Math.random() * 1000)}`;
+      const userName = `${formData.firstName.trim().toLowerCase()}${Math.floor(Math.random() * 1000)}`;
 
-      // 3. Send API Request
-      await apiClient.post("/auth/register", {
-        email: formData.email.trim(),
-        password: formData.password,
-        first_name: formData.firstName.trim(),
-        last_name: formData.lastName.trim(),
-        user_name: userName,
-        phone_num: formData.phoneNumber.trim(),
-        shipping_address: formData.address.trim(),
-        default_role: "buyer", // Important: Set the role explicitly to buyer
-      });
+      // 3. Register via the service layer
+      await authService.register(
+        formData.email.trim(),
+        formData.password,
+        userName,
+        formData.firstName.trim(),
+        formData.lastName.trim(),
+        formData.phoneNumber.trim(),
+        "buyer",
+        formData.address.trim()
+      );
 
-      // 4. Success! Send them to the login page to sign in with their new account
+      // 4. Success! Attempt auto-login so the buyer can land on the pending page immediately
+      try {
+        const loginResponse = await authService.login(formData.email.trim(), formData.password);
+
+        if (loginResponse.access_token) {
+          setStoredAuthToken(loginResponse.access_token);
+          router.push("/auth/pending");
+          return;
+        }
+      } catch (loginError) {
+        console.error("Buyer auto-login failed:", loginError);
+      }
+
+      // 5. Fallback: Send them to the buyer login page
       router.push(`/auth/buyer/login?message=registration-success${redirectSuffix}`);
     } catch (error: any) {
-      // 5. Handle Errors (like if the email is already in use)
+      // 6. Handle Errors (like if the email is already in use)
       console.error("Buyer signup error:", error);
       setErrorMsg(
         error.response?.data?.detail || "Failed to create your buyer account. Please try again."
@@ -153,7 +167,7 @@ function BuyerRegisterContent() {
         <Link href="/" className="flex items-center gap-3">
           <img src="/Tealogo.png" alt="Tea Blend AI Logo" className="h-15 w-35" />
         </Link>
-        <Link href="/auth" className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50">
+        <Link href="/auth" className="inline-flex items-center gap-2 rounded-full border border-green-800 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50">
           <ArrowLeft className="h-4 w-4" />
           Back to Home
         </Link>
@@ -173,7 +187,7 @@ function BuyerRegisterContent() {
           </div>
 
           <div className="overflow-hidden rounded-[2rem] border border-green-100 bg-white/95 shadow-2xl shadow-green-100/60 backdrop-blur-sm">
-            <div className="border-b border-green-100 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.14),transparent_38%)] px-6 py-6 sm:px-8">
+            <div className="border-b border-green-100 bg-[radial-gradient(circle_at_top_right,rgba(34,197,94,0.14),transparent_30%)] px-6 py-6 sm:px-8">
               <div className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-green-700">
                 Buyer Registration
               </div>
@@ -251,7 +265,7 @@ function BuyerRegisterContent() {
                           value={formData.email}
                           onChange={handleChange("email")}
                           required
-                          placeholder="you@example.com"
+                          placeholder="yourname@gmail.com"
                           className="h-12 w-full rounded-2xl border border-gray-200 bg-white pl-12 pr-4 text-gray-900 outline-none transition focus:border-green-500 focus:ring-2 focus:ring-green-500/20"
                         />
                       </div>
