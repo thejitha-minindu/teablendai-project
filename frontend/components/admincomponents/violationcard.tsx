@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { toast } from \'sonner\';
+import { toast } from 'sonner';
 import {
   AlertTriangle,
   Send,
