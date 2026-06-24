@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { toast } from \'sonner\';
 import {
   AlertTriangle,
   Send,
@@ -98,7 +99,7 @@ export function ViolationCard({
             onStatusUpdate?.(violationId, newStatus);
         } catch (error) {
             console.error("Failed to update status:", error);
-            alert("Failed to update violation status. Please try again.");
+            toast.error("Failed to update violation status. Please try again.");
         } finally {
             setUpdating(false);
         }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from \'sonner\';
 import { useState, useEffect, Suspense } from "react";
 import { apiClient } from "@/lib/apiClient";
 import {
@@ -109,7 +110,7 @@ function CreateNotificationForm() {
 
     const handleSubmit = async () => {
         if (!formData.title || !formData.content || !formData.type || !formData.revisers) {
-            alert("Please fill in all required fields");
+            toast.error("Please fill in all required fields");
             return;
         }
 
@@ -152,7 +153,7 @@ function CreateNotificationForm() {
             }, 2000);
         } catch (error: any) {
             console.error("Failed to send notification:", error);
-            alert(error.response?.data?.detail || "Failed to send notification. Please try again.");
+            toast.error(error.response?.data?.detail || "Failed to send notification. Please try again.");
         } finally {
             setSending(false);
         }

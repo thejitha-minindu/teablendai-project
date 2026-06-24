@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from \'sonner\';
 import { TrackAuctionCard } from "@/components/admincomponents/TrackAuctionCard";
 import { Search, Filter, Calendar, DollarSign, Package, X, ChevronDown } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
@@ -139,7 +140,7 @@ export default function TrackAuctionPage() {
         } catch (error: any) {
             console.error("Error deleting auction:", error);
             const message = error?.response?.data?.detail || "Failed to delete auction. Please try again.";
-            alert(message);
+            toast.error(message);
         }
     };
 

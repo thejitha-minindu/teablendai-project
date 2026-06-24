@@ -1,5 +1,6 @@
 "use client";
 import { redirect } from "next/navigation";
+import { toast } from \'sonner\';
 
 import React, { useEffect, useState } from 'react';
 import {
@@ -264,7 +265,7 @@ export default function UserProfilePage() {
   // ── Report submit handler (real API) ─────────────────────────────────────
   const handleReportSubmit = async () => {
     if (!reportForm.violatorId.trim() || !reportForm.reason.trim()) {
-      alert('Please fill in all required fields.');
+      toast.error('Please fill in all required fields.');
       return;
     }
     setReportSubmitting(true);
@@ -297,10 +298,10 @@ export default function UserProfilePage() {
       setReports(prev => [newReport, ...prev]);
       setReportForm({ violatorId: '', violationType: 'Fraud', reason: '', auctionId: '' });
       setReportSubTab('history');
-      alert('Report submitted successfully!');
+      toast.success('Report submitted successfully!');
     } catch (error: any) {
       const message = error?.response?.data?.detail || 'Failed to submit report.';
-      alert(message);
+      toast.error(message);
     } finally {
       setReportSubmitting(false);
     }
@@ -379,7 +380,7 @@ export default function UserProfilePage() {
         }));
       } catch (error) {
         console.error('Failed to load profile:', error);
-        alert('Failed to load profile details from server.');
+        toast.error('Failed to load profile details from server.');
       } finally {
         setIsProfileLoading(false);
       }
@@ -411,10 +412,10 @@ export default function UserProfilePage() {
           payment_method: user.payment_method,
         });
         setIsEditing(false);
-        alert("Profile updated successfully!");
+        toast.success("Profile updated successfully!");
       } catch (error: any) {
         const message = error?.response?.data?.detail || "Failed to update profile.";
-        alert(message);
+        toast.error(message);
       } finally {
         setIsLoading(false);
       }
@@ -424,11 +425,11 @@ export default function UserProfilePage() {
 
   const handlePasswordUpdate = async () => {
     if (!passwords.current || !passwords.new || !passwords.confirm) {
-      alert('Please fill all password fields');
+      toast.error('Please fill all password fields');
       return;
     }
     if (passwords.new !== passwords.confirm) {
-      alert('New password and confirm password do not match');
+      toast.error('New password and confirm password do not match');
       return;
     }
     setPwdLoading(true);
@@ -439,10 +440,10 @@ export default function UserProfilePage() {
       });
       setShowChangePassword(false);
       setPasswords({ current: "", new: "", confirm: "" });
-      alert('Password updated successfully! Please log in again with your new password.');
+      toast.success('Password updated successfully! Please log in again with your new password.');
     } catch (error: any) {
       const message = error?.response?.data?.detail || 'Failed to update password';
-      alert(message);
+      toast.error(message);
     } finally {
       setPwdLoading(false);
     }
@@ -602,7 +603,7 @@ export default function UserProfilePage() {
                       {showChangePassword ? <X className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                       {showChangePassword ? 'Close' : 'Change Password'}
                     </button>
-                    <button onClick={() => alert('Revoked')} className="flex items-center gap-2 px-4 py-2 border border-red-100 text-red-600 rounded-lg text-sm font-semibold bg-red-50 hover:bg-red-100 transition-all">
+                    <button onClick={() => toast.info('Revoked')} className="flex items-center gap-2 px-4 py-2 border border-red-100 text-red-600 rounded-lg text-sm font-semibold bg-red-50 hover:bg-red-100 transition-all">
                       <LogOut className="w-4 h-4" /> Revoke Other Sessions
                     </button>
                   </div>
@@ -697,15 +698,15 @@ export default function UserProfilePage() {
             {activeTab === 'buyer' && (
               <div className="space-y-8">
                 <div className="flex flex-col sm:flex-row items-stretch gap-3">
-                  <button onClick={() => alert('View spending details (mock)')} className="flex-1 p-5 bg-blue-50 border border-blue-100 rounded-2xl text-left hover:shadow-md transition-all">
+                  <button onClick={() => toast.info('View spending details (mock)')} className="flex-1 p-5 bg-blue-50 border border-blue-100 rounded-2xl text-left hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-blue-600 uppercase mb-1">Total Spent</p>
                     <p className="text-2xl font-black text-blue-900">${user.totalSpent.toLocaleString()}</p>
                   </button>
-                  <button onClick={() => alert('View orders (mock)')} className="flex-1 p-5 bg-gray-50 border border-gray-200 rounded-2xl text-left hover:shadow-md transition-all">
+                  <button onClick={() => toast.info('View orders (mock)')} className="flex-1 p-5 bg-gray-50 border border-gray-200 rounded-2xl text-left hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-gray-500 uppercase mb-1">Total Orders</p>
                     <p className="text-2xl font-black text-gray-800">{user.totalOrders}</p>
                   </button>
-                  <button onClick={() => alert('View disputes (mock)')} className="flex-1 p-5 bg-red-50 border border-red-100 rounded-2xl text-left hover:shadow-md transition-all">
+                  <button onClick={() => toast.info('View disputes (mock)')} className="flex-1 p-5 bg-red-50 border border-red-100 rounded-2xl text-left hover:shadow-md transition-all">
                     <p className="text-xs font-bold text-red-600 uppercase mb-1">Disputes</p>
                     <p className="text-2xl font-black text-red-900">{user.disputes}</p>
                   </button>
