@@ -52,3 +52,7 @@ class AdminViolationStatusUpdate(BaseModel):
 class AdminViolationRead(ViolationRead):
     sender_name: Optional[str] = None
     sender_email: Optional[str] = None
+    violator_name: Optional[str] = None
+    violator_email: Optional[str] = None
+    violator_first_name: Optional[str] = None
+    violator_last_name: Optional[str] = None

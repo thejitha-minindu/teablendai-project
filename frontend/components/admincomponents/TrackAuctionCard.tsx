@@ -127,7 +127,7 @@ export function TrackAuctionCard({
                     <div className="flex items-center gap-2 text-sm">
                         <Package className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
-                            <span className="font-medium">Quantity:</span> {quantity} units
+                            <span className="font-medium">Quantity:</span> {quantity} Kg
                         </span>
                     </div>
                 </div>
@@ -136,7 +136,7 @@ export function TrackAuctionCard({
                     <div className="flex items-center gap-2 text-sm">
                         <DollarSign className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
-                            <span className="font-medium">Base Price:</span> ${basePrice.toLocaleString()}
+                            <span className="font-medium">Base Price:</span> Rs {basePrice.toLocaleString()}
                         </span>
                     </div>
                     
@@ -151,7 +151,7 @@ export function TrackAuctionCard({
                         <div className="flex items-center gap-2 text-sm">
                             <Trophy className="w-4 h-4 text-yellow-500" />
                             <span className="text-gray-600">
-                                <span className="font-medium">Sold Price:</span> ${soldPrice.toLocaleString()}
+                                <span className="font-medium">Sold Price:</span> Rs {soldPrice.toLocaleString()}
                             </span>
                         </div>
                     )}

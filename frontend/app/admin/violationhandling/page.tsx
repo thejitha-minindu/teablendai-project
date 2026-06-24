@@ -45,7 +45,7 @@ export default function ViolationHandlingPage() {
     };
 
     // Get unique violation types
-    const uniqueTypes = Array.from(new Set(violations.map(v => v.violationType)));
+    const uniqueTypes = Array.from(new Set(violations.map(v => v.violation_type || v.violationType).filter(Boolean)));
 
     // Apply filters
     useEffect(() => {
@@ -53,11 +53,14 @@ export default function ViolationHandlingPage() {
 
         // Search filter
         if (searchTerm) {
+            const term = searchTerm.toLowerCase();
             filtered = filtered.filter(violation =>
-                violation.senderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                violation.violatorId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                violation.reason?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                violation.violationId?.toLowerCase().includes(searchTerm.toLowerCase())
+                (violation.sender_id || violation.senderId || "")?.toLowerCase().includes(term) ||
+                (violation.sender_name || "")?.toLowerCase().includes(term) ||
+                (violation.sender_email || "")?.toLowerCase().includes(term) ||
+                (violation.violator_id || violation.violatorId || "")?.toLowerCase().includes(term) ||
+                (violation.reason || "")?.toLowerCase().includes(term) ||
+                (violation.violation_id || violation.violationId || "")?.toLowerCase().includes(term)
             );
         }
 
@@ -71,7 +74,7 @@ export default function ViolationHandlingPage() {
         // Type filter
         if (typeFilter !== "all") {
             filtered = filtered.filter(violation => 
-                violation.violationType === typeFilter
+                (violation.violation_type || violation.violationType) === typeFilter
             );
         }
 
@@ -82,11 +85,13 @@ export default function ViolationHandlingPage() {
     // Calculate statistics
     const stats = {
         total: violations.length,
-        pending: violations.filter(v => v.status?.toLowerCase() === "pending").length,
+        pending: violations.filter(v => v.status?.toLowerCase() === "open" || v.status?.toLowerCase() === "pending").length,
         resolved: violations.filter(v => v.status?.toLowerCase() === "resolved").length,
         underReview: violations.filter(v => v.status?.toLowerCase() === "under review").length,
-        highPriority: violations.filter(v => v.violationType?.toLowerCase().includes("fraud") || 
-                                              v.violationType?.toLowerCase().includes("scam")).length
+        highPriority: violations.filter(v => {
+            const vType = (v.violation_type || v.violationType || "").toLowerCase();
+            return vType.includes("fraud") || vType.includes("scam");
+        }).length
     };
 
     // Pagination
@@ -153,7 +158,7 @@ export default function ViolationHandlingPage() {
                 <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-yellow-500">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-xs text-gray-500">Pending</p>
+                            <p className="text-xs text-gray-500">Open</p>
                             <p className="text-2xl font-bold text-yellow-600">{stats.pending}</p>
                         </div>
                         <Clock className="w-8 h-8 text-yellow-400" />
@@ -208,10 +213,10 @@ export default function ViolationHandlingPage() {
                         className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     >
                         <option value="all">All Statuses</option>
-                        <option value="pending">Pending</option>
+                        <option value="open">Open</option>
                         <option value="resolved">Resolved</option>
                         <option value="under review">Under Review</option>
-                        <option value="dismissed">Dismissed</option>
+                        <option value="closed">Closed</option>
                     </select>
 
                     <select
@@ -271,9 +276,16 @@ export default function ViolationHandlingPage() {
                         <ViolationCard
                             key={violation.violation_id || violation.violationId}
                             violationId={violation.violation_id || violation.violationId}
-                            senderId={violation.senderId || violation.sender_id}
-                            violatorId={violation.violatorId || violation.violator_id}
-                            violationType={violation.violationType || violation.violation_type}
+                            senderId={violation.sender_id || violation.senderId}
+                            senderName={violation.sender_name}
+                            senderEmail={violation.sender_email}
+                            violatorId={violation.violator_id || violation.violatorId}
+                            violatorName={violation.violator_name || violation.violatorName}
+                            violatorEmail={violation.violator_email || violation.violatorEmail}
+                            violatorFirstName={violation.violator_first_name || violation.violatorFirstName}
+                            violatorLastName={violation.violator_last_name || violation.violatorLastName}
+                            auctionId={violation.auction_id || violation.auctionId}
+                            violationType={violation.violation_type || violation.violationType}
                             reason={violation.reason}
                             status={violation.status}
                             timestamp={violation.created_at || violation.timestamp}
