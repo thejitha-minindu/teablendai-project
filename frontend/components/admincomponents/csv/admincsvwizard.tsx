@@ -14,6 +14,11 @@ export default function AdminCsvWizard() {
     const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
     const [previewData, setPreviewData] = useState<any[]>([]);
 
+    const handleSetTable = (newTable: string) => {
+        setTable(newTable);
+        setMapping({});
+    };
+
     return (
         <div className="max-w-6xl mx-auto p-6 bg-gray-50 rounded-xl shadow">
             <Stepper current={step} />
@@ -25,7 +30,7 @@ export default function AdminCsvWizard() {
                         setCsvHeaders={setCsvHeaders}
                         setPreviewData={setPreviewData}
                         table={table}
-                        setTable={setTable}
+                        setTable={handleSetTable}
                     />
                 )}
 
@@ -61,7 +66,8 @@ export default function AdminCsvWizard() {
                 {step < 3 && (
                     <button
                         onClick={() => setStep(step + 1)}
-                        className="px-6 py-2 rounded bg-green-700 text-white"
+                        disabled={(step === 0 && (!file || !table)) || (step === 1 && (Object.keys(mapping).length === 0 || Object.values(mapping).every(v => !v)))}
+                        className={`px-6 py-2 rounded text-white transition-colors ${(step === 0 && (!file || !table)) || (step === 1 && (Object.keys(mapping).length === 0 || Object.values(mapping).every(v => !v))) ? "bg-green-300 cursor-not-allowed" : "bg-green-700 hover:bg-green-800"}`}
                     >
                         Next
                     </button>

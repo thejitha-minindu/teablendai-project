@@ -147,6 +147,179 @@ def ensure_runtime_schema_compatibility() -> RuntimeSchemaCompatibility:
             )
         )
 
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE system_logs (
+                        log_id UNIQUEIDENTIFIER NOT NULL PRIMARY KEY DEFAULT NEWID(),
+                        display_id VARCHAR(16) NOT NULL UNIQUE,
+                        user_name VARCHAR(128) NOT NULL,
+                        user_id UNIQUEIDENTIFIER NULL,
+                        activity_type VARCHAR(64) NOT NULL,
+                        status VARCHAR(16) NOT NULL CONSTRAINT DF_system_logs_status DEFAULT 'success',
+                        ip_address VARCHAR(45) NULL,
+                        details VARCHAR(512) NOT NULL,
+                        created_at DATETIME NOT NULL CONSTRAINT DF_system_logs_created_at DEFAULT GETUTCDATE(),
+                        CONSTRAINT FK_system_logs_users FOREIGN KEY (user_id) REFERENCES users(user_id)
+                    )
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_created_at'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_created_at ON system_logs(created_at DESC)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_activity_type'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_activity_type ON system_logs(activity_type)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_status'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_status ON system_logs(status)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('system_logs', 'U') IS NOT NULL
+                   AND NOT EXISTS (
+                        SELECT 1
+                        FROM sys.indexes
+                        WHERE name = 'IX_system_logs_user_id'
+                          AND object_id = OBJECT_ID('system_logs')
+                   )
+                BEGIN
+                    CREATE INDEX IX_system_logs_user_id ON system_logs(user_id)
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF COL_LENGTH('violations', 'auction_id') IS NULL
+                BEGIN
+                    ALTER TABLE violations
+                    ADD auction_id VARCHAR(255) NULL
+                END
+                """
+            )
+        )
+
+        # Fix violations.sender_id column type: int -> UNIQUEIDENTIFIER
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('violations', 'U') IS NOT NULL
+                BEGIN
+                    DECLARE @sender_type VARCHAR(128)
+                    SELECT @sender_type = DATA_TYPE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'violations' AND COLUMN_NAME = 'sender_id'
+
+                    IF @sender_type IS NOT NULL AND @sender_type <> 'uniqueidentifier'
+                    BEGIN
+                        -- Drop existing FK constraints on sender_id if any
+                        DECLARE @fk_name NVARCHAR(256)
+                        SELECT TOP 1 @fk_name = fk.name
+                        FROM sys.foreign_keys fk
+                        JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+                        JOIN sys.columns c ON fkc.parent_column_id = c.column_id
+                            AND fkc.parent_object_id = c.object_id
+                        WHERE fk.parent_object_id = OBJECT_ID('violations')
+                            AND c.name = 'sender_id'
+
+                        IF @fk_name IS NOT NULL
+                        BEGIN
+                            DECLARE @drop_sql NVARCHAR(512) = 'ALTER TABLE violations DROP CONSTRAINT ' + QUOTENAME(@fk_name)
+                            EXEC sp_executesql @drop_sql
+                        END
+
+                        -- Delete any existing rows (they have int sender_ids, incompatible)
+                        DELETE FROM violations
+
+                        -- Alter column type
+                        ALTER TABLE violations ALTER COLUMN sender_id UNIQUEIDENTIFIER NOT NULL
+
+                        -- Re-add FK constraint
+                        ALTER TABLE violations
+                        ADD CONSTRAINT FK_violations_sender_users
+                        FOREIGN KEY (sender_id) REFERENCES users(user_id)
+                    END
+                END
+                """
+            )
+        )
+        # Add Stripe columns to payment_details if missing
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('payment_details', 'U') IS NOT NULL
+                   AND COL_LENGTH('payment_details', 'stripe_session_id') IS NULL
+                BEGIN
+                    ALTER TABLE payment_details
+                    ADD stripe_session_id VARCHAR(255) NULL
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('payment_details', 'U') IS NOT NULL
+                   AND COL_LENGTH('payment_details', 'stripe_payment_intent_id') IS NULL
+                BEGIN
+                    ALTER TABLE payment_details
+                    ADD stripe_payment_intent_id VARCHAR(255) NULL
+                END
+                """
+            )
+        )
+
         db.commit()
 
         analytics_snapshots_available = all(

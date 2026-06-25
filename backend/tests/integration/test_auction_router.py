@@ -12,16 +12,20 @@ from src.infrastructure.database.base import Base
 # Import BOTH get_db definitions to ensure they are both overridden
 from src.infrastructure.database.base import get_db as get_db_base
 from src.database import get_db as get_db_root
+from src.infrastructure.database.connection import get_db as get_db_connection
 
 from src.application.main import app
 from src.domain.models.user import User
 from src.domain.models.auction import Auction
 from src.domain.models.auction_status import AuctionStatus
+from src.domain.models.admin import Admin
 
 from src.application.dependencies import (
     get_current_user,
     get_optional_current_user,
-    get_optional_token_payload
+    get_optional_token_payload,
+    get_current_admin,
+    get_system_log_service
 )
 from src.infrastructure.repositories.seller.auction_repository import AuctionRepository
 
@@ -66,6 +70,7 @@ def db_session(db_tables):
             
     app.dependency_overrides[get_db_base] = override_get_db
     app.dependency_overrides[get_db_root] = override_get_db
+    app.dependency_overrides[get_db_connection] = override_get_db
     yield session
     
     # Clean overrides
@@ -324,3 +329,113 @@ def test_update_and_delete_ownership_constraints(db_session, auth_seller):
     # Successfully DELETE
     delete_response = client.delete(f"/api/v1/auctions/{auc_uuid}")
     assert delete_response.status_code == 204 or delete_response.status_code == 244
+
+
+def test_admin_delete_auction_unauthorized(db_session):
+    """Verify delete auction by admin requires admin authentication."""
+    client = TestClient(app)
+    response = client.delete("/api/v1/admin/auctions/some-auction-id")
+    assert response.status_code in (401, 403)
+
+
+def test_admin_delete_auction_not_found(db_session):
+    """Verify deleting a non-existent auction returns 404."""
+    admin = Admin(
+        admin_id="admin-123",
+        username="admin_test",
+        email="admin@teablendai.local",
+        status="active"
+    )
+    from unittest.mock import MagicMock
+    mock_log_service = MagicMock()
+            
+    app.dependency_overrides[get_current_admin] = lambda: admin
+    app.dependency_overrides[get_system_log_service] = lambda: mock_log_service
+    
+    client = TestClient(app)
+    response = client.delete(f"/api/v1/admin/auctions/{uuid.uuid4()}")
+    assert response.status_code == 404
+    assert "Auction not found" in response.json()["detail"]
+
+def test_admin_delete_auction_invalid_status(db_session, auth_seller):
+    """Verify deleting an auction that is not scheduled (e.g. live or completed) returns 400."""
+    admin = Admin(
+        admin_id="admin-123",
+        username="admin_test",
+        email="admin@teablendai.local",
+        status="active"
+    )
+    from unittest.mock import MagicMock
+    mock_log_service = MagicMock()
+
+    app.dependency_overrides[get_current_admin] = lambda: admin
+    app.dependency_overrides[get_system_log_service] = lambda: mock_log_service
+
+    client = TestClient(app)
+    start_time = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    response = client.post(
+        "/api/v1/auctions",
+        json={
+            "grade": "BOPF",
+            "quantity": 500.0,
+            "origin": "Ruhuna",
+            "base_price": 9.5,
+            "start_time": start_time,
+            "duration": 180,
+            "seller_brand": "Premium Tea Brand"
+        }
+    )
+    assert response.status_code == 201
+    auc_id = response.json()["auction_id"]
+
+    # Update status to live in DB to trigger the status constraint
+    auction = db_session.query(Auction).filter(Auction.auction_id == auc_id).first()
+    auction.status = "live"
+    db_session.commit()
+
+    response = client.delete(f"/api/v1/admin/auctions/{auc_id}")
+    assert response.status_code == 400
+    assert "Only scheduled auctions can be deleted" in response.json()["detail"]
+
+
+def test_admin_delete_auction_success(db_session, auth_seller):
+    """Verify successful deletion of a live/scheduled auction by admin."""
+    admin = Admin(
+        admin_id="admin-123",
+        username="admin_test",
+        email="admin@teablendai.local",
+        status="active"
+    )
+    from unittest.mock import MagicMock
+    mock_log_service = MagicMock()
+
+    app.dependency_overrides[get_current_admin] = lambda: admin
+    app.dependency_overrides[get_system_log_service] = lambda: mock_log_service
+
+    client = TestClient(app)
+    start_time = (datetime.now(timezone.utc) + timedelta(days=1)).isoformat()
+    response = client.post(
+        "/api/v1/auctions",
+        json={
+            "grade": "BOPF",
+            "quantity": 500.0,
+            "origin": "Ruhuna",
+            "base_price": 9.5,
+            "start_time": start_time,
+            "duration": 180,
+            "seller_brand": "Premium Tea Brand"
+        }
+    )
+    assert response.status_code == 201
+    auc_id = response.json()["auction_id"]
+
+    response = client.delete(f"/api/v1/admin/auctions/{auc_id}")
+    assert response.status_code == 204
+
+    # Verify deleted from DB
+    assert db_session.query(Auction).filter(Auction.auction_id == auc_id).first() is None
+    # Verify logged
+    mock_log_service.log.assert_called_once()
+    call_kwargs = mock_log_service.log.call_args[1]
+    assert call_kwargs["activity_type"] == "Auction Deleted"
+    assert "BOPF - Ruhuna" in call_kwargs["details"]

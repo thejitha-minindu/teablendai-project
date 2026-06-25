@@ -1,27 +1,19 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { toast } from 'sonner';
+import { useState, useEffect, Suspense } from "react";
 import { apiClient } from "@/lib/apiClient";
-import { 
-  Bell, 
-  History, 
-  Send, 
-  X, 
-  Mail, 
-  Users, 
-  AlertCircle,
-  CheckCircle,
-  Tag,
-  UserCheck,
-  FileText,
-  MessageSquare,
-  Scale,
-  ShoppingBag
+import {
+    History,
+    Send,
+    X,
+    CheckCircle
 } from "lucide-react";
 
-export default function CreateNotificationPage() {
+function CreateNotificationForm() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [formData, setFormData] = useState({
         title: "",
         content: "",
@@ -31,12 +23,36 @@ export default function CreateNotificationPage() {
     });
     const [sending, setSending] = useState(false);
     const [showSuccess, setShowSuccess] = useState(false);
-    
+
     // Auto-suggest state
     const [searchResults, setSearchResults] = useState<any[]>([]);
     const [isSearching, setIsSearching] = useState(false);
     const [selectedUser, setSelectedUser] = useState<any>(null);
     const [showDropdown, setShowDropdown] = useState(false);
+
+    // Prefill user if passed via URL parameters
+    useEffect(() => {
+        const prefillUserId = searchParams.get("prefillUserId");
+        const prefillUserEmail = searchParams.get("prefillUserEmail");
+        const prefillFirstName = searchParams.get("prefillFirstName");
+        const prefillLastName = searchParams.get("prefillLastName");
+
+        if (prefillUserId) {
+            setSelectedUser({
+                user_id: prefillUserId,
+                email: prefillUserEmail || "",
+                first_name: prefillFirstName || "User",
+                last_name: prefillLastName || ""
+            });
+            setFormData(prev => ({
+                ...prev,
+                type: "Violation & Compliance Notifications",
+                title: "Policy Violation Warning",
+                revisers: "all",
+                reviserSpecify: prefillUserEmail || ""
+            }));
+        }
+    }, [searchParams]);
 
     // Debounced search effect
     useEffect(() => {
@@ -63,19 +79,19 @@ export default function CreateNotificationPage() {
     }, [formData.reviserSpecify, selectedUser]);
 
     const notificationTypes = [
-        { value: "System Notifications", label: "System Notifications", icon: <Bell className="w-4 h-4" />, color: "blue" },
-        { value: "User Verification Notifications", label: "User Verification Notifications", icon: <UserCheck className="w-4 h-4" />, color: "green" },
-        { value: "Auction-Related Notifications", label: "Auction-Related Notification", icon: <ShoppingBag className="w-4 h-4" />, color: "purple" },
-        { value: "Bid & Transaction Notifications", label: "Bid & Transaction", icon: <Scale className="w-4 h-4" />, color: "orange" },
-        { value: "Violation & Compliance Notifications", label: "Violation & Compliance", icon: <AlertCircle className="w-4 h-4" />, color: "red" },
-        { value: "Custom Notifications", label: "Custom Notifications", icon: <MessageSquare className="w-4 h-4" />, color: "indigo" },
-        { value: "Complaint & Review Notifications", label: "Complaint & Review Notifications", icon: <FileText className="w-4 h-4" />, color: "pink" }
+        { value: "System Notifications", label: "System Notifications" },
+        { value: "User Verification Notifications", label: "User Verification Notifications" },
+        { value: "Auction-Related Notifications", label: "Auction-Related Notification" },
+        { value: "Bid & Transaction Notifications", label: "Bid & Transaction" },
+        { value: "Violation & Compliance Notifications", label: "Violation & Compliance" },
+        { value: "Custom Notifications", label: "Custom Notifications" },
+        { value: "Complaint & Review Notifications", label: "Complaint & Review Notifications" }
     ];
 
     const reviserOptions = [
-        { value: "buyer", label: "Buyers", icon: <Users className="w-4 h-4" /> },
-        { value: "seller", label: "Sellers", icon: <Users className="w-4 h-4" /> },
-        { value: "all", label: "All Users", icon: <Users className="w-4 h-4" /> }
+        { value: "buyer", label: "Buyers" },
+        { value: "seller", label: "Sellers" },
+        { value: "all", label: "All Users" }
     ];
 
     const handleInputChange = (field: string, value: string) => {
@@ -84,12 +100,12 @@ export default function CreateNotificationPage() {
 
     const handleSubmit = async () => {
         if (!formData.title || !formData.content || !formData.type || !formData.revisers) {
-            alert("Please fill in all required fields");
+            toast.error("Please fill in all required fields");
             return;
         }
 
         setSending(true);
-        
+
         try {
             // Map frontend type labels to backend NotificationTypeEnum
             let backendType = "system";
@@ -110,9 +126,9 @@ export default function CreateNotificationPage() {
             };
 
             await apiClient.post("/notifications/", payload);
-            
+
             setShowSuccess(true);
-            
+
             // Reset form after success
             setTimeout(() => {
                 setShowSuccess(false);
@@ -127,37 +143,41 @@ export default function CreateNotificationPage() {
             }, 2000);
         } catch (error: any) {
             console.error("Failed to send notification:", error);
-            alert(error.response?.data?.detail || "Failed to send notification. Please try again.");
+            toast.error(error.response?.data?.detail || "Failed to send notification. Please try again.");
         } finally {
             setSending(false);
         }
     };
 
     const handleCancel = () => {
-        if (confirm("Are you sure you want to cancel? All unsaved data will be lost.")) {
-            setFormData({
-                title: "",
-                content: "",
-                type: "",
-                revisers: "",
-                reviserSpecify: ""
-            });
-            setSelectedUser(null);
-        }
-    };
-
-    const getTypeIcon = (typeValue: string) => {
-        const type = notificationTypes.find(t => t.value === typeValue);
-        return type?.icon || <Bell className="w-4 h-4" />;
+        toast.info("Are you sure you want to cancel? All unsaved data will be lost.", {
+            action: {
+                label: "Yes",
+                onClick: () => {
+                    setFormData({
+                        title: "",
+                        content: "",
+                        type: "",
+                        revisers: "",
+                        reviserSpecify: ""
+                    });
+                    setSelectedUser(null);
+                }
+            },
+            cancel: {
+                label: "No",
+                onClick: () => {}
+            },
+            duration: 5000,
+        });
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto bg-gray-50 min-h-screen">
+        <div className="p-6 max-w-5xl mx-auto min-h-screen">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <Bell className="w-7 h-7 text-green-700" />
                         Notification Manager
                     </h1>
                     <p className="text-gray-500 mt-1">Create and manage system notifications</p>
@@ -185,9 +205,8 @@ export default function CreateNotificationPage() {
             {/* Create Notification Panel */}
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-lg">
                 {/* Panel Title */}
-                <div className="bg-gradient-to-r from-green-50 to-gray-50 px-6 py-3 border-b border-gray-200">
+                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
                     <div className="flex items-center gap-2">
-                        <Mail className="w-5 h-5 text-green-700" />
                         <span className="font-semibold text-gray-800">Create New Notification</span>
                     </div>
                 </div>
@@ -197,7 +216,6 @@ export default function CreateNotificationPage() {
                     {/* Title */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-gray-500" />
                             Notification Title <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -213,7 +231,6 @@ export default function CreateNotificationPage() {
                     {/* Content */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-start gap-2 pt-2">
-                            <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5" />
                             Notification Content <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -232,7 +249,6 @@ export default function CreateNotificationPage() {
                     {/* Notification Type */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Bell className="w-4 h-4 text-gray-500" />
                             Notification Type <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -254,7 +270,6 @@ export default function CreateNotificationPage() {
                     {/* Revisers */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-500" />
                             Target Audience <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -264,13 +279,11 @@ export default function CreateNotificationPage() {
                                         key={option.value}
                                         type="button"
                                         onClick={() => handleInputChange("revisers", option.value)}
-                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${
-                                            formData.revisers === option.value
-                                                ? "bg-green-600 border-green-600 text-white"
-                                                : "border-gray-300 text-gray-700 hover:bg-gray-50"
-                                        }`}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${formData.revisers === option.value
+                                            ? "bg-[#3A5A40] border-[#3A5A40] text-white"
+                                            : "border-gray-300 text-gray-700 hover:bg-gray-50"
+                                            }`}
                                     >
-                                        {option.icon}
                                         {option.label}
                                     </button>
                                 ))}
@@ -281,7 +294,6 @@ export default function CreateNotificationPage() {
                     {/* Specific User Email */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <UserCheck className="w-4 h-4 text-gray-500" />
                             Specific User (Optional)
                         </label>
                         <div className="md:col-span-2 relative">
@@ -296,10 +308,10 @@ export default function CreateNotificationPage() {
                                             <p className="text-xs text-gray-500">{selectedUser.email}</p>
                                         </div>
                                     </div>
-                                    <button 
+                                    <button
                                         onClick={() => {
                                             setSelectedUser(null);
-                                            setFormData(prev => ({...prev, reviserSpecify: ""}));
+                                            setFormData(prev => ({ ...prev, reviserSpecify: "" }));
                                         }}
                                         className="p-1 hover:bg-green-200 rounded-full text-green-700"
                                     >
@@ -319,10 +331,10 @@ export default function CreateNotificationPage() {
                                     />
                                     {isSearching && (
                                         <div className="absolute right-3 top-3">
-                                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-green-600"></div>
+                                            <div className=" rounded-full h-4 w-4 border-b-2 border-green-600"></div>
                                         </div>
                                     )}
-                                    
+
                                     {/* Auto-suggest Dropdown */}
                                     {showDropdown && searchResults.length > 0 && (
                                         <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -333,7 +345,7 @@ export default function CreateNotificationPage() {
                                                     onClick={() => {
                                                         setSelectedUser(user);
                                                         setShowDropdown(false);
-                                                        setFormData(prev => ({...prev, reviserSpecify: user.email}));
+                                                        setFormData(prev => ({ ...prev, reviserSpecify: user.email }));
                                                     }}
                                                     className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 flex items-center gap-3 transition-colors"
                                                 >
@@ -365,14 +377,10 @@ export default function CreateNotificationPage() {
                     {(formData.title || formData.content) && (
                         <div className="mt-6 pt-4 border-t border-gray-200">
                             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                <Eye className="w-4 h-4" />
                                 Preview
                             </h3>
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                                        {getTypeIcon(formData.type)}
-                                    </div>
+                                <div className="flex gap-4">
                                     <div className="flex-1">
                                         <h4 className="font-semibold text-gray-800">
                                             {formData.title || "Notification Title"}
@@ -412,7 +420,7 @@ export default function CreateNotificationPage() {
                         >
                             {sending ? (
                                 <>
-                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                    <div className=" rounded-full h-4 w-4 border-b-2 border-white"></div>
                                     Sending...
                                 </>
                             ) : (
@@ -447,3 +455,11 @@ export default function CreateNotificationPage() {
 
 // Import Eye icon
 import { Eye } from "lucide-react";
+
+export default function CreateNotificationPage() {
+    return (
+        <Suspense fallback={null}>
+            <CreateNotificationForm />
+        </Suspense>
+    );
+}

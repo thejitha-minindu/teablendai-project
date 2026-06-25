@@ -15,6 +15,7 @@ from fastapi import Depends
 from .dependencies import get_mcp_client, get_current_admin
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
+from src.presentation.routers.v1.seller.order import router as seller_order
 from src.presentation.routers.v1.admin import admin_profile
 from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
@@ -194,6 +195,10 @@ app.include_router(profile.router, prefix="/api/v1")
 # Register payment card router
 from src.presentation.routers.v1 import payment_card
 app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"])
+
+# Register Stripe payment router
+from src.presentation.routers.v1 import payment as stripe_payment
+app.include_router(stripe_payment.router, prefix="/api/v1", tags=["Stripe Payment"])
 # Register order router
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
@@ -217,6 +222,9 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 
 # WebSocket routers
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
+
+# Seller routers
+app.include_router(seller_order, prefix="/api/v1/seller")
 
 # Admin routers
 app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"], dependencies=[Depends(get_current_admin)])
@@ -312,6 +320,10 @@ app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["
 
 # Register admin violation router (mounted under API v1 admin prefix)
 app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
+
+# Register system logs router
+from src.presentation.routers.v1.admin import system_logs_router
+app.include_router(system_logs_router.router, prefix="/api/v1/admin", tags=["System Logs"])
 # app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
 
 # Register notifications router (mounted under API v1)

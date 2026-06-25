@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getAuthClaims, getHomePathByRole, setStoredAuthToken, type UserRole } from "@/lib/auth";
+import { getAuthClaims, getHomePathByRole, setStoredAuthToken, clearStoredAuthToken, type UserRole } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
 import authService, { GoogleCredentialResponse } from "@/services/authService";
 
@@ -64,12 +64,32 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
   const redirectPath = getSafeRedirectPath(searchParams.get("redirect"));
   const config = ROLE_CONFIG[role];
-  const IconComponent = config.icon;
 
   const routeApprovedUser = async () => {
     try {
       const currentUser = await authService.getCurrentUser();
       const verificationStatus = currentUser.verification_status || "PENDING";
+
+      const availableRoles = currentUser.available_roles || [];
+      
+      // Enforce that the user MUST have the role they are trying to log into
+      if (!availableRoles.includes(role)) {
+        clearStoredAuthToken();
+        const oppositeRole = role === "buyer" ? "seller" : "buyer";
+        throw new Error(`You do not have a ${role} account. Please sign in as ${oppositeRole}.`);
+      }
+
+      // If their active role is different from the portal they chose, switch it automatically
+      if (currentUser.active_role !== role) {
+        try {
+          const switchRes = await apiClient.post("/auth/switch-role", { role: role });
+          if (switchRes.data?.access_token) {
+            setStoredAuthToken(switchRes.data.access_token);
+          }
+        } catch (switchError) {
+          console.error("Failed to switch role during login:", switchError);
+        }
+      }
 
       if (verificationStatus === "PENDING") {
         router.push("/auth/pending");
@@ -82,24 +102,17 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       }
 
       if (verificationStatus === "APPROVED") {
-        router.push(redirectPath || getHomePathByRole(currentUser.default_role));
+        router.push(redirectPath || getHomePathByRole(role));
       }
-    } catch (fetchError) {
-      console.error("Failed to fetch current user:", fetchError);
-      const claims = getAuthClaims();
-      const status = claims?.status;
-
-      if (status === "PENDING") {
-        router.push("/auth/pending");
-        return;
+    } catch (error: any) {
+      console.error("Failed to process login routing:", error);
+      clearStoredAuthToken(); // Make sure we don't leave them half-logged in if it fails
+      
+      // If it's our custom error message about missing roles, pass it up
+      if (error instanceof Error && error.message.includes("account")) {
+        throw error; 
       }
-      if (status === "REJECTED") {
-        router.push("/auth/rejected");
-        return;
-      }
-      if (status === "APPROVED") {
-        router.push(redirectPath || getHomePathByRole(claims?.role));
-      }
+      throw new Error("Failed to verify your account profile.");
     }
   };
 
@@ -133,13 +146,21 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       await routeApprovedUser();
     } catch (error: any) {
       console.error("Login failed:", error);
-      setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
+      if (error instanceof Error && error.message.includes("account")) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleGoogleLogin = async (credentialResponse: GoogleCredentialResponse ) => {
+  const handleGoogleLogin = async (credentialResponse: any) => {
+    if (!credentialResponse?.credential) {
+      setErrorMsg("Google authentication failed. No credentials returned.");
+      return;
+    }
     setIsLoading(true);
     setErrorMsg("");
 
@@ -147,16 +168,22 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       const data = await authService.googleLogin(credentialResponse.credential);
 
       await routeApprovedUser();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login failed:", error);
-      setErrorMsg("Google authentication failed. Please try again.");
+      if (error instanceof Error && error.message.includes("account")) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("Google authentication failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
+  const HAS_GOOGLE_CLIENT = !!GOOGLE_CLIENT_ID;
+
   return (
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+    <>
       <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-green-50">
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
@@ -226,19 +253,29 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
                 <div className="space-y-4">
                   {/* Google Sign-In */}
-                  <div className="flex justify-center w-full">
-                    <div className="w-full flex justify-center bg-white border hover:bg-gray-50 transition-colors rounded-full overflow-hidden [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full">
-                      <GoogleLogin
-                        onSuccess={handleGoogleLogin}
-                        onError={() => setErrorMsg("Google Login Failed")}
-                        useOneTap
-                        theme="outline"
-                        size="large"
-                        shape="pill"
-                        text="continue_with"
-                      />
+                  {HAS_GOOGLE_CLIENT ? (
+                    <div className="flex justify-center w-full">
+                      <div className="w-full flex justify-center bg-white border hover:bg-gray-50 transition-colors rounded-full overflow-hidden [&>div]:w-full [&>div>div]:w-full [&>div>div>iframe]:w-full">
+                        <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+                          <GoogleLogin
+                            onSuccess={handleGoogleLogin}
+                            onError={() => setErrorMsg("Google Login Failed")}
+                            useOneTap
+                            theme="outline"
+                            size="large"
+                            shape="pill"
+                            text="continue_with"
+                          />
+                        </GoogleOAuthProvider>
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex justify-center w-full">
+                      <div className="w-full flex justify-center bg-white border rounded-full p-3 text-sm text-gray-500">
+                        Google Sign-In not configured.
+                      </div>
+                    </div>
+                  )}
 
                   <div className="relative">
                     <Separator className="my-4" />
@@ -362,6 +399,6 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
           </div>
         </main>
       </div>
-    </GoogleOAuthProvider>
+    </>
   );
 }

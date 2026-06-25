@@ -6,6 +6,7 @@ import {
   ArrowLeft, ShieldCheck, User, MessageCircle // <--- Added MessageCircle here
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 // Mock Order Data (Simulating a database fetch)
 const INITIAL_ORDER = {
@@ -39,23 +40,38 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
 
   // 2. Seller: Mark as Shipped
   const handleDispatch = () => {
-    if (!confirm("Confirm that the lot has been handed over to the courier?")) return;
-    setIsUpdating(true);
-    setTimeout(() => {
-      setOrder(prev => ({ ...prev, status: 'SHIPPED' }));
-      setIsUpdating(false);
-    }, 1000);
+    toast("Confirm that the lot has been handed over to the courier?", {
+      action: {
+        label: 'Confirm',
+        onClick: () => {
+          setIsUpdating(true);
+          setTimeout(() => {
+            setOrder(prev => ({ ...prev, status: 'SHIPPED' }));
+            setIsUpdating(false);
+            toast.success("Order marked as shipped.");
+          }, 1000);
+        }
+      },
+      cancel: { label: 'Cancel', onClick: () => {} }
+    });
   };
 
   // 3. Buyer: Confirm Delivery
   const handleConfirmDelivery = () => {
-    if (!confirm("Have you inspected and received the tea lot?")) return;
-    setIsUpdating(true);
-    setTimeout(() => {
-      setOrder(prev => ({ ...prev, status: 'DELIVERED' }));
-      setIsUpdating(false);
-      alert("Order Completed! Funds released to Seller.");
-    }, 1000);
+    toast("Have you inspected and received the tea lot?", {
+      action: {
+        label: 'Confirm',
+        onClick: () => {
+          setIsUpdating(true);
+          setTimeout(() => {
+            setOrder(prev => ({ ...prev, status: 'DELIVERED' }));
+            setIsUpdating(false);
+            toast.success("Order Completed! Funds released to Seller.");
+          }, 1000);
+        }
+      },
+      cancel: { label: 'Cancel', onClick: () => {} }
+    });
   };
 
   // --- UI HELPERS ---

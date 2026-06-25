@@ -1,6 +1,7 @@
 import csv
 import logging
 from datetime import datetime, date
+from sqlalchemy import text
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError, DataError
 from src.infrastructure.database.base import Base
@@ -42,7 +43,29 @@ class AdminCSVUploadService:
         if not candidate:
             return None
 
-        formats = ("%Y-%m-%d", "%d/%m/%Y", "%m/%d/%Y", "%Y/%m/%d")
+        # Extract date portion if time is present (e.g., "2025-01-05 12:00:00" or "2025-01-05T12:00:00")
+        if "T" in candidate and not candidate.startswith("T"):
+            candidate = candidate.split("T")[0]
+        elif " " in candidate:
+            candidate = candidate.split()[0]
+
+        formats = (
+            # 4-digit years
+            "%Y-%m-%d",
+            "%Y/%m/%d",
+            "%d/%m/%Y",
+            "%m/%d/%Y",
+            "%d-%m-%Y",
+            "%m-%d-%Y",
+            # 2-digit years (end)
+            "%d/%m/%y",
+            "%m/%d/%y",
+            "%d-%m-%y",
+            "%m-%d-%y",
+            # 2-digit years (start)
+            "%y-%m-%d",
+            "%y/%m/%d",
+        )
         for fmt in formats:
             try:
                 return datetime.strptime(candidate, fmt).date()
@@ -50,7 +73,7 @@ class AdminCSVUploadService:
                 continue
 
         raise ValueError(
-            f"Invalid date format '{value}'. Expected one of: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD"
+            f"Invalid date format '{value}'. Expected one of: YYYY-MM-DD, DD/MM/YYYY, MM/DD/YYYY, YYYY/MM/DD, DD-MM-YYYY, MM-DD-YYYY, DD/MM/YY, MM/DD/YY, DD-MM-YY, MM-DD-YY"
         )
 
     def process_csv(self, file, table, mapping):
@@ -154,9 +177,45 @@ class AdminCSVUploadService:
 
         if objects:
             try:
-                self.db.bulk_save_objects(objects)
+                pk_name = list(orm_class.__table__.primary_key.columns)[0].name
+
+                # Fetch all existing primary keys to check for updates vs inserts
+                existing_ids = {val for (val,) in self.db.query(getattr(orm_class, pk_name)).all() if val is not None}
+
+                to_update = []
+                to_insert = []
+
+                for obj in objects:
+                    pk_val = getattr(obj, pk_name, None)
+                    if pk_val is not None and pk_val in existing_ids:
+                        to_update.append(obj)
+                    else:
+                        to_insert.append(obj)
+
+                # 1. Process updates (upsert)
+                for obj in to_update:
+                    self.db.merge(obj)
+
+                # 2. Process inserts
+                if to_insert:
+                    has_explicit_id = any(getattr(obj, pk_name, None) is not None for obj in to_insert)
+
+                    if has_explicit_id:
+                        try:
+                            self.db.execute(text(f"SET IDENTITY_INSERT {table} ON"))
+                        except Exception as e:
+                            logger.warning(f"Failed to set IDENTITY_INSERT ON for {table}: {e}")
+
+                    self.db.bulk_save_objects(to_insert)
+
+                    if has_explicit_id:
+                        try:
+                            self.db.execute(text(f"SET IDENTITY_INSERT {table} OFF"))
+                        except Exception as e:
+                            logger.warning(f"Failed to set IDENTITY_INSERT OFF for {table}: {e}")
+
                 self.db.commit()
-                logger.info(f"Inserted {len(objects)} rows into {table}.")
+                logger.info(f"Successfully processed CSV upload for {table}: updated {len(to_update)} rows, inserted {len(to_insert)} rows.")
             except (IntegrityError, DataError) as e:
                 logger.error(f"DB data error during commit: {e}")
                 self.db.rollback()

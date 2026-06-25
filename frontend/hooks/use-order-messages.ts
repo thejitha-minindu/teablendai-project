@@ -6,6 +6,7 @@ const WS_BASE_URL =
   (process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1").replace(/\/$/, "");
 
 const POLLING_INTERVAL_MS = 5000;
+const POLLING_FALLBACK_DELAY_MS = 1500; // Delay before starting polling to avoid React StrictMode false triggers
 
 export function useOrderMessages(orderId: string, currentUserId: string) {
   const [messages, setMessages] = useState<OrderMessage[]>([]);
@@ -13,7 +14,8 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
   const [isLoading, setIsLoading] = useState(true);
   const wsRef = useRef<WebSocket | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const usingPollingRef = useRef(false);
+  const pollingDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mountedRef = useRef(true);
 
   // ----- Helper: add unique messages -----
   const addMessages = useCallback((incoming: OrderMessage[]) => {
@@ -25,6 +27,18 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
         (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
       );
     });
+  }, []);
+
+  // ----- Helper: clear polling -----
+  const clearPolling = useCallback(() => {
+    if (pollingDelayRef.current) {
+      clearTimeout(pollingDelayRef.current);
+      pollingDelayRef.current = null;
+    }
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
   }, []);
 
   // ----- Initial load -----
@@ -44,6 +58,8 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
   useEffect(() => {
     if (!orderId) return;
 
+    mountedRef.current = true;
+
     const token = getAuthToken();
     if (!token) return;
 
@@ -53,12 +69,8 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
 
     ws.onopen = () => {
       setConnected(true);
-      usingPollingRef.current = false;
-      // Clear any polling fallback
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
+      // Clear any pending or active polling — WS is live
+      clearPolling();
     };
 
     ws.onmessage = (event) => {
@@ -72,9 +84,17 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
 
     ws.onclose = () => {
       setConnected(false);
-      // Start polling fallback if not already running
-      if (!pollingRef.current) {
-        usingPollingRef.current = true;
+
+      // Only start polling fallback if the component is still mounted
+      // and no polling is already active. Use a delay to avoid false
+      // triggers from React StrictMode unmount/remount cycles.
+      if (!mountedRef.current) return;
+      if (pollingRef.current || pollingDelayRef.current) return;
+
+      pollingDelayRef.current = setTimeout(() => {
+        // Double-check mount status after delay
+        if (!mountedRef.current) return;
+
         pollingRef.current = setInterval(async () => {
           try {
             const msgs = await messageService.getMessages(orderId);
@@ -83,7 +103,7 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
             console.error("Polling failed", e);
           }
         }, POLLING_INTERVAL_MS);
-      }
+      }, POLLING_FALLBACK_DELAY_MS);
     };
 
     ws.onerror = () => {
@@ -98,14 +118,12 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
     }, 25000);
 
     return () => {
+      mountedRef.current = false;
       clearInterval(pingInterval);
+      clearPolling();
       ws.close();
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current);
-        pollingRef.current = null;
-      }
     };
-  }, [orderId, addMessages]);
+  }, [orderId, addMessages, clearPolling]);
 
   // ----- Send a message -----
   const sendMessage = useCallback(

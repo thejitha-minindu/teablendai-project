@@ -116,7 +116,9 @@ class AuctionOrderCard(BaseModel):
     sold_price: Optional[float] = None
     date: datetime = Field(validation_alias="start_time", serialization_alias="date")
     buyer_name: Optional[str] = None
+    seller_id: Optional[UUID] = None
     order_id: Optional[str] = None
+    payment_status: Optional[str] = None
     
     @field_serializer('date')
     def serialize_date(self, value: datetime, _info) -> str:

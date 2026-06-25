@@ -3,6 +3,7 @@ import os
 import logging
 from typing import List, Optional
 from urllib.parse import quote_plus
+from pydantic import Field
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
@@ -126,9 +127,16 @@ class Settings(BaseSettings):
     LOG_FORMAT: str = "%(levelname)s:%(name)s:%(message)s"
 
     # Authentication & Security
-    JWT_SECRET_KEY: str = "your-secret-key-change-in-production"
+    JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24
+
+    # Stripe Payment
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+
+    # Frontend URL (for Stripe redirect callbacks)
+    FRONTEND_URL: str = "http://localhost:3000"
     
     # Email Configuration (SMTP)
     SMTP_HOST: Optional[str] = None
@@ -184,6 +192,10 @@ def get_settings() -> Settings:
 # Create default instance for backward compatibility
 settings = get_settings()
 
+# JWT configuration is loaded from .env via settings
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_EXPIRATION_HOURS * 60
 
 def get_mssql_connection_string(
     server: str = None,

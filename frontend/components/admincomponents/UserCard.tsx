@@ -80,7 +80,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
         <>
             {/* Confirmation Modal */}
             {confirmAction && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 animate-fadeIn">
+                <div className="fixed inset-0 bg-opacity-0 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
                     <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl animate-slideUp">
                         <h3 className="text-xl font-semibold mb-3">
                             {confirmAction === "verify" ? "Verify User" : "Reject User"}

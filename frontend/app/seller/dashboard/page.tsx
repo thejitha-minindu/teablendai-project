@@ -286,23 +286,16 @@ export default function SellerDashboardPage() {
     <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
       
       {/* 1. Page Title */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-[#1A2F1C]">Seller Dashboard</h1>
-          <p className="text-gray-500">Welcome back</p>
-        </div>
+      <div className="mb-5 items-start">
+        <h1 className="text-3xl font-bold">Seller Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Welcome back</p>
       </div>
 
       {/* --- ROW 1: Chart & Hero --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
         {/* Left: Chart */}
-        <div className="lg:col-span-1 h-full">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center min-h-[420px]">
-                <h3 className="font-bold text-gray-700 mb-6 text-center">Sales Distribution</h3>
-                <div className="flex-1 flex items-center justify-center w-full">
-                    <ChartPie /> 
-                </div>
-            </div>
+        <div className="lg:col-span-1 h-full min-h-[420px]">
+            <ChartPie />
         </div>
 
         {/* Right: Create Auction Hero */}
@@ -345,12 +338,12 @@ export default function SellerDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Left: Calendar */}
         <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="flex flex-col items-center">
                 <div className="w-full flex justify-between items-center mb-4 px-2">
-                    <h3 className="font-bold text-gray-700">Calendar</h3>
+                    <h3 className="font-semibold text-gray-700">Calendar</h3>
                     {selectedDate && (
-                        <button onClick={() => setSelectedDate(undefined)} className="text-[10px] uppercase font-bold text-[#3A5A40] bg-[#E5F7CB] px-2 py-1 rounded-md hover:bg-[#3A5A40] hover:text-white transition-colors">
-                            Reset to Today
+                        <button onClick={() => setSelectedDate(undefined)} className="text-[10px] uppercase font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 transition-colors">
+                            Reset
                         </button>
                     )}
                 </div>
@@ -366,7 +359,7 @@ export default function SellerDashboardPage() {
                         past: "bg-gray-100 text-gray-400 line-through hover:bg-gray-200 rounded-full"
                     }}
                 />
-                <div className="mt-6 flex flex-wrap gap-3 text-xs w-full px-2">
+                <div className="mt-4 flex flex-wrap gap-3 text-xs w-full px-2">
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Live/Today</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Scheduled</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-300"></span> Past</div>

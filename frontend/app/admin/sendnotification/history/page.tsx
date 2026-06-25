@@ -3,15 +3,15 @@
 import { useState, useEffect } from "react";
 import { apiClient } from "@/lib/apiClient";
 import { HistoryCard } from "@/components/admincomponents/HistoryCard";
-import { 
-  Search, 
-  Filter, 
-  Bell, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronRight,
-  Download,
-  X
+import {
+    Search,
+    Filter,
+    Bell,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    Download,
+    X
 } from "lucide-react";
 
 export default function NotificationHistoryPage() {
@@ -59,8 +59,8 @@ export default function NotificationHistoryPage() {
     // Filter notifications
     const filteredNotifications = notifications.filter(notification => {
         const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             notification.notifyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                             notification.revisers.toLowerCase().includes(searchTerm.toLowerCase());
+            notification.notifyId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            notification.revisers.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesType = typeFilter === "all" || notification.type === typeFilter;
         return matchesSearch && matchesType;
     });
@@ -84,11 +84,10 @@ export default function NotificationHistoryPage() {
     const hasActiveFilters = searchTerm !== "" || typeFilter !== "all";
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <Bell className="w-7 h-7 text-green-700" />
                     Notification History
                 </h1>
                 <p className="text-gray-500 mt-1">View and manage all sent notifications</p>
@@ -210,11 +209,10 @@ export default function NotificationHistoryPage() {
                             <button
                                 key={page}
                                 onClick={() => handlePageChange(page)}
-                                className={`px-3 py-1 rounded-lg transition-all ${
-                                    currentPage === page
+                                className={`px-3 py-1 rounded-lg transition-all ${currentPage === page
                                         ? "bg-green-600 text-white"
                                         : "border border-gray-300 hover:bg-gray-100"
-                                }`}
+                                    }`}
                             >
                                 {page}
                             </button>

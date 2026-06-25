@@ -163,47 +163,56 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
     } catch (error) { toast.error("Update failed."); }
   };
 
-  const handleCancelAuction = async () => {
-    if (!confirm("Cancel this auction?")) return;
-    try {
-      await apiClient.delete(`/auctions/${auctionId}`);
-      toast.success("Cancelled.");
-      onClose();
-    } catch (error) { toast.error("Cancel failed."); }
+  const handleCancelAuction = () => {
+    toast("Cancel this auction?", {
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          try {
+            await apiClient.delete(`/auctions/${auctionId}`);
+            toast.success("Cancelled.");
+            onClose();
+          } catch (error) { toast.error("Cancel failed."); }
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    });
   };
 
   if (loading) return <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"><div className="bg-white p-6 rounded">Loading...</div></div>;
   if (!auction) return null;
 
   return (
-    // FIX: Changed bg-black bg-opacity-50 -> bg-black/60 backdrop-blur-sm
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-[#1A2F1C]">{auction.grade} - {auction.origin}</h2>
-              <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-bold">Scheduled</span>
+              <h2 className="text-xl font-semibold text-gray-900">{auction.grade} - {auction.origin}</h2>
+              <span className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full text-xs font-medium">Scheduled</span>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X className="w-6 h-6" /></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-900 transition-colors"><X className="w-5 h-5" /></button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="bg-gray-50 h-64 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative group">
+              <div className="bg-gray-50 h-64 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative group">
                 {editMode === 'details' ? (
-                  <label htmlFor="details-dropzone" className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-white hover:bg-gray-100 transition-colors">
+                  <label htmlFor="details-dropzone" className="flex flex-col items-center justify-center w-full h-full cursor-pointer bg-white hover:bg-gray-50 transition-colors">
                     {imagePreview ? (
                       <>
                         <img src={imagePreview} alt="Preview" className="w-full h-full object-cover opacity-60" />
                         <div className="absolute inset-0 flex items-center justify-center bg-black/10">
-                          <span className="bg-white/90 text-gray-800 text-sm font-bold px-4 py-2 rounded-full shadow-lg border border-gray-200 top-2/4">Change Photo</span>
+                          <span className="bg-white/90 text-gray-800 text-sm font-medium px-4 py-2 rounded-full shadow-sm border border-gray-200 top-2/4">Change Photo</span>
                         </div>
                       </>
                     ) : (
                       <div className="flex flex-col items-center justify-center pt-5 pb-6 text-gray-500">
                         <Package className="w-10 h-10 mb-2 opacity-50 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-600">Click to upload image</span>
+                        <span className="text-sm font-medium text-gray-600">Click to upload image</span>
                       </div>
                     )}
                     <input 
@@ -221,70 +230,70 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     />
                   </label>
                 ) : imagePreview || auction.image_url ? (
-                  <img src={imagePreview || auction.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                  <img src={imagePreview || auction.image_url} alt="Tea Image" className="w-full h-full object-cover" />
                 ) : (
-                  <Package className="w-24 h-24 text-gray-300 drop-shadow-sm" />
+                  <Package className="w-16 h-16 text-gray-300" />
                 )}
               </div>
               <div className="space-y-4">
-                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2"><Package className="w-5 h-5" /> Tea Details</h3>
-                <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
-                  <div className="flex justify-between py-2 border-b border-gray-300">
-                    <span className="font-semibold text-gray-600">Ref ID:</span>
+                <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2"><Package className="w-5 h-5 text-gray-500" /> Tea Details</h3>
+                <div className="space-y-3 bg-white border border-gray-100 p-4 rounded-xl">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500">Ref ID:</span>
                     <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
-                    <span className="font-semibold text-gray-600">Estate Name:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500">Estate Name:</span>
                     {editMode === 'details' ? (
-                      <input type="text" value={formData.estate_name} onChange={(e) => setFormData({ ...formData, estate_name: e.target.value })} className="border p-1 rounded w-40" />
+                      <input type="text" value={formData.estate_name} onChange={(e) => setFormData({ ...formData, estate_name: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm w-40" />
                     ) : <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
-                    <span className="font-semibold text-gray-600">Grade:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500">Grade:</span>
                     {editMode === 'details' ? (
-                      <select value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} className="border p-1 rounded">
+                      <select value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm">
                         <option value="BOPF">BOPF</option><option value="Dust-1">Dust-1</option><option value="Pekoe">Pekoe</option>
                       </select>
                     ) : <span className="text-gray-800 font-medium">{auction.grade}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
-                    <span className="font-semibold text-gray-600">Quantity:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500">Quantity:</span>
                     {editMode === 'details' ? (
-                      <input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })} className="border p-1 rounded w-20" />
+                      <input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })} className="border border-gray-200 p-1.5 rounded text-sm w-20" />
                     ) : <span className="text-gray-800 font-medium">{auction.quantity} kg</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-300">
-                    <span className="font-semibold text-gray-600">Origin:</span>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500">Origin:</span>
                     {editMode === 'details' ? (
-                      <input type="text" value={formData.origin} onChange={(e) => setFormData({ ...formData, origin: e.target.value })} className="border p-1 rounded w-32" />
+                      <input type="text" value={formData.origin} onChange={(e) => setFormData({ ...formData, origin: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm w-32" />
                     ) : <span className="text-gray-800 font-medium">{auction.origin}</span>}
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="font-semibold text-gray-600">Base Price:</span>
+                    <span className="font-normal text-gray-500">Base Price:</span>
                     {editMode === 'details' ? (
-                      <input type="number" value={formData.base_price} onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })} className="border p-1 rounded w-20" />
-                    ) : <span className="text-[#588157] font-bold text-xl">LKR {auction.base_price}</span>}
+                      <input type="number" value={formData.base_price} onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })} className="border border-gray-200 p-1.5 rounded text-sm w-24" />
+                    ) : <span className="text-gray-900 font-semibold text-lg">LKR {auction.base_price}</span>}
                   </div>
                 </div>
                 <div>
-                  <h4 className="font-semibold text-gray-700 mb-2">Description:</h4>
+                  <h4 className="font-medium text-gray-700 mb-2">Description:</h4>
                   {editMode === 'details' ? (
-                    <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border p-2 rounded" rows={3} />
-                  ) : <p className="text-gray-600 text-sm bg-gray-50 p-3 rounded">{auction.description || "No description."}</p>}
+                    <textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} className="w-full border border-gray-200 p-3 rounded-lg text-sm" rows={3} />
+                  ) : <p className="text-gray-600 text-sm border border-gray-100 p-4 rounded-xl bg-gray-50/50">{auction.description || "No description."}</p>}
                 </div>
               </div>
             </div>
 
             <div className="space-y-6">
               <div>
-                <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2 mb-4"><Calendar className="w-5 h-5" /> Schedule</h3>
-                <div className="space-y-3 bg-blue-50 p-4 rounded-lg border-2 border-blue-200">
+                <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2 mb-4"><Calendar className="w-5 h-5 text-gray-500" /> Schedule</h3>
+                <div className="space-y-3 bg-white p-4 rounded-xl border border-gray-100">
                   <div className="flex justify-between items-center py-2">
-                    <span className="font-semibold text-gray-700 flex items-center gap-2"><Calendar className="w-4 h-4" /> Date:</span>
-                    {editMode === 'schedule' ? <span className="text-xs text-blue-600 font-bold">(Edit below)</span> : <span>{formatDate(auction.start_time)}</span>}
+                    <span className="font-normal text-gray-500 flex items-center gap-2"><Calendar className="w-4 h-4" /> Date:</span>
+                    {editMode === 'schedule' ? <span className="text-xs text-blue-600 font-medium">(Edit below)</span> : <span className="font-medium">{formatDate(auction.start_time)}</span>}
                   </div>
                   <div className="flex justify-between items-center py-2">
-                    <span className="font-semibold text-gray-700 flex items-center gap-2"><Clock className="w-4 h-4" /> Time:</span>
+                    <span className="font-normal text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4" /> Time:</span>
                     {editMode === 'schedule' ? (
                       <input type="datetime-local" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} className="border p-1 rounded text-sm" />
                     ) : <span>{formatTime(auction.start_time)}</span>}
@@ -301,22 +310,22 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
               <div className="space-y-4 pt-4 border-t-2 border-gray-100">
                 {editMode === 'none' ? (
                   <>
-                    <Button onClick={() => setEditMode('details')} className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide">
+                    <Button onClick={() => setEditMode('details')} className="w-full bg-[#3A5A40] text-white font-medium py-6 rounded-xl hover:bg-[#2D4A2B] transition-colors">
                       Edit Details
                     </Button>
-                    <Button onClick={() => setEditMode('schedule')} variant="outline" className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide">
+                    <Button onClick={() => setEditMode('schedule')} variant="outline" className="w-full border border-gray-200 text-gray-700 font-medium py-6 rounded-xl hover:bg-gray-50 transition-colors">
                       Reschedule
                     </Button>
-                    <Button onClick={handleCancelAuction} variant="ghost" className="w-full text-red-500 font-bold py-6 rounded-xl hover:bg-red-50 hover:text-red-700 transition-all duration-300 border-2 border-transparent hover:border-red-100 text-md tracking-wide">
+                    <Button onClick={handleCancelAuction} variant="ghost" className="w-full text-red-500 font-medium py-6 rounded-xl hover:bg-red-50 hover:text-red-600 transition-colors">
                       Delete Auction
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button onClick={handleSave} className="w-full bg-[#588157] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#3A5A40] text-md tracking-wide">
+                    <Button onClick={handleSave} className="w-full bg-[#3A5A40] text-white font-medium py-6 rounded-xl hover:bg-[#2D4A2B] transition-colors">
                       Save Changes
                     </Button>
-                    <Button onClick={() => setEditMode('none')} variant="outline" className="w-full border-2 border-gray-300 text-gray-500 font-bold py-6 rounded-xl transition-all duration-300 hover:bg-gray-100 hover:text-gray-700 text-md tracking-wide">
+                    <Button onClick={() => setEditMode('none')} variant="outline" className="w-full border border-gray-200 text-gray-500 font-medium py-6 rounded-xl hover:bg-gray-50 hover:text-gray-700 transition-colors">
                       Discard
                     </Button>
                   </>
@@ -417,29 +426,28 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
           {/* Header */}
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-[#1A2F1C]">{auction.grade} - {auction.origin}</h2>
-              <span className="animate-pulse bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
-                LIVE {connected && <div className="w-2 h-2 bg-white rounded-full animate-bounce" />}
+              <h2 className="text-xl font-semibold text-gray-900">{auction.grade} - {auction.origin}</h2>
+              <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
+                LIVE {connected && <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />}
               </span>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-900 transition-colors"><X className="w-5 h-5" /></button>
           </div>
 
           {/* Countdown Banner */}
-          <div className="bg-red-50 border-2 border-red-300 rounded-lg p-4 mb-6 flex items-center justify-between">
+          <div className="bg-red-50 rounded-lg p-4 mb-6 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <Clock className="w-6 h-6 text-red-600" />
               <div>
-                <p className="font-bold text-red-600">Auction in Progress</p>
+                <p className="font-medium text-red-600">Auction in Progress</p>
                 <p className="text-sm text-red-500">Time Remaining</p>
               </div>
             </div>
-            <div className="text-3xl font-mono font-bold text-red-600">{countdown}</div>
+            <div className="text-2xl font-mono font-semibold text-red-600">{countdown}</div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -448,49 +456,48 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
               {/* Conditional Image Display for Live */}
               {auction.image_url && (
-                  <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative shadow-sm">
-                    <img src={auction.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                  <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
+                    <img src={auction.image_url} alt="Tea Image" className="w-full h-full object-cover" />
                   </div>
               )}
 
-              <div className="bg-green-50 border-2 border-green-400 rounded-xl p-6 shadow-inner transition-colors duration-500">
+              <div className="bg-green-50 border border-green-200 rounded-xl p-6 transition-colors duration-500">
                 <div className="flex items-center justify-between mb-4">
-                  <span className="text-gray-700 font-semibold uppercase tracking-wider text-sm">
+                  <span className="text-gray-700 font-medium uppercase tracking-wider text-sm">
                     {rawBuyer ? "Current Highest Bid" : "Starting Price"}
                   </span>
-                  <TrendingUp className="w-6 h-6 text-green-600" />
                 </div>
-                <div className="text-5xl font-bold text-green-700 mb-3">LKR {currentPrice}</div>
-                <div className="flex items-center gap-2 text-sm text-gray-600 bg-white/60 w-max px-3 py-1.5 rounded-full">
+                <div className="text-4xl font-semibold text-green-700 mb-3">LKR {currentPrice}</div>
+                <div className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-green-100 w-max px-3 py-1.5 rounded-full">
                   <User className="w-4 h-4 text-green-600" />
                   <span className="font-medium">{safeBuyerDisplay}</span>
                 </div>
               </div>
 
-              <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Ref ID:</span>
+              <div className="space-y-3 bg-white border border-gray-100 p-4 rounded-xl">
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="font-normal text-gray-500">Ref ID:</span>
                   <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Estate:</span>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="font-normal text-gray-500">Estate:</span>
                   <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Grade:</span>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="font-normal text-gray-500">Grade:</span>
                   <span className="text-gray-800 font-medium">{auction.grade}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Quantity:</span>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="font-normal text-gray-500">Quantity:</span>
                   <span className="text-gray-800 font-medium">{auction.quantity} kg</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Origin:</span>
+                <div className="flex justify-between py-2 border-b border-gray-100">
+                  <span className="font-normal text-gray-500">Origin:</span>
                   <span className="text-gray-800 font-medium">{auction.origin}</span>
                 </div>
-                <div className="flex justify-between py-2 border-b border-gray-300">
-                  <span className="font-semibold text-gray-600">Base Price:</span>
-                  <span className="text-gray-600 font-medium">LKR {auction.base_price}</span>
+                <div className="flex justify-between py-2">
+                  <span className="font-normal text-gray-500">Base Price:</span>
+                  <span className="text-gray-900 font-medium">LKR {auction.base_price}</span>
                 </div>
               </div>
 
@@ -508,11 +515,11 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
             {/* Right Column - REAL Bidding Activity */}
             <div className="space-y-4 flex flex-col h-full">
-              <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" /> Live Activity Feed
+              <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                <div className="w-5 h-5" /> Live Activity Feed
               </h3>
 
-              <div className="flex-1 bg-gray-50 border border-gray-200 rounded-xl p-4 overflow-y-auto max-h-[400px] space-y-3 shadow-inner">
+              <div className="flex-1 bg-gray-50 border border-gray-100 rounded-xl p-4 overflow-y-auto max-h-[400px] space-y-3">
 
                 {/* Render WebSocket Events if present */}
                 {events.length > 0 ? (
@@ -521,18 +528,18 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                     const safeWsBuyer = wsBuyer.includes('@') ? wsBuyer.split('@')[0] : (wsBuyer.length > 20 ? wsBuyer.substring(0, 20) + "..." : wsBuyer);
 
                     return (
-                      <div key={evt.event_id} className={`p-4 rounded-lg transition-all duration-500 animate-slide-in-right ${idx === 0 ? 'bg-green-100 border-2 border-green-500 shadow-md' : 'bg-white border border-gray-200'}`}>
+                      <div key={evt.event_id} className={`p-4 rounded-lg transition-all duration-500 animate-slide-in-right ${idx === 0 ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100'}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
-                            <User className={`w-4 h-4 ${idx === 0 ? 'text-green-700' : 'text-gray-500'}`} />
-                            <span className={`font-semibold ${idx === 0 ? 'text-green-800' : 'text-gray-700'}`}>
+                            <User className={`w-4 h-4 ${idx === 0 ? 'text-green-600' : 'text-gray-400'}`} />
+                            <span className={`font-medium ${idx === 0 ? 'text-green-700' : 'text-gray-700'}`}>
                               {safeWsBuyer}
                             </span>
                           </div>
-                          {idx === 0 && <span className="bg-green-600 text-white text-[10px] px-2 py-1 rounded-full font-bold tracking-widest">NEW LEADER</span>}
+                          {idx === 0 && <span className="bg-green-600 text-white text-[10px] px-2 py-1 rounded-full font-semibold tracking-widest">NEW LEADER</span>}
                         </div>
                         <div className="flex justify-between items-end">
-                          <span className={`text-2xl font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>LKR {evt.data.bid_amount}</span>
+                          <span className={`text-xl font-semibold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>LKR {evt.data.bid_amount}</span>
                           <span className="text-xs text-gray-400">
                             {new Date(evt.occurred_at).toLocaleTimeString()}
                           </span>
@@ -547,18 +554,18 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
                     const safeHistBuyer = histBuyer.includes('@') ? histBuyer.split('@')[0] : (histBuyer.length > 20 ? histBuyer.substring(0, 20) + "..." : histBuyer);
 
                     return (
-                      <div key={bid.bid_id ?? idx} className={`p-4 rounded-lg transition-all ${idx === 0 ? 'bg-green-100 border-2 border-green-500 shadow-md' : 'bg-white border border-gray-200'}`}>
+                      <div key={bid.bid_id ?? idx} className={`p-4 rounded-lg transition-all ${idx === 0 ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100'}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div className="flex items-center gap-2">
-                            <User className={`w-4 h-4 ${idx === 0 ? 'text-green-700' : 'text-gray-500'}`} />
-                            <span className={`font-semibold ${idx === 0 ? 'text-green-800' : 'text-gray-700'}`}>
+                            <User className={`w-4 h-4 ${idx === 0 ? 'text-green-600' : 'text-gray-400'}`} />
+                            <span className={`font-medium ${idx === 0 ? 'text-green-700' : 'text-gray-700'}`}>
                               {safeHistBuyer}
                             </span>
                           </div>
-                          {idx === 0 && <span className="bg-green-600 text-white text-[10px] px-2 py-1 rounded-full font-bold">CURRENT LEADER</span>}
+                          {idx === 0 && <span className="bg-green-600 text-white text-[10px] px-2 py-1 rounded-full font-semibold">CURRENT LEADER</span>}
                         </div>
                         <div className="flex justify-between items-end">
-                          <span className={`text-2xl font-bold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>
+                          <span className={`text-xl font-semibold ${idx === 0 ? 'text-green-700' : 'text-gray-800'}`}>
                             LKR {bid.bid_amount}
                           </span>
                           <span className="text-xs text-gray-400">
@@ -669,90 +676,90 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
         <div className="p-8">
 
           {/* Header */}
-          <div className="flex justify-between items-center mb-6 pb-4 border-b-2 border-gray-200">
+          <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-[#1A2F1C]">{auctionDetails.grade} - {auctionDetails.origin}</h2>
-              <span className={`px-3 py-1 rounded-full text-sm font-bold ${isSold ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+              <h2 className="text-xl font-semibold text-gray-900">{auctionDetails.grade} - {auctionDetails.origin}</h2>
+              <span className={`px-3 py-1 rounded-full text-xs font-medium border ${isSold ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                 {displayStatus}
               </span>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors"><X className="w-6 h-6" /></button>
+            <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full text-gray-500 hover:text-gray-900 transition-colors"><X className="w-5 h-5" /></button>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <div className="space-y-6">
-              <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border-2 border-gray-200 overflow-hidden relative">
+              <div className="bg-gray-50 h-48 rounded-xl flex items-center justify-center border border-gray-200 overflow-hidden relative">
                 {auctionDetails.image_url ? (
-                  <img src={auctionDetails.image_url} alt="Tea Image" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+                  <img src={auctionDetails.image_url} alt="Tea Image" className="w-full h-full object-cover" />
                 ) : (
-                  <Package className="w-20 h-20 text-gray-300 drop-shadow-sm" />
+                  <Package className="w-16 h-16 text-gray-300" />
                 )}
               </div>
 
               {/* Dynamic Sold / Unsold Banner */}
               {isSold ? (
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-400 rounded-lg p-5 shadow-md">
+                <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="bg-green-500 rounded-full p-2"><User className="w-5 h-5 text-white" /></div>
-                    <span className="font-bold text-gray-700">Winning Buyer</span>
+                    <div className="bg-green-500 rounded-full p-2"><User className="w-4 h-4 text-white" /></div>
+                    <span className="font-medium text-gray-700">Winning Buyer</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-700 mb-3">{winnerDisplay}</p>
+                  <p className="text-xl font-semibold text-green-700 mb-3">{winnerDisplay}</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm text-gray-600">Final Price:</span>
-                    <span className="text-3xl font-bold text-green-600">LKR {finalPrice}</span>
+                    <span className="text-sm text-gray-500 font-normal">Final Price:</span>
+                    <span className="text-2xl font-semibold text-green-600">LKR {finalPrice}</span>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-green-200 text-sm text-gray-600">
+                  <div className="mt-3 pt-3 border-t border-green-100 text-sm text-gray-500">
                     <div className="flex justify-between">
-                      <span>Sold at:</span>
-                      <span className="font-medium">{highestBid ? formatTime(highestBid.bid_time) : 'N/A'}</span>
+                      <span className="font-normal">Sold at:</span>
+                      <span className="font-medium text-gray-700">{highestBid ? formatTime(highestBid.bid_time) : 'N/A'}</span>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="bg-gradient-to-r from-red-50 to-orange-50 border-2 border-red-200 rounded-lg p-5 shadow-sm">
+                <div className="bg-red-50 border border-red-200 rounded-xl p-5">
                   <div className="flex items-center gap-2 mb-3">
-                    <div className="bg-red-500 rounded-full p-2"><Ban className="w-5 h-5 text-white" /></div>
-                    <span className="font-bold text-red-800">Lot Not Sold</span>
+                    <div className="bg-red-500 rounded-full p-2"><Ban className="w-4 h-4 text-white" /></div>
+                    <span className="font-medium text-red-800">Lot Not Sold</span>
                   </div>
-                  <p className="text-sm text-red-700 mb-3">No bids were placed. This item has been moved to history.</p>
+                  <p className="text-sm text-red-600 mb-3 font-normal">No bids were placed. This item has been moved to history.</p>
                   <div className="flex items-baseline gap-2">
-                    <span className="text-sm text-gray-600">Base Price:</span>
-                    <span className="text-2xl font-bold text-gray-500">LKR {auctionDetails.base_price}</span>
+                    <span className="text-sm text-gray-500 font-normal">Base Price:</span>
+                    <span className="text-xl font-medium text-gray-700">LKR {auctionDetails.base_price}</span>
                   </div>
                 </div>
               )}
 
               {/* Auction Details */}
-              <div className="space-y-3 bg-[#F5F7EB] p-4 rounded-lg">
-                <h3 className="font-bold text-gray-800 mb-3 flex items-center gap-2"><Package className="w-5 h-5" /> Auction Details</h3>
-                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Ref ID:</span><span className="text-gray-800 font-medium">{auctionDetails.custom_auction_id || 'N/A'}</span></div>
-                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Estate Name:</span><span className="text-gray-800 font-medium">{auctionDetails.estate_name || "My Estate"}</span></div>
-                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Grade:</span><span className="text-gray-800 font-medium">{auctionDetails.grade}</span></div>
-                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Quantity:</span><span className="text-gray-800 font-medium">{auctionDetails.quantity} kg</span></div>
-                <div className="flex justify-between py-2 border-b border-gray-300"><span className="font-semibold text-gray-600">Origin:</span><span className="text-gray-800 font-medium">{auctionDetails.origin}</span></div>
+              <div className="space-y-3 bg-white border border-gray-100 p-4 rounded-xl">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2"><Package className="w-5 h-5 text-gray-500" /> Auction Details</h3>
+                <div className="flex justify-between py-2 border-b border-gray-100"><span className="font-normal text-gray-500">Ref ID:</span><span className="text-gray-800 font-medium">{auctionDetails.custom_auction_id || 'N/A'}</span></div>
+                <div className="flex justify-between py-2 border-b border-gray-100"><span className="font-normal text-gray-500">Estate Name:</span><span className="text-gray-800 font-medium">{auctionDetails.estate_name || "My Estate"}</span></div>
+                <div className="flex justify-between py-2 border-b border-gray-100"><span className="font-normal text-gray-500">Grade:</span><span className="text-gray-800 font-medium">{auctionDetails.grade}</span></div>
+                <div className="flex justify-between py-2 border-b border-gray-100"><span className="font-normal text-gray-500">Quantity:</span><span className="text-gray-800 font-medium">{auctionDetails.quantity} kg</span></div>
+                <div className="flex justify-between py-2"><span className="font-normal text-gray-500">Origin:</span><span className="text-gray-800 font-medium">{auctionDetails.origin}</span></div>
               </div>
 
               {/* Timeline */}
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-semibold text-gray-700 mb-2">Auction Timeline</h4>
+              <div className="bg-white border border-gray-100 p-4 rounded-xl">
+                <h4 className="font-medium text-gray-700 mb-3">Auction Timeline</h4>
                 <div className="space-y-2 text-sm text-gray-600">
-                  <div className="flex justify-between"><span>Start Time:</span><span className="font-medium">{formatTime(auctionDetails.start_time)}</span></div>
-                  <div className="flex justify-between"><span>Duration:</span><span className="font-medium">{formatDuration(auctionDetails.duration)}</span></div>
+                  <div className="flex justify-between border-b border-gray-50 pb-2"><span className="font-normal text-gray-500">Start Time:</span><span className="font-medium">{formatTime(auctionDetails.start_time)}</span></div>
+                  <div className="flex justify-between pt-1"><span className="font-normal text-gray-500">Duration:</span><span className="font-medium">{formatDuration(auctionDetails.duration)}</span></div>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Bid History */}
-            <div className="space-y-4">
-              <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                <DollarSign className="w-5 h-5" /> {isSold ? 'Winning Bid History' : 'Bids Received'}
+            <div className="space-y-6 flex flex-col h-full">
+              <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
+                <div className="w-5 h-5" /> Historical Bids
               </h3>
 
-              <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+              <div className="flex-1 bg-gray-50 border border-gray-100 rounded-xl p-4 overflow-y-auto max-h-[400px] space-y-3">
                 {bidHistory.length > 0 ? (
                   bidHistory.map((bid, index) => {
                     const isWinningBid = index === 0 && isSold;
@@ -760,49 +767,63 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
                     const safeBuyer = buyerDisplay.includes('@') ? buyerDisplay.split('@')[0] : (buyerDisplay.length > 20 ? buyerDisplay.substring(0, 20) + "..." : buyerDisplay);
 
                     return (
-                      <div key={bid.bid_id} className={`p-4 rounded-lg transition-all ${isWinningBid ? 'bg-green-50 border-2 border-green-400 shadow-lg' : 'bg-gray-50 border border-gray-200'}`}>
+                      <div key={bid.bid_id} className={`p-4 rounded-lg transition-all ${isWinningBid ? 'bg-green-50 border border-green-200' : 'bg-white border border-gray-100'}`}>
                         <div className="flex justify-between items-start mb-2">
                           <div>
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-xs font-bold text-gray-500">#{bidHistory.length - index}</span>
-                              <User className="w-4 h-4 text-gray-600" />
-                              <span className="font-semibold text-gray-800">{safeBuyer}</span>
+                              <span className="text-xs text-gray-500">#{bidHistory.length - index}</span>
+                              <User className="w-4 h-4 text-gray-400" />
+                              <span className="text-gray-800">{safeBuyer}</span>
                             </div>
-                            {isWinningBid && <span className="inline-block bg-green-600 text-white text-xs px-2 py-0.5 rounded-full font-bold">WINNING BID</span>}
+                            {isWinningBid && <span className="inline-block bg-green-600 text-white text-xs px-2 py-0.5 rounded-full">WINNER</span>}
                           </div>
                           <span className="text-xs text-gray-500 flex items-center gap-1">
                             <Clock className="w-3 h-3" /> {formatTime(bid.bid_time)}
                           </span>
                         </div>
-                        <div className={`text-2xl font-bold ${isWinningBid ? 'text-green-600' : 'text-gray-700'}`}>
+                        <div className={`text-xl font-semibold ${isWinningBid ? 'text-green-700' : 'text-gray-800'}`}>
                           LKR {bid.bid_amount}
                         </div>
                       </div>
                     );
                   })
                 ) : (
-                  <div className="text-center py-10 text-gray-500">
-                    <p className="italic">No bids were placed during this auction.</p>
+                  <div className="text-center py-10 text-gray-400">
+                    <p className="text-sm">No bids recorded</p>
                   </div>
                 )}
               </div>
 
               {/* Actions */}
-              <div className="space-y-4 pt-4 border-t-2 border-gray-100">
+              <div className="flex items-center gap-3 pt-4 border-t border-gray-100 mt-auto">
                 {isSold ? (
-                  <Button
-                    onClick={() => {
-                      if (orderId) {
-                        onClose();
-                        router.push(`/messages/${orderId}`);
-                      }
-                    }}
-                    disabled={!orderId}
-                    className="w-full bg-[#3A5A40] text-white font-bold py-6 rounded-xl shadow-md transition-all duration-300 hover:bg-[#1A2F1C] border border-[#3A5A40] text-md tracking-wide flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    {orderId ? 'Contact Buyer' : 'Loading...'}
-                  </Button>
+                  <>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/orders/${orderId}?auctionId=${auctionId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="flex-1 bg-[#3A5A40] text-white font-medium py-5 rounded-xl transition-colors hover:bg-[#2D4A2B] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      See Order Details
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        if (orderId) {
+                          onClose();
+                          router.push(`/messages/${orderId}`);
+                        }
+                      }}
+                      disabled={!orderId}
+                      className="flex-1 bg-[#3A5A40] text-white font-medium py-5 rounded-xl transition-colors hover:bg-[#2D4A2B] flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <MessageCircle className="w-4 h-4" />
+                      {orderId ? 'Contact Buyer' : 'Loading...'}
+                    </Button>
+                  </>
                 ) : (
                   <Button 
                     variant="outline" 
@@ -820,7 +841,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
                       onClose();
                       router.push('/seller/create-auction');
                     }}
-                    className="w-full border-2 border-[#3A5A40] text-[#3A5A40] font-bold py-6 rounded-xl shadow-sm transition-all duration-300 hover:bg-[#E5F7CB] text-md tracking-wide"
+                    className="w-full border border-gray-200 text-gray-700 font-medium py-5 rounded-xl hover:bg-gray-50 transition-colors"
                   >
                     Relist Item
                   </Button>

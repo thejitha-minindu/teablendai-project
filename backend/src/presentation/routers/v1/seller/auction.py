@@ -8,7 +8,8 @@ from src.config import settings
 from src.application.schemas.seller.auction import Auction, AuctionCreate, AuctionResponse
 from src.application.use_cases.seller.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload
+from src.application.dependencies import get_current_user, get_optional_current_user, get_optional_token_payload, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.domain.models.user import User
 from src.domain.models.auction_status import AuctionStatus
 from uuid import UUID
@@ -120,7 +121,8 @@ def create_auction(
     service: AuctionService = Depends(get_auction_service),
     current_user: Optional[User] = Depends(get_optional_current_user),
     token_payload: Optional[dict] = Depends(get_optional_token_payload),
-    x_user_id: Optional[str] = Header(None)
+    x_user_id: Optional[str] = Header(None),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Create a new auction.
@@ -174,7 +176,21 @@ def create_auction(
             f"by user {user_id} ({auction.seller_brand})"
         )
         
-        return service.create_auction(auction)
+        result = service.create_auction(auction)
+        
+        # Log system activity
+        seller_name = "System"
+        if current_user:
+            seller_name = current_user.user_name or current_user.email
+        elif auction.seller_brand:
+            seller_name = auction.seller_brand
+            
+        log_service.log_auction_created(
+            seller_name=seller_name,
+            auction_ref=str(result.auction_id) if hasattr(result, "auction_id") else ""
+        )
+        
+        return result
         
     except HTTPException:
         raise
@@ -215,6 +231,7 @@ def delete_auction(
     current_user: Optional[User] = Depends(get_optional_current_user),
     token_payload: Optional[dict] = Depends(get_optional_token_payload),
     x_user_id: Optional[str] = Header(None),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     """
     Delete an auction.
@@ -253,6 +270,18 @@ def delete_auction(
     success = service.delete_auction(auction_id)
     if not success:
         raise HTTPException(status_code=404, detail="Auction not found")
+        
+    # Log cancellation
+    user_name = "System"
+    if current_user:
+        user_name = current_user.user_name or current_user.email
+    elif x_user_id:
+        user_name = f"User {x_user_id}"
+        
+    log_service.log_auction_cancelled(
+        admin_name=user_name,
+        auction_ref=auction_id
+    )
     return None
 
 @router.put("/auctions/{auction_id}", response_model=AuctionResponse)

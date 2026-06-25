@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
-from src.application.dependencies import get_current_user, get_token_payload
+from src.application.dependencies import get_current_user, get_token_payload, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.application.schemas.profile import BecomeSellerRequest, ChangePasswordRequest, UserProfileResponse, UserProfileUpdate
-from src.application.dependencies import get_current_user
 from src.application.schemas.profile import (
     ChangePasswordRequest,
     UserLookupResponse,
@@ -59,9 +59,15 @@ def update_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     token_payload: dict = Depends(get_token_payload),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     service = ProfileService(db)
-    return service.update_profile(payload, current_user, token_payload.get("role"))
+    updated_profile = service.update_profile(payload, current_user, token_payload.get("role"))
+    log_service.log_profile_updated(
+        user_name=current_user.user_name or current_user.email,
+        user_id=current_user.user_id
+    )
+    return updated_profile
 
 
 @router.post("/profile/become-seller", response_model=UserProfileResponse)
@@ -81,9 +87,17 @@ def change_password(
     payload: ChangePasswordRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     service = ProfileService(db)
     service.change_password(payload, current_user)
+    log_service.log(
+        activity_type="Password Reset",
+        details="Changed profile password",
+        status="success",
+        user_name=current_user.user_name or current_user.email,
+        user_id=current_user.user_id
+    )
     return {"message": "Password updated successfully"}
 
 

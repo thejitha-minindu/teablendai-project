@@ -26,13 +26,13 @@ class AuctionRepository(AuctionRepositoryInterface):
                 return auctions
             
             buyer_names = {
-                user.user_id: user.user_name 
+                str(user.user_id): f"{user.first_name} {user.last_name}".strip()
                 for user in self.db.query(User).filter(User.user_id.in_(buyer_ids)).all()
             }
             
             for auction in auction_list:
-                if auction.buyer and auction.buyer in buyer_names:
-                    auction.buyer_name = buyer_names[auction.buyer]
+                if auction.buyer and str(auction.buyer) in buyer_names:
+                    auction.buyer_name = buyer_names[str(auction.buyer)]
             
             return auctions
         except SQLAlchemyError as e:
@@ -120,7 +120,7 @@ class AuctionRepository(AuctionRepositoryInterface):
                 ).first()
                 if order:
                     auction.order_id = str(order.order_id)
-            
+                    auction.payment_status = str(order.payment_status)
             return auctions
         except SQLAlchemyError as e:
             print(f"Database error in list_auctions_order: {str(e)}")

@@ -51,7 +51,7 @@ export type AuctionHistoryCard = Pick<
 
 export type AuctionOrderCard = Pick<
   AuctionData,
-  "auction_id" | "auction_name" | "company_name" | "estate_name" | "grade" | "quantity" | "sold_price" | "date" | "buyer_name"
+  "auction_id" | "auction_name" | "company_name" | "estate_name" | "grade" | "quantity" | "sold_price" | "date" | "buyer_name" | "seller_id"
 >;
 
 export type AuctionHistoryDialog = Pick<
@@ -63,7 +63,7 @@ export type AuctionHistoryDialog = Pick<
 
 export type AuctionOrderDialog = Pick<
   AuctionData,
-  "auction_id" | "auction_name" | "estate_name" | "grade" | "quantity" | "sold_price" | "date" | "base_price"
+  "auction_id" | "auction_name" | "estate_name" | "grade" | "quantity" | "sold_price" | "date" | "base_price" | "seller_id"
 > & {
   order_id: string;
 };
