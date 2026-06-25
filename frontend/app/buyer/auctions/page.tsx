@@ -167,6 +167,7 @@ export default function BuyerHistoryPage() {
 
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Auctions</h1>
+        <p className="text-muted-foreground mt-2">Find and bid on the best tea lots available on the platform.</p>
       </div>
 
       <AuctionFilterSort
