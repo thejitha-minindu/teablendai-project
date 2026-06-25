@@ -72,7 +72,7 @@ export function AuctionCard({
     const rawBasePrice = auction.base_price || auction.basePrice;
     const rawSoldPrice = auction.sold_price || auction.soldPrice;
     const rawWinner = auction.buyer || auction.winner;
-    const rawWinnerName = auction.buyer_name || "-";
+    const rawWinnerName = auction.buyer_name || auction.buyerName || rawWinner || "-";
     const rawTime = auction.time;
 
     return {
