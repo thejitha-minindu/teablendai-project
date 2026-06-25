@@ -69,3 +69,12 @@ export async function searchSellerOrders(query: string): Promise<OrderDetail[]> 
   });
   return res.data;
 }
+
+// --- Buyer-specific API ---
+
+/** List all orders for the authenticated buyer */
+export async function getBuyerOrders(status?: string): Promise<OrderDetail[]> {
+  const params = status ? { status } : {};
+  const res = await apiClient.get<OrderDetail[]>("/buyer/orders/detailed", { params });
+  return res.data;
+}

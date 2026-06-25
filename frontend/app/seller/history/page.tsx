@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { HistoryAuctionModal } from '@/components/features/seller/AuctionModal';
+import { AuctionFilterSort, FilterState } from "@/components/features/buyer/AuctionFilterSort";
 import { apiClient } from '@/lib/apiClient';
 
 // Helper: Parse backend ISO datetimes safely (reusing from dashboard)
@@ -23,7 +24,6 @@ const parseBackendDateTime = (dateString?: string | null): Date | null => {
 };
 
 export default function HistoryPage() {
-  const [sortBy, setSortBy] = useState('date');
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
   
   // Real Data States
@@ -78,61 +78,82 @@ export default function HistoryPage() {
     fetchHistoryData();
   }, []);
 
-  // 2. Sorting Logic
-  const sortedAuctions = useMemo(() => {
-    const sorted = [...auctions];
-    
-    sorted.sort((a, b) => {
-      if (sortBy === 'date') {
-        // Newest first
-        return b.data.dateObj.getTime() - a.data.dateObj.getTime();
-      } 
-      else if (sortBy === 'price') {
-        // Highest price first
-        return b.data.price - a.data.price;
-      } 
-      else if (sortBy === 'status') {
-        // Alphabetical: "Sold" comes before "Unsold"
-        return a.data.status.localeCompare(b.data.status);
-      }
-      return 0;
-    });
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: "",
+    grade: "all",
+  });
+  const [sortBy, setSortBy] = useState("recent");
 
-    return sorted;
-  }, [auctions, sortBy]);
+  // Filtering
+  const filteredData = auctions.filter((auction) => {
+    const title = auction.displayId || "";
+    const grade = auction.data.grade || "";
+    const basePrice = auction.data.price || 0;
+
+    const query = filters.searchQuery?.toLowerCase() || "";
+    const matchesSearch =
+      !query ||
+      title.toLowerCase().includes(query) ||
+      grade.toLowerCase().includes(query);
+
+    let matchesGrade = true;
+    if (filters.grade && filters.grade !== "all") {
+      const gradeMap: Record<string, string[]> = {
+        A: ["FTGFOP1", "SFTGFOP", "Silver Needle"],
+        B: ["BOP", "OP", "FBOP", "TGFOP"],
+        C: ["Herbal"],
+      };
+      matchesGrade = gradeMap[filters.grade]?.includes(grade) || false;
+    }
+
+    let matchesPrice = true;
+    if (filters.priceMin || filters.priceMax) {
+      const price = typeof basePrice === "number" ? basePrice : parseInt(String(basePrice).replace(/[^\d]/g, ""));
+      const min = filters.priceMin || 0;
+      const max = filters.priceMax || Infinity;
+      matchesPrice = price >= min && price <= max;
+    }
+
+    return matchesSearch && matchesGrade && matchesPrice;
+  });
+
+  // Sorting
+  const sortedAuctions = [...filteredData].sort((a, b) => {
+    const basePrice_a = a.data.price || 0;
+    const basePrice_b = b.data.price || 0;
+    const priceA = typeof basePrice_a === "number" ? basePrice_a : parseInt(String(basePrice_a).replace(/[^\d]/g, "")) || 0;
+    const priceB = typeof basePrice_b === "number" ? basePrice_b : parseInt(String(basePrice_b).replace(/[^\d]/g, "")) || 0;
+
+    if (sortBy === "recent") {
+      return b.data.dateObj.getTime() - a.data.dateObj.getTime();
+    }
+    if (sortBy === "price-high") {
+      return priceB - priceA;
+    }
+    if (sortBy === "price-low") {
+      return priceA - priceB;
+    }
+    if (sortBy === "ending-soon") {
+      return a.data.dateObj.getTime() - b.data.dateObj.getTime();
+    }
+    return 0;
+  });
 
   // Find specific data for modal
   const selectedAuctionData = sortedAuctions.find(a => a.id === selectedAuctionId)?.data;
 
   return (
-    <div className="max-w-7xl mx-auto px-4">
-      <h1 className="text-[#1A2F1C] text-3xl font-bold text-left mb-8">
-        Auction History
-      </h1>
-      
-      {/* Sorting Buttons */}
-      <div className="flex justify-start items-center mb-8 gap-3">
-        {['Date', 'Price', 'Status'].map((option) => {
-          const value = option.toLowerCase();
-          const isActive = sortBy === value;
-
-          return (
-            <button
-              key={option}
-              onClick={() => setSortBy(value)}
-              className={`
-                px-6 py-2.5 rounded-xl font-bold border-2 transition-all duration-200
-                ${isActive 
-                  ? "border-[#8AA848] bg-[#F5F7EB] text-[#588157]" 
-                  : "border-gray-400 bg-transparent text-gray-600 hover:bg-gray-100 hover:text-gray-600" 
-                }
-              `}
-            >
-              {option}
-            </button>
-          );
-        })}
+    <div className="sm:px-4 lg:px-10 lg:pt-10 mb-10">
+      <div className="mb-5 items-start">
+        <h1 className="text-3xl font-bold text-[#1A2F1C]">Auction History</h1>
+        <p className="text-muted-foreground mt-2">Review your past auctions, winning bids, and complete sales records.</p>
       </div>
+      
+      <AuctionFilterSort
+        hideStatus={true}
+        onFilterChange={(f: FilterState) => setFilters(f)}
+        onSortChange={(s: string) => setSortBy(s)}
+      />
       
       {/* Grid of Cards */}
       {loading ? (
