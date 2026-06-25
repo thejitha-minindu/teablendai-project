@@ -1,11 +1,11 @@
 export default function ExportAnalyticsPage() {
     return (
-        <main className="min-h-screen bg-gradient-to-br from-green-100 via-emerald-50 to-white py-16 px-4">
+        <main className="min-h-screen bg-white py-16 px-4">
             <div className="max-w-5xl mx-auto">
 
                 {/* Header */}
                 <div className="text-center mb-14">
-                    <h1 className="text-4xl md:text-6xl font-extrabold text-green-900 mb-4 leading-tight">
+                    <h1 className="text-4xl md:text-6xl font-extrabold text-gray-900 mb-4 leading-tight">
                         Export Analytics
                     </h1>
                     <p className="text-lg md:text-xl text-gray-600 max-w-2xl mx-auto">

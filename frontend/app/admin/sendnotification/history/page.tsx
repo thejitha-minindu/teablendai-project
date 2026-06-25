@@ -84,11 +84,10 @@ export default function NotificationHistoryPage() {
     const hasActiveFilters = searchTerm !== "" || typeFilter !== "all";
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <Bell className="w-7 h-7 text-green-700" />
                     Notification History
                 </h1>
                 <p className="text-gray-500 mt-1">View and manage all sent notifications</p>

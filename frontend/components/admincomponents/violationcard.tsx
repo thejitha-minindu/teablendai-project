@@ -3,17 +3,6 @@
 import Link from "next/link";
 import { toast } from 'sonner';
 import {
-  AlertTriangle,
-  Send,
-  User,
-  Flag,
-  FileText,
-  Clock,
-  CheckCircle,
-  XCircle,
-  Shield,
-  Eye,
-  MessageCircle
 } from "lucide-react";
 import { useState } from "react";
 import { apiClient } from "@/lib/apiClient";
@@ -61,30 +50,21 @@ export function ViolationCard({
         switch (currentStatus.toLowerCase()) {
             case "open":
             case "pending":
-                return { bg: "bg-yellow-100", text: "text-yellow-700", icon: <Clock className="w-3 h-3" /> };
+                return { bg: "bg-[#F5F7EB]", text: "text-[#3A5A40]", icon: null };
             case "resolved":
-                return { bg: "bg-green-100", text: "text-green-700", icon: <CheckCircle className="w-3 h-3" /> };
+                return { bg: "bg-[#E5F7CB]", text: "text-[#1A2F1C]", icon: null };
             case "under review":
-                return { bg: "bg-blue-100", text: "text-blue-700", icon: <Shield className="w-3 h-3" /> };
+                return { bg: "bg-gray-100", text: "text-[#3A5A40]", icon: null };
             case "closed":
             case "dismissed":
-                return { bg: "bg-gray-100", text: "text-gray-700", icon: <XCircle className="w-3 h-3" /> };
+                return { bg: "bg-gray-100", text: "text-gray-700", icon: null };
             default:
                 return { bg: "bg-gray-100", text: "text-gray-700", icon: null };
         }
     };
 
     const getViolationTypeColor = () => {
-        if (violationType.toLowerCase().includes("fraud") || violationType.toLowerCase().includes("scam")) {
-            return "bg-red-100 text-red-700";
-        }
-        if (violationType.toLowerCase().includes("spam")) {
-            return "bg-orange-100 text-orange-700";
-        }
-        if (violationType.toLowerCase().includes("harassment")) {
-            return "bg-purple-100 text-purple-700";
-        }
-        return "bg-blue-100 text-blue-700";
+        return "bg-gray-100 text-[#3A5A40]";
     };
 
     const statusStyle = getStatusColor();
@@ -112,13 +92,10 @@ export function ViolationCard({
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-red-500">
+        <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-red-600">
             {/* Header */}
             <div className="flex justify-between items-start mb-4">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <AlertTriangle className="w-5 h-5 text-red-600" />
-                    </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <h3 className="font-semibold text-gray-800">
@@ -129,7 +106,6 @@ export function ViolationCard({
                         <div className="flex items-center gap-2 mt-1">
                             <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${getViolationTypeColor()}`}>
                                 <div className="flex items-center gap-1">
-                                    <Flag className="w-3 h-3" />
                                     {violationType}
                                 </div>
                             </div>
@@ -145,7 +121,6 @@ export function ViolationCard({
                 
                 {timestamp && (
                     <div className="flex items-center gap-1 text-xs text-gray-400">
-                        <Clock className="w-3 h-3" />
                         {formatDate(timestamp)}
                     </div>
                 )}
@@ -155,7 +130,6 @@ export function ViolationCard({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                        <Send className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Reported By:</span>{" "}
                             {senderName || senderId}
@@ -165,7 +139,6 @@ export function ViolationCard({
                         </span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                        <User className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Violator:</span>{" "}
                             {violatorName || violatorId}
@@ -177,21 +150,18 @@ export function ViolationCard({
                 </div>
                 <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                        <Flag className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Violation Type:</span> {violationType}
                         </span>
                     </div>
                     {auctionId && (
                         <div className="flex items-center gap-2 text-sm">
-                            <FileText className="w-4 h-4 text-gray-400" />
                             <span className="text-gray-600">
                                 <span className="font-medium">Auction ID:</span> {auctionId}
                             </span>
                         </div>
                     )}
                     <div className="flex items-center gap-2 text-sm">
-                        <Shield className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Status:</span> {currentStatus}
                         </span>
@@ -202,7 +172,6 @@ export function ViolationCard({
             {/* Reason Section */}
             <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                 <div className="flex items-start gap-2">
-                    <FileText className="w-4 h-4 text-gray-400 mt-0.5" />
                     <div>
                         <p className="text-xs font-medium text-gray-500 mb-1">Reason for violation:</p>
                         <p className="text-sm text-gray-700">{reason}</p>
@@ -210,37 +179,10 @@ export function ViolationCard({
                 </div>
             </div>
 
-            {/* Expandable Details */}
-            <div className="mt-3">
-                <button
-                    onClick={() => setExpanded(!expanded)}
-                    className="text-xs text-green-600 hover:text-green-700 transition-colors flex items-center gap-1"
-                >
-                    <Eye className="w-3 h-3" />
-                    {expanded ? "Show less" : "View evidence"}
-                </button>
-                {expanded && (
-                    <div className="mt-2 p-3 bg-gray-50 rounded-lg border border-gray-200 animate-slideDown">
-                        <div className="space-y-2">
-                            <p className="text-xs text-gray-500">Additional evidence will be displayed here</p>
-                            <div className="flex gap-2">
-                                <button className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition">
-                                    View Screenshot
-                                </button>
-                                <button className="text-xs px-2 py-1 bg-gray-200 rounded hover:bg-gray-300 transition">
-                                    View Chat Log
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
-            </div>
-
             {/* Status Update Actions */}
             {currentStatus !== "Resolved" && currentStatus !== "Closed" && (
                 <div className="mt-4 pt-3 border-t border-gray-100">
                     <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
-                        <MessageCircle className="w-3 h-3" />
                         Update Violation Status:
                     </p>
                     <div className="flex gap-2">
@@ -248,7 +190,7 @@ export function ViolationCard({
                             <button
                                 onClick={() => handleStatusChange("Under Review")}
                                 disabled={updating}
-                                className="text-xs px-3 py-1 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition disabled:opacity-50"
+                                className="text-xs px-3 py-1 bg-gray-100 text-[#3A5A40] rounded-lg hover:bg-gray-200 transition disabled:opacity-50"
                             >
                                 Mark as Under Review
                             </button>
@@ -256,7 +198,7 @@ export function ViolationCard({
                         <button
                             onClick={() => handleStatusChange("Resolved")}
                             disabled={updating}
-                            className="text-xs px-3 py-1 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition disabled:opacity-50"
+                            className="text-xs px-3 py-1 bg-[#E5F7CB] text-[#1A2F1C] rounded-lg hover:bg-[#D5ECA8] transition disabled:opacity-50"
                         >
                             Resolve Issue
                         </button>
@@ -274,8 +216,7 @@ export function ViolationCard({
             {/* Footer Buttons */}
             <div className="mt-4 flex justify-end gap-3">
                 <Link href={`/admin/sendnotification?prefillUserId=${violatorId}&prefillUserEmail=${encodeURIComponent(violatorEmail || "")}&prefillFirstName=${encodeURIComponent(violatorFirstName || "")}&prefillLastName=${encodeURIComponent(violatorLastName || "")}`}>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-green-600 text-green-600 hover:bg-green-50 transition-all duration-200">
-                        <Send className="w-4 h-4" />
+                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#3A5A40] text-[#3A5A40] hover:bg-gray-50 transition-all duration-200">
                         Send Notification
                     </button>
                 </Link>

@@ -123,22 +123,14 @@ export default function ViolationHandlingPage() {
     };
 
     if (loading) {
-        return (
-            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-                <div className="text-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-green-600 mx-auto mb-4" />
-                    <p className="text-gray-500">Loading violations...</p>
-                </div>
-            </div>
-        );
+    return null;
     }
 
     return (
-        <div className="p-6 bg-gray-50 min-h-screen">
+        <div className="p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                    <AlertTriangle className="w-7 h-7 text-red-600" />
                     Violation Handling
                 </h1>
                 <p className="text-gray-500 mt-1">Monitor and manage user violations</p>

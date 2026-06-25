@@ -45,6 +45,7 @@ export interface CurrentUserResponse {
   default_role: "buyer" | "seller";
   active_role?: "buyer" | "seller";
   available_roles?: Array<"buyer" | "seller">;
+  role?: string;
   profile_image_url?: string;
   nic?: string;
   shipping_address?: string;
@@ -133,6 +134,23 @@ class AuthService {
       phone_num: phoneNum,
       shipping_address: shippingAddress,
       default_role: defaultRole,
+    });
+    return response.data;
+  }
+
+  async registerAdmin(
+    email: string,
+    password: string,
+    userName: string,
+    firstName: string,
+    lastName: string
+  ): Promise<RegisterResponse> {
+    const response = await apiClient.post<RegisterResponse>("/auth/admin/register", {
+      email,
+      password,
+      user_name: userName,
+      first_name: firstName,
+      last_name: lastName,
     });
     return response.data;
   }
