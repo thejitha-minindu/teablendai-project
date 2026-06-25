@@ -96,21 +96,6 @@ export default function ChatPage() {
             </p>
           </div>
         </div>
-
-        <div className="flex items-center gap-2">
-          {connected ? (
-            <span className="flex items-center gap-1 text-xs text-green-600 font-medium">
-              <Wifi className="w-3 h-3" /> Live
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-xs text-gray-400 font-medium">
-              <WifiOff className="w-3 h-3" /> Polling
-            </span>
-          )}
-          <button className="p-2 hover:bg-gray-100 rounded-full text-gray-500">
-            <MoreVertical className="w-5 h-5" />
-          </button>
-        </div>
       </div>
 
       {/* --- MESSAGES AREA --- */}
