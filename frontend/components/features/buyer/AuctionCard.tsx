@@ -9,10 +9,11 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
 import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 import { WatchlistButton } from "@/components/features/buyer/WatchlistButton";
-import { Flag } from "lucide-react";
+import { Package, Flag } from "lucide-react";
 
 export type CardType = "order" | "history" | "auction";
 
@@ -43,6 +44,8 @@ export function AuctionCard({
   auction,
   onWatchlistChange,
 }: AuctionCardProps) {
+  const [isHovered, setIsHovered] = React.useState(false);
+
   const getAuctionTargetPath = React.useCallback(
     (auctionId: string) => {
       const rawStatus = String(auction?.status || "")
@@ -69,7 +72,7 @@ export function AuctionCard({
     const rawBasePrice = auction.base_price || auction.basePrice;
     const rawSoldPrice = auction.sold_price || auction.soldPrice;
     const rawWinner = auction.buyer || auction.winner;
-    const rawWinnerName = auction.buyer_name || "-";
+    const rawWinnerName = auction.buyer_name || auction.buyerName || rawWinner || "-";
     const rawTime = auction.time;
 
     return {
@@ -77,9 +80,9 @@ export function AuctionCard({
       company: rawCompany,
       date: rawDate
         ? new Date(rawDate).toLocaleString(undefined, {
-            dateStyle: "medium",
-            timeStyle: "short",
-          })
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
         : "-",
       estateName: rawEstateName,
       quantity:
@@ -93,45 +96,11 @@ export function AuctionCard({
       winnerName: rawWinnerName,
       time: rawTime,
       customAuctionId: auction.custom_auction_id,
+      imageUrl: auction.image_url || auction.imageUrl,
+      status: auction.status,
+      countdown: auction.countdown,
     };
   }, [auction, cardType]);
-
-  const renderAuctionDetails = () => (
-    <div className="flex flex-col gap-2">
-      <h2 className="text-m font-semibold mb-2 break-all">
-        {safeAuction.estateName}
-      </h2>
-      <p className="mb-1 text-sm break-all">
-        <span className="font-medium">Quantity:</span> {safeAuction.quantity}
-      </p>
-      <p className="mb-1 text-sm break-all">
-        <span className="font-medium">Grade:</span> {safeAuction.grade}
-      </p>
-      {(cardType === "history" || cardType === "order") && (
-        <p className="mb-1 text-sm break-all">
-          <span className="font-medium">Sold Price:</span>{" "}
-          {safeAuction.soldPrice}
-        </p>
-      )}
-      {cardType === "auction" && (
-        <p className="mb-1 text-sm break-all">
-          <span className="font-medium">Base Price:</span>{" "}
-          {safeAuction.basePrice}
-        </p>
-      )}
-      {cardType === "history" && (
-        <p className="mb-1 text-sm break-all">
-          <span className="font-medium">Winner:</span> {safeAuction.winnerName}
-        </p>
-      )}
-      {safeAuction.customAuctionId && (
-        <p className="mb-1 text-sm break-all">
-          <span className="font-medium">Ref ID:</span>{" "}
-          {safeAuction.customAuctionId}
-        </p>
-      )}
-    </div>
-  );
 
   const renderFooterButton = () => {
     const auctionId = auction?.auction_id || auction?.id || "";
@@ -141,26 +110,30 @@ export function AuctionCard({
         return <HistoryCardDialog auctionId={auctionId} />;
       case "order":
         return (
-          <div className="flex gap-2 w-full justify-end">
-            <OrderCardDialog auctionId={auctionId} />
+          <div className="flex gap-3 w-full justify-between">
+            <div className="flex-1">
+              <OrderCardDialog auctionId={auctionId} />
+            </div>
             <Button
               variant="outline"
-              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 h-9 px-3"
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 hover:text-white hover:cursor-pointer"
               title="Report Seller"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               onClick={(e) => {
                 e.stopPropagation();
                 const sellerId = auction?.seller_id || auction?.sellerId || "";
                 window.location.href = `/buyer/violations?violatorId=${sellerId}&auctionId=${auctionId}`;
               }}
             >
-              <Flag className="w-4 h-4 mr-1.5" />
               Report
             </Button>
           </div>
         );
       case "auction":
         return (
-          <div className="flex flex-wrap gap-4 justify-between w-full">
+          <div className="flex flex-wrap gap-3 justify-between w-full">
             <WatchlistButton
               auctionId={auctionId}
               className="flex-1 min-w-[120px]"
@@ -168,11 +141,9 @@ export function AuctionCard({
             />
             <Button
               variant="outline"
-              style={{ transition: "background 0.2s", fontSize: "0.7rem" }}
-              className="hover:text-white hover:cursor-pointer flex-1 min-w-[120px]"
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.backgroundColor = "var(--color3)")
-              }
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 min-w-[120px] hover:text-white hover:cursor-pointer"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               onClick={() => {
                 if (!auctionId) return;
@@ -205,37 +176,91 @@ export function AuctionCard({
   }
 
   return (
-    <Card className="w-full mx-auto h-full flex flex-col">
-      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">
-        <div className="flex flex-col min-w-0 flex-1">
-          <CardTitle
-            style={{ color: "var(--color4)", fontWeight: "bold" }}
-            className="break-all"
-          >
-            {safeAuction.title}
-          </CardTitle>
-          <CardDescription
-            style={{ color: "var(--color3)" }}
-            className="break-all"
-          >
-            (by {safeAuction.company})
-          </CardDescription>
-        </div>
-        <div className="flex flex-row items-start sm:items-end text-sm text-muted-foreground">
-          <div className="flex flex-col items-end">
-            <p>{displayDate}</p>
-            <p>{displayTime}</p>
+    <Card
+      className="w-full mx-auto h-full hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col bg-white"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0 shrink-0">
+        {safeAuction.imageUrl ? (
+          <img src={safeAuction.imageUrl} alt="Tea Lot" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+        ) : (
+          <Package className="w-16 h-16 text-gray-300" />
+        )}
+      </div>
+
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-gray-900 text-xl font-semibold break-all">
+              {safeAuction.title}
+            </CardTitle>
+            {safeAuction.status?.toLowerCase() === "live" && (
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
+                LIVE
+              </Badge>
+            )}
           </div>
+          <p className="text-gray-700 font-normal text-sm">
+            {safeAuction.grade} Grade <span className="text-gray-500 font-normal ml-1">(by {safeAuction.company})</span>
+          </p>
+        </div>
+        <div className="flex flex-col items-start sm:items-end text-sm text-gray-600 shrink-0">
+          <p className="font-normal">{displayDate}</p>
+          {displayTime !== "-" && <p className="font-normal">{displayTime}</p>}
         </div>
       </CardHeader>
-      <CardContent className="flex-grow">
-        <div className="flex flex-col md:flex-row gap-6 justify-between items-center">
-          <div className="flex flex-col justify-between flex-1 w-full md:w-auto gap-5">
-            {renderAuctionDetails()}
+
+      <CardContent className="px-5 pb-4 pt-4 flex-grow">
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
+            <span className="text-sm font-normal text-gray-500">
+              {(cardType === "history" || cardType === "order") ? "Sold Price" : "Base Price"}:
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {(cardType === "history" || cardType === "order") ? safeAuction.soldPrice : safeAuction.basePrice}
+            </span>
           </div>
+
+          <p className="flex justify-between text-sm items-center">
+            <span className="font-normal text-gray-500">Estate:</span>
+            <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.estateName}</span>
+          </p>
+
+          <p className="flex justify-between text-sm items-center">
+            <span className="font-normal text-gray-500">Quantity:</span>
+            <span className="font-medium text-gray-800">{safeAuction.quantity}</span>
+          </p>
+
+          {(cardType === "history" || cardType === "order") && (
+            <p className="flex justify-between text-sm items-center">
+              <span className="font-normal text-gray-500">Winner:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.winnerName}</span>
+            </p>
+          )}
+
+          {safeAuction.customAuctionId && (
+            <p className="flex justify-between text-sm items-center">
+              <span className="font-normal text-gray-500">Ref ID:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.customAuctionId}</span>
+            </p>
+          )}
+
+          {safeAuction.countdown && (
+            <div className={`mt-3 p-3 rounded-lg flex justify-between items-center ${safeAuction.status?.toLowerCase() === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                {safeAuction.status?.toLowerCase() === 'live' ? 'Ending In' : 'Starts In'}
+              </span>
+              <span className="text-sm font-mono font-semibold">
+                {safeAuction.countdown}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
-      <CardFooter className="flex justify-end mt-auto">
+
+      <CardFooter className="flex justify-center pb-6 pt-2 px-5 shrink-0">
         {renderFooterButton()}
       </CardFooter>
     </Card>

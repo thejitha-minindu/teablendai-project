@@ -2,12 +2,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import jwt
 from passlib.context import CryptContext
-from src.config import settings # Assuming you have settings here
+from src.config import settings
 
-# Configuration (Move these to your .env file in production)
-SECRET_KEY = "teablend_super_secret_key_change_me"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+# JWT configuration is loaded from .env via settings
+SECRET_KEY = settings.JWT_SECRET_KEY
+ALGORITHM = settings.JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.JWT_EXPIRATION_HOURS * 60
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

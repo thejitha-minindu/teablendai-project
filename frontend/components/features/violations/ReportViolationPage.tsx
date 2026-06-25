@@ -54,42 +54,42 @@ const VIOLATION_TYPES: ViolationTypeOption[] = [
     label: "Fraud",
     description: "Deceptive practices or false representation",
     icon: <AlertTriangle className="w-4 h-4" />,
-    color: "text-red-600 bg-red-50 border-red-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
   {
     value: "Scam",
     label: "Scam",
     description: "Intentional schemes to cheat or deceive",
     icon: <Shield className="w-4 h-4" />,
-    color: "text-orange-600 bg-orange-50 border-orange-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
   {
     value: "Harassment",
     label: "Harassment",
     description: "Unwanted contact or threatening behavior",
     icon: <User className="w-4 h-4" />,
-    color: "text-purple-600 bg-purple-50 border-purple-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
   {
     value: "Fake Product",
     label: "Fake Product",
     description: "Counterfeit or misrepresented products",
     icon: <Flag className="w-4 h-4" />,
-    color: "text-amber-600 bg-amber-50 border-amber-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
   {
     value: "Payment Issue",
     label: "Payment Issue",
     description: "Payment disputes, non-payment, or overcharges",
     icon: <FileText className="w-4 h-4" />,
-    color: "text-blue-600 bg-blue-50 border-blue-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
   {
     value: "Other",
     label: "Other",
     description: "Other types of violations",
     icon: <Flag className="w-4 h-4" />,
-    color: "text-gray-600 bg-gray-50 border-gray-200",
+    color: "text-gray-800 bg-white border-gray-400",
   },
 ];
 
@@ -100,23 +100,23 @@ const statusConfig: Record<
   { bg: string; text: string; icon: React.ReactNode }
 > = {
   Open: {
-    bg: "bg-blue-50",
-    text: "text-blue-700",
+    bg: "bg-white border border-gray-200",
+    text: "text-gray-700",
     icon: <Clock className="w-3 h-3" />,
   },
   "Under Review": {
-    bg: "bg-yellow-50",
-    text: "text-yellow-700",
+    bg: "bg-white border border-gray-200",
+    text: "text-gray-700",
     icon: <Eye className="w-3 h-3" />,
   },
   Resolved: {
-    bg: "bg-green-50",
-    text: "text-green-700",
+    bg: "bg-white border border-gray-200",
+    text: "text-gray-700",
     icon: <CheckCircle2 className="w-3 h-3" />,
   },
   Closed: {
-    bg: "bg-gray-100",
-    text: "text-gray-500",
+    bg: "bg-white border border-gray-200",
+    text: "text-gray-700",
     icon: <X className="w-3 h-3" />,
   },
 };
@@ -156,9 +156,8 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
   const [userSuggestions, setUserSuggestions] = useState<UserOption[]>([]);
 
   // Accent color
-  const accent = role === "buyer" ? "#3A5A40" : "#3A5A40";
-  const accentLight =
-    role === "buyer" ? "bg-[#E5F7CB]" : "bg-[#E5F7CB]";
+  const accent = "#374151"; // gray-700
+  const accentLight = "bg-gray-100";
 
   // ── Load violations history ───────────────────────────────────────────
   useEffect(() => {
@@ -168,12 +167,6 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
   useEffect(() => {
     loadUserSuggestions();
   }, []);
-
-  // Clear expanded report and scroll to top when switching tabs
-  useEffect(() => {
-    setExpandedReport(null);
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [activeTab]);
 
   const loadViolations = async () => {
     setReportsLoading(true);
@@ -341,23 +334,13 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
       `}</style>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="mb-8 animate-fadeInUp">
-        <div className="flex items-center gap-3 mb-2">
-          <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm"
-            style={{ backgroundColor: "#E5F7CB" }}
-          >
-            <AlertTriangle className="w-6 h-6" style={{ color: accent }} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Report a Violation
-            </h1>
-            <p className="text-sm text-gray-500">
-              Submit and track violation reports against users or auctions
-            </p>
-          </div>
-        </div>
+      <div className="mb-5 items-start animate-fadeInUp">
+        <h1 className="text-3xl font-bold">
+          Report a Violation
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Submit and track violation reports against users or auctions
+        </p>
       </div>
 
       {/* ── Stats Bar ──────────────────────────────────────────────────── */}
@@ -369,34 +352,26 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
           {
             label: "Total Reports",
             value: stats.total,
-            color: "border-gray-300",
-            textColor: "text-gray-800",
           },
           {
             label: "Open",
             value: stats.open,
-            color: "border-blue-400",
-            textColor: "text-blue-700",
           },
           {
             label: "Under Review",
             value: stats.underReview,
-            color: "border-yellow-400",
-            textColor: "text-yellow-700",
           },
           {
             label: "Resolved",
             value: stats.resolved,
-            color: "border-green-400",
-            textColor: "text-green-700",
           },
         ].map((stat) => (
           <div
             key={stat.label}
-            className={`bg-white rounded-xl p-4 shadow-sm border-l-4 ${stat.color} hover:shadow-md transition-shadow`}
+            className={`bg-white rounded-xl p-4 shadow-sm border border-gray-200 hover:shadow-md transition-shadow`}
           >
             <p className="text-xs text-gray-500 font-medium">{stat.label}</p>
-            <p className={`text-2xl font-bold ${stat.textColor}`}>
+            <p className={`text-2xl font-bold text-gray-800`}>
               {stat.value}
             </p>
           </div>
@@ -490,7 +465,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                         // Clear auction ID if the user manually changes the reported user
                         setAuctionId("");
                       }}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3A5A40]/20 focus:border-[#3A5A40] outline-none text-sm transition-all appearance-none"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-400 outline-none text-sm transition-all appearance-none"
                       required
                     >
                       <option value="" disabled>Select a user to report...</option>
@@ -521,7 +496,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                       placeholder="Enter auction ID if applicable..."
                       value={auctionId}
                       onChange={(e) => setAuctionId(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3A5A40]/20 focus:border-[#3A5A40] outline-none text-sm transition-all"
+                      className="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-400 outline-none text-sm transition-all"
                     />
                   </div>
                 </div>
@@ -589,7 +564,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
                     rows={5}
-                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#3A5A40]/20 focus:border-[#3A5A40] outline-none text-sm transition-all resize-none"
+                    className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-200 focus:border-gray-400 outline-none text-sm transition-all resize-none"
                     required
                     minLength={5}
                   />
@@ -608,8 +583,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                  style={{ backgroundColor: accent }}
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md bg-[#3A5A40] hover:bg-[#2D4A2B] hover:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:hover:bg-[#3A5A40] disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
@@ -645,13 +619,13 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                   placeholder="Search reports by ID, violator, type, or reason..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#3A5A40]/20 focus:border-[#3A5A40] outline-none text-sm transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-gray-200 focus:border-gray-400 outline-none text-sm transition-all"
                 />
               </div>
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-[#3A5A40]/20 focus:border-[#3A5A40] outline-none"
+                className="px-4 py-2.5 border border-gray-200 rounded-lg bg-gray-50 text-sm focus:ring-2 focus:ring-gray-200 focus:border-gray-400 outline-none"
               >
                 <option value="all">All Statuses</option>
                 <option value="open">Open</option>
@@ -695,8 +669,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
               {reports.length === 0 && (
                 <button
                   onClick={() => setActiveTab("submit")}
-                  className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-all"
-                  style={{ backgroundColor: accent }}
+                  className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#3A5A40] hover:bg-[#2D4A2B] transition-all"
                 >
                   Submit Your First Report
                 </button>
@@ -723,8 +696,8 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center flex-shrink-0">
-                            <AlertTriangle className="w-5 h-5 text-red-500" />
+                          <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center flex-shrink-0">
+                            <AlertTriangle className="w-5 h-5 text-gray-500" />
                           </div>
                           <div>
                             <div className="flex items-center gap-2 flex-wrap">

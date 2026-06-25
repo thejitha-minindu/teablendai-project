@@ -67,34 +67,46 @@ export default function BuyerHistoryPage() {
     if (filters.searchQuery) {
       const searchLower = filters.searchQuery.toLowerCase();
       result = result.filter(
-        (auction) =>
-          auction.title.toLowerCase().includes(searchLower) ||
-          auction.company.toLowerCase().includes(searchLower) ||
-          auction.estateName.toLowerCase().includes(searchLower) ||
-          auction.grade.toLowerCase().includes(searchLower) ||
-          auction.id.toString().includes(searchLower),
+        (auction) => {
+          const title = String(auction.title || auction.auction_name || "Auction").toLowerCase();
+          const company = String(auction.company || auction.company_name || "-").toLowerCase();
+          const estateName = String(auction.estateName || auction.estate_name || "-").toLowerCase();
+          const grade = String(auction.grade || "-").toLowerCase();
+          const idStr = String(auction.id || auction.auction_id || "").toLowerCase();
+
+          return title.includes(searchLower) ||
+            company.includes(searchLower) ||
+            estateName.includes(searchLower) ||
+            grade.includes(searchLower) ||
+            idStr.includes(searchLower);
+        }
       );
     }
 
     if (filters.grade) {
       result = result.filter((auction) =>
-        auction.grade.includes(filters.grade!),
+        String(auction.grade || "").includes(filters.grade!),
       );
     }
 
     result.sort((a, b) => {
+      const titleA = String(a.title || a.auction_name || "Auction");
+      const titleB = String(b.title || b.auction_name || "Auction");
+      const gradeA = String(a.grade || "-");
+      const gradeB = String(b.grade || "-");
+
       switch (sortBy) {
         case "price-high":
           return getPrice(b) - getPrice(a);
         case "price-low":
           return getPrice(a) - getPrice(b);
         case "grade":
-          return a.grade.localeCompare(b.grade);
+          return gradeA.localeCompare(gradeB);
         case "name":
-          return a.title.localeCompare(b.title);
+          return titleA.localeCompare(titleB);
         case "recent":
         default:
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.date || b.created_at || 0).getTime() - new Date(a.date || a.created_at || 0).getTime();
       }
     });
 
@@ -149,8 +161,7 @@ export default function BuyerHistoryPage() {
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Auction History</h1>
         <p className="text-muted-foreground mt-2">
-          {totalItems} auction{totalItems !== 1 ? "s" : ""} found
-          {filters.searchQuery && ` for "${filters.searchQuery}"`}
+          Review your past bids, won auctions, and complete purchase records.
         </p>
       </div>
 
