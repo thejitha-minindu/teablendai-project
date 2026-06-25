@@ -5,20 +5,10 @@ import { toast } from 'sonner';
 import { useState, useEffect, Suspense } from "react";
 import { apiClient } from "@/lib/apiClient";
 import {
-    Bell,
     History,
     Send,
     X,
-    Mail,
-    Users,
-    AlertCircle,
-    CheckCircle,
-    Tag,
-    UserCheck,
-    FileText,
-    MessageSquare,
-    Scale,
-    ShoppingBag
+    CheckCircle
 } from "lucide-react";
 
 function CreateNotificationForm() {
@@ -89,19 +79,19 @@ function CreateNotificationForm() {
     }, [formData.reviserSpecify, selectedUser]);
 
     const notificationTypes = [
-        { value: "System Notifications", label: "System Notifications", icon: <Bell className="w-4 h-4" />, color: "blue" },
-        { value: "User Verification Notifications", label: "User Verification Notifications", icon: <UserCheck className="w-4 h-4" />, color: "green" },
-        { value: "Auction-Related Notifications", label: "Auction-Related Notification", icon: <ShoppingBag className="w-4 h-4" />, color: "purple" },
-        { value: "Bid & Transaction Notifications", label: "Bid & Transaction", icon: <Scale className="w-4 h-4" />, color: "orange" },
-        { value: "Violation & Compliance Notifications", label: "Violation & Compliance", icon: <AlertCircle className="w-4 h-4" />, color: "red" },
-        { value: "Custom Notifications", label: "Custom Notifications", icon: <MessageSquare className="w-4 h-4" />, color: "indigo" },
-        { value: "Complaint & Review Notifications", label: "Complaint & Review Notifications", icon: <FileText className="w-4 h-4" />, color: "pink" }
+        { value: "System Notifications", label: "System Notifications" },
+        { value: "User Verification Notifications", label: "User Verification Notifications" },
+        { value: "Auction-Related Notifications", label: "Auction-Related Notification" },
+        { value: "Bid & Transaction Notifications", label: "Bid & Transaction" },
+        { value: "Violation & Compliance Notifications", label: "Violation & Compliance" },
+        { value: "Custom Notifications", label: "Custom Notifications" },
+        { value: "Complaint & Review Notifications", label: "Complaint & Review Notifications" }
     ];
 
     const reviserOptions = [
-        { value: "buyer", label: "Buyers", icon: <Users className="w-4 h-4" /> },
-        { value: "seller", label: "Sellers", icon: <Users className="w-4 h-4" /> },
-        { value: "all", label: "All Users", icon: <Users className="w-4 h-4" /> }
+        { value: "buyer", label: "Buyers" },
+        { value: "seller", label: "Sellers" },
+        { value: "all", label: "All Users" }
     ];
 
     const handleInputChange = (field: string, value: string) => {
@@ -182,11 +172,6 @@ function CreateNotificationForm() {
         });
     };
 
-    const getTypeIcon = (typeValue: string) => {
-        const type = notificationTypes.find(t => t.value === typeValue);
-        return type?.icon || <Bell className="w-4 h-4" />;
-    };
-
     return (
         <div className="p-6 max-w-5xl mx-auto min-h-screen">
             {/* Header */}
@@ -220,9 +205,8 @@ function CreateNotificationForm() {
             {/* Create Notification Panel */}
             <div className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-lg">
                 {/* Panel Title */}
-                <div className="bg-gradient-to-r from-green-50 to-gray-50 px-6 py-3 border-b border-gray-200">
+                <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
                     <div className="flex items-center gap-2">
-                        <Mail className="w-5 h-5 text-green-700" />
                         <span className="font-semibold text-gray-800">Create New Notification</span>
                     </div>
                 </div>
@@ -232,7 +216,6 @@ function CreateNotificationForm() {
                     {/* Title */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Tag className="w-4 h-4 text-gray-500" />
                             Notification Title <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -248,7 +231,6 @@ function CreateNotificationForm() {
                     {/* Content */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-start gap-2 pt-2">
-                            <MessageSquare className="w-4 h-4 text-gray-500 mt-0.5" />
                             Notification Content <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -267,7 +249,6 @@ function CreateNotificationForm() {
                     {/* Notification Type */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Bell className="w-4 h-4 text-gray-500" />
                             Notification Type <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -289,7 +270,6 @@ function CreateNotificationForm() {
                     {/* Revisers */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <Users className="w-4 h-4 text-gray-500" />
                             Target Audience <span className="text-red-500">*</span>
                         </label>
                         <div className="md:col-span-2">
@@ -300,11 +280,10 @@ function CreateNotificationForm() {
                                         type="button"
                                         onClick={() => handleInputChange("revisers", option.value)}
                                         className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 ${formData.revisers === option.value
-                                            ? "bg-green-600 border-green-600 text-white"
+                                            ? "bg-[#3A5A40] border-[#3A5A40] text-white"
                                             : "border-gray-300 text-gray-700 hover:bg-gray-50"
                                             }`}
                                     >
-                                        {option.icon}
                                         {option.label}
                                     </button>
                                 ))}
@@ -315,7 +294,6 @@ function CreateNotificationForm() {
                     {/* Specific User Email */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">
-                            <UserCheck className="w-4 h-4 text-gray-500" />
                             Specific User (Optional)
                         </label>
                         <div className="md:col-span-2 relative">
@@ -399,14 +377,10 @@ function CreateNotificationForm() {
                     {(formData.title || formData.content) && (
                         <div className="mt-6 pt-4 border-t border-gray-200">
                             <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                                <Eye className="w-4 h-4" />
                                 Preview
                             </h3>
                             <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                                <div className="flex items-start gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                                        {getTypeIcon(formData.type)}
-                                    </div>
+                                <div className="flex gap-4">
                                     <div className="flex-1">
                                         <h4 className="font-semibold text-gray-800">
                                             {formData.title || "Notification Title"}
