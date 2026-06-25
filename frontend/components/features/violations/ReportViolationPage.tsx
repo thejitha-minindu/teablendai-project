@@ -334,17 +334,13 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
       `}</style>
 
       {/* ── Header ─────────────────────────────────────────────────────── */}
-      <div className="mb-8 animate-fadeInUp">
-        <div className="flex items-center gap-3 mb-2">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-800">
-              Report a Violation
-            </h1>
-            <p className="text-sm text-gray-500">
-              Submit and track violation reports against users or auctions
-            </p>
-          </div>
-        </div>
+      <div className="mb-5 items-start animate-fadeInUp">
+        <h1 className="text-3xl font-bold">
+          Report a Violation
+        </h1>
+        <p className="text-muted-foreground mt-2">
+          Submit and track violation reports against users or auctions
+        </p>
       </div>
 
       {/* ── Stats Bar ──────────────────────────────────────────────────── */}
@@ -587,7 +583,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md bg-[#588157] hover:bg-[#3A5A40] hover:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:hover:bg-[#588157] disabled:cursor-not-allowed"
+                  className="flex items-center gap-2 px-6 py-3 rounded-xl text-white text-sm font-bold shadow-md bg-[#3A5A40] hover:bg-[#2D4A2B] hover:shadow-lg transition-all duration-200 disabled:opacity-60 disabled:hover:bg-[#3A5A40] disabled:cursor-not-allowed"
                 >
                   {submitting ? (
                     <>
@@ -673,7 +669,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
               {reports.length === 0 && (
                 <button
                   onClick={() => setActiveTab("submit")}
-                  className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#588157] hover:bg-[#3A5A40] transition-all"
+                  className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#3A5A40] hover:bg-[#2D4A2B] transition-all"
                 >
                   Submit Your First Report
                 </button>

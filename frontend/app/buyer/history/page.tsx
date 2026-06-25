@@ -161,8 +161,7 @@ export default function BuyerHistoryPage() {
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Auction History</h1>
         <p className="text-muted-foreground mt-2">
-          {totalItems} auction{totalItems !== 1 ? "s" : ""} found
-          {filters.searchQuery && ` for "${filters.searchQuery}"`}
+          Review your past bids, won auctions, and complete purchase records.
         </p>
       </div>
 

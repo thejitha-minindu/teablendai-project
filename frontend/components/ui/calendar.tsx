@@ -38,7 +38,7 @@ function Calendar({
   const defaultClassNames = getDefaultClassNames();
 
   return (
-    <Card className="flex justify-center items-center p-4">
+    <div className="flex justify-center items-center">
       {/* <CardHeader className="flex flex-row items-end w-full justify-end">
         <Expand className="h-4 w-4 text-muted-foreground" />
       </CardHeader> */}
@@ -116,10 +116,7 @@ function Calendar({
             defaultClassNames.week_number
           ),
           day: cn(
-            "relative w-full h-full p-0 text-center [&:last-child[data-selected=true]_button]:rounded-r-md group/day aspect-square select-none",
-            props.showWeekNumber
-              ? "[&:nth-child(2)[data-selected=true]_button]:rounded-l-md"
-              : "[&:first-child[data-selected=true]_button]:rounded-l-md",
+            "relative w-full h-full p-0 text-center group/day aspect-square select-none",
             defaultClassNames.day
           ),
           range_start: cn(
@@ -129,7 +126,7 @@ function Calendar({
           range_middle: cn("rounded-none", defaultClassNames.range_middle),
           range_end: cn("rounded-r-md bg-accent", defaultClassNames.range_end),
           today: cn(
-            "bg-accent text-accent-foreground rounded-md data-[selected=true]:rounded-none",
+            "bg-accent text-accent-foreground rounded-full",
             defaultClassNames.today
           ),
           outside: cn(
@@ -191,7 +188,7 @@ function Calendar({
         }}
         {...props}
       />
-    </Card>
+    </div>
   );
 }
 
@@ -227,7 +224,7 @@ function CalendarDayButton({
       data-scheduled={modifiers.scheduled}
       data-past={modifiers.past}
       className={cn(
-        "data-[selected-single=true]:bg-primary data-[selected-single=true]:text-primary-foreground data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:bg-primary data-[range-start=true]:text-primary-foreground data-[range-end=true]:bg-primary data-[range-end=true]:text-primary-foreground group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] data-[range-end=true]:rounded-md data-[range-end=true]:rounded-r-md data-[range-middle=true]:rounded-none data-[range-start=true]:rounded-md data-[range-start=true]:rounded-l-md [&>span]:text-xs [&>span]:opacity-70",
+        "data-[selected-single=true]:ring-2 data-[selected-single=true]:ring-gray-900 data-[range-middle=true]:bg-accent data-[range-middle=true]:text-accent-foreground data-[range-start=true]:ring-2 data-[range-start=true]:ring-gray-900 data-[range-end=true]:ring-2 data-[range-end=true]:ring-gray-900 group-data-[focused=true]/day:border-ring group-data-[focused=true]/day:ring-ring/50 dark:hover:text-accent-foreground flex aspect-square size-auto w-full min-w-(--cell-size) flex-col gap-1 leading-none font-normal rounded-full group-data-[focused=true]/day:relative group-data-[focused=true]/day:z-10 group-data-[focused=true]/day:ring-[3px] [&>span]:text-xs [&>span]:opacity-70",
         "data-[active=true]:bg-green-100 data-[active=true]:text-green-700 data-[active=true]:font-bold data-[active=true]:hover:bg-green-200 data-[active=true]:rounded-full",
         "data-[scheduled=true]:bg-orange-100 data-[scheduled=true]:text-orange-700 data-[scheduled=true]:font-medium data-[scheduled=true]:hover:bg-orange-200 data-[scheduled=true]:rounded-full",
         "data-[past=true]:bg-gray-100 data-[past=true]:text-gray-400 data-[past=true]:line-through data-[past=true]:hover:bg-gray-200 data-[past=true]:rounded-full",

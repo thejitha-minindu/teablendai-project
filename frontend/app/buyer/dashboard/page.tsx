@@ -105,8 +105,9 @@ export default function BuyerAuctionPage() {
         }
       `}</style>
 
-      <div className="mb-5">
+      <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Buyer Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Welcome back</p>
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-10 mb-10">
         <div

@@ -116,8 +116,11 @@ export function AuctionCard({
             </div>
             <Button
               variant="outline"
-              className="flex-1 text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 font-semibold rounded-xl py-5 text-sm transition-colors"
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 hover:text-white hover:cursor-pointer"
               title="Report Seller"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               onClick={(e) => {
                 e.stopPropagation();
                 const sellerId = auction?.seller_id || auction?.sellerId || "";
@@ -133,11 +136,15 @@ export function AuctionCard({
           <div className="flex flex-wrap gap-3 justify-between w-full">
             <WatchlistButton
               auctionId={auctionId}
-              className="flex-1 min-w-[120px] rounded-xl"
+              className="flex-1 min-w-[120px]"
               onWatchlistChange={onWatchlistChange}
             />
             <Button
-              className="flex-1 min-w-[120px] bg-[#E5F7CB] hover:bg-[#d4eab6] text-gray-900 font-semibold rounded-xl py-5 text-sm transition-colors"
+              variant="outline"
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 min-w-[120px] hover:text-white hover:cursor-pointer"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               onClick={() => {
                 if (!auctionId) return;
                 window.location.href = getAuctionTargetPath(auctionId);
