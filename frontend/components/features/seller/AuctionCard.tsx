@@ -127,11 +127,19 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
   return (
     <Card 
 <<<<<<< HEAD
+<<<<<<< HEAD
       className={`w-full mx-auto h-full hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col ${isFlashing ? 'ring-2 ring-green-400 bg-green-50' : 'bg-white'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0 shrink-0">
+=======
+      className={`w-full mx-auto hover:shadow-lg transition-all duration-300 ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : ''}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="relative w-full h-40 overflow-hidden bg-gray-50 border-b border-gray-100 rounded-t-xl flex items-center justify-center">
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
       className={`w-full mx-auto hover:shadow-lg transition-all duration-300 ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : ''}`}
       onMouseEnter={() => setIsHovered(true)}
@@ -146,6 +154,7 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
         )}
       </div>
 <<<<<<< HEAD
+<<<<<<< HEAD
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
         <div className="flex flex-col gap-1 min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
@@ -153,17 +162,23 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
             {type === 'live' && (
               <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
 =======
+=======
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2 pt-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>
             {type === 'live' && (
               <Badge variant="destructive" className="animate-pulse flex gap-1 items-center">
+<<<<<<< HEAD
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
+=======
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
                 LIVE {connected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
               </Badge>
             )}
           </div>
+<<<<<<< HEAD
 <<<<<<< HEAD
           <p className="text-gray-700 font-normal text-sm">{data.grade} Grade</p>
         </div>
@@ -189,16 +204,31 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
         </div>
       </CardHeader>
 
+=======
+          <CardDescription>{data.grade} Grade</CardDescription>
+        </div>
+
+        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
+          <p>{String(data.date || "Date N/A")}</p>
+          {data.time && <p>{String(data.time)}</p>}
+        </div>
+      </CardHeader>
+
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
       <CardContent>
         <div className="flex flex-col gap-2">
             <div className="flex justify-between items-center mb-1">
                  <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
                  <span className={`text-lg font-bold transition-colors duration-300 ${isFlashing ? 'text-green-600 scale-110 transform' : 'text-[#1A2F1C]'}`}>
+<<<<<<< HEAD
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
+=======
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
                     LKR {displayPrice} 
                  </span>
             </div>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
             <p className="flex justify-between text-sm items-center">
                 <span className="font-normal text-gray-500">Quantity:</span>
@@ -220,6 +250,17 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
                     <span className="font-medium text-muted-foreground">Status:</span>
                     <span className={`font-bold ${rawBuyer !== "No Bids Yet" ? 'text-green-600' : 'text-red-600'}`}>
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
+=======
+            <p className="flex justify-between text-sm">
+                <span className="font-medium text-muted-foreground">Quantity:</span>
+                <span>{data.quantity} kg</span>
+            </p>
+
+            {type === 'history' && (
+                <p className="flex justify-between text-sm">
+                    <span className="font-medium text-muted-foreground">Status:</span>
+                    <span className={`font-bold ${rawBuyer !== "No Bids Yet" ? 'text-green-600' : 'text-red-600'}`}>
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
                         {rawBuyer !== "No Bids Yet" ? 'Sold' : 'Unsold'}
                     </span>
                 </p>
@@ -227,9 +268,15 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
 
             {(type === 'live' || type === 'history') && (
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <p className="flex justify-between text-sm items-center">
                     <span className="font-normal text-gray-500">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
                     <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-400' : 'text-gray-800'}`}>
+=======
+                <p className="flex justify-between text-sm">
+                    <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
+                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-500' : 'text-blue-600'}`}>
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
                 <p className="flex justify-between text-sm">
                     <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
@@ -242,15 +289,21 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
 
             {(type === 'live' || type === 'scheduled') && data.countdown && (
 <<<<<<< HEAD
+<<<<<<< HEAD
                 <div className={`mt-2 p-2.5 rounded-lg flex justify-between items-center ${
                     type === 'live' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
                 }`}>
                     <span className="text-xs font-medium uppercase tracking-wider">
 =======
+=======
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
                 <div className={`mt-2 p-2 rounded-md flex justify-between items-center ${
                     type === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
                 }`}>
                     <span className="text-xs font-bold uppercase">
+<<<<<<< HEAD
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
+=======
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
                         {type === 'live' ? 'Ending In' : 'Starts In'}
                     </span>
@@ -263,7 +316,11 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
       </CardContent>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
       <CardFooter className="flex justify-center pb-5 pt-2 px-5 shrink-0">
+=======
+      <CardFooter className="flex justify-end pt-2">
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
       <CardFooter className="flex justify-end pt-2">
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
@@ -275,6 +332,10 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
             onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
             onClick={() => onViewClick?.()}
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+            className="bg-[#E5F7CB] hover:bg-[#3A5A40] text-[#3A5A40] hover:text-white font-bold transition-colors"
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
             className="bg-[#E5F7CB] hover:bg-[#3A5A40] text-[#3A5A40] hover:text-white font-bold transition-colors"
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)

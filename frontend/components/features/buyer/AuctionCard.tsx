@@ -146,8 +146,12 @@ export function AuctionCard({
             <Button
               variant="outline"
 <<<<<<< HEAD
+<<<<<<< HEAD
               style={{ transition: "background 0.2s" }}
               className="flex-1 hover:text-white hover:cursor-pointer"
+=======
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 h-9 px-3"
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
               className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 h-9 px-3"
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
@@ -176,15 +180,21 @@ export function AuctionCard({
             <Button
               variant="outline"
 <<<<<<< HEAD
+<<<<<<< HEAD
               style={{ transition: "background 0.2s" }}
               className="flex-1 min-w-[120px] hover:text-white hover:cursor-pointer"
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
 =======
+=======
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
               style={{ transition: "background 0.2s", fontSize: "0.7rem" }}
               className="hover:text-white hover:cursor-pointer flex-1 min-w-[120px]"
               onMouseEnter={(e) =>
                 (e.currentTarget.style.backgroundColor = "var(--color3)")
               }
+<<<<<<< HEAD
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
+=======
 >>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
               onClick={() => {
@@ -218,6 +228,7 @@ export function AuctionCard({
   }
 
   return (
+<<<<<<< HEAD
 <<<<<<< HEAD
     <Card
       className="w-full mx-auto h-full hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col bg-white"
@@ -300,6 +311,36 @@ export function AuctionCard({
               </span>
             </div>
           )}
+=======
+    <Card className="w-full mx-auto h-full flex flex-col">
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">
+        <div className="flex flex-col min-w-0 flex-1">
+          <CardTitle
+            style={{ color: "var(--color4)", fontWeight: "bold" }}
+            className="break-all"
+          >
+            {safeAuction.title}
+          </CardTitle>
+          <CardDescription
+            style={{ color: "var(--color3)" }}
+            className="break-all"
+          >
+            (by {safeAuction.company})
+          </CardDescription>
+        </div>
+        <div className="flex flex-row items-start sm:items-end text-sm text-muted-foreground">
+          <div className="flex flex-col items-end">
+            <p>{displayDate}</p>
+            <p>{displayTime}</p>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow">
+        <div className="flex flex-col md:flex-row gap-6 justify-between items-center">
+          <div className="flex flex-col justify-between flex-1 w-full md:w-auto gap-5">
+            {renderAuctionDetails()}
+          </div>
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
     <Card className="w-full mx-auto h-full flex flex-col">
       <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4">

@@ -518,8 +518,13 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
             {/* Right Column - REAL Bidding Activity */}
             <div className="space-y-4 flex flex-col h-full">
 <<<<<<< HEAD
+<<<<<<< HEAD
               <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
                 <div className="w-5 h-5" /> Live Activity Feed
+=======
+              <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
+                <DollarSign className="w-5 h-5" /> Live Activity Feed
+>>>>>>> parent of d5e3233 (Revamp auction cards UI and modal tweaks)
 =======
               <h3 className="font-bold text-lg text-gray-800 flex items-center gap-2">
                 <DollarSign className="w-5 h-5" /> Live Activity Feed
