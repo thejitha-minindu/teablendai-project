@@ -236,3 +236,8 @@ def get_current_admin(token_payload=Depends(get_token_payload), db: Session = De
         raise HTTPException(status_code=403, detail="Account is suspended or inactive")
 
     return admin
+
+
+def get_system_log_service(db: Session = Depends(get_db)):
+    from src.infrastructure.services.system_log_service import SystemLogService
+    return SystemLogService(db)

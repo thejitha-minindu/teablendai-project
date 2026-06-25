@@ -75,3 +75,29 @@ class AdminRepository:
             return int(result or 0)
         except Exception:
             return 0
+
+    def get_weekly_system_activity(self):
+        try:
+            dialect_name = self.db.bind.dialect.name
+            if dialect_name == "sqlite":
+                sql = text(
+                    """
+                    SELECT date(created_at, 'weekday 0', '-6 days') as week_start, COUNT(*) as cnt
+                    FROM system_logs
+                    GROUP BY week_start
+                    ORDER BY week_start ASC
+                    """
+                )
+            else:
+                sql = text(
+                    """
+                    SELECT CONVERT(VARCHAR(10), DATEADD(wk, DATEDIFF(wk, 0, created_at), 0), 120) as week_start, COUNT(*) as cnt
+                    FROM system_logs
+                    GROUP BY CONVERT(VARCHAR(10), DATEADD(wk, DATEDIFF(wk, 0, created_at), 0), 120)
+                    ORDER BY week_start ASC
+                    """
+                )
+            res = self.db.execute(sql).fetchall()
+            return [{"week": row[0], "count": int(row[1] or 0)} for row in res]
+        except Exception:
+            return []

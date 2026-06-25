@@ -4,9 +4,10 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Package, Search, CheckCircle, Clock, Truck, AlertCircle,
-  ChevronDown, RefreshCw, MessageCircle, Eye
+  ChevronDown, RefreshCw, MessageCircle, Eye, Flag
 } from "lucide-react";
 import { getSellerOrders, updateOrderStatus, type OrderDetail } from "@/services/orderService";
+import { toast } from 'sonner';
 
 const STATUS_FLOW = [
   "pending", "confirmed", "processing", "packed",
@@ -62,9 +63,10 @@ export default function SellerOrdersPage() {
     try {
       const updated = await updateOrderStatus(orderId, newStatus);
       setOrders(prev => prev.map(o => o.order_id === orderId ? updated : o));
+      toast.success(`Order status updated.`);
     } catch (err) {
       console.error("Failed to update order status:", err);
-      alert("Failed to update order status. Please try again.");
+      toast.error("Failed to update order status. Please try again.");
     } finally {
       setUpdatingOrderId(null);
     }
@@ -278,7 +280,7 @@ export default function SellerOrdersPage() {
                           </div>
                         )}
 
-                        {/* View & Chat buttons */}
+                        {/* View, Chat & Report buttons */}
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(`/orders/${order.order_id}`); }}
@@ -291,6 +293,13 @@ export default function SellerOrdersPage() {
                             className="flex-1 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-1.5"
                           >
                             <MessageCircle className="w-4 h-4" /> Chat
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/seller/violations?violatorId=${order.buyer_id}&auctionId=${order.auction_id}`); }}
+                            className="flex-1 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-xl font-medium text-sm hover:bg-red-100 transition-all flex items-center justify-center gap-1.5"
+                            title="Report User"
+                          >
+                            <Flag className="w-4 h-4" /> Report
                           </button>
                         </div>
                       </div>

@@ -318,6 +318,10 @@ app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["
 
 # Register admin violation router (mounted under API v1 admin prefix)
 app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
+
+# Register system logs router
+from src.presentation.routers.v1.admin import system_logs_router
+app.include_router(system_logs_router.router, prefix="/api/v1/admin", tags=["System Logs"])
 # app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
 
 # Register notifications router (mounted under API v1)

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
 import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 import { WatchlistButton } from "@/components/features/buyer/WatchlistButton";
+import { Flag } from "lucide-react";
 
 export type CardType = "order" | "history" | "auction";
 
@@ -139,7 +140,24 @@ export function AuctionCard({
       case "history":
         return <HistoryCardDialog auctionId={auctionId} />;
       case "order":
-        return <OrderCardDialog auctionId={auctionId} />;
+        return (
+          <div className="flex gap-2 w-full justify-end">
+            <OrderCardDialog auctionId={auctionId} />
+            <Button
+              variant="outline"
+              className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 h-9 px-3"
+              title="Report Seller"
+              onClick={(e) => {
+                e.stopPropagation();
+                const sellerId = auction?.seller_id || auction?.sellerId || "";
+                window.location.href = `/buyer/violations?violatorId=${sellerId}&auctionId=${auctionId}`;
+              }}
+            >
+              <Flag className="w-4 h-4 mr-1.5" />
+              Report
+            </Button>
+          </div>
+        );
       case "auction":
         return (
           <div className="flex flex-wrap gap-4 justify-between w-full">

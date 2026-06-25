@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import { 
   ArrowLeft, 
@@ -122,7 +123,7 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
       }
     } catch (err: any) {
       console.error("Payment failed:", err);
-      alert("Payment processing failed. Please try again.");
+      toast.error("Payment processing failed. Please try again.");
       setIsProcessing(false);
     }
   };

@@ -4,7 +4,8 @@ from typing import List, Optional
 from src.application.schemas.buyer.bid import BidCreateRequest, Bid
 from src.application.use_cases.buyer.bid_service import BidService
 from src.infrastructure.database.base import get_db
-from src.application.dependencies import get_current_buyer, get_current_user
+from src.application.dependencies import get_current_buyer, get_current_user, get_system_log_service
+from src.infrastructure.services.system_log_service import SystemLogService
 from src.domain.models.user import User
 from src.domain.services.rate_limiter import rate_limiter
 import logging
@@ -22,6 +23,7 @@ async def create_bid(
     bid_request: BidCreateRequest,
     service: BidService = Depends(get_bid_service),
     current_user: User = Depends(get_current_buyer),
+    log_service: SystemLogService = Depends(get_system_log_service),
 ):
     allowed, wait_time = rate_limiter.is_allowed(str(current_user.user_id))
     if not allowed:
@@ -42,6 +44,13 @@ async def create_bid(
         buyer_id=str(current_user.user_id),
         bid_amount=bid_request.bid_amount,
         buyer_name=real_name
+    )
+    
+    log_service.log_bid(
+        user_name=real_name or current_user.email,
+        user_id=current_user.user_id,
+        auction_ref=str(bid_request.auction_id),
+        status="success"
     )
     
     logger.info(f"Bid placed: {bid_data.bid_amount} by {real_name}")

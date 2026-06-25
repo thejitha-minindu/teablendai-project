@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { toast } from 'sonner';
 import { TrackAuctionCard } from "@/components/admincomponents/TrackAuctionCard";
 import { Search, Filter, Calendar, DollarSign, Package, X, ChevronDown } from "lucide-react";
 import { apiClient } from "@/lib/apiClient";
@@ -128,6 +129,19 @@ export default function TrackAuctionPage() {
         setGradeFilter("all");
         setPriceRange({ min: "", max: "" });
         applyFilters(auctions, "", "all", "all", { min: "", max: "" });
+    };
+
+    const handleDeleteAuction = async (auctionId: string) => {
+        try {
+            await apiClient.delete(`/admin/auctions/${auctionId}`);
+            const updatedAuctions = auctions.filter(a => a.auction_id !== auctionId);
+            setAuctions(updatedAuctions);
+            applyFilters(updatedAuctions, searchTerm, statusFilter, gradeFilter, priceRange);
+        } catch (error: any) {
+            console.error("Error deleting auction:", error);
+            const message = error?.response?.data?.detail || "Failed to delete auction. Please try again.";
+            toast.error(message);
+        }
     };
 
     const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || gradeFilter !== "all" || priceRange.min !== "" || priceRange.max !== "";
@@ -317,6 +331,7 @@ export default function TrackAuctionPage() {
                     {filteredAuctions.map((auction) => (
                         <TrackAuctionCard
                             key={auction.auction_id}
+                            auctionId={auction.auction_id}
                             auctionName={auction.auction_name}
                             estateName={auction.estate_name}
                             grade={auction.grade}
@@ -327,6 +342,7 @@ export default function TrackAuctionPage() {
                             buyer={auction.buyer}
                             soldPrice={auction.sold_price}
                             customAuctionId={auction.custom_auction_id}
+                            onDelete={handleDeleteAuction}
                         />
                     ))}
                 </div>

@@ -184,13 +184,21 @@ class AuctionManager:
                 ).first()
                 
                 if not existing_order:
+                    # Generate a display order ID like ORD-20260606-XXXX
+                    now = datetime.now(timezone.utc)
+                    display_id = f"ORD-{now.strftime('%Y%m%d')}-{str(uuid4())[:4].upper()}"
+                    
                     order = Order(
                         order_id=str(uuid4()),
+                        display_order_id=display_id,
                         user_id=auction.buyer,
+                        seller_id=auction.seller_id,
                         auction_id=auction.auction_id,
                         total_amount=auction.sold_price,
-                        order_date=datetime.now(timezone.utc),
-                        status=OrderStatus.completed
+                        order_date=now,
+                        status=OrderStatus.completed,
+                        order_status="completed",
+                        payment_status="pending",
                     )
                     db.add(order)
                     db.flush()

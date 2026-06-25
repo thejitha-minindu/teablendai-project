@@ -296,13 +296,8 @@ export default function SellerDashboardPage() {
       {/* --- ROW 1: Chart & Hero --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
         {/* Left: Chart */}
-        <div className="lg:col-span-1 h-full">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center min-h-[420px]">
-                <h3 className="font-bold text-gray-700 mb-6 text-center">Sales Distribution</h3>
-                <div className="flex-1 flex items-center justify-center w-full">
-                    <ChartPie /> 
-                </div>
-            </div>
+        <div className="lg:col-span-1 h-full min-h-[420px]">
+            <ChartPie />
         </div>
 
         {/* Right: Create Auction Hero */}

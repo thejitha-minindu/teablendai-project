@@ -9,6 +9,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from "@/lib/apiClient";
 import { getAuthClaims } from "@/lib/auth";
 import { getOrderById, updateOrderStatus, type OrderDetail } from "@/services/orderService";
+import { toast } from 'sonner';
 
 interface OrderTrackingPageProps {
   params: Promise<{
@@ -102,18 +103,29 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
     router.push(`/payment/${orderId}`);
   };
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    if (!confirm(`Update order status to "${newStatus}"?`)) return;
-    setIsUpdating(true);
-    try {
-      const updated = await updateOrderStatus(orderId, newStatus);
-      setOrder(updated);
-    } catch (err) {
-      console.error("Status update failed:", err);
-      alert("Failed to update status. Please try again.");
-    } finally {
-      setIsUpdating(false);
-    }
+  const handleStatusUpdate = (newStatus: string) => {
+    toast(`Update order status to "${newStatus}"?`, {
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          setIsUpdating(true);
+          try {
+            const updated = await updateOrderStatus(orderId, newStatus);
+            setOrder(updated);
+            toast.success("Status updated successfully.");
+          } catch (err) {
+            console.error("Status update failed:", err);
+            toast.error("Failed to update status. Please try again.");
+          } finally {
+            setIsUpdating(false);
+          }
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    });
   };
 
   // --- UI HELPERS ---

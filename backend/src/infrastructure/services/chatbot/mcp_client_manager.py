@@ -76,7 +76,23 @@ class MCPClientManager:
 
         try:
             logger.info(f"Connecting to {server_name}...")
-            
+
+            # On Windows, ensure the running event loop supports subprocesses.
+            # uvicorn's --reload mode may spawn a child process whose event loop
+            # lacks the ProactorEventLoop subprocess transport even when the
+            # policy was set in the parent.
+            if sys.platform == "win32":
+                loop = asyncio.get_running_loop()
+                if not hasattr(loop, '_make_subprocess_transport') or \
+                   type(loop)._make_subprocess_transport is asyncio.BaseEventLoop._make_subprocess_transport:
+                    # Current loop doesn't support subprocesses; create a new
+                    # ProactorEventLoop-backed subprocess and run the connection there.
+                    logger.warning(
+                        f"Current event loop ({type(loop).__name__}) lacks subprocess "
+                        f"support. Attempting ProactorEventLoop workaround for {server_name}."
+                    )
+                    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
+
             # Create server parameters
             server_params = StdioServerParameters(
                 command=sys.executable,
