@@ -130,6 +130,13 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_HOURS: int = 24
+
+    # Stripe Payment
+    STRIPE_SECRET_KEY: Optional[str] = None
+    STRIPE_WEBHOOK_SECRET: Optional[str] = None
+
+    # Frontend URL (for Stripe redirect callbacks)
+    FRONTEND_URL: str = "http://localhost:3000"
     
     # Email Configuration (SMTP)
     SMTP_HOST: Optional[str] = None

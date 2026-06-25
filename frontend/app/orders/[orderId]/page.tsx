@@ -8,7 +8,7 @@ import {
 import { useRouter, useSearchParams } from 'next/navigation';
 import { apiClient } from "@/lib/apiClient";
 import { getAuthClaims } from "@/lib/auth";
-import { getOrderById, updateOrderStatus, type OrderDetail } from "@/services/orderService";
+import { getOrderById, updateOrderStatus, createCheckoutSession, type OrderDetail } from "@/services/orderService";
 import { toast } from 'sonner';
 
 interface OrderTrackingPageProps {
@@ -54,6 +54,7 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const orderId = resolvedParams.orderId;
 
@@ -99,8 +100,19 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
   }, [fetchOrder]);
 
   // --- ACTIONS ---
-  const handlePayment = () => {
-    router.push(`/payment/${orderId}`);
+  const handlePayment = async () => {
+    if (isProcessingPayment) return;
+    setIsProcessingPayment(true);
+    try {
+      const res = await createCheckoutSession(orderId);
+      if (res.checkout_url) {
+        window.location.href = res.checkout_url;
+      }
+    } catch (err: any) {
+      console.error("Payment failed:", err);
+      toast.error("Failed to initiate payment. Please try again.");
+      setIsProcessingPayment(false);
+    }
   };
 
   const handleStatusUpdate = (newStatus: string) => {
@@ -251,10 +263,14 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
             <div className="px-6 pb-6">
               <button
                 onClick={handlePayment}
-                className="w-full bg-[#588157] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#3A5A40] transition-all shadow-lg flex items-center justify-center gap-3"
+                disabled={isProcessingPayment}
+                className="w-full bg-[#588157] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#3A5A40] transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <CreditCard className="w-6 h-6" />
-                Pay Now — LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}
+                {isProcessingPayment ? (
+                  <><RefreshCw className="w-6 h-6 animate-spin" /> Processing...</>
+                ) : (
+                  <><CreditCard className="w-6 h-6" /> Pay Now — LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}</>
+                )}
               </button>
             </div>
           )}

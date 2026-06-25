@@ -293,6 +293,32 @@ def ensure_runtime_schema_compatibility() -> RuntimeSchemaCompatibility:
                 """
             )
         )
+        # Add Stripe columns to payment_details if missing
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('payment_details', 'U') IS NOT NULL
+                   AND COL_LENGTH('payment_details', 'stripe_session_id') IS NULL
+                BEGIN
+                    ALTER TABLE payment_details
+                    ADD stripe_session_id VARCHAR(255) NULL
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('payment_details', 'U') IS NOT NULL
+                   AND COL_LENGTH('payment_details', 'stripe_payment_intent_id') IS NULL
+                BEGIN
+                    ALTER TABLE payment_details
+                    ADD stripe_payment_intent_id VARCHAR(255) NULL
+                END
+                """
+            )
+        )
 
         db.commit()
 

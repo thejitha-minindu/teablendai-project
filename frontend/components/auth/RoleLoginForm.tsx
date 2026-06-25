@@ -10,7 +10,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
-import { getAuthClaims, getHomePathByRole, setStoredAuthToken, type UserRole } from "@/lib/auth";
+import { getAuthClaims, getHomePathByRole, setStoredAuthToken, clearStoredAuthToken, type UserRole } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
 import authService, { GoogleCredentialResponse } from "@/services/authService";
 
@@ -70,6 +70,27 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       const currentUser = await authService.getCurrentUser();
       const verificationStatus = currentUser.verification_status || "PENDING";
 
+      const availableRoles = currentUser.available_roles || [];
+      
+      // Enforce that the user MUST have the role they are trying to log into
+      if (!availableRoles.includes(role)) {
+        clearStoredAuthToken();
+        const oppositeRole = role === "buyer" ? "seller" : "buyer";
+        throw new Error(`You do not have a ${role} account. Please sign in as ${oppositeRole}.`);
+      }
+
+      // If their active role is different from the portal they chose, switch it automatically
+      if (currentUser.active_role !== role) {
+        try {
+          const switchRes = await apiClient.post("/auth/switch-role", { role: role });
+          if (switchRes.data?.access_token) {
+            setStoredAuthToken(switchRes.data.access_token);
+          }
+        } catch (switchError) {
+          console.error("Failed to switch role during login:", switchError);
+        }
+      }
+
       if (verificationStatus === "PENDING") {
         router.push("/auth/pending");
         return;
@@ -81,24 +102,17 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       }
 
       if (verificationStatus === "APPROVED") {
-        router.push(redirectPath || getHomePathByRole(currentUser.default_role));
+        router.push(redirectPath || getHomePathByRole(role));
       }
-    } catch (fetchError) {
-      console.error("Failed to fetch current user:", fetchError);
-      const claims = getAuthClaims();
-      const status = claims?.status;
-
-      if (status === "PENDING") {
-        router.push("/auth/pending");
-        return;
+    } catch (error: any) {
+      console.error("Failed to process login routing:", error);
+      clearStoredAuthToken(); // Make sure we don't leave them half-logged in if it fails
+      
+      // If it's our custom error message about missing roles, pass it up
+      if (error instanceof Error && error.message.includes("account")) {
+        throw error; 
       }
-      if (status === "REJECTED") {
-        router.push("/auth/rejected");
-        return;
-      }
-      if (status === "APPROVED") {
-        router.push(redirectPath || getHomePathByRole(claims?.role));
-      }
+      throw new Error("Failed to verify your account profile.");
     }
   };
 
@@ -132,7 +146,11 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       await routeApprovedUser();
     } catch (error: any) {
       console.error("Login failed:", error);
-      setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
+      if (error instanceof Error && error.message.includes("account")) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg(error.response?.data?.detail || "Invalid email or password. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -150,9 +168,13 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
       const data = await authService.googleLogin(credentialResponse.credential);
 
       await routeApprovedUser();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Google login failed:", error);
-      setErrorMsg("Google authentication failed. Please try again.");
+      if (error instanceof Error && error.message.includes("account")) {
+        setErrorMsg(error.message);
+      } else {
+        setErrorMsg("Google authentication failed. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }

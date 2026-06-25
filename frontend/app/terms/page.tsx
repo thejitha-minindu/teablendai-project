@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, FileText, Shield, Users, Ban, Brain, CreditCard, XCircle, BookOpen, AlertTriangle, RefreshCw, Mail } from "lucide-react";
 
 const sections = [
@@ -162,37 +163,26 @@ const sections = [
       </p>
     ),
   },
-  {
-    icon: <Mail className="w-5 h-5" />,
-    number: "12",
-    title: "Contact",
-    content: (
-      <p>
-        For any questions, contact us at:{" "}
-        <a href="mailto:support@teablendai.com" className="text-green-600 hover:underline font-medium">
-          support@teablendai.com
-        </a>
-      </p>
-    ),
-  },
 ];
 
 export default function TermsOfServicePage() {
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
       {/* Top Bar */}
       <header className="sticky top-0 z-30 backdrop-blur-md bg-white/80 border-b border-gray-200/60 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
-          <Link
-            href="/auth/login"
+          <button
+            onClick={() => router.back()}
             className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Login
-          </Link>
+            Back
+          </button>
 
-          <Link href="/" className="relative h-10 w-28">
-            <Image src="/tea-blend-logo.svg" alt="TeaBlend AI" fill className="object-contain" />
+          <Link href="/" className="relative h-10 w-32">
+            <Image src="/TeaLogo.png" alt="TeaBlend AI" fill className="object-contain" />
           </Link>
         </div>
       </header>
@@ -246,19 +236,6 @@ export default function TermsOfServicePage() {
           ))}
         </div>
 
-        {/* Footer CTA */}
-        <div className="mt-12 text-center">
-          <p className="text-sm text-gray-500 mb-4">
-            Have questions about our terms?
-          </p>
-          <Link
-            href="mailto:support@teablendai.com"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 text-white font-semibold shadow-lg hover:shadow-xl transition-all hover:scale-[1.02]"
-          >
-            <Mail className="w-4 h-4" />
-            Contact Support
-          </Link>
-        </div>
       </main>
     </div>
   );

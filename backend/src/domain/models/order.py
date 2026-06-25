@@ -70,5 +70,8 @@ class PaymentDetails(Base):
 	order_id = Column(UNIQUEIDENTIFIER, ForeignKey("orders.order_id"), nullable=False, unique=True)
 	amount = Column(Float, nullable=False)
 	status = Column(Enum(PaymentStatus), nullable=False)
+	stripe_session_id = Column(String(255), nullable=True)
+	stripe_payment_intent_id = Column(String(255), nullable=True)
 
 	order = relationship("Order", back_populates="payment_details")
+

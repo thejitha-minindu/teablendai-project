@@ -1,130 +1,153 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { toast } from 'sonner';
-import { useRouter } from 'next/navigation';
-import { 
-  ArrowLeft, 
-  Lock, 
-  Truck, 
-  Wallet, 
-  ShieldCheck, 
-  CheckCircle2,
-  CreditCard
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  CheckCircle, Truck, CreditCard, Package, Clock, MapPin,
+  ArrowLeft, ShieldCheck, User, MessageCircle, RefreshCw
 } from 'lucide-react';
-import { getAuctionOrderDialog } from "@/services/buyer/auctionService";
-import { apiClient } from "@/lib/apiClient";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getAuthClaims } from "@/lib/auth";
+import { getOrderById, updateOrderStatus, createCheckoutSession, type OrderDetail } from "@/services/orderService";
+import { toast } from 'sonner';
 
-interface PaymentPageProps {
+interface OrderTrackingPageProps {
   params: Promise<{
     orderId: string;
   }>;
 }
 
-interface CurrentUser {
-  user_id: string;
-  email: string;
-  first_name: string;
-  last_name: string;
-  shipping_address?: string;
-  phone_num?: string;
+const STATUS_STEPS = [
+  { key: "pending",          label: "Order Placed",       icon: Package,     description: "Order has been placed and is awaiting payment." },
+  { key: "paid",             label: "Payment Received",   icon: CreditCard,  description: "Payment confirmed. Seller notified." },
+  { key: "confirmed",        label: "Order Confirmed",    icon: CheckCircle, description: "Seller has confirmed the order." },
+  { key: "processing",       label: "Processing",         icon: RefreshCw,   description: "Order is being prepared." },
+  { key: "packed",           label: "Packed",             icon: Package,     description: "Tea lot has been packed for shipping." },
+  { key: "shipped",          label: "Shipped",            icon: Truck,       description: "Order is on the way." },
+  { key: "out_for_delivery", label: "Out for Delivery",   icon: Truck,       description: "Delivery is in progress." },
+  { key: "delivered",        label: "Delivered",           icon: MapPin,      description: "Order has been delivered successfully!" },
+];
+
+function getStepIndex(orderStatus: string, paymentStatus: string): number {
+  // If not paid, we're at step 0 (pending)
+  if (paymentStatus !== "paid") return 0;
+  // If paid, find the order_status in the remaining steps
+  const statusMap: Record<string, number> = {
+    pending: 1,    // paid but order still pending
+    confirmed: 2,
+    processing: 3,
+    packed: 4,
+    shipped: 5,
+    out_for_delivery: 6,
+    delivered: 7,
+  };
+  return statusMap[orderStatus] ?? 1;
 }
 
-interface OrderData {
-  auction_id: string;
-  auction_name: string;
-  estate_name: string;
-  grade: string;
-  quantity: number;
-  sold_price: number;
-  date: string;
-  order_id: string;
-}
-
-export default function CheckoutPage({ params }: PaymentPageProps) {
+export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
   const resolvedParams = React.use(params);
   const router = useRouter();
-  const [paymentMethod, setPaymentMethod] = useState<'card' | 'paypal'>('card');
-  const [isProcessing, setIsProcessing] = useState(false);
+  const searchParams = useSearchParams();
+
+  const [currentUserRole, setCurrentUserRole] = useState<'SELLER' | 'BUYER' | null>(null);
+  const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [orderData, setOrderData] = useState<OrderData | null>(null);
-  const [userData, setUserData] = useState<CurrentUser | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
 
   const orderId = resolvedParams.orderId;
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  const fetchOrder = useCallback(async () => {
+    try {
+      const claims = getAuthClaims();
+      if (!claims?.id) return;
 
-        // Get current user
-        const currentUser = await apiClient.get<CurrentUser>("/users/me");
-        setUserData(currentUser.data);
+      const orderData = await getOrderById(orderId);
+      setOrder(orderData);
 
-        // Get order data by orderId - find the order that matches this orderId
-        const claims = getAuthClaims();
-        if (!claims?.id) {
-          throw new Error("User not authenticated");
-        }
-
-        // Fetch all orders for the current user
-        const allOrdersResponse = await apiClient.get<OrderData[]>(`/buyer/auctions/user/${claims.id}/orders`);
-        
-        // Find the order matching the orderId from URL
-        const foundOrder = allOrdersResponse.data.find(o => o.order_id === orderId);
-        
-        if (!foundOrder) {
-          throw new Error(`Order ${orderId} not found`);
-        }
-
-        setOrderData(foundOrder);
-      } catch (err: any) {
-        console.error("Error fetching data:", err);
-        setError(err.message || "Failed to load order details");
-      } finally {
-        setLoading(false);
+      // Determine role — use JWT role claim as primary source
+      const jwtRole = claims.role; // "buyer" or "seller" from JWT
+      const uid = claims.id.toLowerCase();
+      const isSeller = orderData.seller_id?.toLowerCase() === uid;
+      const isBuyer = orderData.buyer_id?.toLowerCase() === uid;
+      
+      // Use JWT role if user is both buyer and seller of this order (unlikely but safe)
+      // Otherwise use ID match, with JWT role as ultimate fallback
+      if (isSeller) {
+        setCurrentUserRole('SELLER');
+      } else if (isBuyer) {
+        setCurrentUserRole('BUYER');
+      } else {
+        // Fallback to JWT role claim
+        setCurrentUserRole(jwtRole === 'seller' ? 'SELLER' : 'BUYER');
       }
-    };
-
-    if (orderId) {
-      fetchData();
+    } catch (err: any) {
+      console.error("Error fetching order:", err);
+      if (!order) {
+        setError(err.message || "Failed to load order details");
+      }
+    } finally {
+      setLoading(false);
     }
   }, [orderId]);
 
-  // Calculate totals
-  const subtotal = orderData?.sold_price || 0;
-  const tax = subtotal * 0.1; // 10% tax
-  const platformFee = subtotal * 0.02; // 2% platform fee
-  const total = subtotal + tax + platformFee;
+  useEffect(() => {
+    fetchOrder();
+    // Poll every 10 seconds for live updates
+    const interval = setInterval(fetchOrder, 10000);
+    return () => clearInterval(interval);
+  }, [fetchOrder]);
 
-  const processPayment = async (e?: React.FormEvent) => {
-    if (e) e.preventDefault();
-    if (isProcessing) return;
-    setIsProcessing(true);
-
+  // --- ACTIONS ---
+  const handlePayment = async () => {
+    if (isProcessingPayment) return;
+    setIsProcessingPayment(true);
     try {
-      // Update payment status to 'paid' via API
-      await apiClient.patch(`/orders/${orderId}/payment`, {
-        payment_status: "paid",
-      });
-
-      // Redirect to success page
-      router.push(`/payment/success?orderId=${orderId}`);
+      const res = await createCheckoutSession(orderId);
+      if (res.checkout_url) {
+        window.location.href = res.checkout_url;
+      }
     } catch (err: any) {
       console.error("Payment failed:", err);
-      toast.error("Payment processing failed. Please try again.");
-      setIsProcessing(false);
+      toast.error("Failed to initiate payment. Please try again.");
+      setIsProcessingPayment(false);
     }
   };
 
+  const handleStatusUpdate = (newStatus: string) => {
+    toast(`Update order status to "${newStatus}"?`, {
+      action: {
+        label: 'Confirm',
+        onClick: async () => {
+          setIsUpdating(true);
+          try {
+            const updated = await updateOrderStatus(orderId, newStatus);
+            setOrder(updated);
+            toast.success("Status updated successfully.");
+          } catch (err) {
+            console.error("Status update failed:", err);
+            toast.error("Failed to update status. Please try again.");
+          } finally {
+            setIsUpdating(false);
+          }
+        }
+      },
+      cancel: {
+        label: 'Cancel',
+        onClick: () => {}
+      }
+    });
+  };
+
+  // --- UI HELPERS ---
+  const currentStepIndex = order ? getStepIndex(order.order_status, order.payment_status) : 0;
+
   if (loading) {
     return (
-      <div className="bg-slate-50 min-h-screen font-sans flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-slate-600 font-medium">Loading order details...</p>
+          <RefreshCw className="w-8 h-8 text-[#588157] animate-spin mx-auto mb-3" />
+          <p className="text-gray-600 font-medium">Loading order details...</p>
         </div>
       </div>
     );
@@ -132,7 +155,7 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
 
   if (error) {
     return (
-      <div className="bg-slate-50 min-h-screen font-sans flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 font-medium mb-4">{error}</p>
           <button
@@ -146,222 +169,179 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
     );
   }
 
-  const deliveryAddress = userData?.shipping_address || "Address not provided";
-  const buyerName = `${userData?.first_name} ${userData?.last_name}`.trim() || "Guest";
+  if (!order) {
+    return (
+      <div className="min-h-screen bg-gray-50 py-8 px-4 flex items-center justify-center">
+        <p className="text-gray-600 font-medium">No order found</p>
+      </div>
+    );
+  }
+
+  const isPaid = order.payment_status === "paid";
 
   return (
-    <div className="bg-slate-50 min-h-screen font-sans">
-      <div className="max-w-screen-xl mx-auto px-4 py-8 sm:py-12">
-        
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-10">
-          <button 
-            onClick={() => router.back()} 
-            className="flex items-center text-slate-500 hover:text-[#588157] font-bold transition-all group"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" /> 
-            Back
+    <div className="min-h-screen bg-gray-50 py-8 px-4">
+      <div className="max-w-4xl mx-auto">
+
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <button onClick={() => router.back()} className="flex items-center text-gray-500 hover:text-gray-800 transition-colors">
+            <ArrowLeft className="w-5 h-5 mr-2" /> Back
           </button>
-          <div className="hidden sm:flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
-            <Lock className="w-3 h-3" /> 256-Bit Secure
-          </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8 lg:gap-12 items-start">
-          
-          {/* LEFT COLUMN: Payment Form */}
-          <div className="lg:col-span-2 space-y-8">
+        {/* --- ORDER CARD --- */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
             <div>
-              <h2 className="text-3xl text-slate-900 font-black mb-2 tracking-tight">Checkout</h2>
-              <p className="text-slate-500 font-medium">Complete your purchase for {orderData?.auction_name || "your order"}.</p>
+              <h1 className="text-2xl font-bold text-gray-800 mb-1">
+                Order {order.display_order_id || `#${order.order_id.slice(0, 8)}`}
+              </h1>
+              <p className="text-gray-500 text-sm">Placed on {order.order_date ? new Date(order.order_date).toLocaleDateString() : "N/A"}</p>
             </div>
-            
-            <form onSubmit={processPayment} className="space-y-10">
-              {/* Payment Method Selector */}
-              <div className="flex gap-4 flex-row flex-nowrap overflow-x-auto">
-                {/* Card Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('card')}
-                  className={`relative flex-1 min-w-0 flex flex-col p-5 rounded-2xl border-2 text-left transition-all ${
-                    paymentMethod === 'card'
-                    ? 'bg-white border-[#588157] shadow-md ring-4 ring-[#588157]/5'
-                    : 'bg-slate-100/50 border-transparent hover:border-slate-300 text-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'card' ? 'border-[#588157]' : 'border-slate-300'}`}>
-                      {paymentMethod === 'card' && <div className="w-2.5 h-2.5 bg-[#588157] rounded-full" />}
-                    </div>
-                    <div className="flex gap-1.5 opacity-80">
-                      <img src="https://readymadeui.com/images/visa.webp" className="w-8" alt="Visa" />
-                      <img src="https://readymadeui.com/images/master.webp" className="w-8" alt="MasterCard" />
-                    </div>
-                  </div>
-                  <span className={`font-bold text-sm ${paymentMethod === 'card' ? 'text-slate-900' : ''}`}>Credit / Debit Card</span>
-                  <span className="text-[11px] mt-1 font-medium">Pay securely via Stripe</span>
-                </button>
-
-                {/* PayPal Option */}
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod('paypal')}
-                  className={`relative flex-1 min-w-0 flex flex-col p-5 rounded-2xl border-2 text-left transition-all ${
-                    paymentMethod === 'paypal'
-                    ? 'bg-white border-[#588157] shadow-md ring-4 ring-[#588157]/5'
-                    : 'bg-slate-100/50 border-transparent hover:border-slate-300 text-slate-500'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'paypal' ? 'border-[#588157]' : 'border-slate-300'}`}>
-                      {paymentMethod === 'paypal' && <div className="w-2.5 h-2.5 bg-[#588157] rounded-full" />}
-                    </div>
-                    <img src="https://readymadeui.com/images/paypal.webp" className="w-14" alt="PayPal" />
-                  </div>
-                  <span className={`font-bold text-sm ${paymentMethod === 'paypal' ? 'text-slate-900' : ''}`}>PayPal Account</span>
-                  <span className="text-[11px] mt-1 font-medium">Log in to your account</span>
-                </button>
+            <div className="flex gap-2 items-start">
+              {/* Payment Status Badge */}
+              <div className={`px-4 py-2 rounded-full font-bold text-sm ${
+                isPaid ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+              }`}>
+                {isPaid ? '✅ Paid' : '⏳ Awaiting Payment'}
               </div>
-
-              {/* Conditional Content */}
-              <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-sm transition-all">
-                {paymentMethod === 'card' ? (
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <div className="col-span-full">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Cardholder Name</label>
-                      <input required type="text" placeholder="Johnathan Doe"
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                    <div className="col-span-full">
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Card Number</label>
-                      <div className="relative">
-                        <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input required type="text" placeholder="0000 0000 0000 0000"
-                          className="pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">Expiry Date</label>
-                      <input required type="text" placeholder="MM / YY"
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                    <div>
-                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">CVV Code</label>
-                      <input required type="password" placeholder="***" maxLength={3}
-                        className="px-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 w-full text-sm rounded-xl focus:ring-4 focus:ring-[#588157]/10 focus:border-[#588157] focus:bg-white outline-none transition-all" />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="py-6 text-center">
-                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <img src="https://readymadeui.com/images/paypal.webp" className="w-10" alt="PayPal" />
-                    </div>
-                    <p className="text-sm text-slate-600 font-medium max-w-xs mx-auto">
-                      Click "Pay Now" to open the PayPal secure portal and complete your purchase.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Secure Badges */}
-              <div className="flex flex-wrap items-center justify-center gap-6 pt-4 grayscale opacity-60">
-                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><ShieldCheck className="w-4 h-4 text-[#588157]" /> SSL Encrypted</span>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><CheckCircle2 className="w-4 h-4 text-[#588157]" /> PCI Compliant</span>
-                <span className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"><Lock className="w-4 h-4 text-[#588157]" /> Secure Gateway</span>
-              </div>
-            </form>
+            </div>
           </div>
 
-          {/* RIGHT COLUMN: Summary (Sticky) */}
-          <aside className="lg:sticky lg:top-12 space-y-6">
-            <div className="bg-white border border-slate-200 p-8 rounded-[2rem] shadow-xl shadow-slate-200/50">
-              <h3 className="text-xl font-black text-slate-900 mb-6 tracking-tight">Order Summary</h3>
-              
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-slate-400">Order Amount</span>
-                  <span className="text-slate-800">LKR {subtotal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Item Details */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-gray-700 uppercase text-xs tracking-wider">Item Details</h3>
+              <div className="flex items-start gap-4">
+                <div className="bg-green-50 p-3 rounded-xl">
+                  <Package className="w-8 h-8 text-[#588157]" />
                 </div>
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-slate-400">Tax (10%)</span>
-                  <span className="text-slate-800">LKR {tax.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-                <div className="flex justify-between text-sm font-medium">
-                  <span className="text-slate-400">Platform Fee (2%)</span>
-                  <span className="text-slate-800">LKR {platformFee.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
-                </div>
-                <div className="h-px bg-slate-100 my-4" />
-                <div className="flex justify-between items-end">
-                  <span className="text-sm font-black text-slate-900 uppercase tracking-widest">Total</span>
-                  <span className="text-3xl font-black text-[#344e41] leading-none tracking-tighter">
-                    LKR {total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-                  </span>
+                <div>
+                  <h2 className="font-bold text-lg text-gray-900">{order.auction_name || "Tea Lot"}</h2>
+                  <p className="text-gray-600">Grade: <span className="font-medium text-gray-900">{order.grade || "N/A"}</span></p>
+                  <p className="text-gray-600">Quantity: <span className="font-medium text-gray-900">{order.quantity || 0} kg</span></p>
+                  <p className="text-gray-600">Total: <span className="font-bold text-[#588157] text-lg">LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}</span></p>
                 </div>
               </div>
+            </div>
 
-              <button 
-                onClick={() => processPayment()}
-                disabled={isProcessing}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-green-900/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            {/* Counterparty Details */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-gray-700 uppercase text-xs tracking-wider">
+                {currentUserRole === 'BUYER' ? 'Seller Info' : 'Buyer Info'}
+              </h3>
+
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-white p-2 rounded-full shadow-sm">
+                    <User className="w-5 h-5 text-gray-500" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">
+                      {currentUserRole === 'BUYER' ? (order.seller_name || order.estate_name || "Seller") : (order.buyer_name || "Buyer")}
+                    </p>
+                    <div className="flex items-center gap-1 text-xs text-green-600 font-medium">
+                      <ShieldCheck className="w-3 h-3" /> Verified Account
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => router.push(`/messages/${orderId}`)}
+                  className="w-full bg-[#588157] text-white py-2.5 rounded-lg font-bold text-sm hover:bg-[#3A5A40] transition-all flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Contact {currentUserRole === 'BUYER' ? 'Seller' : 'Buyer'}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Buyer Pay Now Button */}
+          {currentUserRole === 'BUYER' && !isPaid && (
+            <div className="px-6 pb-6">
+              <button
+                onClick={handlePayment}
+                disabled={isProcessingPayment}
+                className="w-full bg-[#588157] text-white py-4 rounded-xl font-bold text-lg hover:bg-[#3A5A40] transition-all shadow-lg flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {isProcessing ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                    Processing...
-                  </>
-                ) : 'Pay Now'}
+                {isProcessingPayment ? (
+                  <><RefreshCw className="w-6 h-6 animate-spin" /> Processing...</>
+                ) : (
+                  <><CreditCard className="w-6 h-6" /> Pay Now — LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}</>
+                )}
               </button>
             </div>
-
-            {/* Logistics Info - Updated with actual buyer data */}
-            <div className="bg-[#344e41] rounded-[1.5rem] p-6 text-white overflow-hidden relative group">
-              <Truck className="absolute -right-4 -bottom-4 w-24 h-24 text-white/10 group-hover:rotate-12 transition-transform duration-500" />
-              <div className="relative z-10">
-                <p className="text-[10px] font-black text-green-300 uppercase tracking-widest mb-2">Delivery Details</p>
-                <p className="font-bold text-sm mb-1">{buyerName}</p>
-                <p className="text-xs text-green-100/70 leading-relaxed mb-4">{deliveryAddress}</p>
-                <div className="flex items-center gap-2 text-[10px] font-bold bg-white/10 w-fit px-3 py-1.5 rounded-full">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                  Estimated Delivery: TBD
-                </div>
-              </div>
-            </div>
-
-            {/* Order Info */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl">
-              <p className="text-[11px] text-slate-500 font-black uppercase tracking-widest mb-3">Order Details</p>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Order ID</span>
-                  <span className="font-semibold text-slate-900">{orderId}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Item</span>
-                  <span className="font-semibold text-slate-900">{orderData?.auction_name}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Grade</span>
-                  <span className="font-semibold text-slate-900">{orderData?.grade}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-slate-500">Quantity</span>
-                  <span className="font-semibold text-slate-900">{orderData?.quantity} kg</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Escrow Shield */}
-            <div className="bg-white border border-slate-200 p-6 rounded-2xl flex gap-4 items-start">
-              <div className="bg-slate-100 p-2 rounded-lg">
-                <Wallet className="w-5 h-5 text-slate-600" />
-              </div>
-              <p className="text-[11px] text-slate-500 font-medium leading-relaxed">
-                <strong className="text-slate-900 block mb-0.5">Escrow Protected</strong>
-                Funds are held securely and released only after you confirm the quality of the tea lot received.
-              </p>
-            </div>
-          </aside>
+          )}
         </div>
+
+        {/* --- ORDER TIMELINE --- */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8">
+          <h2 className="text-lg font-bold text-gray-800 mb-6 flex items-center gap-2">
+            <Clock className="w-5 h-5 text-[#588157]" />
+            Order Progress
+          </h2>
+
+          <div className="relative">
+            {/* Vertical line */}
+            <div className="absolute left-8 top-8 bottom-8 w-0.5 bg-gray-200" />
+
+            {STATUS_STEPS.map((step, idx) => {
+              const isCompleted = idx < currentStepIndex;
+              const isCurrent = idx === currentStepIndex;
+              const isPending = idx > currentStepIndex;
+              const Icon = step.icon;
+
+              return (
+                <div key={step.key} className="relative flex gap-6 mb-8 last:mb-0">
+                  <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
+                    isCompleted ? 'bg-green-50 border-green-500 text-green-600' :
+                    isCurrent ? 'border-[#588157] text-[#588157] shadow-lg ring-4 ring-[#588157]/10' :
+                    'border-gray-200 text-gray-300'
+                  }`}>
+                    {isCompleted ? <CheckCircle className="w-6 h-6" /> : <Icon className="w-6 h-6" />}
+                  </div>
+                  <div className="pt-2 flex-1">
+                    <h3 className={`font-bold ${isPending ? 'text-gray-400' : isCompleted ? 'text-green-700' : 'text-gray-900'}`}>
+                      {step.label}
+                    </h3>
+                    <p className="text-gray-500 text-sm mt-0.5">
+                      {isCurrent ? step.description : isCompleted ? "Completed" : "Upcoming"}
+                    </p>
+
+                    {/* Seller action buttons at current step */}
+                    {currentUserRole === 'SELLER' && isCurrent && isPaid && idx >= 1 && idx < STATUS_STEPS.length - 1 && (
+                      <div className="mt-3">
+                        <button
+                          onClick={() => handleStatusUpdate(STATUS_STEPS[idx + 1]?.key || "")}
+                          disabled={isUpdating || !STATUS_STEPS[idx + 1]}
+                          className="bg-[#3A5A40] text-white px-5 py-2 rounded-lg font-bold text-sm hover:bg-[#2A402E] transition-colors shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                        >
+                          {isUpdating ? (
+                            <><RefreshCw className="w-4 h-4 animate-spin" /> Updating...</>
+                          ) : (
+                            <>Mark as {STATUS_STEPS[idx + 1]?.label || "Next"}</>
+                          )}
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Seller disabled message if not paid */}
+                    {currentUserRole === 'SELLER' && isCurrent && !isPaid && idx === 0 && (
+                      <div className="mt-3 bg-yellow-50 border border-yellow-200 rounded-xl p-3">
+                        <p className="text-xs font-medium text-yellow-700">
+                          ⏳ Waiting for buyer payment before you can process this order
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+
       </div>
     </div>
   );
