@@ -147,18 +147,11 @@ export default function TrackAuctionPage() {
     const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || gradeFilter !== "all" || priceRange.min !== "" || priceRange.max !== "";
 
     if (loading) {
-        return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-                    <p className="text-gray-500">Loading auctions...</p>
-                </div>
-            </div>
-        );
+    return null;
     }
 
     return (
-        <div className="flex flex-col p-6 bg-gray-50 min-h-screen">
+        <div className="flex flex-col p-6 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Track Auctions</h1>

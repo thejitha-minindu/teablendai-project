@@ -139,7 +139,7 @@ export default function HomePage() {
                                 description: "Generate perfect tea blends using machine learning algorithms",
                                 icon: <Brain className="w-10 h-10 text-green-600" />,
                                 color: "white",
-                                path: "/export-analytics"
+                                path: "/ai-blend-creator"
                             },
                             {
                                 title: "Market Analysis",
@@ -182,15 +182,7 @@ export default function HomePage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
                         <div className="space-y-6">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-linear-to-r from-green-600 to-emerald-500 rounded-lg flex items-center justify-center overflow-hidden">
-                                    <Image
-                                        src="/tea-blend-logo.svg"
-                                        alt="Tea Blend AI Logo"
-                                        width={28}
-                                        height={28}
-                                        className="w-7 h-7 object-contain"
-                                    />
-                                </div>
+                                
                                 <span className="text-xl font-bold">TeaBlendAI</span>
                             </div>
                             <p className="text-gray-400 text-sm leading-relaxed">

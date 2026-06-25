@@ -8,13 +8,8 @@ import {
   User, 
   Mail, 
   Lock, 
-  UserCheck, 
-  Calendar, 
   Save, 
   X, 
-  Shield,
-  Award,
-  Clock,
   CheckCircle,
   AlertCircle,
   Camera
@@ -104,18 +99,11 @@ export default function AdminProfile() {
 
   /* ================= LOADING ================= */
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading profile...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-10 px-4">
+    <div className="min-h-screen py-10 px-4">
       <div className="max-w-4xl mx-auto">
         {/* Notifications */}
         {error && (
@@ -140,7 +128,7 @@ export default function AdminProfile() {
         <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
           {/* Cover Image with Gradient */}
           <div className="relative h-48 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-800 to-emerald-900">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#1A2F1C] to-[#3A5A40]">
               <svg
                 className="absolute inset-0 w-full h-full opacity-20"
                 viewBox="0 0 1440 320"
@@ -153,26 +141,14 @@ export default function AdminProfile() {
               </svg>
             </div>
 
-            {/* Status Badge */}
-            <div className="absolute top-4 right-4">
-              <div className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 ${
-                admin.status === "active" 
-                  ? "bg-green-500 text-white" 
-                  : "bg-gray-500 text-white"
-              }`}>
-                <div className={`w-2 h-2 rounded-full ${admin.status === "active" ? "bg-white animate-pulse" : "bg-gray-300"}`}></div>
-                {admin.status === "active" ? "Active" : "Inactive"}
-              </div>
-            </div>
-
             {/* Avatar */}
             <div className="absolute left-1/2 -bottom-16 -translate-x-1/2">
               <div className="relative group">
-                <div className="w-32 h-32 rounded-full border-4 border-white bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center shadow-lg">
+                <div className="w-32 h-32 rounded-full border-4 border-white bg-[#F5F7EB] flex items-center justify-center shadow-lg">
                   {admin.avatarUrl ? (
                     <img src={admin.avatarUrl} alt="Avatar" className="w-full h-full rounded-full object-cover" />
                   ) : (
-                    <User className="w-16 h-16 text-green-700" />
+                    <User className="w-16 h-16 text-[#3A5A40]" />
                   )}
                 </div>
                 <button className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-all duration-200 opacity-0 group-hover:opacity-100">
@@ -188,38 +164,15 @@ export default function AdminProfile() {
               {admin.firstName} {admin.lastName}
             </h2>
             <div className="flex items-center justify-center gap-2 mt-1">
-              <Shield className="w-4 h-4 text-green-600" />
               <p className="text-sm text-gray-500">{admin.role}</p>
             </div>
             <div className="flex items-center justify-center gap-4 mt-3 text-xs text-gray-400">
               <div className="flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
                 Joined {new Date(admin.joined).toLocaleDateString()}
               </div>
               <div className="flex items-center gap-1">
-                <Clock className="w-3 h-3" />
                 Last login: {admin.lastLogin}
               </div>
-            </div>
-          </div>
-
-          {/* Stats Overview */}
-          <div className="grid grid-cols-3 gap-4 p-6 bg-gray-50 border-b border-gray-100">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-700">{admin.totalActions}</p>
-              <p className="text-xs text-gray-500">Actions Performed</p>
-            </div>
-            <div className="text-center border-l border-r border-gray-200">
-              <p className="text-2xl font-bold text-green-700">
-                {new Date(admin.joined).getFullYear()}
-              </p>
-              <p className="text-xs text-gray-500">Member Since</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-700">
-                {admin.status === "active" ? "✓" : "•"}
-              </p>
-              <p className="text-xs text-gray-500">Account Status</p>
             </div>
           </div>
 
@@ -227,12 +180,10 @@ export default function AdminProfile() {
           <div className="p-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
-                <UserCheck className="w-5 h-5 text-green-600" />
                 Account Details
               </h3>
               {!isEditing && (
                 <div className="text-xs text-gray-400 flex items-center gap-1">
-                  <Award className="w-3 h-3" />
                   Administrator Access
                 </div>
               )}
@@ -332,11 +283,11 @@ export default function AdminProfile() {
                   <button
                     onClick={handleSave}
                     disabled={loading}
-                    className="px-6 py-2.5 bg-gradient-to-r from-green-700 to-emerald-700 text-white rounded-lg text-sm font-medium hover:from-green-800 hover:to-emerald-800 transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50"
+                    className="px-6 py-2.5 bg-[#3A5A40] text-white rounded-lg text-sm font-medium hover:bg-[#1A2F1C] transition-all duration-200 flex items-center gap-2 shadow-md hover:shadow-lg disabled:opacity-50"
                   >
                     {loading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <div className=" rounded-full h-4 w-4 border-b-2 border-white"></div>
                         Saving...
                       </>
                     ) : (
@@ -350,7 +301,7 @@ export default function AdminProfile() {
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="px-6 py-2.5 border-2 border-green-600 rounded-lg text-sm font-medium text-green-700 hover:bg-green-50 transition-all duration-200 flex items-center gap-2"
+                  className="px-6 py-2.5 border-2 border-[#3A5A40] rounded-lg text-sm font-medium text-[#3A5A40] hover:bg-gray-50 transition-all duration-200 flex items-center gap-2"
                 >
                   <Pencil size={14} />
                   Edit Profile
@@ -363,7 +314,6 @@ export default function AdminProfile() {
         {/* Additional Info Card */}
         <div className="mt-6 bg-white rounded-xl shadow-sm p-6">
           <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-            <Award className="w-4 h-4 text-green-600" />
             Account Information
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -373,7 +323,7 @@ export default function AdminProfile() {
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-gray-600">Role Level:</span>
-              <span className="text-green-700 font-medium">{admin.role}</span>
+              <span className="text-[#3A5A40] font-medium">{admin.role}</span>
             </div>
           </div>
         </div>
@@ -417,7 +367,7 @@ function inputClass(enabled: boolean) {
   return `w-full border rounded-lg px-4 py-2.5 text-sm transition-all duration-200
   ${
     enabled
-      ? "bg-white border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-200 outline-none"
+      ? "bg-white border-gray-300 focus:border-[#3A5A40] focus:ring-2 focus:ring-gray-200 outline-none"
       : "bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed"
   }`;
 }

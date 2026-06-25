@@ -63,12 +63,11 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6 bg-gray-50 min-h-screen">
+    <div className="p-6 space-y-6 min-h-screen">
 
       {/* PAGE TITLE */}
       <div>
         <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-          <TrendingUp className="w-8 h-8 text-green-700" />
           Admin Dashboard
         </h1>
         <p className="text-gray-500 mt-1">System overview & controls</p>
@@ -116,12 +115,6 @@ export default function AdminDashboard() {
             {weeklyActivity.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={weeklyActivity} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorActivity" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#15803d" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#15803d" stopOpacity={0.1}/>
-                    </linearGradient>
-                  </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis 
                     dataKey="week" 
@@ -138,12 +131,12 @@ export default function AdminDashboard() {
                     contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
                     labelStyle={{ fontWeight: 'bold', color: '#1f2937' }}
                   />
-                  <Bar dataKey="count" fill="url(#colorActivity)" radius={[4, 4, 0, 0]} name="Operations" />
+                  <Bar dataKey="count" fill="#109842ff" radius={[4, 4, 0, 0]} name="Operations" />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
               <div className="h-full flex flex-col items-center justify-center rounded-xl bg-gradient-to-br from-gray-50 to-gray-100 text-gray-400 border border-gray-100">
-                <BarChart3 className="w-10 h-10 text-gray-300 mb-2 animate-pulse" />
+                <BarChart3 className="w-10 h-10 text-gray-300 mb-2 " />
                 <p className="text-sm font-medium text-gray-400">No activity data recorded yet</p>
               </div>
             )}
@@ -237,7 +230,7 @@ function ViolationCard({ totalViolations }: { totalViolations: number }) {
           <h3 className="text-sm font-medium text-gray-500">Total Violations</h3>
         </div>
         {totalViolations > 0 && (
-          <div className="px-2 py-1 bg-red-100 rounded-full animate-pulse">
+          <div className="px-2 py-1 bg-red-100 rounded-full ">
             <span className="text-xs font-bold text-red-600">URGENT</span>
           </div>
         )}

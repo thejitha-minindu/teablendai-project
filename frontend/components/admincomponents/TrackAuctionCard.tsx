@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 
 type TrackAuctionCardProps = {
     auctionId: string;
@@ -74,13 +75,23 @@ export function TrackAuctionCard({
 
     const handleDelete = () => {
         if (!onDelete) return;
-        const confirmed = confirm(
-            `Are you sure you want to delete the auction "${auctionName}"? This will also remove all associated bids and watchlist entries. This action cannot be undone.`
+        toast.info(
+            `Are you sure you want to delete the auction "${auctionName}"? This will also remove all associated bids and watchlist entries. This action cannot be undone.`,
+            {
+                action: {
+                    label: "Delete",
+                    onClick: () => {
+                        setIsDeleting(true);
+                        onDelete(auctionId);
+                    }
+                },
+                cancel: {
+                    label: "Cancel",
+                    onClick: () => {}
+                },
+                duration: 5000,
+            }
         );
-        if (confirmed) {
-            setIsDeleting(true);
-            onDelete(auctionId);
-        }
     };
 
     const statusStyle = getStatusColor();
@@ -202,16 +213,16 @@ export function TrackAuctionCard({
                     Reference ID: {customAuctionId || "N/A"}
                 </div>
                 <div className="flex gap-2">
-                    {(statusLower === "active" || statusLower === "live") && (
+                    {/* {(statusLower === "active" || statusLower === "live") && (
                         <button className="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                             View Bids
                         </button>
-                    )}
-                    {(statusLower === "completed" || statusLower === "history") && (
+                    )} */}
+                    {/* {(statusLower === "completed" || statusLower === "history") && (
                         <button className="text-xs px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                             View Details
                         </button>
-                    )}
+                    )} */}
                     {isDeletable && onDelete && (
                         <button
                             id={`delete-auction-${auctionId}`}

@@ -3,11 +3,7 @@ import { AdminLoginForm } from "@/components/auth/AdminLoginForm";
 
 export default function AdminLoginPage() {
   return (
-    <Suspense fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-900">
-            <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-        </div>
-    }>
+    <Suspense fallback={null}>
       <AdminLoginForm />
     </Suspense>
   );
