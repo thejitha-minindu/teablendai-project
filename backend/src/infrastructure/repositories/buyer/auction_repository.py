@@ -120,6 +120,7 @@ class AuctionRepository(AuctionRepositoryInterface):
                 ).first()
                 if order:
                     auction.order_id = str(order.order_id)
+                    auction.payment_status = str(order.payment_status)
             
             return auctions
         except SQLAlchemyError as e:

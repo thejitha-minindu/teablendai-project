@@ -39,6 +39,7 @@ interface OrderData {
   sold_price: number;
   date: string;
   order_id: string;
+  payment_status?: string;
 }
 
 export default function CheckoutPage({ params }: PaymentPageProps) {
@@ -76,6 +77,11 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
         
         if (!foundOrder) {
           throw new Error(`Order ${orderId} not found`);
+        }
+
+        if (foundOrder.payment_status === 'paid') {
+          router.replace(`/orders/${orderId}`);
+          return;
         }
 
         setOrderData(foundOrder);
@@ -224,13 +230,22 @@ export default function CheckoutPage({ params }: PaymentPageProps) {
 
               <button 
                 onClick={() => processPayment()}
-                disabled={isProcessing}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-2xl shadow-lg shadow-green-900/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                disabled={isProcessing || orderData?.payment_status === 'paid'}
+                className={`w-full text-white font-bold py-3 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 ${
+                  orderData?.payment_status === 'paid' 
+                    ? 'bg-slate-400 cursor-not-allowed shadow-none' 
+                    : 'bg-green-600 hover:bg-green-700 shadow-green-900/20 disabled:opacity-70 disabled:cursor-not-allowed'
+                }`}
               >
                 {isProcessing ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                     Processing...
+                  </>
+                ) : orderData?.payment_status === 'paid' ? (
+                  <>
+                    <CheckCircle2 className="w-5 h-5" />
+                    Paid
                   </>
                 ) : 'Pay Now'}
               </button>

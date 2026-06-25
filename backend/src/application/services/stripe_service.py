@@ -62,3 +62,13 @@ class StripeService:
             # Invalid signature
             logger.error(f"Invalid signature for Stripe webhook: {e}")
             raise
+
+    def verify_checkout_session(self, session_id: str):
+        """Retrieve a Stripe Checkout Session to check its payment status."""
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+            return session
+        except Exception as e:
+            logger.error(f"Error retrieving Stripe checkout session {session_id}: {e}")
+            raise
+

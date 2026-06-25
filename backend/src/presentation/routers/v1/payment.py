@@ -157,3 +157,42 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
                 logger.error(f"Webhook received for unknown order_id: {order_id}")
 
     return {"status": "success"}
+
+@router.get("/verify/{order_id}")
+def verify_payment_status(order_id: str, db: Session = Depends(get_db)):
+    """Manually verify and sync payment status from Stripe (Failsafe for local testing without webhooks)"""
+    order = db.query(Order).filter(Order.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    if order.payment_status == "paid":
+        return {"status": "success", "payment_status": "paid", "message": "Already paid"}
+
+    payment_details = (
+        db.query(PaymentDetails)
+        .filter(PaymentDetails.order_id == order.order_id)
+        .first()
+    )
+
+    if not payment_details or not payment_details.stripe_session_id:
+        raise HTTPException(status_code=400, detail="No stripe session found for this order")
+
+    try:
+        session = stripe_service.verify_checkout_session(payment_details.stripe_session_id)
+        
+        if session.payment_status == "paid":
+            order.payment_status = "paid"
+            order.status = OrdSt.completed
+
+            payment_details.status = PaymentStatus.successful
+            payment_details.stripe_payment_intent_id = session.payment_intent
+            payment_details.payment_date = datetime.datetime.utcnow()
+
+            db.commit()
+            logger.info(f"Payment verified manually for order {order_id}")
+            return {"status": "success", "payment_status": "paid"}
+        
+        return {"status": "success", "payment_status": session.payment_status}
+    except Exception as e:
+        logger.error(f"Manual verification failed for {order_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to verify payment status with Stripe")

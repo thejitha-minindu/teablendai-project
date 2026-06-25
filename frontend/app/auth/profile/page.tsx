@@ -7,11 +7,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft, Building2, Calendar, CheckCircle2, Globe, Loader2,
-  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X, Bell, AlertCircle, Tag
+  Mail, MapPin, Phone, Save, ShieldCheck, ShoppingBag, Store, User, Camera, Trash2, Pencil, X, Bell, AlertCircle, Tag, LogOut
 } from "lucide-react"; // UI Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for sending backend requests
 import { API_BASE_URL } from "@/lib/api.config";
-import { getHomePathByRole, getStoredToken, setStoredAuthToken, type UserRole } from "@/lib/auth"; // Auth tools
+import { getHomePathByRole, getStoredToken, setStoredAuthToken, clearStoredAuthToken, type UserRole } from "@/lib/auth"; // Auth tools
 
 // --- Types ---
 // This defines exactly what data we expect from the backend profile API
@@ -158,6 +158,11 @@ export default function AuthProfilePage() {
 
   // --- Handlers ---
   
+  const handleLogout = () => {
+    clearStoredAuthToken();
+    router.replace("/auth");
+  };
+
   // Fills the forms with the data we received from the backend
   const hydrateForms = (data: ProfileResponse) => {
     setPersonalForm({
@@ -518,10 +523,10 @@ export default function AuthProfilePage() {
           <Link href={dashboardHref} className="rounded-full border border-green-200 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50">
             Dashboard
           </Link>
-          <Link href="/auth" className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50">
-            <ArrowLeft className="h-4 w-4" />
-            Back
-          </Link>
+          <button onClick={handleLogout} className="inline-flex items-center gap-2 rounded-full border border-red-200 bg-white px-5 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50">
+            <LogOut className="h-4 w-4" />
+            Logout
+          </button>
         </div>
       </header>
 
