@@ -5,10 +5,8 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowRight, Eye, EyeOff, Lock, Mail, ArrowLeft, ShieldCheck, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { setStoredAuthToken } from "@/lib/auth";
 import { apiClient } from "@/lib/apiClient";
 
@@ -74,15 +72,7 @@ export function AdminLoginForm() {
       {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <img src="/Tealogo.png" className="h-25 w-auto object-contain" alt="Tea Blend AI Logo" />
-        </Link>
-
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 rounded-full border border-green-200 bg-white/80 px-4 py-1.5 text-sm font-medium text-green-700 transition backdrop-blur-sm hover:bg-green-50"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Back to Site
+          <img src="/Tealogo.png" className="h-15 w-auto object-contain" alt="Tea Blend AI Logo" />
         </Link>
       </header>
 
@@ -131,12 +121,6 @@ export function AdminLoginForm() {
                     <Label htmlFor="password" className="text-xs font-semibold text-gray-700">
                       Password
                     </Label>
-                    <Link
-                      href="/auth/forgot-password?role=admin"
-                      className="text-xs text-green-600 transition-colors hover:text-green-700 hover:underline"
-                    >
-                      Forgot Password?
-                    </Link>
                   </div>
                   <div className="relative">
                     <Lock className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
@@ -166,7 +150,6 @@ export function AdminLoginForm() {
                     >
                       {isLoading ? (
                         <div className="flex items-center justify-center gap-2">
-                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                           <span className="text-sm">Authenticating...</span>
                         </div>
                       ) : (
@@ -188,12 +171,6 @@ export function AdminLoginForm() {
                   <Link href="/privacy" className="text-green-600 hover:text-green-700 hover:underline">
                     Privacy Policy
                   </Link>
-                </div>
-
-                {/* 2FA Notice */}
-                <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
-                  <ShieldCheck className="h-3 w-3" />
-                  <span>2FA available for enhanced security</span>
                 </div>
               </div>
             </div>

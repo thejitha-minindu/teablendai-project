@@ -82,12 +82,7 @@ export default function VerificationPage() {
     };
 
     if (loading) {
-        return (
-            <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-                <Loader2 className="w-12 h-12 animate-spin text-blue-500" />
-                <p className="text-gray-500 text-lg">Loading pending verifications...</p>
-            </div>
-        );
+    return null;
     }
 
     if (error) {
@@ -122,7 +117,7 @@ export default function VerificationPage() {
                     disabled={refreshing}
                     className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-800 border rounded-lg hover:bg-gray-50 transition-all duration-200 disabled:opacity-50"
                 >
-                    <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-4 h-4 ${refreshing ? '' : ''}`} />
                     Refresh
                 </button>
             </div>
@@ -196,7 +191,7 @@ export default function VerificationPage() {
                 {/* Active filter indicator */}
                 {activeFilter !== "all" && (
                     <div className="mt-3 text-xs text-gray-500 flex items-center gap-2">
-                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                        <span className="inline-block w-2 h-2 rounded-full bg-blue-500 "></span>
                         Showing {activeFilter}s only
                         <button
                             onClick={() => handleFilterChange("all")}

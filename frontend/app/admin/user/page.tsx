@@ -104,14 +104,7 @@ export default function AdminProfile() {
 
   /* ================= LOADING ================= */
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-500">Loading profile...</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   return (
@@ -160,7 +153,7 @@ export default function AdminProfile() {
                   ? "bg-green-500 text-white" 
                   : "bg-gray-500 text-white"
               }`}>
-                <div className={`w-2 h-2 rounded-full ${admin.status === "active" ? "bg-white animate-pulse" : "bg-gray-300"}`}></div>
+                <div className={`w-2 h-2 rounded-full ${admin.status === "active" ? "bg-white " : "bg-gray-300"}`}></div>
                 {admin.status === "active" ? "Active" : "Inactive"}
               </div>
             </div>
@@ -316,7 +309,7 @@ export default function AdminProfile() {
                   >
                     {loading ? (
                       <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <div className=" rounded-full h-4 w-4 border-b-2 border-white"></div>
                         Saving...
                       </>
                     ) : (

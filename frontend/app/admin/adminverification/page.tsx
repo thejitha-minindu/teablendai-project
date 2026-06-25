@@ -70,12 +70,7 @@ export default function AdminVerificationPage() {
   };
 
   if (authLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <Loader2 className="w-12 h-12 animate-spin text-purple-600" />
-        <p className="text-gray-500 text-lg">Authenticating admin session...</p>
-      </div>
-    );
+    return null;
   }
 
   // Check if current user has superadmin role
@@ -137,7 +132,7 @@ export default function AdminVerificationPage() {
                     : "bg-red-600 hover:bg-red-700 shadow-red-100"
                 }`}
               >
-                {processingId ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                {processingId ? <Loader2 className="w-4 h-4 " /> : null}
                 Confirm {confirmAction.type === "approve" ? "Approval" : "Rejection"}
               </button>
             </div>
@@ -162,7 +157,7 @@ export default function AdminVerificationPage() {
           disabled={refreshing || loading}
           className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border rounded-xl hover:bg-gray-50 transition-all duration-200 disabled:opacity-50 font-medium"
         >
-          <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
+          <RefreshCw className={`w-4 h-4 ${refreshing ? "" : ""}`} />
           Refresh
         </button>
       </div>
@@ -170,7 +165,7 @@ export default function AdminVerificationPage() {
       {/* Loader */}
       {loading ? (
         <div className="flex flex-col items-center justify-center min-h-[300px] gap-4 bg-gray-50/50 rounded-2xl border border-dashed">
-          <Loader2 className="w-10 h-10 animate-spin text-purple-600" />
+          <Loader2 className="w-10 h-10  text-purple-600" />
           <p className="text-gray-500 text-sm">Loading requests...</p>
         </div>
       ) : error ? (

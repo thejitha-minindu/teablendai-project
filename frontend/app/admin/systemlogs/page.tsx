@@ -119,7 +119,7 @@ export default function SystemActivityPage() {
               className="p-2 bg-white hover:bg-gray-50 border border-gray-200 rounded-lg shadow-sm text-gray-600 disabled:opacity-50 transition-colors"
               title="Refresh logs"
             >
-              <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin text-emerald-600" : ""}`} />
+              <RefreshCw className={`w-5 h-5 ${isLoading ? " text-emerald-600" : ""}`} />
             </button>
           )}
         </div>
@@ -249,7 +249,7 @@ export default function SystemActivityPage() {
       {/* List / Loader */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl border border-gray-100 shadow-sm">
-          <RefreshCw className="w-10 h-10 text-emerald-600 animate-spin" />
+          <RefreshCw className="w-10 h-10 text-emerald-600 " />
           <p className="text-gray-400 mt-4 font-medium">Loading system logs...</p>
         </div>
       ) : logs.length === 0 ? (
