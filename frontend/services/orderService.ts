@@ -49,6 +49,14 @@ export async function updateOrderStatus(orderId: string, status: string): Promis
 
 // --- Seller-specific API ---
 
+/** Create a Stripe checkout session */
+export async function createCheckoutSession(orderId: string): Promise<{ checkout_url: string }> {
+  const res = await apiClient.post<{ checkout_url: string }>('/payment/create-checkout-session', {
+    order_id: orderId,
+  });
+  return res.data;
+}
+
 /** List all orders for the authenticated seller */
 export async function getSellerOrders(status?: string): Promise<OrderDetail[]> {
   const params = status ? { status } : {};
