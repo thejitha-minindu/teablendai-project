@@ -185,7 +185,6 @@ function PaymentSuccessContent() {
       <div className="hidden print:block p-8 max-w-3xl mx-auto font-sans text-gray-900">
         <div className="border-b-2 border-gray-900 pb-6 mb-8 flex justify-between items-end">
           <div>
-            <img src="/TeaLogo.png" alt="TeaBlend AI Logo" className="h-16 w-auto object-contain" />
             <p className="text-gray-500 mt-2 font-medium">Official Payment Receipt</p>
           </div>
           <div className="text-right">
@@ -239,12 +238,6 @@ function PaymentSuccessContent() {
         </table>
 
         <div className="text-center text-sm text-gray-500 mt-20 pt-8 border-t border-gray-200 flex flex-col items-center">
-          <img
-            src="/TeaLogoDark.png"
-            alt="TeaBlend AI Logo"
-            className="h-14 w-auto mb-4 object-contain"
-            onError={(e) => { (e.target as HTMLImageElement).src = "/TeaLogo.png"; }}
-          />
           <p className="max-w-md mx-auto text-gray-400 font-medium leading-relaxed">
             Intelligent solutions for a smarter tea industry.
           </p>
