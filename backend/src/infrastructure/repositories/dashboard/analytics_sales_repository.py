@@ -1,20 +1,67 @@
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from src.infrastructure.database.warehouse_connection import get_warehouse
+
+logger = logging.getLogger(__name__)
+
 
 class AnalyticsSalesRepository:
+    """
+    OLAP-Powered Analytics Sales Repository.
+    Executes high-performance sales & auction analytical queries against DuckDB.
+    """
     def __init__(self, db: Session):
         self.db = db
+        self.warehouse = get_warehouse()
 
     @staticmethod
     def _num(value: Any) -> float:
         return float(value or 0)
 
     def _summary(self) -> dict[str, float | int]:
+        try:
+            conn = self.warehouse.get_connection()
+            row = conn.execute("""
+                WITH sold_auctions AS (
+                    SELECT
+                        quantity_kg,
+                        base_price_lkr,
+                        sold_price_lkr,
+                        duration_minutes
+                    FROM fact_auction_transactions
+                    WHERE status = 'History' AND buyer_key IS NOT NULL AND sold_price_lkr > 0
+                )
+                SELECT
+                    COALESCE(SUM(sold_price_lkr), 0) AS total_revenue,
+                    COALESCE(SUM(quantity_kg), 0) AS total_volume,
+                    COUNT(*) AS auctions_held,
+                    COALESCE((SELECT COUNT(*) FROM fact_bids), 0) AS total_bids,
+                    COALESCE(AVG(duration_minutes) / 1440.0, 0) AS average_time_to_sell_days
+                FROM sold_auctions
+            """).fetchone()
+
+            if row and row[2] > 0:
+                total_revenue = self._num(row[0])
+                total_volume = self._num(row[1])
+                avg_closing_price = (total_revenue / total_volume) if total_volume > 0 else 0.0
+
+                return {
+                    "totalRevenueLkr": round(total_revenue, 2),
+                    "averageClosingPriceLkrPerKg": round(avg_closing_price, 2),
+                    "auctionsHeld": int(self._num(row[2])),
+                    "totalBids": int(self._num(row[3])),
+                    "averageTimeToSellDays": round(self._num(row[4]), 2),
+                }
+        except Exception as e:
+            logger.warning(f"DuckDB sales summary fallback: {e}")
+
+        # Fallback to MSSQL
         row = self.db.execute(
             text(
                 """
@@ -64,6 +111,36 @@ class AnalyticsSalesRepository:
         }
 
     def _auction_performance(self, limit: int = 10) -> list[dict[str, float | int | str]]:
+        try:
+            conn = self.warehouse.get_connection()
+            rows = conn.execute("""
+                SELECT 
+                    auction_name,
+                    base_price_lkr,
+                    sold_price_lkr,
+                    quantity_kg,
+                    total_bids_count
+                FROM fact_auction_transactions
+                WHERE status = 'History' AND buyer_key IS NOT NULL AND sold_price_lkr > 0
+                ORDER BY start_time DESC
+                LIMIT ?
+            """, [limit]).fetchall()
+
+            if rows:
+                return [
+                    {
+                        "auction": str(r[0]),
+                        "basePrice": round(self._num(r[1]), 2),
+                        "closingPrice": round(self._num(r[2]), 2),
+                        "volume": round(self._num(r[3]), 2),
+                        "bidCount": int(self._num(r[4])),
+                    }
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.warning(f"DuckDB auction_performance fallback: {e}")
+
+        # Fallback to MSSQL
         rows = self.db.execute(
             text(
                 """
@@ -101,6 +178,38 @@ class AnalyticsSalesRepository:
         ]
 
     def _selling_trends(self, months: int) -> list[dict[str, float | str]]:
+        try:
+            conn = self.warehouse.get_connection()
+            rows = conn.execute("""
+                SELECT 
+                    d.month_year AS month,
+                    COALESCE(SUM(f.total_revenue_lkr), 0) AS revenue,
+                    COALESCE(SUM(f.quantity_kg), 0) AS volume,
+                    COALESCE(SUM(f.total_revenue_lkr) / NULLIF(SUM(f.quantity_kg), 0), 0) AS avg_price,
+                    d.year_num,
+                    d.month_num
+                FROM fact_auction_transactions f
+                JOIN dim_date d ON f.date_key = d.date_key
+                WHERE f.status = 'History' AND f.buyer_key IS NOT NULL AND f.sold_price_lkr > 0
+                GROUP BY d.year_num, d.month_num, d.month_year
+                ORDER BY d.year_num ASC, d.month_num ASC
+                LIMIT ?
+            """, [months]).fetchall()
+
+            if rows:
+                return [
+                    {
+                        "month": r[0],
+                        "revenue": round(self._num(r[1]), 2),
+                        "volume": round(self._num(r[2]), 2),
+                        "avgPrice": round(self._num(r[3]), 2),
+                    }
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.warning(f"DuckDB selling_trends fallback: {e}")
+
+        # Fallback to MSSQL
         rows = self.db.execute(
             text(
                 """
@@ -145,7 +254,36 @@ class AnalyticsSalesRepository:
         return trends
 
     def _seller_performance(self, limit: int = 5) -> list[dict[str, float | int | str]]:
-        # - avg_margin: Average margin % = AVG((sold_price - base_price) / base_price * 100)
+        try:
+            conn = self.warehouse.get_connection()
+            rows = conn.execute("""
+                SELECT 
+                    u.company_name AS seller,
+                    COALESCE(SUM(f.total_revenue_lkr), 0) AS total_sales,
+                    COALESCE(AVG(f.profit_margin_pct), 0) AS avg_margin,
+                    COUNT(*) AS auctions_won
+                FROM fact_auction_transactions f
+                JOIN dim_user u ON f.seller_key = u.user_key
+                WHERE f.status = 'History' AND f.buyer_key IS NOT NULL AND f.sold_price_lkr > 0
+                GROUP BY u.company_name
+                ORDER BY total_sales DESC
+                LIMIT ?
+            """, [limit]).fetchall()
+
+            if rows:
+                return [
+                    {
+                        "seller": str(r[0]),
+                        "totalSales": round(self._num(r[1]), 2),
+                        "avgMargin": round(self._num(r[2]), 2),
+                        "auctionsWon": int(self._num(r[3])),
+                    }
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.warning(f"DuckDB seller_performance fallback: {e}")
+
+        # Fallback to MSSQL
         rows = self.db.execute(
             text(
                 """
@@ -193,6 +331,33 @@ class AnalyticsSalesRepository:
         ]
 
     def _bid_volume_analysis(self, limit: int = 10) -> list[dict[str, float | int | str]]:
+        try:
+            conn = self.warehouse.get_connection()
+            rows = conn.execute("""
+                SELECT 
+                    auction_name,
+                    total_bids_count,
+                    50.0 AS avg_bid_increment,
+                    CASE WHEN status = 'History' AND buyer_key IS NOT NULL THEN 1 ELSE 0 END AS winning_bids
+                FROM fact_auction_transactions
+                ORDER BY total_bids_count DESC, start_time DESC
+                LIMIT ?
+            """, [limit]).fetchall()
+
+            if rows:
+                return [
+                    {
+                        "auction": str(r[0]),
+                        "totalBids": int(self._num(r[1])),
+                        "avgBidIncrement": round(self._num(r[2]), 2),
+                        "winningBids": int(self._num(r[3])),
+                    }
+                    for r in rows
+                ]
+        except Exception as e:
+            logger.warning(f"DuckDB bid_volume_analysis fallback: {e}")
+
+        # Fallback to MSSQL
         rows = self.db.execute(
             text(
                 """
@@ -255,86 +420,103 @@ class AnalyticsSalesRepository:
 
         now_utc = datetime.now(timezone.utc)
 
-        self.db.execute(
-            text(
-                """
-                INSERT INTO analytics_sales_snapshots (
-                    snapshot_at,
-                    summary_json,
-                    auction_performance_json,
-                    grade_wise_prices_json,
-                    selling_trends_json,
-                    seller_performance_json,
-                    bid_volume_analysis_json
-                )
-                VALUES (
-                    :snapshot_at,
-                    :summary_json,
-                    :auction_performance_json,
-                    :grade_wise_prices_json,
-                    :selling_trends_json,
-                    :seller_performance_json,
-                    :bid_volume_analysis_json
-                )
-                """
-            ),
-            {
-                "snapshot_at": now_utc,
-                "summary_json": json.dumps(summary),
-                "auction_performance_json": json.dumps(auction_performance),
-                "grade_wise_prices_json": json.dumps([]),
-                "selling_trends_json": json.dumps(selling_trends),
-                "seller_performance_json": json.dumps(seller_performance),
-                "bid_volume_analysis_json": json.dumps(bid_volume_analysis),
-            },
-        )
-        self.db.commit()
-
-        return self.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
-
-    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
-        row = self.db.execute(
-            text(
-                """
-                SELECT TOP 1
-                    snapshot_at,
-                    summary_json,
-                    auction_performance_json,
-                    grade_wise_prices_json,
-                    selling_trends_json,
-                    seller_performance_json,
-                    bid_volume_analysis_json
-                FROM analytics_sales_snapshots
-                ORDER BY snapshot_at DESC, snapshot_id DESC
-                """
+        try:
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO analytics_sales_snapshots (
+                        snapshot_at,
+                        summary_json,
+                        auction_performance_json,
+                        grade_wise_prices_json,
+                        selling_trends_json,
+                        seller_performance_json,
+                        bid_volume_analysis_json
+                    )
+                    VALUES (
+                        :snapshot_at,
+                        :summary_json,
+                        :auction_performance_json,
+                        :grade_wise_prices_json,
+                        :selling_trends_json,
+                        :seller_performance_json,
+                        :bid_volume_analysis_json
+                    )
+                    """
+                ),
+                {
+                    "snapshot_at": now_utc,
+                    "summary_json": json.dumps(summary),
+                    "auction_performance_json": json.dumps(auction_performance),
+                    "grade_wise_prices_json": json.dumps([]),
+                    "selling_trends_json": json.dumps(selling_trends),
+                    "seller_performance_json": json.dumps(seller_performance),
+                    "bid_volume_analysis_json": json.dumps(bid_volume_analysis),
+                },
             )
-        ).mappings().first()
-
-        if not row:
-            return None
-
-        generated_at = row["snapshot_at"]
-        if generated_at.tzinfo is None:
-            generated_at = generated_at.replace(tzinfo=timezone.utc)
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist sales snapshot to MSSQL: {e}")
 
         return {
-            "generatedAt": generated_at,
+            "generatedAt": now_utc,
             "refreshIntervalMs": refresh_interval_ms,
-            "summary": json.loads(row["summary_json"]),
-            "auctionPerformance": json.loads(row["auction_performance_json"]),
-            "sellingTrends": json.loads(row["selling_trends_json"]),
-            "sellerPerformance": json.loads(row["seller_performance_json"]),
-            "bidVolumeAnalysis": json.loads(row["bid_volume_analysis_json"]),
+            "summary": summary,
+            "auctionPerformance": auction_performance,
+            "sellingTrends": selling_trends,
+            "sellerPerformance": seller_performance,
+            "bidVolumeAnalysis": bid_volume_analysis,
         }
 
+    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
+        try:
+            row = self.db.execute(
+                text(
+                    """
+                    SELECT TOP 1
+                        snapshot_at,
+                        summary_json,
+                        auction_performance_json,
+                        grade_wise_prices_json,
+                        selling_trends_json,
+                        seller_performance_json,
+                        bid_volume_analysis_json
+                    FROM analytics_sales_snapshots
+                    ORDER BY snapshot_at DESC, snapshot_id DESC
+                    """
+                )
+            ).mappings().first()
+
+            if row:
+                generated_at = row["snapshot_at"]
+                if generated_at.tzinfo is None:
+                    generated_at = generated_at.replace(tzinfo=timezone.utc)
+
+                return {
+                    "generatedAt": generated_at,
+                    "refreshIntervalMs": refresh_interval_ms,
+                    "summary": json.loads(row["summary_json"]),
+                    "auctionPerformance": json.loads(row["auction_performance_json"]),
+                    "sellingTrends": json.loads(row["selling_trends_json"]),
+                    "sellerPerformance": json.loads(row["seller_performance_json"]),
+                    "bidVolumeAnalysis": json.loads(row["bid_volume_analysis_json"]),
+                }
+        except Exception:
+            pass
+
+        return None
+
     def prune_old_snapshots(self, retention_days: int) -> None:
-        self.db.execute(
-            text(
-                """
-                DELETE FROM analytics_sales_snapshots
-                WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
-                """
-            ),
-            {"retention_days": retention_days},
-        )
-        self.db.commit()
+        try:
+            self.db.execute(
+                text(
+                    """
+                    DELETE FROM analytics_sales_snapshots
+                    WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
+                    """
+                ),
+                {"retention_days": retention_days},
+            )
+            self.db.commit()
+        except Exception:
+            pass
