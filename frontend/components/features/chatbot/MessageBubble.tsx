@@ -348,7 +348,14 @@ const SourceBadge = memo(function SourceBadge({ source }: { source?: string }) {
   if (source === "validation") {
     return (
       <span className="inline-flex items-center text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-        Tea Only
+        Safety Guardrail
+      </span>
+    );
+  }
+  if (source === "system") {
+    return (
+      <span className="inline-flex items-center text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+        TeaBlendAI
       </span>
     );
   }
