@@ -2,7 +2,7 @@
 
 import {
   TrendingUp, TrendingDown, ShoppingCart, DollarSign,
-  Package, Award, Activity
+  Package, Award, Activity, Info
 } from "lucide-react";
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
@@ -52,8 +52,11 @@ export default function AnalyticsOverview() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard title="Revenue & Purchase Trends">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Revenue & Purchase Trends"
+          description="Tracks historical monthly revenue in LKR alongside total tea procurement volume in kilograms to evaluate business growth over time."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={revenueByMonth}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -67,8 +70,11 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Tea Grade Distribution(Live + Scheduled)">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Tea Grade Distribution (Live + Scheduled)"
+          description="Displays the proportional volume share of active and scheduled auction inventory categorized by Ceylon tea standard grades."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={teaGradeDistribution}
@@ -76,7 +82,7 @@ export default function AnalyticsOverview() {
                 cy="50%"
                 labelLine={false}
                 label={({ name, value }) => `${name}: ${Number(value).toFixed(1)}%`}
-                outerRadius={100}
+                outerRadius={95}
                 dataKey="value"
               >
                 {teaGradeDistribution.map((entry, index) => (
@@ -88,8 +94,11 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Top Performing Blends">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Top Performing Blends"
+          description="Compares total sales volume against realized profit percentages for top-selling master tea blend formulations."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={topBlends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" angle={-20} textAnchor="end" height={80} fontSize={12} />
@@ -102,15 +111,22 @@ export default function AnalyticsOverview() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Statistics</h3>
-          <div className="space-y-4">
-            <StatRow label="Total Customers" value={quickStats.totalCustomers.toLocaleString()} />
-            <StatRow label="Active Buyers" value={quickStats.activeBuyers.toLocaleString()} />
-            <StatRow label="Completed Auctions (This Month)" value={quickStats.completedAuctionsThisMonth.toLocaleString()} />
-            <StatRow label="Average Blend Margin" value={`${quickStats.averageBlendMargin.toFixed(1)}%`} />
-            <StatRow label="Inventory Stock" value={`${quickStats.inventoryStockKg.toLocaleString()} kg`} />
-            <StatRow label="Pending Orders" value={quickStats.pendingOrders.toLocaleString()} />
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Statistics</h3>
+            <div className="space-y-4">
+              <StatRow label="Total Customers" value={quickStats.totalCustomers.toLocaleString()} />
+              <StatRow label="Active Buyers" value={quickStats.activeBuyers.toLocaleString()} />
+              <StatRow label="Completed Auctions (This Month)" value={quickStats.completedAuctionsThisMonth.toLocaleString()} />
+              <StatRow label="Average Blend Margin" value={`${quickStats.averageBlendMargin.toFixed(1)}%`} />
+              <StatRow label="Inventory Stock" value={`${quickStats.inventoryStockKg.toLocaleString()} kg`} />
+              <StatRow label="Pending Orders" value={quickStats.pendingOrders.toLocaleString()} />
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              High-level operational snapshot showing active buyer counts, completed monthly auction volumes, average blend margins, and warehouse inventory.
+            </p>
           </div>
         </div>
       </div>
@@ -164,14 +180,22 @@ function KPICard({ title, value, unit, trend, trending, icon, color }: KPICardPr
 
 interface ChartCardProps {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }
 
-function ChartCard({ title, children }: ChartCardProps) {
+function ChartCard({ title, description, children }: ChartCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      {children}
+    <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        {children}
+      </div>
+      {description && (
+        <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+          <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">{description}</p>
+        </div>
+      )}
     </div>
   );
 }

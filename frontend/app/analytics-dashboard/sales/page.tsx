@@ -4,6 +4,7 @@ import {
   BarChart, Bar, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Area
 } from 'recharts';
+import { Info } from 'lucide-react';
 import { useAnalyticsSales } from '@/hooks/use-analytics-sales';
 
 export default function SalesAuctionAnalytics() {
@@ -65,8 +66,11 @@ export default function SalesAuctionAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard title="Auction Performance: Base vs Closing Price">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Auction Performance: Base vs Closing Price"
+          description="Compares initial reserve base prices with final winning auction prices to assess bidding competitiveness and margin spreads."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={auctionPerformance}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="auction" fontSize={12} />
@@ -79,8 +83,11 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Monthly Sales Revenue & Volume">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Monthly Sales Revenue & Volume"
+          description="Displays monthly closed auction revenue in LKR against total volume traded in kilograms over the analysis period."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={sellingTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -108,8 +115,11 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Top Sellers by Revenue">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Top Sellers by Revenue"
+          description="Ranks registered tea estates and manufacturers generating the highest gross revenue through closed auction lots."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={sellerPerformance} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
@@ -121,8 +131,11 @@ export default function SalesAuctionAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Bid Activity by Auction">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Bid Activity by Auction"
+          description="Tracks total bids submitted and winning bid frequency per auction lot to identify high-demand offerings."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <ComposedChart data={bidVolumeAnalysis}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="auction" fontSize={11} />
@@ -137,36 +150,43 @@ export default function SalesAuctionAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2">
-          <div className="mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Seller Margin Analysis</h3>
-            <p className="text-sm text-gray-500">Top performers ranked by total revenue</p>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-center py-3 px-2 text-gray-600 font-medium w-12">Place</th>
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Seller</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Won Auctions</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Margin %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sellerPerformance.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="text-center py-3 px-2 font-semibold text-blue-600">#{index + 1}</td>
-                    <td className="py-3 px-2 font-medium">{item.seller}</td>
-                    <td className="text-right py-3 px-2 text-gray-700">{item.auctionsWon}</td>
-                    <td className="text-right py-3 px-2">
-                      <span className={item.avgMargin >= 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
-                        {item.avgMargin.toFixed(2)}%
-                      </span>
-                    </td>
+        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Seller Margin Analysis</h3>
+              <p className="text-sm text-gray-500">Top performers ranked by total revenue</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-center py-3 px-2 text-gray-600 font-medium w-12">Place</th>
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Seller</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Won Auctions</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Margin %</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sellerPerformance.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="text-center py-3 px-2 font-semibold text-blue-600">#{index + 1}</td>
+                      <td className="py-3 px-2 font-medium">{item.seller}</td>
+                      <td className="text-right py-3 px-2 text-gray-700">{item.auctionsWon}</td>
+                      <td className="text-right py-3 px-2">
+                        <span className={item.avgMargin >= 0 ? "text-green-600 font-medium" : "text-red-600 font-medium"}>
+                          {item.avgMargin.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Ranks top tea estate sellers by completed auction volume, number of successfully won lots, and net realized profit margin percentage.
+            </p>
           </div>
         </div>
       </div>
@@ -188,11 +208,18 @@ function MetricCard({ title, value, subtitle }: {
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      {children}
+    <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        {children}
+      </div>
+      {description && (
+        <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+          <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">{description}</p>
+        </div>
+      )}
     </div>
   );
 }
