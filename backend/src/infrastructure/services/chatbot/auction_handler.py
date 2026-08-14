@@ -7,7 +7,7 @@ Multi-turn conversation flow for creating/updating/deleting auctions.
 
 import logging
 import re
-from typing import Dict, Any, Optional, List
+from typing import ClassVar, Dict, Any, Optional, List
 from datetime import datetime, timezone
 
 from src.domain.models.conversation import Conversation
@@ -64,6 +64,39 @@ class AuctionHandler:
             created_at = state.created_at
             return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=timezone.utc)
         return datetime.now(timezone.utc)
+
+    # Description menu command guard
+    _GENERATE_DESCRIPTION_CUES: ClassVar[list] = [
+        'generate', 'create', 'auto', 'auto generate', 'auto-generate',
+        'generate one', 'create one',
+        'generate a tea', 'generate a description', 'generate tea-specific',
+        'generate a tea-specific', 'tea-specific description',
+        'generate a tea-specific description',
+    ]
+    _USE_ANYWAY_DESCRIPTION_CUES: ClassVar[list] = [
+        'use it', 'use this', 'use anyway', 'keep it', 'keep', 'ok', 'fine',
+    ]
+    _DIFFERENT_DESCRIPTION_CUES: ClassVar[list] = [
+        'different', 'provide different', 'change', 'edit', 'modify',
+        'another', 'write my own', 'new description',
+    ]
+
+    def _is_description_menu_command(self, text: str) -> Optional[str]:
+        """
+        Return the canonical menu option name if *text* is a recognized
+        description-choice command phrase, otherwise return None.
+
+        Returns one of: 'generate' | 'use_anyway' | 'provide_different' | None
+        """
+        t = text.lower().strip().rstrip('.')
+        if t in ('2',) or self._contains_choice(t, self._GENERATE_DESCRIPTION_CUES):
+            return 'generate'
+        if t in ('1',) or self._contains_choice(t, self._USE_ANYWAY_DESCRIPTION_CUES):
+            return 'use_anyway'
+        if t in ('3',) or self._contains_choice(t, self._DIFFERENT_DESCRIPTION_CUES):
+            return 'provide_different'
+        return None
+
 
     def _prompt_for_custom_description(
         self,
@@ -780,7 +813,6 @@ class AuctionHandler:
             return await self._handle_confirmation(user_message, conversation, state, user_id)
 
         if state.partial_data.get('_awaiting_custom_description_input'):
-            state.partial_data.pop('_awaiting_custom_description_input', None)
             custom_description = user_message.strip()
 
             if not custom_description:
@@ -789,6 +821,27 @@ class AuctionHandler:
                     state,
                     intro="Description cannot be empty."
                 )
+
+            # Guard: user changed their mind and typed a menu command
+            menu_cmd = self._is_description_menu_command(custom_description)
+            if menu_cmd:
+                # Remove the awaiting flag and synthesise the choice as if
+                # the user had responded to the irrelevant-description menu.
+                state.partial_data.pop('_awaiting_custom_description_input', None)
+                # Restore a pending description placeholder so the choice
+                # handler can fall back to it for "use_anyway" if needed.
+                if not state.partial_data.get('_pending_irrelevant_description'):
+                    state.partial_data['_pending_irrelevant_description'] = ''
+                state.partial_data['_awaiting_irrelevant_description_choice'] = True
+                logger.info(
+                    "[AuctionHandler] Custom-description input recognised as menu command '%s'; routing to choice handler",
+                    menu_cmd,
+                )
+                return await self._handle_irrelevant_description_choice(
+                    user_message, conversation, state
+                )
+
+            state.partial_data.pop('_awaiting_custom_description_input', None)
 
             # Validate relevance before accepting — store verbatim if relevant
             irrelevant_response = await self._process_user_description(
