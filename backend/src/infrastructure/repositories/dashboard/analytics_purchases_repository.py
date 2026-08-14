@@ -326,3 +326,18 @@ class AnalyticsPurchasesRepository:
             pass
 
         return None
+
+    def prune_old_snapshots(self, retention_days: int) -> None:
+        try:
+            self.db.execute(
+                text(
+                    """
+                    DELETE FROM analytics_purchases_snapshots
+                    WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
+                    """
+                ),
+                {"retention_days": retention_days},
+            )
+            self.db.commit()
+        except Exception:
+            pass
