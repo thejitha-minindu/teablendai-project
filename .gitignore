@@ -182,3 +182,6 @@ docker-compose.override.yml
 
 .history/
 env.development
+
+ANALYTICS_DATA_ENGINEERING_MIGRATION.md
+/backend/data_warehouse/README.md
