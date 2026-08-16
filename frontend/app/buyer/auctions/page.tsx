@@ -78,7 +78,12 @@ export default function BuyerHistoryPage() {
         B: ["BOP", "OP", "FBOP", "TGFOP"],
         C: ["Herbal"],
       };
-      matchesGrade = gradeMap[filters.grade]?.includes(grade) || false;
+      const mapped = gradeMap[filters.grade];
+      if (mapped) {
+        matchesGrade = mapped.some((g) => grade.toLowerCase().includes(g.toLowerCase()));
+      } else {
+        matchesGrade = grade.toLowerCase().includes(filters.grade.toLowerCase());
+      }
     }
 
     // Price range filter

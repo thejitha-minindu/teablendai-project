@@ -50,7 +50,6 @@ const STATUS_OPTIONS = [
   { value: "all", label: "All Status" },
   { value: "live", label: "Live" },
   { value: "scheduled", label: "Scheduled" },
-  { value: "history", label: "History" },
 ];
 
 const SORT_OPTIONS = [
@@ -163,7 +162,6 @@ export function AuctionFilterSort({
                   <SelectValue placeholder="All Grades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
                   {GRADE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -362,7 +360,6 @@ export function AuctionFilterSort({
                     <SelectValue placeholder="All Grades" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
                     {GRADE_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}

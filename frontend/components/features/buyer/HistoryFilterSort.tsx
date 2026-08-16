@@ -148,7 +148,6 @@ export function HistoryFilterSort({
             <SelectValue placeholder="All Grades" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Grades</SelectItem>
             {GRADE_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
@@ -267,7 +266,6 @@ export function HistoryFilterSort({
                   <SelectValue placeholder="All Grades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
                   {GRADE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
