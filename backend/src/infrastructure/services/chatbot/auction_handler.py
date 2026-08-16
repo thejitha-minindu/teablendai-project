@@ -7,7 +7,7 @@ Multi-turn conversation flow for creating/updating/deleting auctions.
 
 import logging
 import re
-from typing import Dict, Any, Optional, List
+from typing import ClassVar, Dict, Any, Optional, List
 from datetime import datetime, timezone
 
 from src.domain.models.conversation import Conversation
@@ -64,6 +64,39 @@ class AuctionHandler:
             created_at = state.created_at
             return created_at if created_at.tzinfo is not None else created_at.replace(tzinfo=timezone.utc)
         return datetime.now(timezone.utc)
+
+    # Description menu command guard
+    _GENERATE_DESCRIPTION_CUES: ClassVar[list] = [
+        'generate', 'create', 'auto', 'auto generate', 'auto-generate',
+        'generate one', 'create one',
+        'generate a tea', 'generate a description', 'generate tea-specific',
+        'generate a tea-specific', 'tea-specific description',
+        'generate a tea-specific description',
+    ]
+    _USE_ANYWAY_DESCRIPTION_CUES: ClassVar[list] = [
+        'use it', 'use this', 'use anyway', 'keep it', 'keep', 'ok', 'fine',
+    ]
+    _DIFFERENT_DESCRIPTION_CUES: ClassVar[list] = [
+        'different', 'provide different', 'change', 'edit', 'modify',
+        'another', 'write my own', 'new description',
+    ]
+
+    def _is_description_menu_command(self, text: str) -> Optional[str]:
+        """
+        Return the canonical menu option name if *text* is a recognized
+        description-choice command phrase, otherwise return None.
+
+        Returns one of: 'generate' | 'use_anyway' | 'provide_different' | None
+        """
+        t = text.lower().strip().rstrip('.')
+        if t in ('2',) or self._contains_choice(t, self._GENERATE_DESCRIPTION_CUES):
+            return 'generate'
+        if t in ('1',) or self._contains_choice(t, self._USE_ANYWAY_DESCRIPTION_CUES):
+            return 'use_anyway'
+        if t in ('3',) or self._contains_choice(t, self._DIFFERENT_DESCRIPTION_CUES):
+            return 'provide_different'
+        return None
+
 
     def _prompt_for_custom_description(
         self,
@@ -214,6 +247,299 @@ class AuctionHandler:
                 f"This lot is positioned with a starting price of LKR {price:,} and is well-suited for auction participants seeking consistent quality and dependable cup character."
             )
     
+    async def _validate_description_relevance(
+        self,
+        description: str,
+        auction_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """
+        Evaluate whether a user-provided description is relevant to the tea auction.
+
+        Returns:
+            dict with keys:
+                is_relevant (bool): True if the description is tea-auction related.
+                reason (str): Short explanation from the LLM.
+        """
+        import json as _json
+
+        settings = get_settings()
+        llm = ChatGoogleGenerativeAI(
+            model=settings.MODEL_NAME,
+            google_api_key=settings.GOOGLE_API_KEY,
+            temperature=0.1,
+        )
+
+        grade = str(auction_data.get("grade", "")).strip()
+        estate = str(auction_data.get("estate_name", "")).strip()
+        origin = str(auction_data.get("origin", "")).strip()
+        quantity = auction_data.get("quantity", "")
+
+        context_parts = []
+        if grade:
+            context_parts.append(f"Tea Grade: {grade}")
+        if estate:
+            context_parts.append(f"Estate: {estate}")
+        if origin:
+            context_parts.append(f"Origin: {origin}")
+        if quantity:
+            context_parts.append(f"Quantity: {quantity} kg")
+
+        context_str = "\n".join(context_parts) if context_parts else "No auction details yet."
+
+        system = SystemMessage(
+            content=(
+                "You are a validation assistant for a tea auction platform. "
+                "Your only job is to decide whether a given description is relevant to a tea auction listing.\n\n"
+                "A description is RELEVANT if it describes:\n"
+                "- Tea characteristics (grade, flavor, aroma, quality)\n"
+                "- Estate or origin information\n"
+                "- Manufacturing or processing details\n"
+                "- Tasting notes or cup character\n"
+                "- Any content that a buyer would find useful about a tea lot\n\n"
+                "A description is IRRELEVANT if it is:\n"
+                "- Placeholder or dummy text\n"
+                "- System help text or UI copy\n"
+                "- Content about a completely unrelated topic\n"
+                "- Generic filler with no tea-specific content\n\n"
+                "Respond with ONLY a JSON object in this exact format:\n"
+                "{\"is_relevant\": true, \"reason\": \"brief reason\"}\n"
+                "or\n"
+                "{\"is_relevant\": false, \"reason\": \"brief reason\"}"
+            )
+        )
+
+        human = HumanMessage(
+            content=(
+                f"Auction context:\n{context_str}\n\n"
+                f"Description to evaluate:\n\"{description}\"\n\n"
+                "Is this description relevant to the tea auction? Respond with JSON only."
+            )
+        )
+
+        try:
+            response = await llm.ainvoke([system, human])
+            raw = response.content.strip()
+            # Strip markdown code fences if present
+            if raw.startswith("```"):
+                raw = re.sub(r"^```[a-z]*\n?", "", raw)
+                raw = re.sub(r"\n?```$", "", raw)
+            result = _json.loads(raw)
+            is_relevant = bool(result.get("is_relevant", True))
+            reason = str(result.get("reason", ""))
+            logger.info(
+                "[AuctionHandler] Description relevance check: %s \u2014 %s",
+                is_relevant, reason
+            )
+            return {"is_relevant": is_relevant, "reason": reason}
+        except Exception as e:
+            # Fail open: if validation errors, treat as relevant to avoid blocking the user
+            logger.warning(
+                "[AuctionHandler] Relevance validation failed (%s); treating description as relevant", e
+            )
+            return {"is_relevant": True, "reason": "validation unavailable"}
+
+    async def _process_user_description(
+        self,
+        raw_description: str,
+        conversation: Conversation,
+        state: Any,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Validate a user-provided description for tea relevance, then either
+        store it verbatim (if relevant) or return a 3-option menu response
+        (if irrelevant).
+
+        Returns:
+            None if the description is relevant and has been stored — the
+                caller should proceed to _generate_confirmation() normally.
+            A response dict if the description is irrelevant — the caller
+                should return this dict immediately without further processing.
+        """
+        if not raw_description or not raw_description.strip():
+            return None
+
+        validation = await self._validate_description_relevance(
+            raw_description, state.partial_data
+        )
+
+        if not validation.get("is_relevant", True):
+            logger.info(
+                "[AuctionHandler] Description flagged as irrelevant: %s",
+                validation.get("reason")
+            )
+            return self._prompt_for_irrelevant_description_choice(
+                conversation, state, raw_description
+            )
+
+        # Relevant: store the verbatim user description — no LLM refinement
+        state.partial_data['description'] = raw_description
+        state.partial_data['_description_decision_made'] = True
+        state.partial_data.pop('_awaiting_description_confirmation', None)
+        state_manager.update_state(
+            conversation.conversation_id,
+            {'description': raw_description, '_description_decision_made': True}
+        )
+        return None
+
+    def _prompt_for_irrelevant_description_choice(
+        self,
+        conversation: Conversation,
+        state: Any,
+        raw_description: str,
+    ) -> Dict[str, Any]:
+        """
+        Present a 3-option menu when the user-provided description is
+        detected as irrelevant to the tea auction.
+        """
+        state.partial_data['_awaiting_irrelevant_description_choice'] = True
+        state.partial_data['_pending_irrelevant_description'] = raw_description
+        state_manager.set_confirmation_pending(conversation.conversation_id, False)
+
+        answer = (
+            "The description you provided does not appear to be related to the tea auction details. "
+            "It appears to be placeholder or help text rather than a tea auction description.\n\n"
+            "Would you like to:\n\n"
+            "1. Use this description anyway\n"
+            "2. Generate a tea-specific description\n"
+            "3. Provide a different description"
+        )
+
+        assistant_msg = ChatMessage.create_assistant_message(
+            conversation_id=conversation.conversation_id,
+            content=answer,
+            source="auction_management"
+        )
+        self.message_repo.create(assistant_msg)
+
+        return {
+            "success": True,
+            "conversation_id": conversation.conversation_id,
+            "answer": answer,
+            "source": "auction_management",
+            "state": "awaiting_irrelevant_description_choice",
+            "message_type": "auction_confirmation",
+            "auction_payload": {
+                "type": "auction_confirmation",
+                "flow_id": str(conversation.conversation_id),
+                "subtype": "irrelevant_description_choice",
+                "fields": {"description": raw_description},
+                "actions": ["use_anyway", "generate", "provide_different"],
+            }
+        }
+
+    async def _handle_irrelevant_description_choice(
+        self,
+        user_message: str,
+        conversation: Conversation,
+        state: Any,
+    ) -> Dict[str, Any]:
+        """
+        Handle the user's response to the irrelevant-description 3-option menu.
+
+        Options presented to the user:
+            1. Use this description anyway
+            2. Generate a tea-specific description
+            3. Provide a different description
+        """
+        msg_lower = user_message.lower().strip()
+        pending_description = state.partial_data.pop('_pending_irrelevant_description', None)
+        state.partial_data.pop('_awaiting_irrelevant_description_choice', None)
+
+        use_anyway_cues = [
+            '1', 'use', 'use it', 'use this', 'use anyway', 'keep', 'keep it',
+            'ok', 'fine', 'that is fine', "that's fine",
+        ]
+        generate_cues = [
+            '2', 'generate', 'create', 'auto', 'auto generate', 'auto-generate',
+            'generate one', 'create one',
+        ]
+        different_cues = [
+            '3', 'different', 'provide different', 'change', 'edit', 'modify',
+            'new description', 'another', 'write my own', 'i will write',
+        ]
+
+        if self._contains_choice(msg_lower, use_anyway_cues):
+            # Option 1: Keep the original description verbatim
+            description = pending_description or user_message.strip()
+            state.partial_data['description'] = description
+            state.partial_data['_description_decision_made'] = True
+            state_manager.update_state(
+                conversation.conversation_id,
+                {'description': description, '_description_decision_made': True}
+            )
+            logger.info("[AuctionHandler] User chose to use the irrelevant description anyway")
+            return await self._generate_confirmation(conversation, state)
+
+        elif self._contains_choice(msg_lower, generate_cues):
+            # Option 2: Generate a tea-specific description (user explicitly requested)
+            logger.info("[AuctionHandler] User chose to generate a tea-specific description")
+            generated_desc = await self._refine_auction_description(state.partial_data)
+            state.partial_data['description'] = generated_desc
+            state.partial_data['_awaiting_description_confirmation'] = True
+            state_manager.update_state(conversation.conversation_id, {'description': generated_desc})
+            state_manager.set_confirmation_pending(conversation.conversation_id, True)
+
+            answer = (
+                f"I've prepared a description for you:\n\n{generated_desc}\n\n"
+                "Would you like to use this description?"
+            )
+
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="auction_management"
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "auction_management",
+                "state": "awaiting_description_confirmation",
+                "message_type": "auction_confirmation",
+                "auction_payload": {
+                    "type": "auction_confirmation",
+                    "flow_id": str(conversation.conversation_id),
+                    "subtype": "description_generated_confirmation",
+                    "fields": {"description": generated_desc},
+                    "actions": ["confirm", "cancel", "change"],
+                }
+            }
+
+        elif self._contains_choice(msg_lower, different_cues):
+            # Option 3: Prompt for a new user-provided description
+            logger.info("[AuctionHandler] User chose to provide a different description")
+            return self._prompt_for_custom_description(conversation, state)
+
+        else:
+            # Unclear response — restore state and re-show the menu
+            state.partial_data['_awaiting_irrelevant_description_choice'] = True
+            if pending_description:
+                state.partial_data['_pending_irrelevant_description'] = pending_description
+
+            answer = (
+                "Please choose one of the following options:\n\n"
+                "1. Use this description anyway\n"
+                "2. Generate a tea-specific description\n"
+                "3. Provide a different description"
+            )
+            assistant_msg = ChatMessage.create_assistant_message(
+                conversation_id=conversation.conversation_id,
+                content=answer,
+                source="auction_management"
+            )
+            self.message_repo.create(assistant_msg)
+
+            return {
+                "success": True,
+                "conversation_id": conversation.conversation_id,
+                "answer": answer,
+                "source": "auction_management",
+                "state": "awaiting_irrelevant_description_choice",
+                "message_type": "text",
+            }
+
     async def handle_auction_management(
         self,
         user_message: str,
@@ -476,6 +802,9 @@ class AuctionHandler:
             state_manager.update_state(conversation.conversation_id, updates)
             return await self._generate_update_confirmation(conversation, state)
 
+        if state.partial_data.get('_awaiting_irrelevant_description_choice'):
+            return await self._handle_irrelevant_description_choice(user_message, conversation, state)
+
         if state.partial_data.get('_awaiting_description_confirmation'):
             return await self._handle_confirmation(user_message, conversation, state, user_id)
 
@@ -484,7 +813,6 @@ class AuctionHandler:
             return await self._handle_confirmation(user_message, conversation, state, user_id)
 
         if state.partial_data.get('_awaiting_custom_description_input'):
-            state.partial_data.pop('_awaiting_custom_description_input', None)
             custom_description = user_message.strip()
 
             if not custom_description:
@@ -494,29 +822,47 @@ class AuctionHandler:
                     intro="Description cannot be empty."
                 )
 
-            refined_description = await self._refine_auction_description(
-                state.partial_data,
-                user_description=custom_description,
+            # Guard: user changed their mind and typed a menu command
+            menu_cmd = self._is_description_menu_command(custom_description)
+            if menu_cmd:
+                # Remove the awaiting flag and synthesise the choice as if
+                # the user had responded to the irrelevant-description menu.
+                state.partial_data.pop('_awaiting_custom_description_input', None)
+                # Restore a pending description placeholder so the choice
+                # handler can fall back to it for "use_anyway" if needed.
+                if not state.partial_data.get('_pending_irrelevant_description'):
+                    state.partial_data['_pending_irrelevant_description'] = ''
+                state.partial_data['_awaiting_irrelevant_description_choice'] = True
+                logger.info(
+                    "[AuctionHandler] Custom-description input recognised as menu command '%s'; routing to choice handler",
+                    menu_cmd,
+                )
+                return await self._handle_irrelevant_description_choice(
+                    user_message, conversation, state
+                )
+
+            state.partial_data.pop('_awaiting_custom_description_input', None)
+
+            # Validate relevance before accepting — store verbatim if relevant
+            irrelevant_response = await self._process_user_description(
+                custom_description, conversation, state
             )
-            state.partial_data['description'] = refined_description
-            state.partial_data['_description_decision_made'] = True
-            state_manager.update_state(conversation.conversation_id, {'description': refined_description})
-            logger.info("[AuctionHandler] Custom description captured")
+            if irrelevant_response is not None:
+                return irrelevant_response
+
+            logger.info("[AuctionHandler] Custom description captured and validated")
             return await self._generate_confirmation(conversation, state)
 
         inline_description = self._extract_inline_description(user_message)
         if inline_description and state.action == "create":
             state.partial_data.pop('_needs_description_generation', None)
             state.partial_data.pop('_auto_generate_description', None)
-            state.partial_data['description'] = inline_description
-            state.partial_data['_description_decision_made'] = True
-            state_manager.update_state(
-                conversation.conversation_id,
-                {
-                    'description': inline_description,
-                    '_description_decision_made': True,
-                }
+            # Validate relevance before accepting — store verbatim if relevant
+            irrelevant_response = await self._process_user_description(
+                inline_description, conversation, state
             )
+            if irrelevant_response is not None:
+                return irrelevant_response
             logger.info("[AuctionHandler] Captured inline description during create flow")
         
         # Check if we need to handle description generation choice
@@ -643,21 +989,14 @@ class AuctionHandler:
 
         inline_description = self._extract_inline_description(user_message)
         if inline_description:
-            refined_description = await self._refine_auction_description(
-                state.partial_data,
-                user_description=inline_description,
-            )
-            state.partial_data['description'] = refined_description
-            state.partial_data['_description_decision_made'] = True
             state.partial_data.pop('_awaiting_description_confirmation', None)
-            state_manager.update_state(
-                conversation.conversation_id,
-                {
-                    'description': refined_description,
-                    '_description_decision_made': True,
-                }
-            )
             state_manager.set_confirmation_pending(conversation.conversation_id, False)
+            # Validate relevance before accepting — store verbatim if relevant
+            irrelevant_response = await self._process_user_description(
+                inline_description, conversation, state
+            )
+            if irrelevant_response is not None:
+                return irrelevant_response
             logger.info("[AuctionHandler] User provided inline description at description-choice step")
             return await self._generate_confirmation(conversation, state)
 
@@ -725,21 +1064,14 @@ class AuctionHandler:
             logger.info("[AuctionHandler] User chose to edit description")
             return self._prompt_for_custom_description(conversation, state)
 
-        refined_description = await self._refine_auction_description(
-            state.partial_data,
-            user_description=user_message,
-        )
-        state.partial_data['description'] = refined_description
-        state.partial_data['_description_decision_made'] = True
+        # Treat freeform response as a custom description; validate for relevance first
         state.partial_data.pop('_awaiting_description_confirmation', None)
-        state_manager.update_state(
-            conversation.conversation_id,
-            {
-                'description': refined_description,
-                '_description_decision_made': True,
-            }
-        )
         state_manager.set_confirmation_pending(conversation.conversation_id, False)
+        irrelevant_response = await self._process_user_description(
+            user_message.strip(), conversation, state
+        )
+        if irrelevant_response is not None:
+            return irrelevant_response
         logger.info("[AuctionHandler] Treated freeform response as custom description")
         return await self._generate_confirmation(conversation, state)
 
@@ -772,14 +1104,12 @@ class AuctionHandler:
             elif self._contains_choice(msg_lower, ['edit', 'change', 'modify', 'custom']):
                 return self._prompt_for_custom_description(conversation, state)
             else:
-                # User provided edited description - refine it to match structured format
-                refined_description = await self._refine_auction_description(
-                    state.partial_data,
-                    user_description=user_message,
+                # User provided an edited description — validate for relevance first
+                irrelevant_response = await self._process_user_description(
+                    user_message.strip(), conversation, state
                 )
-                state.partial_data['description'] = refined_description
-                state.partial_data['_description_decision_made'] = True
-                state_manager.update_state(conversation.conversation_id, {'description': refined_description})
+                if irrelevant_response is not None:
+                    return irrelevant_response
                 return await self._generate_confirmation(conversation, state)
         
         # Check for affirmative responses

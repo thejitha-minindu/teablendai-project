@@ -167,22 +167,23 @@ class ChatService:
                     user_role=user_role
                 )
 
-            # Topic Validation (Only if NO active state)
-            has_history = conversation_id is not None
+            # SEMANTIC INTENT CLASSIFICATION & SAFETY GUARDRAILS
+            recent_messages = self.message_repo.get_by_conversation(conversation.conversation_id, limit=4)
+            history_snippets = [
+                f"{getattr(m, 'role', getattr(m, 'sender', 'user'))}: {m.content}"
+                for m in recent_messages if getattr(m, 'content', None)
+            ]
 
-            logger.info(f"[Chat] Validating question: '{user_message[:60]}' (has_history={has_history})")
-
-            is_tea_related = self.validator.is_tea_related(
+            classification = await intent_classifier.classify_semantic(
                 question=user_message,
-                has_conversation_history=has_history,
-                conversation_id=conversation.conversation_id
+                history_context=history_snippets
             )
+            logger.info(f"[Chat] Semantic Classification: intent={classification.intent}, related={classification.is_tea_or_platform_related}, domain={classification.target_domain}")
 
-            logger.info(f"[Chat] Validation result: is_tea_related={is_tea_related}")
-
-            if not is_tea_related:
-                logger.warning(f"[Chat] REJECTING off-topic question: '{user_message[:60]}'")
-                rejection = self.validator.get_rejection_message()
+            # Guardrail Check: Off-Topic Rejection
+            if not classification.is_tea_or_platform_related:
+                logger.warning(f"[Chat] Guardrail REJECTING off-topic query: '{user_message[:60]}'")
+                rejection = classification.rejection_or_greeting_message or self.validator.get_rejection_message()
 
                 assistant_msg = ChatMessage.create_assistant_message(
                     conversation_id=conversation.conversation_id,
@@ -191,43 +192,55 @@ class ChatService:
                 )
                 self.message_repo.create(assistant_msg)
 
-                logger.info(f"[Chat] Saved rejection message for conversation {conversation.conversation_id}")
-
                 return {
                     "success": True,
                     "conversation_id": conversation.conversation_id,
                     "answer": rejection,
                     "source": "validation",
                     "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "suggestions": self.validator.get_suggestions(user_message)
+                    "suggestions": classification.suggested_questions or self.validator.get_suggestions(user_message)
                 }
 
-            # INTENT CLASSIFICATION & ROUTING
-            intent: QueryIntent = intent_classifier.classify(user_message)
-            if intent == "database" and intent_classifier.is_auction_management_request(user_message):
-                logger.info("[Chat] Overriding database intent with auction_management due to auction action context")
-                intent = "auction_management"
-            logger.info(f"[Chat] Query intent: {intent}")
+            # Conversational Greeting Handling
+            if classification.intent == "general_greeting":
+                greeting_text = classification.rejection_or_greeting_message or (
+                    "Hello! I am your **TeaBlendAI Intelligence Assistant**. "
+                    "I can help you query auction sales analytics, inspect warehouse tea blend formulations, "
+                    "or manage live tea auctions. How can I assist your tea business today?"
+                )
+                assistant_msg = ChatMessage.create_assistant_message(
+                    conversation_id=conversation.conversation_id,
+                    content=greeting_text,
+                    source="system"
+                )
+                self.message_repo.create(assistant_msg)
 
-            # Route based on intent
+                return {
+                    "success": True,
+                    "conversation_id": conversation.conversation_id,
+                    "answer": greeting_text,
+                    "source": "system",
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "suggestions": classification.suggested_questions
+                }
+
+            # Route by Classified Intent
+            intent = classification.intent
             if intent == "knowledge":
                 return await self._handle_knowledge_query(user_message, conversation)
-
             elif intent == "database":
                 return await self._handle_database_query(user_message, conversation, start_time)
-
             elif intent == "hybrid":
                 return await self._handle_hybrid_query(user_message, conversation)
-
             elif intent == "auction_management":
                 return await self.auction_handler.handle_auction_management(
                     user_message=user_message,
                     conversation=conversation,
-                    user_id=str(user_id) if user_id else None,
+                    user_id=auction_user_id,
                     user_role=user_role
                 )
 
-            logger.warning(f"[Chat] Unknown intent '{intent}', defaulting to database")
+            logger.warning(f"[Chat] Unknown intent '{intent}', defaulting to database query")
             return await self._handle_database_query(user_message, conversation, start_time)
         
         except Exception as e:

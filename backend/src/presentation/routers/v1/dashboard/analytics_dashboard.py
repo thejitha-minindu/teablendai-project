@@ -32,7 +32,10 @@ def get_analytics_overview(
             refresh_interval_ms=refresh_interval_ms,
         )
 
-    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    snapshot = repo.get_latest_snapshot(
+        refresh_interval_ms=refresh_interval_ms,
+        max_age_seconds=settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS,
+    )
     if snapshot is None:
         return repo.create_snapshot(
             lookback_days=settings.ANALYTICS_KPI_LOOKBACK_DAYS,
@@ -56,7 +59,10 @@ def get_analytics_purchases(
             refresh_interval_ms=refresh_interval_ms,
         )
 
-    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    snapshot = repo.get_latest_snapshot(
+        refresh_interval_ms=refresh_interval_ms,
+        max_age_seconds=settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS,
+    )
     if snapshot is None:
         return repo.create_snapshot(
             chart_months=settings.ANALYTICS_CHART_MONTHS,
@@ -80,7 +86,10 @@ def get_analytics_sales(
             refresh_interval_ms=refresh_interval_ms,
         )
 
-    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    snapshot = repo.get_latest_snapshot(
+        refresh_interval_ms=refresh_interval_ms,
+        max_age_seconds=settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS,
+    )
     if snapshot is None:
         return repo.create_snapshot(
             chart_months=settings.ANALYTICS_CHART_MONTHS,
@@ -105,7 +114,10 @@ def get_analytics_blends(
             refresh_interval_ms=refresh_interval_ms,
         )
 
-    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    snapshot = repo.get_latest_snapshot(
+        refresh_interval_ms=refresh_interval_ms,
+        max_age_seconds=settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS,
+    )
     if snapshot is None:
         return repo.create_snapshot(
             chart_months=settings.ANALYTICS_CHART_MONTHS,
@@ -130,7 +142,10 @@ def get_analytics_buyers(
             refresh_interval_ms=refresh_interval_ms,
         )
 
-    snapshot = repo.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
+    snapshot = repo.get_latest_snapshot(
+        refresh_interval_ms=refresh_interval_ms,
+        max_age_seconds=settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS,
+    )
     if snapshot is None:
         return repo.create_snapshot(
             chart_months=settings.ANALYTICS_CHART_MONTHS,

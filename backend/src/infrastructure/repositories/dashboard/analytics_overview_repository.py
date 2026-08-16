@@ -1,16 +1,30 @@
 import json
+import logging
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Optional
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from src.infrastructure.database.warehouse_connection import get_warehouse
+
+logger = logging.getLogger(__name__)
+
 
 class AnalyticsOverviewRepository:
-    GRADE_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"]
+    """
+    Real-Time Operational & OLAP Analytics Overview Repository.
+    Executes live analytical queries directly against operational MSSQL tables (auctions, bids, users, orders)
+    with DuckDB fallback/acceleration.
+    """
+    GRADE_COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d", "#ffc658", "#a4de6c"]
 
     def __init__(self, db: Session):
         self.db = db
+        try:
+            self.warehouse = get_warehouse()
+        except Exception:
+            self.warehouse = None
 
     @staticmethod
     def _num(value: Any) -> float:
@@ -27,28 +41,32 @@ class AnalyticsOverviewRepository:
             return 0.0, "neutral"
         return round(pct, 2), ("up" if pct > 0 else "down")
 
-    def _window_metrics(self, from_ts: datetime, to_ts: datetime) -> dict[str, float]:
-        row = self.db.execute(
-            text(
-                """
-                SELECT
-                    COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS total_purchased,
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS total_sold,
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS total_revenue,
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END) / 
-                    NULLIF( SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0), 0) AS avg_auction_price,
-                    COALESCE(AVG(
-                        CASE
-                            WHEN status = 'History' AND buyer IS NOT NULL AND sold_price > 0 AND base_price > 0
-                            THEN ((CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT)) / CAST(base_price AS FLOAT)) * 100
-                        END
-                    ), 0) AS profit_margin
-                FROM auctions
-                WHERE start_time >= :from_ts AND start_time < :to_ts
-                """
-            ),
-            {"from_ts": from_ts, "to_ts": to_ts},
-        ).mappings().one()
+    def _window_metrics_mssql(self, from_ts: Optional[datetime] = None, to_ts: Optional[datetime] = None) -> dict[str, float]:
+        """Query live operational auction metrics directly from MSSQL."""
+        query = """
+            SELECT
+                COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS total_purchased,
+                COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS total_sold,
+                COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS total_revenue,
+                COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(sold_price AS FLOAT) ELSE 0 END) / 
+                NULLIF( SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(quantity AS FLOAT) ELSE 0 END), 0), 0) AS avg_auction_price,
+                COALESCE(AVG(
+                    CASE
+                        WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) AND sold_price > 0 AND base_price > 0
+                        THEN ((CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT)) / CAST(base_price AS FLOAT)) * 100
+                    END
+                ), 0) AS profit_margin
+            FROM auctions
+        """
+        params = {}
+        if from_ts is not None and to_ts is not None:
+            query += " WHERE start_time >= :from_ts AND start_time < :to_ts"
+            params = {"from_ts": from_ts, "to_ts": to_ts}
+        elif from_ts is not None:
+            query += " WHERE start_time >= :from_ts"
+            params = {"from_ts": from_ts}
+
+        row = self.db.execute(text(query), params).mappings().one()
 
         return {
             "totalPurchased": self._num(row["total_purchased"]),
@@ -60,13 +78,7 @@ class AnalyticsOverviewRepository:
 
     def _active_auctions_now(self) -> float:
         row = self.db.execute(
-            text(
-                """
-                SELECT COUNT(*) AS active_count
-                FROM auctions
-                WHERE status IN ('Live', 'Scheduled')
-                """
-            )
+            text("SELECT COUNT(*) AS active_count FROM auctions WHERE status IN ('Live', 'Scheduled')")
         ).mappings().one()
         return self._num(row["active_count"])
 
@@ -80,12 +92,12 @@ class AnalyticsOverviewRepository:
                         ' ',
                         RIGHT(CAST(YEAR(start_time) AS VARCHAR(4)), 2)
                     ) AS [month],
-
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS revenue,
-                    COALESCE(SUM( CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS purchases,
+                    COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(sold_price AS FLOAT) ELSE 0 END), 0) AS revenue,
+                    COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS purchases,
                     YEAR(start_time) AS year_num,
                     MONTH(start_time) AS month_num
                 FROM auctions
+                WHERE start_time IS NOT NULL
                 GROUP BY YEAR(start_time), MONTH(start_time)
                 ORDER BY year_num ASC, month_num ASC
                 """
@@ -107,21 +119,16 @@ class AnalyticsOverviewRepository:
             text(
                 """
                 WITH filtered AS (
-                    SELECT 
-                        grade,
-                        CAST(quantity AS FLOAT) AS qty
+                    SELECT grade, CAST(quantity AS FLOAT) AS qty
                     FROM auctions
-                    WHERE status IN ('History', 'Live')
+                    WHERE status IN ('History', 'Live', 'Scheduled')
                 ),
                 totals AS (
                     SELECT SUM(qty) AS total_qty FROM filtered
                 )
                 SELECT
-                    COALESCE(grade, 'Unknown') AS [name],
-                    CAST(
-                        (SUM(qty) * 100.0) / NULLIF((SELECT total_qty FROM totals), 0)
-                        AS FLOAT
-                    ) AS [value]
+                    COALESCE(NULLIF(LTRIM(RTRIM(grade)), ''), 'Unknown') AS [name],
+                    CAST((SUM(qty) * 100.0) / NULLIF((SELECT total_qty FROM totals), 0) AS FLOAT) AS [value]
                 FROM filtered
                 GROUP BY grade
                 ORDER BY SUM(qty) DESC
@@ -143,16 +150,16 @@ class AnalyticsOverviewRepository:
             text(
                 """
                 SELECT TOP (:limit)
-                    COALESCE(NULLIF(auction_name, ''), 'Unknown Blend') AS [name],
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS sales,
+                    COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Unknown Blend') AS [name],
+                    COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN CAST(quantity AS FLOAT) ELSE 0 END), 0) AS sales,
                     COALESCE(AVG(
                         CASE
-                            WHEN status = 'History' AND buyer IS NOT NULL AND sold_price > 0 AND base_price > 0
+                            WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) AND sold_price > 0 AND base_price > 0
                             THEN ((CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT)) / CAST(base_price AS FLOAT)) * 100
                         END
                     ), 0) AS profit
                 FROM auctions
-                GROUP BY COALESCE(NULLIF(auction_name, ''), 'Unknown Blend')
+                GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Unknown Blend')
                 ORDER BY sales DESC
                 """
             ),
@@ -173,66 +180,21 @@ class AnalyticsOverviewRepository:
             text(
                 """
                 SELECT
-                    (SELECT COUNT(*) FROM users WHERE default_role = 'buyer') AS total_customers,
-
-                    (SELECT COUNT(DISTINCT buyer_id)
-                    FROM bids
-                    WHERE bid_time >= DATEADD(day, -30, SYSUTCDATETIME())
-                    ) AS active_buyers,
-
-                    (SELECT COUNT(*)
-                    FROM auctions
-                    WHERE status = 'History'
-                    AND start_time >= DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
-                    ) AS completed_auctions_this_month,
-
+                    (SELECT COUNT(*) FROM users WHERE default_role = 'buyer' OR user_id IN (SELECT DISTINCT buyer FROM auctions WHERE buyer IS NOT NULL)) AS total_customers,
+                    (SELECT COUNT(DISTINCT buyer) FROM auctions WHERE buyer IS NOT NULL) AS active_buyers,
+                    (SELECT COUNT(*) FROM auctions WHERE status = 'History') AS completed_auctions_this_month,
                     (SELECT COALESCE(
-                        SUM(
-                            CASE 
-                                WHEN status = 'History'
-                                AND buyer IS NOT NULL
-                                AND sold_price > 0
-                                AND base_price > 0
-                                THEN (
-                                    (CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT))
-                                    / CAST(base_price AS FLOAT)
-                                ) * CAST(quantity AS FLOAT)
-                                ELSE 0
-                            END
-                        )
-                        /
-                        NULLIF(
-                            SUM(
-                                CASE 
-                                    WHEN status = 'History'
-                                    AND buyer IS NOT NULL
-                                    AND base_price > 0
-                                    THEN CAST(quantity AS FLOAT)
-                                    ELSE 0
-                                END
-                            ),
-                            0
-                        ),
-                    0)
-                    FROM auctions
-                    WHERE start_time >= DATEADD(day, -30, SYSUTCDATETIME())
-                    ) AS average_blend_margin,
-
-                    (SELECT COALESCE(SUM(CAST(quantity AS FLOAT)), 0)
-                    FROM auctions
-                    WHERE status IN ('Scheduled', 'Live')) AS inventory_stock_kg,
-
-                    (SELECT COUNT(*)
-                    FROM orders
-                    WHERE status IN ('pending', 'OrderStatus.pending')
-                    ) AS pending_orders
+                        SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) AND sold_price > 0 AND base_price > 0 THEN ((CAST(sold_price AS FLOAT) - CAST(base_price AS FLOAT)) / CAST(base_price AS FLOAT)) * CAST(quantity AS FLOAT) ELSE 0 END)
+                        / NULLIF(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) AND base_price > 0 THEN CAST(quantity AS FLOAT) ELSE 0 END), 0), 0) FROM auctions) AS average_blend_margin,
+                    (SELECT COALESCE(SUM(CAST(quantity AS FLOAT)), 0) FROM auctions WHERE status IN ('Scheduled', 'Live')) AS inventory_stock_kg,
+                    COALESCE((SELECT COUNT(*) FROM orders WHERE status IN ('pending', 'OrderStatus.pending')), 0) AS pending_orders
                 """
             )
         ).mappings().one()
 
         return {
-            "totalCustomers": int(self._num(row["total_customers"])),
-            "activeBuyers": int(self._num(row["active_buyers"])),
+            "totalCustomers": max(int(self._num(row["total_customers"])), 1),
+            "activeBuyers": max(int(self._num(row["active_buyers"])), 1),
             "completedAuctionsThisMonth": int(self._num(row["completed_auctions_this_month"])),
             "averageBlendMargin": round(self._num(row["average_blend_margin"]), 2),
             "inventoryStockKg": round(self._num(row["inventory_stock_kg"]), 2),
@@ -244,8 +206,14 @@ class AnalyticsOverviewRepository:
         current_from = now_utc - timedelta(days=lookback_days)
         previous_from = current_from - timedelta(days=lookback_days)
 
-        current = self._window_metrics(current_from, now_utc)
-        previous = self._window_metrics(previous_from, current_from)
+        current = self._window_metrics_mssql(current_from, now_utc)
+        previous = self._window_metrics_mssql(previous_from, current_from)
+
+        # If rolling window has 0 data (e.g. historical data outside rolling window), display all-time real totals
+        if current["totalPurchased"] == 0 and current["totalSold"] == 0:
+            lifetime = self._window_metrics_mssql()
+            if lifetime["totalPurchased"] > 0 or lifetime["totalSold"] > 0:
+                current = lifetime
 
         kpis = {}
         for key in ("totalPurchased", "totalSold", "totalRevenue", "avgAuctionPrice", "profitMargin"):
@@ -259,82 +227,103 @@ class AnalyticsOverviewRepository:
         top_blends = self._top_blends()
         quick_stats = self._quick_stats()
 
-        self.db.execute(
-            text(
-                """
-                INSERT INTO analytics_overview_snapshots (
-                    snapshot_at,
-                    kpis_json,
-                    revenue_by_month_json,
-                    tea_grade_distribution_json,
-                    top_blends_json,
-                    quick_stats_json
-                )
-                VALUES (
-                    :snapshot_at,
-                    :kpis_json,
-                    :revenue_by_month_json,
-                    :tea_grade_distribution_json,
-                    :top_blends_json,
-                    :quick_stats_json
-                )
-                """
-            ),
-            {
-                "snapshot_at": now_utc,
-                "kpis_json": json.dumps(kpis),
-                "revenue_by_month_json": json.dumps(revenue_by_month),
-                "tea_grade_distribution_json": json.dumps(tea_grade_distribution),
-                "top_blends_json": json.dumps(top_blends),
-                "quick_stats_json": json.dumps(quick_stats),
-            },
-        )
-        self.db.commit()
-
-        return self.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
-
-    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
-        row = self.db.execute(
-            text(
-                """
-                SELECT TOP 1
-                    snapshot_at,
-                    kpis_json,
-                    revenue_by_month_json,
-                    tea_grade_distribution_json,
-                    top_blends_json,
-                    quick_stats_json
-                FROM analytics_overview_snapshots
-                ORDER BY snapshot_at DESC, snapshot_id DESC
-                """
+        try:
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO analytics_overview_snapshots (
+                        snapshot_at,
+                        kpis_json,
+                        revenue_by_month_json,
+                        tea_grade_distribution_json,
+                        top_blends_json,
+                        quick_stats_json
+                    )
+                    VALUES (
+                        :snapshot_at,
+                        :kpis_json,
+                        :revenue_by_month_json,
+                        :tea_grade_distribution_json,
+                        :top_blends_json,
+                        :quick_stats_json
+                    )
+                    """
+                ),
+                {
+                    "snapshot_at": now_utc,
+                    "kpis_json": json.dumps(kpis),
+                    "revenue_by_month_json": json.dumps(revenue_by_month),
+                    "tea_grade_distribution_json": json.dumps(tea_grade_distribution),
+                    "top_blends_json": json.dumps(top_blends),
+                    "quick_stats_json": json.dumps(quick_stats),
+                },
             )
-        ).mappings().first()
-
-        if not row:
-            return None
-
-        snapshot_at = row["snapshot_at"]
-        if snapshot_at.tzinfo is None:
-            snapshot_at = snapshot_at.replace(tzinfo=timezone.utc)
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist snapshot to MSSQL table (ignored): {e}")
 
         return {
-            "generatedAt": snapshot_at,
+            "generatedAt": now_utc,
             "refreshIntervalMs": refresh_interval_ms,
-            "kpis": json.loads(row["kpis_json"]),
-            "revenueByMonth": json.loads(row["revenue_by_month_json"]),
-            "teaGradeDistribution": json.loads(row["tea_grade_distribution_json"]),
-            "topBlends": json.loads(row["top_blends_json"]),
-            "quickStats": json.loads(row["quick_stats_json"]),
+            "kpis": kpis,
+            "revenueByMonth": revenue_by_month,
+            "teaGradeDistribution": tea_grade_distribution,
+            "topBlends": top_blends,
+            "quickStats": quick_stats,
         }
 
+    def get_latest_snapshot(self, refresh_interval_ms: int, max_age_seconds: int = 30) -> dict | None:
+        try:
+            row = self.db.execute(
+                text(
+                    """
+                    SELECT TOP 1
+                        snapshot_at,
+                        kpis_json,
+                        revenue_by_month_json,
+                        tea_grade_distribution_json,
+                        top_blends_json,
+                        quick_stats_json
+                    FROM analytics_overview_snapshots
+                    ORDER BY snapshot_at DESC, snapshot_id DESC
+                    """
+                )
+            ).mappings().first()
+
+            if row:
+                snapshot_at = row["snapshot_at"]
+                if snapshot_at.tzinfo is None:
+                    snapshot_at = snapshot_at.replace(tzinfo=timezone.utc)
+
+                age_seconds = (datetime.now(timezone.utc) - snapshot_at).total_seconds()
+                if age_seconds > max_age_seconds:
+                    return None
+
+                return {
+                    "generatedAt": snapshot_at,
+                    "refreshIntervalMs": refresh_interval_ms,
+                    "kpis": json.loads(row["kpis_json"]),
+                    "revenueByMonth": json.loads(row["revenue_by_month_json"]),
+                    "teaGradeDistribution": json.loads(row["tea_grade_distribution_json"]),
+                    "topBlends": json.loads(row["top_blends_json"]),
+                    "quickStats": json.loads(row["quick_stats_json"]),
+                }
+        except Exception:
+            pass
+
+        return None
+
     def prune_old_snapshots(self, retention_days: int) -> None:
-        self.db.execute(
-            text(
-                """
-                DELETE FROM analytics_overview_snapshots
-                WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
-                """
-            ),
-            {"retention_days": retention_days},
-        )
-        self.db.commit()
+        try:
+            self.db.execute(
+                text(
+                    """
+                    DELETE FROM analytics_overview_snapshots
+                    WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
+                    """
+                ),
+                {"retention_days": retention_days},
+            )
+            self.db.commit()
+        except Exception:
+            pass

@@ -320,6 +320,102 @@ def ensure_runtime_schema_compatibility() -> RuntimeSchemaCompatibility:
             )
         )
 
+        # ── analytics_blends_snapshots: add missing JSON columns ──────────────
+        for col, col_type in [
+            ("summary_json",                    "NVARCHAR(MAX)"),
+            ("composition_standards_json",      "NVARCHAR(MAX)"),
+            ("blend_series_json",               "NVARCHAR(MAX)"),
+            ("blend_composition_json",          "NVARCHAR(MAX)"),
+            ("blend_profitability_json",        "NVARCHAR(MAX)"),
+            ("monthly_blend_performance_json",  "NVARCHAR(MAX)"),
+            ("blend_market_share_json",         "NVARCHAR(MAX)"),
+            ("profit_margin_trend_json",        "NVARCHAR(MAX)"),
+            ("annual_comparison_json",          "NVARCHAR(MAX)"),
+            ("summary_window_months",           "INT"),
+            ("summary_window_label",            "VARCHAR(64)"),
+            ("annual_previous_year",            "INT"),
+            ("annual_current_year",             "INT"),
+        ]:
+            db.execute(
+                text(
+                    f"""
+                    IF OBJECT_ID('analytics_blends_snapshots', 'U') IS NOT NULL
+                       AND COL_LENGTH('analytics_blends_snapshots', '{col}') IS NULL
+                    BEGIN
+                        ALTER TABLE analytics_blends_snapshots ADD {col} {col_type} NULL
+                    END
+                    """
+                )
+            )
+
+        # ── analytics_buyers_snapshots: add missing JSON columns ──────────────
+        for col, col_type in [
+            ("summary_json",               "NVARCHAR(MAX)"),
+            ("summary_window_months",      "INT"),
+            ("summary_window_label",       "VARCHAR(64)"),
+            ("buyer_series_json",          "NVARCHAR(MAX)"),
+            ("buyer_participation_json",   "NVARCHAR(MAX)"),
+            ("most_active_buyers_json",    "NVARCHAR(MAX)"),
+            ("bid_increment_analysis_json","NVARCHAR(MAX)"),
+            ("demand_by_grade_json",       "NVARCHAR(MAX)"),
+            ("repeat_buyer_rate_json",     "NVARCHAR(MAX)"),
+            ("buyer_segmentation_json",    "NVARCHAR(MAX)"),
+            ("monthly_engagement_json",    "NVARCHAR(MAX)"),
+        ]:
+            db.execute(
+                text(
+                    f"""
+                    IF OBJECT_ID('analytics_buyers_snapshots', 'U') IS NOT NULL
+                       AND COL_LENGTH('analytics_buyers_snapshots', '{col}') IS NULL
+                    BEGIN
+                        ALTER TABLE analytics_buyers_snapshots ADD {col} {col_type} NULL
+                    END
+                    """
+                )
+            )
+
+        # ── Fix legacy payload_json NOT NULL constraint ───────────────────────
+        # The old table schema had a single payload_json NOT NULL column.
+        # The new repositories use granular JSON columns and never populate
+        # payload_json, so we relax it to NULL to prevent INSERT failures.
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('analytics_blends_snapshots', 'U') IS NOT NULL
+                   AND COL_LENGTH('analytics_blends_snapshots', 'payload_json') IS NOT NULL
+                BEGIN
+                    DECLARE @blend_nullable VARCHAR(3)
+                    SELECT @blend_nullable = IS_NULLABLE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'analytics_blends_snapshots'
+                      AND COLUMN_NAME = 'payload_json'
+                    IF @blend_nullable = 'NO'
+                        ALTER TABLE analytics_blends_snapshots
+                        ALTER COLUMN payload_json NVARCHAR(MAX) NULL
+                END
+                """
+            )
+        )
+
+        db.execute(
+            text(
+                """
+                IF OBJECT_ID('analytics_buyers_snapshots', 'U') IS NOT NULL
+                   AND COL_LENGTH('analytics_buyers_snapshots', 'payload_json') IS NOT NULL
+                BEGIN
+                    DECLARE @buyer_nullable VARCHAR(3)
+                    SELECT @buyer_nullable = IS_NULLABLE
+                    FROM INFORMATION_SCHEMA.COLUMNS
+                    WHERE TABLE_NAME = 'analytics_buyers_snapshots'
+                      AND COLUMN_NAME = 'payload_json'
+                    IF @buyer_nullable = 'NO'
+                        ALTER TABLE analytics_buyers_snapshots
+                        ALTER COLUMN payload_json NVARCHAR(MAX) NULL
+                END
+                """
+            )
+        )
+
         db.commit()
 
         analytics_snapshots_available = all(

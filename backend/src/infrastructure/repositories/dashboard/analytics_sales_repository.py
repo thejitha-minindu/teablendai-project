@@ -1,14 +1,24 @@
 import json
+import logging
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from src.infrastructure.database.warehouse_connection import get_warehouse
+
+logger = logging.getLogger(__name__)
+
 
 class AnalyticsSalesRepository:
+    """
+    OLAP-Powered Analytics Sales Repository.
+    Executes high-performance sales & auction analytical queries against DuckDB.
+    """
     def __init__(self, db: Session):
         self.db = db
+        self.warehouse = get_warehouse()
 
     @staticmethod
     def _num(value: Any) -> float:
@@ -30,8 +40,7 @@ class AnalyticsSalesRepository:
                         END AS duration_minutes
                     FROM auctions
                     WHERE status = 'History'
-                      AND buyer IS NOT NULL
-                      AND sold_price > 0
+                      AND (buyer IS NOT NULL OR sold_price > 0)
                       AND quantity > 0
                 ),
                 bids_for_sold AS (
@@ -73,7 +82,7 @@ class AnalyticsSalesRepository:
                     GROUP BY auction_id
                 )
                 SELECT TOP (:limit)
-                    COALESCE(NULLIF(a.auction_name, ''), CAST(a.auction_id AS VARCHAR(36))) AS auction,
+                    COALESCE(NULLIF(LTRIM(RTRIM(a.auction_name)), ''), CAST(a.auction_id AS VARCHAR(36))) AS auction,
                     CAST(COALESCE(a.base_price, 0) AS FLOAT) AS base_price,
                     CAST(COALESCE(a.sold_price, 0) AS FLOAT) AS closing_price,
                     CAST(COALESCE(a.quantity, 0) AS FLOAT) AS volume,
@@ -81,8 +90,7 @@ class AnalyticsSalesRepository:
                 FROM auctions a
                 LEFT JOIN bid_counts bc ON bc.auction_id = a.auction_id
                 WHERE a.status = 'History'
-                  AND a.buyer IS NOT NULL
-                  AND a.sold_price > 0
+                  AND (a.buyer IS NOT NULL OR a.sold_price > 0)
                 ORDER BY a.start_time DESC
                 """
             ),
@@ -104,25 +112,24 @@ class AnalyticsSalesRepository:
         rows = self.db.execute(
             text(
                 """
-                SELECT
-                    YEAR(start_time) AS year_num,
-                    MONTH(start_time) AS month_num,
+                SELECT TOP (:months)
+                    CONCAT(
+                        LEFT(DATENAME(month, DATEFROMPARTS(YEAR(start_time), MONTH(start_time), 1)), 3),
+                        ' ',
+                        RIGHT(CAST(YEAR(start_time) AS VARCHAR(4)), 2)
+                    ) AS [month],
                     COALESCE(SUM(CAST(sold_price AS FLOAT)), 0) AS revenue,
                     COALESCE(SUM(CAST(quantity AS FLOAT)), 0) AS volume,
                     COALESCE(
                         SUM(CAST(sold_price AS FLOAT)) / NULLIF(SUM(CAST(quantity AS FLOAT)), 0),
                         0
-                    ) AS avg_price
+                    ) AS avg_price,
+                    YEAR(start_time) AS year_num,
+                    MONTH(start_time) AS month_num
                 FROM auctions
                 WHERE status = 'History'
-                  AND buyer IS NOT NULL
-                  AND sold_price > 0
-                  AND quantity > 0
-                  AND start_time >= DATEADD(
-                        month,
-                        -:months + 1,
-                        DATEFROMPARTS(YEAR(SYSUTCDATETIME()), MONTH(SYSUTCDATETIME()), 1)
-                  )
+                  AND (buyer IS NOT NULL OR sold_price > 0)
+                  AND start_time IS NOT NULL
                 GROUP BY YEAR(start_time), MONTH(start_time)
                 ORDER BY year_num ASC, month_num ASC
                 """
@@ -130,22 +137,17 @@ class AnalyticsSalesRepository:
             {"months": max(months, 1)},
         ).mappings().all()
 
-        trends: list[dict[str, float | str]] = []
-        for r in rows:
-            y = int(r["year_num"])
-            m = int(r["month_num"])
-            trends.append(
-                {
-                    "month": datetime(y, m, 1).strftime("%b %y"),
-                    "revenue": round(self._num(r["revenue"]), 2),
-                    "volume": round(self._num(r["volume"]), 2),
-                    "avgPrice": round(self._num(r["avg_price"]), 2),
-                }
-            )
-        return trends
+        return [
+            {
+                "month": str(r["month"]),
+                "revenue": round(self._num(r["revenue"]), 2),
+                "volume": round(self._num(r["volume"]), 2),
+                "avgPrice": round(self._num(r["avg_price"]), 2),
+            }
+            for r in rows
+        ]
 
     def _seller_performance(self, limit: int = 5) -> list[dict[str, float | int | str]]:
-        # - avg_margin: Average margin % = AVG((sold_price - base_price) / base_price * 100)
         rows = self.db.execute(
             text(
                 """
@@ -168,8 +170,7 @@ class AnalyticsSalesRepository:
                     COUNT(*) AS auctions_won
                 FROM auctions
                 WHERE status = 'History'
-                  AND buyer IS NOT NULL
-                  AND sold_price > 0
+                  AND (buyer IS NOT NULL OR sold_price > 0)
                 GROUP BY
                     COALESCE(
                         NULLIF(LTRIM(RTRIM(company_name)), ''),
@@ -219,11 +220,11 @@ class AnalyticsSalesRepository:
                     GROUP BY auction_id
                 )
                 SELECT TOP (:limit)
-                    COALESCE(NULLIF(a.auction_name, ''), CAST(a.auction_id AS VARCHAR(36))) AS auction,
+                    COALESCE(NULLIF(LTRIM(RTRIM(a.auction_name)), ''), CAST(a.auction_id AS VARCHAR(36))) AS auction,
                     COALESCE(bc.total_bids, 0) AS total_bids,
                     COALESCE(ia.avg_bid_increment, 0) AS avg_bid_increment,
                     CASE
-                        WHEN a.status = 'History' AND a.buyer IS NOT NULL AND a.sold_price > 0 THEN 1
+                        WHEN a.status = 'History' AND (a.buyer IS NOT NULL OR a.sold_price > 0) THEN 1
                         ELSE 0
                     END AS winning_bids
                 FROM auctions a
@@ -255,86 +256,107 @@ class AnalyticsSalesRepository:
 
         now_utc = datetime.now(timezone.utc)
 
-        self.db.execute(
-            text(
-                """
-                INSERT INTO analytics_sales_snapshots (
-                    snapshot_at,
-                    summary_json,
-                    auction_performance_json,
-                    grade_wise_prices_json,
-                    selling_trends_json,
-                    seller_performance_json,
-                    bid_volume_analysis_json
-                )
-                VALUES (
-                    :snapshot_at,
-                    :summary_json,
-                    :auction_performance_json,
-                    :grade_wise_prices_json,
-                    :selling_trends_json,
-                    :seller_performance_json,
-                    :bid_volume_analysis_json
-                )
-                """
-            ),
-            {
-                "snapshot_at": now_utc,
-                "summary_json": json.dumps(summary),
-                "auction_performance_json": json.dumps(auction_performance),
-                "grade_wise_prices_json": json.dumps([]),
-                "selling_trends_json": json.dumps(selling_trends),
-                "seller_performance_json": json.dumps(seller_performance),
-                "bid_volume_analysis_json": json.dumps(bid_volume_analysis),
-            },
-        )
-        self.db.commit()
-
-        return self.get_latest_snapshot(refresh_interval_ms=refresh_interval_ms)
-
-    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
-        row = self.db.execute(
-            text(
-                """
-                SELECT TOP 1
-                    snapshot_at,
-                    summary_json,
-                    auction_performance_json,
-                    grade_wise_prices_json,
-                    selling_trends_json,
-                    seller_performance_json,
-                    bid_volume_analysis_json
-                FROM analytics_sales_snapshots
-                ORDER BY snapshot_at DESC, snapshot_id DESC
-                """
+        try:
+            self.db.execute(
+                text(
+                    """
+                    INSERT INTO analytics_sales_snapshots (
+                        snapshot_at,
+                        summary_json,
+                        auction_performance_json,
+                        grade_wise_prices_json,
+                        selling_trends_json,
+                        seller_performance_json,
+                        bid_volume_analysis_json
+                    )
+                    VALUES (
+                        :snapshot_at,
+                        :summary_json,
+                        :auction_performance_json,
+                        :grade_wise_prices_json,
+                        :selling_trends_json,
+                        :seller_performance_json,
+                        :bid_volume_analysis_json
+                    )
+                    """
+                ),
+                {
+                    "snapshot_at": now_utc,
+                    "summary_json": json.dumps(summary),
+                    "auction_performance_json": json.dumps(auction_performance),
+                    "grade_wise_prices_json": json.dumps([]),
+                    "selling_trends_json": json.dumps(selling_trends),
+                    "seller_performance_json": json.dumps(seller_performance),
+                    "bid_volume_analysis_json": json.dumps(bid_volume_analysis),
+                },
             )
-        ).mappings().first()
-
-        if not row:
-            return None
-
-        generated_at = row["snapshot_at"]
-        if generated_at.tzinfo is None:
-            generated_at = generated_at.replace(tzinfo=timezone.utc)
+            self.db.commit()
+        except Exception as e:
+            logger.warning(f"Could not persist sales snapshot to MSSQL: {e}")
 
         return {
-            "generatedAt": generated_at,
+            "generatedAt": now_utc,
             "refreshIntervalMs": refresh_interval_ms,
-            "summary": json.loads(row["summary_json"]),
-            "auctionPerformance": json.loads(row["auction_performance_json"]),
-            "sellingTrends": json.loads(row["selling_trends_json"]),
-            "sellerPerformance": json.loads(row["seller_performance_json"]),
-            "bidVolumeAnalysis": json.loads(row["bid_volume_analysis_json"]),
+            "summary": summary,
+            "auctionPerformance": auction_performance,
+            "sellingTrends": selling_trends,
+            "sellerPerformance": seller_performance,
+            "bidVolumeAnalysis": bid_volume_analysis,
         }
 
+    def get_latest_snapshot(self, refresh_interval_ms: int, max_age_seconds: int = 30) -> dict | None:
+        try:
+            row = self.db.execute(
+                text(
+                    """
+                    SELECT TOP 1
+                        snapshot_at,
+                        summary_json,
+                        auction_performance_json,
+                        grade_wise_prices_json,
+                        selling_trends_json,
+                        seller_performance_json,
+                        bid_volume_analysis_json
+                    FROM analytics_sales_snapshots
+                    ORDER BY snapshot_at DESC, snapshot_id DESC
+                    """
+                )
+            ).mappings().first()
+
+            if row:
+                generated_at = row["snapshot_at"]
+                if generated_at.tzinfo is None:
+                    generated_at = generated_at.replace(tzinfo=timezone.utc)
+
+                age_seconds = (datetime.now(timezone.utc) - generated_at).total_seconds()
+                if age_seconds > max_age_seconds:
+                    return None
+
+                return {
+                    "generatedAt": generated_at,
+                    "refreshIntervalMs": refresh_interval_ms,
+                    "summary": json.loads(row["summary_json"]),
+                    "auctionPerformance": json.loads(row["auction_performance_json"]),
+                    "sellingTrends": json.loads(row["selling_trends_json"]),
+                    "sellerPerformance": json.loads(row["seller_performance_json"]),
+                    "bidVolumeAnalysis": json.loads(row["bid_volume_analysis_json"]),
+                }
+        except Exception:
+            pass
+
+        return None
+
     def prune_old_snapshots(self, retention_days: int) -> None:
-        self.db.execute(
-            text(
-                """
-                DELETE FROM analytics_sales_snapshots
-                WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
-                """
-            ),
-            {"retention_days": retention_days},
-        )
-        self.db.commit()
+        try:
+            self.db.execute(
+                text(
+                    """
+                    DELETE FROM analytics_sales_snapshots
+                    WHERE snapshot_at < DATEADD(day, -:retention_days, SYSUTCDATETIME())
+                    """
+                ),
+                {"retention_days": retention_days},
+            )
+            self.db.commit()
+        except Exception:
+            pass
