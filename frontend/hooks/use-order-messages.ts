@@ -5,16 +5,19 @@ import { getAuthToken } from "@/lib/auth";
 const WS_BASE_URL =
   (process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1").replace(/\/$/, "");
 
-const POLLING_INTERVAL_MS = 5000;
-const POLLING_FALLBACK_DELAY_MS = 1500; // Delay before starting polling to avoid React StrictMode false triggers
+const POLLING_INTERVAL_MS = 4000;
+const RECONNECT_INTERVAL_MS = 4000;
 
 export function useOrderMessages(orderId: string, currentUserId: string) {
   const [messages, setMessages] = useState<OrderMessage[]>([]);
   const [connected, setConnected] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isReconnecting, setIsReconnecting] = useState(false);
+
   const wsRef = useRef<WebSocket | null>(null);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const pollingDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const mountedRef = useRef(true);
 
   // ----- Helper: add unique messages -----
@@ -29,112 +32,156 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
     });
   }, []);
 
-  // ----- Helper: clear polling -----
-  const clearPolling = useCallback(() => {
-    if (pollingDelayRef.current) {
-      clearTimeout(pollingDelayRef.current);
-      pollingDelayRef.current = null;
-    }
+  // ----- Clear all timers -----
+  const clearTimers = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
+    if (pingIntervalRef.current) {
+      clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = null;
+    }
   }, []);
 
   // ----- Initial load -----
-  useEffect(() => {
+  const loadHistory = useCallback(async () => {
     if (!orderId) return;
-    setIsLoading(true);
-    messageService
-      .getMessages(orderId)
-      .then((msgs) => {
-        setMessages(msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()));
-      })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
+    try {
+      setIsLoading(true);
+      const msgs = await messageService.getMessages(orderId);
+      setMessages(
+        msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      );
+    } catch (err) {
+      console.error("Failed to load message history", err);
+    } finally {
+      setIsLoading(false);
+    }
   }, [orderId]);
 
-  // ----- WebSocket -----
   useEffect(() => {
-    if (!orderId) return;
+    loadHistory();
+  }, [loadHistory]);
 
-    mountedRef.current = true;
+  // ----- WebSocket Connection Logic -----
+  const connectWebSocket = useCallback(() => {
+    if (!orderId || !mountedRef.current) return;
 
     const token = getAuthToken();
     if (!token) return;
+
+    // Clean up existing WS before starting new one
+    if (wsRef.current) {
+      try {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+      } catch {}
+      wsRef.current = null;
+    }
 
     const wsUrl = `${WS_BASE_URL}/messages/order/${orderId}/ws?token=${encodeURIComponent(token)}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
     ws.onopen = () => {
+      if (!mountedRef.current) return;
       setConnected(true);
-      // Clear any pending or active polling — WS is live
-      clearPolling();
+      setIsReconnecting(false);
+
+      // Stop polling when WS is active
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
+
+      // Keepalive ping
+      if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
+      pingIntervalRef.current = setInterval(() => {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify({ type: "ping" }));
+        }
+      }, 20000);
     };
 
     ws.onmessage = (event) => {
       try {
         const msg: OrderMessage = JSON.parse(event.data);
-        addMessages([msg]);
+        if (msg && msg.message_id) {
+          addMessages([msg]);
+        }
       } catch (e) {
-        console.error("Failed to parse order message WS event", e);
+        console.error("Failed to parse message event", e);
       }
     };
 
     ws.onclose = () => {
-      setConnected(false);
-
-      // Only start polling fallback if the component is still mounted
-      // and no polling is already active. Use a delay to avoid false
-      // triggers from React StrictMode unmount/remount cycles.
       if (!mountedRef.current) return;
-      if (pollingRef.current || pollingDelayRef.current) return;
+      setConnected(false);
+      setIsReconnecting(true);
 
-      pollingDelayRef.current = setTimeout(() => {
-        // Double-check mount status after delay
-        if (!mountedRef.current) return;
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
 
+      // Start polling fallback if not already running
+      if (!pollingRef.current) {
         pollingRef.current = setInterval(async () => {
+          if (!mountedRef.current) return;
           try {
             const msgs = await messageService.getMessages(orderId);
             addMessages(msgs);
           } catch (e) {
-            console.error("Polling failed", e);
+            console.error("Chat polling failed", e);
           }
         }, POLLING_INTERVAL_MS);
-      }, POLLING_FALLBACK_DELAY_MS);
-    };
-
-    ws.onerror = () => {
-      console.warn("Order chat WebSocket error – will fall back to polling.");
-    };
-
-    // Ping to keep connection alive
-    const pingInterval = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: "ping" }));
       }
-    }, 25000);
+
+      // Schedule auto-reconnect
+      if (reconnectTimeoutRef.current) clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = setTimeout(() => {
+        if (mountedRef.current) {
+          connectWebSocket();
+        }
+      }, RECONNECT_INTERVAL_MS);
+    };
+
+    ws.onerror = (e) => {
+      console.warn("Chat WebSocket error event:", e);
+    };
+  }, [orderId, addMessages]);
+
+  // Connect on mount
+  useEffect(() => {
+    mountedRef.current = true;
+    connectWebSocket();
 
     return () => {
       mountedRef.current = false;
-      clearInterval(pingInterval);
-      clearPolling();
-      ws.close();
+      clearTimers();
+      if (wsRef.current) {
+        wsRef.current.onclose = null;
+        wsRef.current.onerror = null;
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
-  }, [orderId, addMessages, clearPolling]);
+  }, [connectWebSocket, clearTimers]);
 
-  // ----- Send a message -----
+  // ----- Send message -----
   const sendMessage = useCallback(
     async (content: string) => {
       if (!content.trim()) return;
 
-      // If WS is open, send via WS (server saves and broadcasts)
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify({ content }));
       } else {
-        // Fallback: REST POST
         const msg = await messageService.sendMessage(orderId, content);
         addMessages([msg]);
       }
@@ -142,5 +189,18 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
     [orderId, addMessages]
   );
 
-  return { messages, connected, isLoading, sendMessage, currentUserId };
+  const reconnect = useCallback(() => {
+    setIsReconnecting(true);
+    connectWebSocket();
+  }, [connectWebSocket]);
+
+  return {
+    messages,
+    connected,
+    isReconnecting,
+    isLoading,
+    sendMessage,
+    reconnect,
+    currentUserId,
+  };
 }

@@ -24,11 +24,11 @@ class OrderMessageService:
             raise HTTPException(status_code=404, detail="Order not found")
 
         # The user is either the buyer...
-        if str(order.user_id) == str(user_id):
+        if str(order.user_id).lower() == str(user_id).lower():
             return order
 
         # ...or the seller
-        if order.auction and str(order.auction.seller_id) == str(user_id):
+        if order.auction and str(order.auction.seller_id).lower() == str(user_id).lower():
             return order
 
         raise HTTPException(status_code=403, detail="Not authorized to access messages for this order")

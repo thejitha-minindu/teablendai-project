@@ -30,12 +30,11 @@ export default function AdminProfile() {
   useEffect(() => {
     const fetchProfile = async () => {
       try {
-        const TEST_ADMIN_ID = process.env.NEXT_PUBLIC_TEST_ADMIN_ID || "admin-1";
-        const res = await apiClient.get(`/admin/profile/${TEST_ADMIN_ID}`);
+        const res = await apiClient.get("/admin/profile/me");
         const data = res.data || {};
 
         setAdmin({
-          admin_id: data.admin_id || TEST_ADMIN_ID,
+          admin_id: data.admin_id || "",
           username: data.username || "",
           email: data.email || "",
           password: "", // never expose real password
@@ -63,15 +62,16 @@ export default function AdminProfile() {
 
   /* ================= HANDLE INPUT ================= */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!admin) return;
     setAdmin({ ...admin, [e.target.name]: e.target.value });
   };
 
   /* ================= SAVE DATA ================= */
   const handleSave = async () => {
+    if (!admin) return;
     try {
       setLoading(true);
-      const idToUse = admin.admin_id ?? process.env.NEXT_PUBLIC_TEST_ADMIN_ID ?? "138A593A-0DC7-4DF9-9E2A-B798983C939D";
-      await apiClient.put(`/admin/profile/${idToUse}`, {
+      await apiClient.put("/admin/profile/me", {
         username: admin.username,
         email: admin.email,
         first_name: admin.firstName,
@@ -100,6 +100,24 @@ export default function AdminProfile() {
   /* ================= LOADING ================= */
   if (loading) {
     return null;
+  }
+
+  if (!admin) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-md p-6 max-w-md w-full text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+          <h3 className="text-lg font-bold text-gray-800 mb-2">Unable to Load Profile</h3>
+          <p className="text-sm text-gray-600 mb-4">{error || "Admin profile could not be found."}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
