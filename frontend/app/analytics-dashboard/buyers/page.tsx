@@ -4,7 +4,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { Users, TrendingUp } from 'lucide-react';
+import { Users, TrendingUp, Info } from 'lucide-react';
 import { useAnalyticsBuyers } from '@/hooks/use-analytics-buyers';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -58,8 +58,11 @@ export default function BuyerBehaviorAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard title="Buyer Participation Frequency">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Buyer Participation Frequency"
+          description="Measures how frequently registered buyers submit bids versus their successful auction lot conversion counts."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={buyerParticipation} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
@@ -72,8 +75,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Top Buyers by Volume & Spend">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Top Buyers by Volume & Spend"
+          description="Ranks highest-volume wholesale tea buyers by total kilogram volume acquired and gross expenditure in LKR."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={mostActiveBuyers}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="buyer" fontSize={11} />
@@ -87,8 +93,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Buyer Demand by Tea Grade">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Buyer Demand by Tea Grade"
+          description="Analyzes the specific tea leaf grade preferences and buying volumes for top corporate buyers."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={demandByGrade}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="grade" />
@@ -108,8 +117,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="New vs Repeat Buyers">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="New vs Repeat Buyers"
+          description="Tracks customer retention, comparing newly registered monthly buyers against repeat auction participants."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={repeatBuyerRate}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -124,8 +136,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Buyer Segmentation by Volume">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Buyer Segmentation by Volume"
+          description="Segments market participants into tiers (Exporters, Specialty Brands, Wholesalers) based on purchase capacity."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={buyerSegmentation}
@@ -133,7 +148,7 @@ export default function BuyerBehaviorAnalytics() {
                 cy="50%"
                 labelLine={false}
                 label={({ segment, percentage }) => `${String(segment)}: ${Number(percentage).toFixed(1)}%`}
-                outerRadius={100}
+                outerRadius={95}
                 fill="#8884d8"
                 dataKey="percentage"
               >
@@ -146,8 +161,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Monthly Buyer Engagement Trends">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Monthly Buyer Engagement Trends"
+          description="Monitors monthly active bidder count and average bidding intensity per buyer over time."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={monthlyEngagement}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -160,8 +178,11 @@ export default function BuyerBehaviorAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Average Bid Increment by Buyer">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Average Bid Increment by Buyer"
+          description="Evaluates buyer bidding styles by analyzing average and maximum bid price increment values."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={bidIncrementAnalysis}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="buyer" fontSize={11} />
@@ -176,67 +197,83 @@ export default function BuyerBehaviorAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Buyer Activity Details</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Buyer</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Total Bids</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Won</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Win Rate</th>
-                </tr>
-              </thead>
-              <tbody>
-                {buyerParticipation.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.buyer}</td>
-                    <td className="text-right py-3 px-2">{item.totalBids}</td>
-                    <td className="text-right py-3 px-2">{item.wonAuctions}</td>
-                    <td className="text-right py-3 px-2">
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                        {(item.totalBids > 0 ? (item.wonAuctions / item.totalBids) * 100 : 0).toFixed(1)}%
-                      </span>
-                    </td>
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Buyer Activity Details</h3>
+            <p className="text-sm text-gray-500 mb-4">Total bids and win rates by buyer</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Buyer</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Total Bids</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Won</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Win Rate</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {buyerParticipation.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-2 font-medium">{item.buyer}</td>
+                      <td className="text-right py-3 px-2">{item.totalBids}</td>
+                      <td className="text-right py-3 px-2">{item.wonAuctions}</td>
+                      <td className="text-right py-3 px-2">
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                          {(item.totalBids > 0 ? (item.wonAuctions / item.totalBids) * 100 : 0).toFixed(1)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Tracks total submitted bids, won auction counts, and overall auction win rate percentages for key wholesale buyers.
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Buyer Segment Contribution</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Segment</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Count</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">% of Buyers</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Revenue %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {buyerSegmentation.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.segment}</td>
-                    <td className="text-right py-3 px-2">{item.buyers}</td>
-                    <td className="text-right py-3 px-2">{item.percentage.toFixed(2)}%</td>
-                    <td className="text-right py-3 px-2">
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        item.contribution > 30 ? 'bg-green-100 text-green-700' : 
-                        item.contribution > 15 ? 'bg-blue-100 text-blue-700' : 
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {item.contribution.toFixed(2)}%
-                      </span>
-                    </td>
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Buyer Segment Contribution</h3>
+            <p className="text-sm text-gray-500 mb-4">Volume tier segmentation</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Segment</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Count</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">% of Buyers</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Revenue %</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {buyerSegmentation.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-2 font-medium">{item.segment}</td>
+                      <td className="text-right py-3 px-2">{item.buyers}</td>
+                      <td className="text-right py-3 px-2">{item.percentage.toFixed(2)}%</td>
+                      <td className="text-right py-3 px-2">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          item.contribution > 30 ? 'bg-green-100 text-green-700' : 
+                          item.contribution > 15 ? 'bg-blue-100 text-blue-700' : 
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {item.contribution.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Categorizes buyer accounts into volume tiers and shows their proportional contribution to total platform sales revenue.
+            </p>
           </div>
         </div>
       </div>
@@ -257,11 +294,18 @@ function InfoCard({ title, value, subtitle, icon }: { title: string; value: stri
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      {children}
+    <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        {children}
+      </div>
+      {description && (
+        <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+          <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">{description}</p>
+        </div>
+      )}
     </div>
   );
 }

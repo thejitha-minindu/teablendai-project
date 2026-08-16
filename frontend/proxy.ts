@@ -28,7 +28,7 @@ const PUBLIC_ROUTES = [
   '/'
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   // Skip middleware for public routes

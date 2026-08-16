@@ -56,6 +56,7 @@ class QueryResponse(BaseModel):
     visualization: Optional[str] = None
     search_results: Optional[List[Dict[str, Any]]] = None
     error: Optional[str] = None
+    suggestions: Optional[List[str]] = None
 
 
 @router.post("/query", response_model=QueryResponse)
@@ -93,26 +94,15 @@ async def query_tea(
             user_role=user_role,
         )
 
-        # If non-tea response
-        if result.get("source") in {"validation", "system"}:
-            return QueryResponse(
-                success=True,
-                conversation_id=result.get("conversation_id"),
-                answer="I can only answer questions related to tea.",
-                source="validation",
-                row_count=0,
-                timestamp=result.get("timestamp", datetime.utcnow().isoformat())
-            )
-
         visualization = result.get("visualization")
         if isinstance(visualization, dict):
             visualization = json.dumps(visualization)
 
         return QueryResponse(
-            success=bool(result.get("success")),
+            success=bool(result.get("success", True)),
             conversation_id=result.get("conversation_id"),
             answer=result.get("answer", ""),
-            source=result.get("source", "fallback"),
+            source=result.get("source", "system"),
             data_type=result.get("data_type"),
             state=result.get("state"),
             message_type=result.get("message_type"),
@@ -129,7 +119,8 @@ async def query_tea(
             visualization_type=result.get("visualization_type"),
             visualization=visualization,  
             search_results=result.get("search_results"),
-            error=result.get("error")
+            error=result.get("error"),
+            suggestions=result.get("suggestions"),
         )
 
     except Exception as e:

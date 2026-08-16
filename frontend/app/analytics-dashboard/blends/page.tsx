@@ -4,7 +4,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { Award } from 'lucide-react';
+import { Award, Info } from 'lucide-react';
 import { useAnalyticsBlends } from '@/hooks/use-analytics-blends';
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
@@ -79,8 +79,11 @@ export default function BlendPerformanceAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard title="Blend Composition by Tea Grade">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Blend Composition by Tea Grade"
+          description="Breaks down the tea leaf grade ratio percentages used in creating each signature blend formulation."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={blendComposition}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="blend" fontSize={11} />
@@ -100,8 +103,11 @@ export default function BlendPerformanceAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Cost vs Selling Price Analysis">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Cost vs Selling Price Analysis"
+          description="Compares production unit cost per kilogram with market selling price to identify high-margin tea blends."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={blendProfitability}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="blend" fontSize={11} />
@@ -114,8 +120,11 @@ export default function BlendPerformanceAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Monthly Revenue by Blend">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Monthly Revenue by Blend"
+          description="Tracks recurring monthly gross sales revenue generated across each master tea blend formulation."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={monthlyBlendPerformance}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -136,8 +145,11 @@ export default function BlendPerformanceAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Market Share by Revenue">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Market Share by Revenue"
+          description="Illustrates the proportional market revenue share contributed by each tea blend recipe."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={blendMarketShare}
@@ -145,7 +157,7 @@ export default function BlendPerformanceAnalytics() {
                 cy="50%"
                 labelLine={false}
                 label={({ blend, share }) => `${String(blend)}: ${Number(share).toFixed(1)}%`}
-                outerRadius={100}
+                outerRadius={95}
                 fill="#8884d8"
                 dataKey="share"
               >
@@ -158,8 +170,11 @@ export default function BlendPerformanceAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Profit Margin Trends">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Profit Margin Trends"
+          description="Monitors monthly gross profit margin percentage trajectories across different blend recipes."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={profitMarginTrend}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -180,8 +195,11 @@ export default function BlendPerformanceAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Year-over-Year Revenue Comparison">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Year-over-Year Revenue Comparison"
+          description={`Compares annual blend sales figures between ${data.annualPreviousYear} and ${data.annualCurrentYear} to calculate overall growth rates.`}
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={annualComparison}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="blend" fontSize={11} />
@@ -196,66 +214,82 @@ export default function BlendPerformanceAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Blend Profitability Analysis</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Blend</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Cost</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Price</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Margin</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
-                {blendProfitability.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.blend}</td>
-                    <td className="text-right py-3 px-2">{item.cost.toLocaleString()} LKR/kg</td>
-                    <td className="text-right py-3 px-2">{item.sellPrice.toLocaleString()} LKR/kg</td>
-                    <td className="text-right py-3 px-2">
-                      <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                        {item.margin.toFixed(2)}%
-                      </span>
-                    </td>
-                    <td className="text-right py-3 px-2 font-semibold">{item.revenue.toFixed(2)}M LKR</td>
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Blend Profitability Analysis</h3>
+            <p className="text-sm text-gray-500 mb-4">Detailed margin and revenue breakdown</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Blend</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Cost</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Price</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Margin</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Revenue</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {blendProfitability.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-2 font-medium">{item.blend}</td>
+                      <td className="text-right py-3 px-2">{item.cost.toLocaleString()} LKR/kg</td>
+                      <td className="text-right py-3 px-2">{item.sellPrice.toLocaleString()} LKR/kg</td>
+                      <td className="text-right py-3 px-2">
+                        <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                          {item.margin.toFixed(2)}%
+                        </span>
+                      </td>
+                      <td className="text-right py-3 px-2 font-semibold">{item.revenue.toFixed(2)}M LKR</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Evaluates raw leaf cost, wholesale selling price per kilogram, margin percentage, and total blend revenue.
+            </p>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Annual Growth Comparison</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Blend</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">{data.annualPreviousYear}</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">{data.annualCurrentYear}</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Growth</th>
-                </tr>
-              </thead>
-              <tbody>
-                {annualComparison.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.blend}</td>
-                    <td className="text-right py-3 px-2">{item.previousYearRevenue.toFixed(2)}M</td>
-                    <td className="text-right py-3 px-2 font-semibold">{item.currentYearRevenue.toFixed(2)}M</td>
-                    <td className="text-right py-3 px-2">
-                      <span className={`${item.growth >= 0 ? 'text-green-600' : 'text-red-600'} font-medium flex items-center justify-end gap-1`}>
-                        <Award size={14} />
-                        {item.growth >= 0 ? '+' : ''}{item.growth.toFixed(2)}%
-                      </span>
-                    </td>
+        <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Annual Growth Comparison</h3>
+            <p className="text-sm text-gray-500 mb-4">Year-over-year revenue comparisons</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Blend</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">{data.annualPreviousYear}</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">{data.annualCurrentYear}</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Growth</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {annualComparison.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-2 font-medium">{item.blend}</td>
+                      <td className="text-right py-3 px-2">{item.previousYearRevenue.toFixed(2)}M</td>
+                      <td className="text-right py-3 px-2 font-semibold">{item.currentYearRevenue.toFixed(2)}M</td>
+                      <td className="text-right py-3 px-2">
+                        <span className={`${item.growth >= 0 ? 'text-green-600' : 'text-red-600'} font-medium flex items-center justify-end gap-1`}>
+                          <Award size={14} />
+                          {item.growth >= 0 ? '+' : ''}{item.growth.toFixed(2)}%
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Highlights annual performance progress, comparing revenue and calculated percentage growth against the prior year.
+            </p>
           </div>
         </div>
       </div>
@@ -273,11 +307,18 @@ function HighlightCard({ title, value, subtitle }: { title: string; value: strin
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      {children}
+    <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        {children}
+      </div>
+      {description && (
+        <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+          <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">{description}</p>
+        </div>
+      )}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
+import { Info } from "lucide-react";
 import { useAnalyticsPurchases } from "@/hooks/use-analytics-purchases";
 
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884d8", "#82ca9d"];
@@ -66,8 +67,11 @@ export default function PurchaseAnalytics() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ChartCard title="Purchase Volume by Tea Grade">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Purchase Volume by Tea Grade"
+          description="Displays total leaf volume procured in kilograms across various Ceylon tea grades to support inventory planning."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={purchaseVolumeByGrade}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="grade" />
@@ -79,8 +83,11 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Average Purchase Price Trends by Grade">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Average Purchase Price Trends by Grade"
+          description="Tracks average monthly procurement price per kilogram across each tea grade to identify seasonal price fluctuations."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <LineChart data={priceTrends}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="month" />
@@ -101,8 +108,11 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Purchase Source Distribution">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Purchase Source Distribution"
+          description="Shows the proportion of total tea volume sourced from auction brokers versus direct manufacturing factories."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
                 data={brokerVsFactory}
@@ -110,7 +120,7 @@ export default function PurchaseAnalytics() {
                 cy="50%"
                 labelLine={false}
                 label={({ source, percentage }) => `${String(source)}: ${Number(percentage).toFixed(1)}%`}
-                outerRadius={100}
+                outerRadius={95}
                 fill="#8884d8"
                 dataKey="percentage"
               >
@@ -131,8 +141,11 @@ export default function PurchaseAnalytics() {
           </div>
         </ChartCard>
 
-        <ChartCard title="Top Suppliers by Volume">
-          <ResponsiveContainer width="100%" height={300}>
+        <ChartCard
+          title="Top Suppliers by Volume"
+          description="Highlights primary tea estates and suppliers contributing the largest procurement quantities to inventory."
+        >
+          <ResponsiveContainer width="100%" height={280}>
             <BarChart data={supplierContribution} layout="vertical">
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis type="number" />
@@ -143,31 +156,39 @@ export default function PurchaseAnalytics() {
           </ResponsiveContainer>
         </ChartCard>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Cost Breakdown by Grade</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-2 text-gray-600 font-medium">Grade</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Quantity</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Total Cost</th>
-                  <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Price</th>
-                </tr>
-              </thead>
-              <tbody>
-                {purchaseVolumeByGrade.map((item, index) => (
-                  <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="py-3 px-2 font-medium">{item.grade}</td>
-                    <td className="text-right py-3 px-2">{item.quantity.toLocaleString()} kg</td>
-                    <td className="text-right py-3 px-2">{(item.cost / 1000000)}M LKR</td>
-                    <td className="text-right py-3 px-2">
-                      {item.quantity > 0 ? (item.cost / item.quantity).toFixed(2) : "0"} LKR/kg
-                    </td>
+        <div className="bg-white rounded-lg shadow p-6 lg:col-span-2 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">Cost Breakdown by Grade</h3>
+            <p className="text-sm text-gray-500 mb-4">Detailed breakdown of procurement costs and unit prices</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-2 text-gray-600 font-medium">Grade</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Quantity</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Total Cost</th>
+                    <th className="text-right py-3 px-2 text-gray-600 font-medium">Avg Price</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {purchaseVolumeByGrade.map((item, index) => (
+                    <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-2 font-medium">{item.grade}</td>
+                      <td className="text-right py-3 px-2">{item.quantity.toLocaleString()} kg</td>
+                      <td className="text-right py-3 px-2">{(item.cost / 1000000)}M LKR</td>
+                      <td className="text-right py-3 px-2">
+                        {item.quantity > 0 ? (item.cost / item.quantity).toFixed(2) : "0"} LKR/kg
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+            <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">
+              Detailed breakdown of purchased leaf quantity, total procurement expenditure in LKR, and unit cost per kilogram across each tea grade.
+            </p>
           </div>
         </div>
       </div>
@@ -185,11 +206,18 @@ function SummaryCard({ title, value, subtitle }: { title: string; value: string;
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+function ChartCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
-      {children}
+    <div className="bg-white rounded-lg shadow p-6 flex flex-col justify-between">
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{title}</h3>
+        {children}
+      </div>
+      {description && (
+        <div className="mt-4 p-3 bg-emerald-50/70 border border-emerald-100/80 rounded-lg flex items-start gap-2.5">
+          <p className="text-xs text-emerald-950/80 leading-relaxed text-justify">{description}</p>
+        </div>
+      )}
     </div>
   );
 }
