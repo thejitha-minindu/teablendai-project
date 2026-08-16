@@ -161,7 +161,8 @@ def admin_login(
 ):
     logger.info(f"Admin login attempt for: {form_data.username}")
 
-    admin = db.query(Admin).filter(Admin.email == form_data.username).first()
+    username_input = (form_data.username or "").strip()
+    admin = db.query(Admin).filter((Admin.email == username_input) | (Admin.username == username_input)).first()
 
     if not admin:
         logger.warning("Admin not found")

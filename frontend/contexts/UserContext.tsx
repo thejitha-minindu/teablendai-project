@@ -58,7 +58,9 @@ export const UserProvider: React.FC<UserProviderProps> = ({ children }) => {
   const redirectToAuthIfNeeded = useCallback(() => {
     const currentPath = pathnameRef.current;
     if (!currentPath || !isProtectedPath(currentPath)) return;
-    routerRef.current.replace(`/auth?redirect=${encodeURIComponent(currentPath)}`);
+    setTimeout(() => {
+      routerRef.current.replace(`/auth?redirect=${encodeURIComponent(currentPath)}`);
+    }, 0);
   }, []); // Stable — uses refs, no deps on pathname/router
 
   const refreshUser = useCallback(async () => {

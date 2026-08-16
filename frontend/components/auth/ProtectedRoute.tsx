@@ -41,14 +41,20 @@ export default function ProtectedRoute({
       return pathname;
     };
 
+    const safeRedirect = (targetPath: string) => {
+      setTimeout(() => {
+        router.replace(targetPath);
+      }, 0);
+    };
+
     const redirectToAuthHub = () => {
-      router.replace("/auth");
+      safeRedirect("/auth");
     };
 
     const redirectToLogin = () => {
       const loginPath = resolveLoginPath();
       const redirectSuffix = `?redirect=${encodeURIComponent(resolveRedirectTarget())}`;
-      router.replace(`${loginPath}${redirectSuffix}`);
+      safeRedirect(`${loginPath}${redirectSuffix}`);
     };
 
     const validate = (reason?: AuthChangeReason) => {
@@ -74,12 +80,12 @@ export default function ProtectedRoute({
       }
 
       if (claims.status === "REJECTED") {
-        router.replace("/auth/rejected");
+        safeRedirect("/auth/rejected");
         return;
       }
 
       if (claims.status && claims.status !== "APPROVED") {
-        router.replace("/auth/pending");
+        safeRedirect("/auth/pending");
         return;
       }
 
@@ -90,7 +96,7 @@ export default function ProtectedRoute({
           return;
         }
 
-        router.replace(getHomePathByRole(claims.role));
+        safeRedirect(getHomePathByRole(claims.role));
         return;
       }
 

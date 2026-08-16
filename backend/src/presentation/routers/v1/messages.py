@@ -30,10 +30,10 @@ def get_order_chat_info(
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
 
-    seller_id = str(order.auction.seller_id) if order.auction else None
+    seller_id = str(order.auction.seller_id) if (order.auction and order.auction.seller_id) else None
     user_id = str(current_user.user_id)
 
-    if str(order.user_id) != user_id and seller_id != user_id:
+    if str(order.user_id).lower() != user_id.lower() and (not seller_id or seller_id.lower() != user_id.lower()):
         raise HTTPException(status_code=403, detail="Access denied")
 
     buyer = db.query(User).filter(User.user_id == order.user_id).first()
@@ -42,12 +42,18 @@ def get_order_chat_info(
     buyer_name = " ".join(filter(None, [buyer.first_name, buyer.last_name])) if buyer else "Buyer"
     seller_name = (seller.seller_name or " ".join(filter(None, [seller.first_name, seller.last_name]))) if seller else "Seller"
 
+    status_str = order.status.value if hasattr(order.status, "value") else str(order.status)
+
     return {
         "order_id": str(order.order_id),
         "user_id": str(order.user_id),
         "buyer_name": buyer_name,
         "seller_name": seller_name,
         "estate_name": order.auction.estate_name if order.auction else None,
+        "grade": order.auction.grade if order.auction else None,
+        "quantity": float(order.auction.quantity) if (order.auction and order.auction.quantity) else None,
+        "total_amount": float(order.total_amount) if order.total_amount else None,
+        "status": status_str,
     }
 
 

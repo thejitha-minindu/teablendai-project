@@ -19,12 +19,7 @@ const PROTECTED_ROUTES = [
 
 // Routes that are public
 const PUBLIC_ROUTES = [
-  '/auth/login',
-  '/auth/admin/login',
-  '/auth/signup',
-  '/auth/pending',
-  '/auth/rejected',
-  '/auth/forgot-password',
+  '/auth',
   '/'
 ];
 
