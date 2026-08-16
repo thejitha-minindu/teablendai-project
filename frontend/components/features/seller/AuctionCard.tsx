@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useState, useEffect, useMemo } from 'react';
 import { Calendar, Clock, TrendingUp, Package } from 'lucide-react'; 
 import '../../../app/globals.css';

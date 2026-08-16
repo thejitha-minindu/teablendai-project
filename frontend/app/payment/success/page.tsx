@@ -144,7 +144,7 @@ function PaymentSuccessContent() {
             <div className="space-y-2.5">
               <button
                 type="button"
-                onClick={() => orderId ? router.push(`/payment/${orderId}`) : null}
+                onClick={() => orderId ? router.push(`/orders/${orderId}`) : null}
                 disabled={!orderId || verifying}
                 className={`w-full ${
                   orderId && !verifying

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 import React, { useEffect, useState } from 'react';
 import { X, Package, Calendar, Clock, DollarSign, TrendingUp, User, AlertCircle, Ban, MessageCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
