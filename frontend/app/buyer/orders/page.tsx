@@ -233,7 +233,7 @@ export default function BuyerOrdersPage() {
                         {/* Pay Now Button */}
                         {!isPaid && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); router.push(`/payment?orderId=${order.order_id}`); }}
+                            onClick={(e) => { e.stopPropagation(); router.push(`/payment/${order.order_id}`); }}
                             className="w-full bg-white text-gray-700 border border-gray-200 px-4 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-2"
                           >
                             <CreditCard className="w-4 h-4" /> Pay Now

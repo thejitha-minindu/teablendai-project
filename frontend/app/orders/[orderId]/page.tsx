@@ -100,19 +100,8 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
   }, [fetchOrder]);
 
   // --- ACTIONS ---
-  const handlePayment = async () => {
-    if (isProcessingPayment) return;
-    setIsProcessingPayment(true);
-    try {
-      const res = await createCheckoutSession(orderId);
-      if (res.checkout_url) {
-        window.location.href = res.checkout_url;
-      }
-    } catch (err: any) {
-      console.error("Payment failed:", err);
-      toast.error("Failed to initiate payment. Please try again.");
-      setIsProcessingPayment(false);
-    }
+  const handlePayment = () => {
+    router.push(`/payment/${orderId}`);
   };
 
   const handleStatusUpdate = (newStatus: string) => {
