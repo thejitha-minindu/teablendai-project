@@ -76,7 +76,7 @@ export function WatchlistButton({
   return (
     <Button
       variant="outline"
-      style={{ transition: "background 0.2s" }}
+      style={{ transition: "background 0.2s", fontSize: "0.7rem" }}
       className={`hover:text-white hover:cursor-pointer ${className}`}
       onMouseEnter={(e) =>
         (e.currentTarget.style.backgroundColor = "var(--color3)")

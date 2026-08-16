@@ -20,6 +20,10 @@ import {
   Search,
   PanelLeftIcon,
   LayoutDashboard,
+  ChartNoAxesCombined,
+  Blend,
+  Users,
+  AlertTriangle 
 } from "lucide-react";
 
 import {
@@ -66,13 +70,15 @@ type NavItem = {
   icon: React.ComponentType<{ className?: string }>;
 };
 
-type UserRole = "seller" | "buyer" | "analytics";
+type UserRole = "seller" | "buyer" | "analytics" | "admin";
 
 const sellerNavItems: NavItem[] = [
   { name: "Dashboard", href: "/seller/dashboard", icon: LayoutDashboard },
   { name: "Auction History", href: "/seller/history", icon: History },
   { name: "Live Auction", href: "/seller/live", icon: Gavel },
   { name: "Scheduled Auction", href: "/seller/scheduled", icon: CalendarClock },
+  { name: "Orders", href: "/seller/orders", icon: ShoppingBag },
+  { name: "Report Violation", href: "/seller/violations", icon: AlertTriangle },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
@@ -81,6 +87,7 @@ const buyerNavItems: NavItem[] = [
   { name: "History", href: "/buyer/history", icon: Inbox },
   { name: "Orders", href: "/buyer/orders", icon: Calendar },
   { name: "Auctions", href: "/buyer/auctions", icon: Search },
+  { name: "Report Violation", href: "/buyer/violations", icon: AlertTriangle },
   { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
@@ -88,8 +95,9 @@ const analyticsNavItems: NavItem[] = [
   { name: "Overview", href: "/analytics-dashboard", icon: LayoutDashboard },
   { name: "Purchase Analytics", href: "/analytics-dashboard/purchases", icon: ShoppingBag },
   { name: "Sales & Auction", href: "/analytics-dashboard/sales", icon: Gavel },
-  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: History},
-  { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: User },
+  { name: "Blend Performance", href: "/analytics-dashboard/blends", icon: Blend},
+  { name: "Buyer Behavior", href: "/analytics-dashboard/buyers", icon: Users },
+  { name: "Chat Bot", href: "/chatbot", icon: MessageSquare },
 ];
 
 const getSwitchInfo = (
@@ -113,8 +121,8 @@ const getRoleDisplayName = (role: UserRole): string => {
       return "Seller";
     case "buyer":
       return "Buyer";
-    case "analytics":
-      return "Analytics";
+    case "admin":
+      return "Admin";
     default:
       return "User";
   }
@@ -125,6 +133,7 @@ export function NavSidebar() {
   const router = useRouter();
   const { state, setOpen } = useSidebar();
   const [activeUserRole, setActiveUserRole] = useState<AuthUserRole>("seller");
+  const [availableRoles, setAvailableRoles] = useState<AuthUserRole[]>(["buyer"]);
 
   const role: UserRole = pathname.startsWith("/analytics-dashboard")
     ? "analytics"
@@ -133,7 +142,7 @@ export function NavSidebar() {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   
-  // --- NEW: Dynamic User State ---
+  // Dynamic User State
   const [userEmail, setUserEmail] = useState("Loading...");
   const [userName, setUserName] = useState("User");
 
@@ -142,17 +151,26 @@ export function NavSidebar() {
     const claims = getAuthClaims();
     if (claims?.sub) {
       setUserEmail(claims.sub);
-      setUserName(getDisplayNameFromEmail(claims.sub));
+      if (claims.first_name || claims.last_name) {
+        setUserName(`${claims.first_name || ''} ${claims.last_name || ''}`.trim());
+      } else {
+        setUserName(getDisplayNameFromEmail(claims.sub));
+      }
     }
     if (claims?.role) {
       setActiveUserRole(claims.role);
     }
+    if (Array.isArray(claims?.roles)) {
+      setAvailableRoles(
+        claims.roles.filter((role): role is AuthUserRole => role === "buyer" || role === "seller")
+      );
+    }
   }, [pathname]);
 
-  // --- NEW: Logout Handler ---
+  // Logout Handler
   const handleLogout = () => {
     clearStoredAuthToken();
-    window.location.href = "/auth/login";
+    router.replace("/auth");
   };
 
   const handleSwitchRole = async () => {
@@ -162,6 +180,10 @@ export function NavSidebar() {
     }
 
     const targetRole = switchInfo.role as AuthUserRole;
+    if (!availableRoles.includes(targetRole)) {
+      router.push("/auth/profile");
+      return;
+    }
     try {
       setIsSwitchingRole(true);
       const response = await apiClient.post("/auth/switch-role", { role: targetRole });
@@ -178,7 +200,7 @@ export function NavSidebar() {
 
       setStoredAuthToken(newToken);
       setActiveUserRole(targetRole);
-      window.location.href = getHomePathByRole(targetRole);
+      router.replace(getHomePathByRole(targetRole));
     } catch (error) {
       console.error("Failed to switch role", error);
     } finally {
@@ -206,12 +228,113 @@ export function NavSidebar() {
   }, [role]);
 
   const switchInfo = useMemo(() => getSwitchInfo(role), [role]);
+  const canSwitchRole = role !== "analytics" && availableRoles.includes(switchInfo.role as AuthUserRole);
   const isAnalyticsPage = pathname.startsWith("/analytics-dashboard");
   const shouldShowProfile = !isAnalyticsPage;
 
+  // Full Footer Component for Other Pages
+  const FullFooter = () => (
+    <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
+                <div className="flex items-center gap-3 w-full">
+                  <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-5 h-5" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold text-gray-800">
+                      {userName}
+                    </span>
+                    <span className="truncate text-xs text-gray-500 capitalize">
+                      {getRoleDisplayName(role)} Account
+                    </span>
+                  </div>
+                  <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
+                </div>
+              </SidebarMenuButton>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              side="top"
+              align="end"
+              className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
+            >
+              <DropdownMenuLabel className="p-0 font-normal">
+                <div className="flex items-center gap-3 px-2 py-2.5 text-left">
+                  <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
+                    <User2 className="w-6 h-6" />
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-semibold">{userName}</span>
+                    <span className="truncate text-xs text-gray-500">{userEmail}</span>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                <Link href="/auth/profile" className="flex items-center w-full">
+                  <User className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>My Profile</span>
+                </Link>
+              </DropdownMenuItem>
+
+              {/* Switch Role */}
+              {canSwitchRole ? (
+                <DropdownMenuItem
+                  className="cursor-pointer hover:bg-gray-50"
+                  disabled={isSwitchingRole}
+                  onClick={handleSwitchRole}
+                >
+                  <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                  <span>
+                    {isSwitchingRole
+                      ? "Switching role..."
+                      : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                  <Link href="/auth/profile" className="flex items-center w-full">
+                    <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Manage Roles</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {/* Analytics Link */}
+              {role !== "analytics" && (
+                <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
+                  <Link href="/analytics-dashboard" className="flex items-center w-full">
+                    <ChartNoAxesCombined className="mr-2 h-4 w-4 text-gray-500" />
+                    <span>Analytics Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              <DropdownMenuSeparator />
+
+              <DropdownMenuItem
+                className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
+                onClick={handleLogout}
+              >
+                <LogOut className="mr-2 h-4 w-4" />
+                <span>Log out</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    </SidebarFooter>
+  );
+
   return (
     <div className="relative flex h-screen">
-      {/* ... (Keep your existing collapse/expand Tooltip button here) ... */}
+      {/* Collapse button when sidebar is collapsed */}
       {isCollapsed && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
@@ -251,7 +374,7 @@ export function NavSidebar() {
           >
             <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
               
-              {/* ... (Keep your Logo and Nav Links identical here) ... */}
+              {/* Logo Section */}
               <SidebarContent className="flex-1 flex flex-col">
                 <SidebarGroup>
                   <div className="flex items-center justify-between relative">
@@ -261,8 +384,9 @@ export function NavSidebar() {
                         alt="TeaBlend AI Logo"
                         fill
                         sizes="(max-width: 768px) 100vw, 300px"
-                        className="object-contain object-center"
+                        className="object-contain object-center cursor-pointer"
                         priority
+                        onClick={() => router.push(`/${(getRoleDisplayName(activeUserRole)).toLowerCase()}/dashboard`)}
                       />
                     </div>
                     <TooltipProvider delayDuration={300}>
@@ -284,6 +408,7 @@ export function NavSidebar() {
                   </div>
                 </SidebarGroup>
 
+                {/* Navigation Items */}
                 <SidebarGroup>
                   <SidebarGroupContent className="px-3 space-y-4 flex-grow">
                     {role === "seller" && (
@@ -322,98 +447,10 @@ export function NavSidebar() {
                 </SidebarGroup>
               </SidebarContent>
 
-              {/* Footer with Profile */}
-              {shouldShowProfile && (
-                <SidebarFooter className="p-4 border-t border-gray-200 bg-white">
-                  <SidebarMenu>
-                    <SidebarMenuItem>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <SidebarMenuButton size="lg" className="w-full hover:bg-gray-50">
-                            <div className="flex items-center gap-3 w-full">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                                <User2 className="w-5 h-5" />
-                              </div>
-                              <div className="grid flex-1 text-left text-sm leading-tight">
-                                {/* DYNAMIC NAME */}
-                                <span className="truncate font-semibold text-gray-800">
-                                  {userName}
-                                </span>
-                                <span className="truncate text-xs text-gray-500 capitalize">
-                                  {getRoleDisplayName(role)} Account
-                                </span>
-                              </div>
-                              <ChevronUp className="ml-auto w-4 h-4 text-gray-500 transition-transform" />
-                            </div>
-                          </SidebarMenuButton>
-                        </DropdownMenuTrigger>
-
-                        <DropdownMenuContent
-                          side="top"
-                          align="end"
-                          className="w-[--radix-popper-anchor-width] min-w-56 rounded-lg bg-white shadow-xl border border-gray-100 mb-2"
-                        >
-                          <DropdownMenuLabel className="p-0 font-normal">
-                            <div className="flex items-center gap-3 px-2 py-2.5 text-left">
-                              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[#E5F7CB] text-[#3A5A40]">
-                                <User2 className="w-6 h-6" />
-                              </div>
-                              <div className="grid flex-1 text-left text-sm leading-tight">
-                                {/* DYNAMIC NAME & EMAIL */}
-                                <span className="truncate font-semibold">{userName}</span>
-                                <span className="truncate text-xs text-gray-500">{userEmail}</span>
-                              </div>
-                            </div>
-                          </DropdownMenuLabel>
-
-                          <DropdownMenuSeparator />
-
-                          <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                            <Link href="/profile" className="flex items-center w-full">
-                              <User className="mr-2 h-4 w-4 text-gray-500" />
-                              <span>My Profile</span>
-                            </Link>
-                          </DropdownMenuItem>
-
-                          {/* Switch Role */}
-                          <DropdownMenuItem
-                            className="cursor-pointer hover:bg-gray-50"
-                            disabled={isSwitchingRole}
-                            onClick={handleSwitchRole}
-                          >
-                            <ShoppingBag className="mr-2 h-4 w-4 text-gray-500" />
-                            <span>
-                              {isSwitchingRole
-                                ? "Switching role..."
-                                : `Switch to ${getRoleDisplayName(switchInfo.role)}`}
-                            </span>
-                          </DropdownMenuItem>
-
-                          {/* Analytics Link */}
-                          {role !== "analytics" && (
-                            <DropdownMenuItem asChild className="cursor-pointer hover:bg-gray-50">
-                              <Link href="/analytics-dashboard" className="flex items-center w-full">
-                                <History className="mr-2 h-4 w-4 text-gray-500" />
-                                <span>Analytics Dashboard</span>
-                              </Link>
-                            </DropdownMenuItem>
-                          )}
-
-                          <DropdownMenuSeparator />
-
-                          {/* --- DYNAMIC LOGOUT BUTTON --- */}
-                          <DropdownMenuItem
-                            className="cursor-pointer text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-700"
-                            onClick={handleLogout}
-                          >
-                            <LogOut className="mr-2 h-4 w-4" />
-                            <span>Log out</span>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </SidebarMenuItem>
-                  </SidebarMenu>
-                </SidebarFooter>
+              {pathname.startsWith("/analytics-dashboard") ? (
+                <FullFooter />
+              ) : (
+                shouldShowProfile && <FullFooter />
               )}
             </Sidebar>
           </motion.div>

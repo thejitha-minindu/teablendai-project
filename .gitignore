@@ -177,8 +177,15 @@ env/
 # Allow example files to be committed
 !.env*.example
 
-# Docker
-docker-compose.override.yml
+# Database & DuckDB
+*.duckdb
+*.duckdb.wal
+*.sqlite
+*.db
+backend/data_warehouse/*.duckdb*
 
 .history/
 env.development
+
+ANALYTICS_DATA_ENGINEERING_MIGRATION.md
+/backend/data_warehouse/README.md

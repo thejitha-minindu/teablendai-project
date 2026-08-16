@@ -1,5 +1,7 @@
 import * as React from "react";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { MessageCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -20,6 +22,7 @@ interface OrderCardDialogProps {
 }
 
 export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,28 +147,73 @@ export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
                 <div className="flex flex-col h-full items-center sm:items-start text-xs lg:mr-5 mt-0 mb-4 md:mb-0"></div>
               </div>
 
+              {/* Payment Summary */}
+              <div className="mt-8 pt-6 border-t border-slate-200">
+                <h3 className="font-semibold text-sm mb-4" style={{ color: "var(--color4)" }}>Payment Summary</h3>
+                <div className="space-y-2 mb-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Bid Amount:</span>
+                    <span className="font-medium">{dialogData.sold_price ? `${dialogData.sold_price} LKR` : "-"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Tax (10%):</span>
+                    <span className="font-medium">{dialogData.sold_price ? `${(dialogData.sold_price * 0.1).toFixed(2)} LKR` : "-"}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Platform Fee (2%):</span>
+                    <span className="font-medium">{dialogData.sold_price ? `${(dialogData.sold_price * 0.02).toFixed(2)} LKR` : "-"}</span>
+                  </div>
+                  <div className="h-px bg-slate-200 my-2" />
+                  <div className="flex justify-between text-base font-bold" style={{ color: "var(--color3)" }}>
+                    <span>Total to Pay:</span>
+                    <span>{dialogData.sold_price ? `${(dialogData.sold_price * 1.12).toFixed(2)} LKR` : "-"}</span>
+                  </div>
+                </div>
+              </div>
+
               <DialogFooter className="flex flex-col md:flex-row md:justify-center md:items-center gap-2 lg:mt-10">
                 <Button
+                  onClick={() => {
+                    if (orderId) {
+                      setIsOpen(false);
+                      router.push(`/orders/${orderId}`);
+                    }
+                  }}
+                  disabled={!orderId}
                   variant="outline"
-                  className="hover:text-white hover:cursor-pointer"
+                  className="hover:text-white hover:cursor-pointer disabled:opacity-50"
                   style={{ transition: "background 0.2s" }}
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.backgroundColor = "var(--color3)")
                   }
                   onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                >
+                  Order Tracking
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (orderId) {
+                      setIsOpen(false);
+                      router.push(`/payment/${orderId}`);
+                    }
+                  }}
+                  disabled={!orderId}
+                  className="bg-green-600 text-white hover:bg-green-700 hover:cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
                   Go to Payment
                 </Button>
                 <Button
-                  variant="outline"
-                  className="hover:text-white hover:cursor-pointer"
-                  style={{ transition: "background 0.2s" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.backgroundColor = "var(--color3)")
-                  }
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+                  onClick={() => {
+                    if (orderId) {
+                      setIsOpen(false);
+                      router.push(`/messages/${orderId}`);
+                    }
+                  }}
+                  disabled={!orderId}
+                  className="bg-[#3A5A40] text-white hover:bg-[#1A2F1C] hover:cursor-pointer flex items-center gap-2 disabled:opacity-50"
                 >
-                  Download Invoice
+                  <MessageCircle className="w-4 h-4" />
+                  Contact Seller
                 </Button>
               </DialogFooter>
             </div>

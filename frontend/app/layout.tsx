@@ -1,4 +1,6 @@
 import './globals.css'
+import { UserProvider } from '@/contexts/UserContext'
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata = {
 	title: 'TeaBlendAI',
@@ -11,8 +13,13 @@ export default function RootLayout({
 	children: React.ReactNode
 }) {
 	return (
-		<html lang="en">
-			<body className="min-h-screen bg-white text-black">{children}</body>
+		<html lang="en" suppressHydrationWarning>
+			<body className="min-h-screen bg-white text-black">
+				<UserProvider>
+					{children}
+					<Toaster />
+				</UserProvider>
+			</body>
 		</html>
 	)
 }

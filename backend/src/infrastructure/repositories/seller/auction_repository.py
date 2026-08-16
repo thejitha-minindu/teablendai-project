@@ -5,7 +5,7 @@ import uuid
 import logging
 from src.domain.models.auction import Auction as AuctionModel
 from src.domain.models.auction_status import AuctionStatus
-from src.infrastructure.services.auction_reference_id_generator import build_auction_reference_id
+from src.infrastructure.services.chatbot.auction_reference_id_generator import build_auction_reference_id
 logger = logging.getLogger(__name__)
 from src.application.schemas.seller.auction import Auction, AuctionCreate
 from src.domain.repositories.seller.auction_repository import AuctionRepositoryInterface
@@ -161,16 +161,13 @@ class AuctionRepository(AuctionRepositoryInterface):
 
         new_id = str(uuid.uuid4())
         seller_id = self._resolve_seller_id(auction_data.seller_id)
+        duration_minutes = int(auction_data.duration)
         auction_name = (auction_data.auction_name or "").strip()
         if not auction_name:
             # Keep inserts valid even when legacy clients don't send auction_name.
             auction_name = f"{auction_data.grade} - {auction_data.origin}"
         company_name = (auction_data.company_name or auction_data.seller_brand or "").strip()
-        if not company_name:
-            company_name = "TeaBlendAI Company"
         estate_name = (auction_data.estate_name or auction_data.seller_brand or auction_data.origin or "").strip()
-        if not estate_name:
-            estate_name = "Tea Estate"
 
         seller_name_for_custom_id = (
             (auction_data.seller_brand or "").strip()
@@ -200,7 +197,7 @@ class AuctionRepository(AuctionRepositoryInterface):
             image_url=auction_data.image_url,
             base_price=auction_data.base_price,
             start_time=auction_data.start_time,
-            duration=auction_data.duration,
+            duration=duration_minutes,
             status=AuctionStatus.SCHEDULE.value
         )
         
@@ -304,6 +301,8 @@ class AuctionRepository(AuctionRepositoryInterface):
         # Update fields dynamically
         for key, value in update_data.items():
             if hasattr(auction, key) and value is not None:
+                if key == "duration":
+                    value = int(round(float(value)))
                 setattr(auction, key, value)
         
         self.db.commit()

@@ -1,13 +1,15 @@
 from uuid import UUID
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
-from src.application.schemas.seller.auction import Auction, AuctionCreate
+from datetime import datetime
+from src.application.schemas.seller.auction import AuctionCreate
 from src.infrastructure.repositories.seller.auction_repository import AuctionRepository
 from src.domain.models.auction_status import AuctionStatus
 from src.application.use_cases.auction_status_updater import sync_auction_statuses
 from typing import Optional
 
 class AuctionService:
+    _last_sync_time = None
+
     def __init__(self, db: Session):
         self.repo = AuctionRepository(db)
 
@@ -22,25 +24,11 @@ class AuctionService:
             return dt_value.astimezone().replace(tzinfo=None)
         return dt_value
 
-    @staticmethod
-    def _duration_to_minutes(duration_value: float) -> int:
-        """Support legacy hours and new minutes storage for duration."""
-        try:
-            duration = float(duration_value)
-        except (TypeError, ValueError):
-            return 0
-
-        if duration <= 0:
-            return 0
-
-        # Legacy records often use hours (e.g. 24), newer flow stores minutes (e.g. 900)
-        if duration <= 24:
-            return int(round(duration * 60))
-
-        return int(round(duration))
-
     def _update_auction_statuses(self):
-        sync_auction_statuses(self.repo.db)
+        now = datetime.now()
+        if AuctionService._last_sync_time is None or (now - AuctionService._last_sync_time).total_seconds() > 60:
+            sync_auction_statuses(self.repo.db)
+            AuctionService._last_sync_time = now
 
     def update_auction(self, auction_id: str, update_data: AuctionCreate):
         # Convert Pydantic model to dict, excluding None values

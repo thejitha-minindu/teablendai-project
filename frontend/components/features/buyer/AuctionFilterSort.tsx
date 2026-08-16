@@ -19,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 export interface FilterSortProps {
   onFilterChange?: (filters: FilterState) => void;
   onSortChange?: (sortBy: string) => void;
+  hideStatus?: boolean;
 }
 
 export interface FilterState {
@@ -49,7 +50,6 @@ const STATUS_OPTIONS = [
   { value: "all", label: "All Status" },
   { value: "live", label: "Live" },
   { value: "scheduled", label: "Scheduled" },
-  { value: "history", label: "History" },
 ];
 
 const SORT_OPTIONS = [
@@ -62,6 +62,7 @@ const SORT_OPTIONS = [
 export function AuctionFilterSort({
   onFilterChange,
   onSortChange,
+  hideStatus,
 }: FilterSortProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [priceMin, setPriceMin] = useState<string>("");
@@ -161,7 +162,6 @@ export function AuctionFilterSort({
                   <SelectValue placeholder="All Grades" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Grades</SelectItem>
                   {GRADE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -171,23 +171,25 @@ export function AuctionFilterSort({
               </Select>
             </div>
 
-            <div>
-              <label className="text-sm font-semibold text-foreground mb-2 block">
-                Status
-              </label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger className="h-11">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!hideStatus && (
+              <div>
+                <label className="text-sm font-semibold text-foreground mb-2 block">
+                  Status
+                </label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-semibold text-foreground mb-2 block">
@@ -358,7 +360,6 @@ export function AuctionFilterSort({
                     <SelectValue placeholder="All Grades" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Grades</SelectItem>
                     {GRADE_OPTIONS.map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}

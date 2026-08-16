@@ -25,6 +25,21 @@ export async function getAuction(auctionId: string): Promise<AuctionData> {
     return response.data;
 }
 
+export async function getAuctionRemainingTime(auctionId: string): Promise<{
+    auction_id: string;
+    status: string;
+    remaining_seconds: number;
+    is_live: boolean;
+}> {
+    const response = await apiClient.get<{
+        auction_id: string;
+        status: string;
+        remaining_seconds: number;
+        is_live: boolean;
+    }>(`${BUYER_API_BASE}/auctions/${auctionId}/remaining-time`);
+    return response.data;
+}
+
 // List auctions (optionally filtered)
 export async function listAuctions(params?: {
     userId?: string;
@@ -64,6 +79,7 @@ export async function listAuctionsOrder(userId: string): Promise<AuctionOrderDia
         sold_price: order.sold_price || 0,
         date: order.date,
         base_price: order.base_price || 0,
+        seller_id: order.seller_id,
         order_id: order.order_id || "",
     }));
 }
@@ -125,6 +141,7 @@ export async function getAuctionOrderDialog(auctionId: string, userId: string): 
         sold_price: order.sold_price || 0,
         date: order.date,
         base_price: order.base_price || 0,
+        seller_id: order.seller_id,
         order_id: order.order_id || "",
     };
 }

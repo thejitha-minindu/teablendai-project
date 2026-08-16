@@ -68,6 +68,19 @@ class OrderRepository(OrderRepositoryInterface):
         logger.debug(f"User ID: {user_id}")
         return self.list_orders(user_id=user_id)
 
+    def get_order_by_auction_id(self, auction_id: str):
+        """Fetch the order linked to a specific auction (unique FK)."""
+        logger.info(f"Fetching order for auction_id: {auction_id}")
+        try:
+            order = self.db.query(OrderModel).filter(OrderModel.auction_id == auction_id).first()
+            if not order:
+                logger.warning(f"No order found for auction_id: {auction_id}")
+            return order
+        except Exception as e:
+            logger.error(f"Error fetching order by auction_id: {str(e)}")
+            raise
+
+
 
 class WinsAuctionRepository(WinsAuctionRepositoryInterface):
     def __init__(self, db: Session):

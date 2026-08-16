@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { createAuctionBidSocket } from "@/services/buyer/LiveAuctionSocketService";
+import { subscribeToAuction } from "@/lib/auction-socket-manager";
 import type { BidWsEvent } from "@/types/buyer/LiveAuctionSocket.types";
+import { subscribeToAuthChanges } from "@/lib/auth";
 
 export function useAuctionBidsSocket(auctionId: string) {
   const [connected, setConnected] = useState(false);
@@ -13,17 +14,15 @@ export function useAuctionBidsSocket(auctionId: string) {
   const [winner, setWinner] = useState<string | null>(null);
   const [finalPrice, setFinalPrice] = useState<number>(0);
   
-  const wsRef = useRef<WebSocket | null>(null);
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const extensionTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!auctionId) return;
 
-    const ws = createAuctionBidSocket(
-      auctionId,
-      (evt: BidWsEvent) => {
-        // Handle different event types based on event_type field
+    // Subscribe to the shared WebSocket manager (ref-counted)
+    const unsubscribeSocket = subscribeToAuction(auctionId, {
+      onEvent: (evt: BidWsEvent) => {
         const eventType = String(evt.event_type);
         console.log("Received WebSocket event:", eventType, evt);
         
@@ -68,16 +67,9 @@ export function useAuctionBidsSocket(auctionId: string) {
           console.log(`Auction Closed: ${evt.data?.buyer_id} - $${evt.data?.bid_amount}`);
         }
       },
-      () => setConnected(true),
-      () => setConnected(false)
-    );
-
-    wsRef.current = ws;
-
-    // Ping to keep connection alive
-    const ping = setInterval(() => {
-      if (ws.readyState === WebSocket.OPEN) ws.send("ping");
-    }, 25000);
+      onOpen: () => setConnected(true),
+      onClose: () => setConnected(false),
+    });
 
     // Local countdown timer
     timerIntervalRef.current = setInterval(() => {
@@ -87,11 +79,17 @@ export function useAuctionBidsSocket(auctionId: string) {
       });
     }, 1000);
 
+    const unsubscribeAuth = subscribeToAuthChanges((detail) => {
+      if (detail.reason === "logout" || detail.reason === "expired") {
+        unsubscribeSocket();
+      }
+    });
+
     return () => {
-      clearInterval(ping);
+      unsubscribeAuth();
+      unsubscribeSocket();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       if (extensionTimeoutRef.current) clearTimeout(extensionTimeoutRef.current);
-      ws.close();
     };
   }, [auctionId]);
 

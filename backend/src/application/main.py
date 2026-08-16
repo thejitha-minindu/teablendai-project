@@ -1,37 +1,54 @@
 import sys
+import os
 import asyncio
 import logging
 from contextlib import asynccontextmanager
+from src.presentation.routers.v1.admin import admin_users
 from dotenv import load_dotenv
+from src.presentation.routers.v1.chatbot import chat, conversations, query
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from .dependencies import get_mcp_client
+from fastapi.staticfiles import StaticFiles
+from fastapi import Depends
+from .dependencies import get_mcp_client, get_current_admin
 from src.config import get_settings
 from src.presentation.routers.v1.seller.auction import router as auction
+from src.presentation.routers.v1.seller.order import router as seller_order
+from src.presentation.routers.v1.admin import admin_profile
+from src.presentation.routers.v1.admin import violation
 from src.presentation.routers.v1 import (
-    health, 
-    bid, 
-    user, 
+    health,
+    bid,
+    user,
     order,
-    conversations, 
-    query,
-    #dashboard,
-    chat,
-    auth
+    auth,
+    profile,
+    messages,
 )
-from src.presentation.routers.v1.admin import admin_auction
-from src.presentation.routers.v1.admin import admin_csv
-from src.presentation.routers.v1.admin import admin_dashboard
+
+from src.presentation.routers.v1.admin import admin_users
 from src.presentation.routers.v1.buyer import auction as buyer_auction 
 from src.presentation.routers.v1.buyer import bid as buyer_bid
 from src.presentation.routers.v1.buyer import order as buyer_order
-from src.infrastructure.database.base import Base, engine
+from src.infrastructure.database.base import Base, engine, SessionLocal
 from src.presentation.routers.v1 import auth
 from src.presentation.routers.v1.admin import admin_csv, admin_auction, admin_dashboard
-from src.application.services.buyer.auction_manager import auction_manager
+from src.presentation.routers.v1.dashboard import analytics_dashboard
+from src.application.use_cases.buyer.auction_manager import auction_manager
+from src.application.use_cases.buyer.outbox_publisher import (
+    init_outbox_publisher,
+    start_outbox_publisher,
+    stop_outbox_publisher,
+    ensure_outbox_table_exists,
+)
 from src.presentation.routers.v1.buyer import live_auction_socket
+from src.infrastructure.database.schema_compatibility import ensure_runtime_schema_compatibility
+from src.presentation.routers.v1.violations_router import router as violations_router
+from src.presentation.routers.v1.notifications_router import router as notifications_router
+from src.application.use_cases.auction_status_updater import sync_auction_statuses
+from src.application.services.dashboard.analytics_snapshot_scheduler import analytics_snapshot_scheduler
 
 load_dotenv()
 
@@ -51,10 +68,38 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     logger.info("Starting TeaBlendAI FastAPI server.")
     app.state.mcp_client = None
+    compatibility = None
 
+    try:
+        compatibility = ensure_runtime_schema_compatibility()
+        logger.info("Runtime schema compatibility checks completed.")
+    except Exception:
+        logger.exception("Runtime schema compatibility checks failed; continuing startup.")
+
+    # Clean up any stale live auctions that expired while the server was offline
+    try:
+        sync_auction_statuses(SessionLocal())
+        logger.info("Stale auction cleanup completed during startup")
+    except Exception as e:
+        logger.exception(f"Error cleaning up stale auctions on startup: {e}")
+
+    # Start auction manager
     auction_manager_task = asyncio.create_task(auction_manager.start_background_task())
     app.state.auction_manager_task = auction_manager_task
     logger.info("Auction manager background task started")
+
+    # Ensure outbox table exists before publisher starts polling.
+    ensure_outbox_table_exists()
+    
+    # Initialize and start outbox publisher
+    init_outbox_publisher(SessionLocal)
+    await start_outbox_publisher()
+    logger.info("Outbox publisher started")
+
+    if settings.ANALYTICS_SCHEDULER_ENABLED:
+        analytics_task = asyncio.create_task(analytics_snapshot_scheduler.start())
+        app.state.analytics_snapshot_task = analytics_task
+        logger.info("Analytics snapshot scheduler started")
 
     if settings.INIT_DB_ON_STARTUP:
         try:
@@ -78,6 +123,10 @@ async def lifespan(app: FastAPI):
     finally:
         logger.info("Shutting down TeaBlendAI server")
         
+        # Stop outbox publisher
+        await stop_outbox_publisher()
+        logger.info("Outbox publisher stopped")
+        
         if hasattr(app.state, 'auction_manager_task'):
             auction_manager.stop()
             app.state.auction_manager_task.cancel()
@@ -99,6 +148,13 @@ async def lifespan(app: FastAPI):
                 else:
                     logger.debug(f"MCP shutdown scope cancellation (expected): {e}")
 
+        if hasattr(app.state, "analytics_snapshot_task"):
+            analytics_snapshot_scheduler.stop()
+            app.state.analytics_snapshot_task.cancel()
+            try:
+                await app.state.analytics_snapshot_task
+            except asyncio.CancelledError:
+                logger.debug("Analytics scheduler task cancelled cleanly")
 
 # Create FastAPI application
 app = FastAPI(
@@ -120,6 +176,10 @@ app.add_middleware(
     allow_headers=settings.CORS_ALLOW_HEADERS,
 )
 
+# Static Files setup
+os.makedirs("uploads/profile_images", exist_ok=True)
+app.mount("/api/v1/uploads", StaticFiles(directory="uploads"), name="uploads")
+
 # API v1 routers
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Auth"])
@@ -129,19 +189,30 @@ app.include_router(bid.router, prefix="/api/v1")
 app.include_router(auction.router, prefix="/api/v1")
 # Register user router
 app.include_router(user.router, prefix="/api/v1")
+# Register profile router
+app.include_router(profile.router, prefix="/api/v1")
+
+# Register payment card router
+from src.presentation.routers.v1 import payment_card
+app.include_router(payment_card.router, prefix="/api/v1", tags=["Payment Cards"])
+
+# Register Stripe payment router
+from src.presentation.routers.v1 import payment as stripe_payment
+app.include_router(stripe_payment.router, prefix="/api/v1", tags=["Stripe Payment"])
 # Register order router
 app.include_router(order.router, prefix="/api/v1")
 # Register health check router
 app.include_router(health.router, prefix="/api/v1")
+# Register messages router
+app.include_router(messages.router, prefix="/api/v1")
 
 # API v1 routers - Chatbot
 app.include_router(chat.router, prefix="/api/v1", tags=["Chat"])
 app.include_router(conversations.router, prefix="/api/v1", tags=["Conversations"])
 app.include_router(query.router, prefix="/api/v1", tags=["Query"])
-#app.include_router(dashboard.router, prefix="/api/v1", tags=["Dashboard"])
 
 # Admin routers
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"])
+app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin"], dependencies=[Depends(get_current_admin)])
 
 # Buyer routers
 app.include_router(buyer_auction.router, prefix="/api/v1/buyer")
@@ -152,10 +223,17 @@ app.include_router(live_auction_socket.router, prefix="/api/v1/buyer")
 # WebSocket routers
 app.include_router(live_auction_socket.router, prefix="/api/v1/buyer", tags=["buyer-live-auction-ws"])
 
+# Seller routers
+app.include_router(seller_order, prefix="/api/v1/seller")
+
 # Admin routers
-app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"])
-app.include_router(admin_auction.router, prefix="/api/v1/admin", tags=["Admin Auctions"])
-app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"])
+app.include_router(admin_csv.router, prefix="/api/v1/admin", tags=["csv-upload"], dependencies=[Depends(get_current_admin)])
+# admin_auction already included above
+app.include_router(admin_dashboard.router, prefix="/api/v1/admin", tags=["Admin Dashboard"], dependencies=[Depends(get_current_admin)])
+app.include_router(admin_users.router, prefix="/api/v1/admin/users", tags=["Admin Users"], dependencies=[Depends(get_current_admin)])
+
+# Dashboard routers
+app.include_router(analytics_dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request, exc):
@@ -229,3 +307,34 @@ if __name__ == "__main__":
 
 
 # to run the app: uvicorn src.application.main:app --host 0.0.0.0 --port 8000
+
+# Register admin dashboard router (already included above, skipping)
+
+# Register admin user management router
+# app.include_router(admin_users.router , prefix="/api/v1/admin", tags=["Admin Users"])
+# Backwards-compatible routes used by frontend (legacy path)
+# admin_users already included above
+
+# Register admin profile router
+app.include_router(admin_profile.router, prefix="/api/v1/admin/profile", tags=["Admin Profile"], dependencies=[Depends(get_current_admin)])
+
+# Register admin violation router (mounted under API v1 admin prefix)
+app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"], dependencies=[Depends(get_current_admin)])
+
+# Register system logs router
+from src.presentation.routers.v1.admin import system_logs_router
+app.include_router(system_logs_router.router, prefix="/api/v1/admin", tags=["System Logs"])
+# app.include_router(violation.router, prefix="/api/v1/admin", tags=["Admin Violations"])
+
+# Register notifications router (mounted under API v1)
+app.include_router(
+    notifications_router,
+    prefix="/api/v1/notifications",
+    tags=["Notifications"]
+)
+# Register violation router for users (non-admin) (mounted under API v1)
+app.include_router(
+    violations_router,
+    prefix="/api/v1/violations",
+    tags=["Violations"]
+)

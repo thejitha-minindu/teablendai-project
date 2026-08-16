@@ -3,56 +3,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { AuctionCard } from '@/components/features/seller/AuctionCard';
 import { LiveAuctionModal } from '@/components/features/seller/AuctionModal';
+import { AuctionFilterSort, FilterState } from "@/components/features/buyer/AuctionFilterSort";
 import { apiClient } from '@/lib/apiClient';
 
-const parseBackendDateTime = (dateString: string) => {
-  if (!dateString) return null;
-
-  if (/Z$|[+-]\d{2}:\d{2}$/.test(dateString)) {
-    return new Date(dateString);
-  }
-
-  const normalized = dateString.replace(' ', 'T');
-  const [datePart, timePartRaw = '00:00:00'] = normalized.split('T');
-  const timePart = timePartRaw.split('.')[0];
-
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hours = '0', minutes = '0', seconds = '0'] = timePart.split(':');
-
-  return new Date(
-    year,
-    (month || 1) - 1,
-    day || 1,
-    Number(hours),
-    Number(minutes),
-    Number(seconds)
-  );
-};
-
-const durationToMinutes = (durationValue: number) => {
-  if (!Number.isFinite(durationValue) || durationValue <= 0) return 0;
-  return durationValue > 24 ? durationValue : durationValue * 60;
-};
-
-// Helper to calculate time remaining
-const calculateCountdown = (startTime: string, durationValue: number) => {
-  const startDate = parseBackendDateTime(startTime);
-  if (!startDate || Number.isNaN(startDate.getTime())) return "Closing...";
-
-  const start = startDate.getTime();
-  const durationMinutes = durationToMinutes(durationValue);
-  const end = start + (durationMinutes * 60 * 1000);
-  const now = new Date().getTime();
-  const diff = end - now;
-
-  if (diff <= 0) return "Closing...";
-
-  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-};
+import { parseBackendDateTime, calculateLiveCountdown } from "@/utils/dateFormatter";
+import { getUserFromToken } from "@/utils/auth";
 
 export default function LiveAuctionsPage() {
   const [selectedAuctionId, setSelectedAuctionId] = useState<string | null>(null);
@@ -62,11 +17,11 @@ export default function LiveAuctionsPage() {
   // 1. Fetch Live Auctions (Added cache busting)
   const fetchLiveAuctions = async () => {
     try {
-      // Decode the token to get YOUR specific user ID
-      const token = typeof window !== 'undefined' ? localStorage.getItem("teablend_token") : null;
-      if (!token) return;
-
-      const payload = JSON.parse(atob(token.split('.')[1]));
+      const payload = getUserFromToken();
+      if (!payload || !payload.id) {
+        setLoading(false);
+        return;
+      }
       const myUserId = payload.id;
 
       // Use apiClient and attach the seller_id to the URL
@@ -77,7 +32,7 @@ export default function LiveAuctionsPage() {
         }
       });
 
-      const data = res.data; // Axios puts the JSON in .data
+      const data = res.data;
 
       const formattedData = data.map((item: any) => {
         // Parse the date just like the dashboard does
@@ -93,7 +48,7 @@ export default function LiveAuctionsPage() {
             custom_auction_id: item.custom_auction_id,
             buyer: item.buyer,
             buyer_name: item.buyer_name,
-            countdown: calculateCountdown(item.start_time, item.duration),
+            countdown: calculateLiveCountdown(item.start_time, item.duration),
             rawStart: item.start_time,
             rawDuration: item.duration,
             // ADD THESE TWO LINES:
@@ -124,7 +79,7 @@ export default function LiveAuctionsPage() {
 
         // --- NEW LOGIC: Check for expired auctions ---
         const shouldReload = prevAuctions.some(auc => {
-          const status = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
+          const status = calculateLiveCountdown(auc.data.rawStart, auc.data.rawDuration);
           return status === "Closing...";
         });
 
@@ -136,7 +91,7 @@ export default function LiveAuctionsPage() {
 
         // CRITICAL: Only create new objects if countdown actually changed
         return prevAuctions.map(auc => {
-          const newCountdown = calculateCountdown(auc.data.rawStart, auc.data.rawDuration);
+          const newCountdown = calculateLiveCountdown(auc.data.rawStart, auc.data.rawDuration);
           if (newCountdown === auc.data.countdown) {
             // No change, return same object reference to prevent React.memo re-render
             return auc;
@@ -162,18 +117,86 @@ export default function LiveAuctionsPage() {
     setSelectedAuctionId(auctionId);
   }, []);
 
+  const [filters, setFilters] = useState<FilterState>({
+    searchQuery: "",
+    grade: "all",
+  });
+  const [sortBy, setSortBy] = useState("recent");
+
+  // Filtering
+  const filteredData = auctions.filter((auction) => {
+    const title = auction.displayId || "";
+    const grade = auction.data.grade || "";
+    const basePrice = auction.data.price || 0;
+
+    const query = filters.searchQuery?.toLowerCase() || "";
+    const matchesSearch =
+      !query ||
+      title.toLowerCase().includes(query) ||
+      grade.toLowerCase().includes(query);
+
+    let matchesGrade = true;
+    if (filters.grade && filters.grade !== "all") {
+      const gradeMap: Record<string, string[]> = {
+        A: ["FTGFOP1", "SFTGFOP", "Silver Needle"],
+        B: ["BOP", "OP", "FBOP", "TGFOP"],
+        C: ["Herbal"],
+      };
+      matchesGrade = gradeMap[filters.grade]?.includes(grade) || false;
+    }
+
+    let matchesPrice = true;
+    if (filters.priceMin || filters.priceMax) {
+      const price = typeof basePrice === "number" ? basePrice : parseInt(String(basePrice).replace(/[^\d]/g, ""));
+      const min = filters.priceMin || 0;
+      const max = filters.priceMax || Infinity;
+      matchesPrice = price >= min && price <= max;
+    }
+
+    return matchesSearch && matchesGrade && matchesPrice;
+  });
+
+  // Sorting
+  const sortedData = [...filteredData].sort((a, b) => {
+    const basePrice_a = a.data.price || 0;
+    const basePrice_b = b.data.price || 0;
+    const priceA = typeof basePrice_a === "number" ? basePrice_a : parseInt(String(basePrice_a).replace(/[^\d]/g, "")) || 0;
+    const priceB = typeof basePrice_b === "number" ? basePrice_b : parseInt(String(basePrice_b).replace(/[^\d]/g, "")) || 0;
+
+    if (sortBy === "recent") {
+      return new Date(b.data.rawStart || b.data.date).getTime() - new Date(a.data.rawStart || a.data.date).getTime();
+    }
+    if (sortBy === "price-high") {
+      return priceB - priceA;
+    }
+    if (sortBy === "price-low") {
+      return priceA - priceB;
+    }
+    if (sortBy === "ending-soon") {
+      return new Date(a.data.rawStart || a.data.date).getTime() - new Date(b.data.rawStart || b.data.date).getTime();
+    }
+    return 0;
+  });
+
   return (
-    <div className="max-w-7xl mx-auto px-4">
-      <h1 className="text-[#1A2F1C] text-3xl font-bold text-left mb-12">
-        Live Auctions
-      </h1>
+    <div className="sm:px-4 lg:px-10 lg:pt-10 mb-10">
+      <div className="mb-5 items-start">
+        <h1 className="text-3xl font-bold text-[#1A2F1C]">Live Auctions</h1>
+        <p className="text-muted-foreground mt-2">Monitor your ongoing auctions and watch live bids come in.</p>
+      </div>
+
+      <AuctionFilterSort
+        hideStatus={true}
+        onFilterChange={(f: FilterState) => setFilters(f)}
+        onSortChange={(s: string) => setSortBy(s)}
+      />
 
       {loading ? (
         <p className="text-gray-500">Loading live auctions...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {auctions.length > 0 ? (
-            auctions.map((auction) => (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
+          {sortedData.length > 0 ? (
+            sortedData.map((auction) => (
               <AuctionCard
                 key={auction.id}
                 auctionId={auction.id}

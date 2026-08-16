@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.application.schemas.buyer.order import Order, WinsAuction, PaymentDetails
-from src.infrastructure.repositories.order_repository import OrderRepository, WinsAuctionRepository
+from src.infrastructure.repositories.buyer.order_repository import OrderRepository, WinsAuctionRepository
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,12 @@ class OrderService:
     def get_order(self, order_id: str):
         logger.info(f"Service: Getting order {order_id}")
         return self.order_repo.get_order_details(order_id)
+
+    # Get order linked to a specific auction
+    def get_order_by_auction(self, auction_id: str):
+        logger.info(f"Service: Getting order for auction {auction_id}")
+        return self.order_repo.get_order_by_auction_id(auction_id)
+
 
     # List orders with optional filters
     def list_orders(self, user_id: str = None, status: str = None):

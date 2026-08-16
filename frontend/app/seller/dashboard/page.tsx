@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Plus, Leaf, ArrowRight, Calendar as CalendarIcon } from "lucide-react";
 import { apiClient } from '@/lib/apiClient';
@@ -16,6 +16,9 @@ import {
     HistoryAuctionModal 
 } from "@/components/features/seller/AuctionModal";
 
+import { parseBackendDateTime, durationToMinutes } from "@/utils/dateFormatter";
+import { getUserFromToken } from "@/utils/auth";
+
 // Helper: Date Formatting
 const formatDateTitle = (date: Date) => {
   return new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(date);
@@ -28,40 +31,9 @@ const isSameDay = (d1: Date, d2: Date) => {
          d1.getDate() === d2.getDate();
 };
 
-// Helper: Parse backend ISO datetimes safely
-const parseBackendDateTime = (dateString?: string | null): Date | null => {
-  if (!dateString) return null;
-
-  // Accept well-formed ISO strings including timezone offsets
-  if (/.*T.*([+-]\d{2}:\d{2}|Z)$/.test(dateString)) {
-    const date = new Date(dateString);
-    if (!Number.isNaN(date.getTime())) return date;
-  }
-
-  // Fall back for strings like "YYYY-MM-DD HH:mm:ss"
-  const normalized = dateString.replace(' ', 'T');
-  const parsed = new Date(normalized);
-  if (!Number.isNaN(parsed.getTime())) return parsed;
-
-  // Parse manually as last resort
-  const [datePart, timePart = '00:00:00'] = normalized.split('T');
-  const [year, month, day] = datePart.split('-').map(Number);
-  const [hour = '0', minute = '0', second = '0'] = timePart.split(':');
-
-  const manual = new Date(
-    year,
-    (month || 1) - 1,
-    day || 1,
-    Number(hour),
-    Number(minute),
-    Number(second)
-  );
-  return Number.isNaN(manual.getTime()) ? null : manual;
-};
-
-// --- HELPER: Calculate Countdown ---
+// HELPER: Calculate Countdown for both live and scheduled auctions
 const calculateCountdown = (auction: any) => {
-    // 1. Use the safe parsing function already in your file!
+    // 1. Use the safe parsing function already in the file!
     const startDate = parseBackendDateTime(auction.rawStart);
     
     // If it completely fails to parse, return a safe fallback instead of NaN
@@ -73,9 +45,9 @@ const calculateCountdown = (auction: any) => {
     let targetTime = 0;
 
     if (auction.type === 'live') {
-        // Safely calculate duration (convert to minutes, then milliseconds)
+        // Stored auction duration is always minutes
         const durationValue = Number(auction.duration) || 0;
-        const durationMinutes = durationValue > 24 ? durationValue : durationValue * 60;
+        const durationMinutes = durationToMinutes(durationValue);
         targetTime = startTime + (durationMinutes * 60 * 1000);
     } else if (auction.type === 'scheduled') {
         targetTime = startTime;
@@ -104,9 +76,8 @@ export default function SellerDashboardPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [allAuctions, setAllAuctions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
-  // --- NEW STATE: Selected Auction for Modal ---
   const [selectedAuction, setSelectedAuction] = useState<any | null>(null);
+  const isFetching = useRef(false);
 
   // Today's date
   const today = useMemo(() => {
@@ -115,17 +86,21 @@ export default function SellerDashboardPage() {
     return d;
   }, []);
 
-  // --- 1. FETCH DATA ---
+  // FETCH DATA FUNCTION
   const fetchAllData = async () => {
+      if (isFetching.current) return;
       try {
+        isFetching.current = true;
         setLoading(true);
 
         // 1. Decode the token to get YOUR specific user ID
-        const token = localStorage.getItem("teablend_token");
-        if (!token) return;
-
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        const myUserId = payload.id; // We stored this securely during login!
+        const payload = getUserFromToken();
+        if (!payload || !payload.id) {
+          setLoading(false);
+          isFetching.current = false;
+          return;
+        }
+        const myUserId = payload.id;
         
         // 2. Attach your ID to the URLs using a query string (?seller_id=...)
         const [liveRes, schedRes, histRes] = await Promise.all([
@@ -134,7 +109,6 @@ export default function SellerDashboardPage() {
             apiClient.get(`/auctions/status/history?seller_id=${myUserId}`)
         ]);
 
-        // Axios automatically parses JSON, so we just grab the .data property
         const liveData = liveRes.data;
         const schedData = schedRes.data;
         const histData = histRes.data;
@@ -142,8 +116,7 @@ export default function SellerDashboardPage() {
         const normalize = (item: any, type: 'live' | 'scheduled' | 'history') => {
             const dateObj = parseBackendDateTime(item.start_time) || new Date();
             
-            // Map the backend status (which might be "SCHEDULE", "Scheduled", "live", "Live") 
-            // to the exact string your UI expects.
+            // Map the backend status to the exact string the UI expects.
             let displayStatus = 'Scheduled';
             if (type === 'live') displayStatus = 'Live';
             if (type === 'history') displayStatus = item.status ? item.status : 'Sold';
@@ -188,6 +161,7 @@ export default function SellerDashboardPage() {
         console.error("Failed to load dashboard data", error);
       } finally {
         setLoading(false);
+        isFetching.current = false;
       }
   };
 
@@ -198,10 +172,35 @@ export default function SellerDashboardPage() {
   // --- 2. TIMER EFFECT ---
   useEffect(() => {
     const timer = setInterval(() => {
+        let transitionDetected = false;
+
         setAllAuctions(prevAuctions => 
             prevAuctions.map(auc => {
                 if (auc.type === 'history') return auc;
                 const newCountdown = calculateCountdown(auc);
+                
+                // Detect transitions
+                if (auc.type === 'scheduled') {
+                    const startDate = parseBackendDateTime(auc.rawStart);
+                    if (startDate) {
+                        const diff = startDate.getTime() - Date.now();
+                        if (diff <= 0) {
+                            transitionDetected = true;
+                        }
+                    }
+                } else if (auc.type === 'live') {
+                    const startDate = parseBackendDateTime(auc.rawStart);
+                    if (startDate) {
+                        const durationValue = Number(auc.duration) || 0;
+                        const durationMinutes = durationToMinutes(durationValue);
+                        const targetTime = startDate.getTime() + (durationMinutes * 60 * 1000);
+                        const diff = targetTime - Date.now();
+                        if (diff <= 0) {
+                            transitionDetected = true;
+                        }
+                    }
+                }
+
                 if (newCountdown === auc.countdown) {
                   // No change, return same reference
                   return auc;
@@ -209,6 +208,10 @@ export default function SellerDashboardPage() {
                 return { ...auc, countdown: newCountdown };
             })
         );
+
+        if (transitionDetected && !isFetching.current) {
+            fetchAllData();
+        }
     }, 1000);
     return () => clearInterval(timer);
   }, []);
@@ -239,27 +242,60 @@ export default function SellerDashboardPage() {
       return isSameDay(a.dateObj, targetDate);
   });
 
+  const headerAction = useMemo(() => {
+    const targetDateTime = new Date(targetDate);
+    targetDateTime.setHours(0, 0, 0, 0);
+    const todayTime = new Date(today);
+    todayTime.setHours(0, 0, 0, 0);
+
+    if (targetDateTime.getTime() > todayTime.getTime()) {
+      return (
+        <Link 
+          href="/seller/scheduled" 
+          className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+        >
+          View Scheduled
+        </Link>
+      );
+    } else if (targetDateTime.getTime() < todayTime.getTime()) {
+      return (
+        <Link 
+          href="/seller/history" 
+          className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+        >
+          View History
+        </Link>
+      );
+    } else {
+      const hasLiveAuctions = allAuctions.some(a => a.type === 'live');
+      if (hasLiveAuctions) {
+        return (
+          <Link 
+            href="/seller/live" 
+            className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline"
+          >
+            View Live
+          </Link>
+        );
+      }
+      return null;
+    }
+  }, [targetDate, today, allAuctions]);
+
   return (
     <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
       
       {/* 1. Page Title */}
-      <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-[#1A2F1C]">Seller Dashboard</h1>
-          <p className="text-gray-500">Welcome back</p>
-        </div>
+      <div className="mb-5 items-start">
+        <h1 className="text-3xl font-bold">Seller Dashboard</h1>
+        <p className="text-muted-foreground mt-2">Welcome back</p>
       </div>
 
       {/* --- ROW 1: Chart & Hero --- */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
         {/* Left: Chart */}
-        <div className="lg:col-span-1 h-full">
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 h-full flex flex-col justify-center items-center min-h-[420px]">
-                <h3 className="font-bold text-gray-700 mb-6 text-center">Sales Distribution</h3>
-                <div className="flex-1 flex items-center justify-center w-full">
-                    <ChartPie /> 
-                </div>
-            </div>
+        <div className="lg:col-span-1 h-full min-h-[420px]">
+            <ChartPie />
         </div>
 
         {/* Right: Create Auction Hero */}
@@ -302,12 +338,12 @@ export default function SellerDashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Left: Calendar */}
         <div className="lg:col-span-1">
-            <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-gray-100 flex flex-col items-center">
+            <div className="flex flex-col items-center">
                 <div className="w-full flex justify-between items-center mb-4 px-2">
-                    <h3 className="font-bold text-gray-700">Calendar</h3>
+                    <h3 className="font-semibold text-gray-700">Calendar</h3>
                     {selectedDate && (
-                        <button onClick={() => setSelectedDate(undefined)} className="text-[10px] uppercase font-bold text-[#3A5A40] bg-[#E5F7CB] px-2 py-1 rounded-md hover:bg-[#3A5A40] hover:text-white transition-colors">
-                            Reset to Today
+                        <button onClick={() => setSelectedDate(undefined)} className="text-[10px] uppercase font-medium text-gray-600 bg-gray-100 px-2 py-1 rounded-md hover:bg-gray-200 transition-colors">
+                            Reset
                         </button>
                     )}
                 </div>
@@ -323,7 +359,7 @@ export default function SellerDashboardPage() {
                         past: "bg-gray-100 text-gray-400 line-through hover:bg-gray-200 rounded-full"
                     }}
                 />
-                <div className="mt-6 flex flex-wrap gap-3 text-xs w-full px-2">
+                <div className="mt-4 flex flex-wrap gap-3 text-xs w-full px-2">
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-green-500"></span> Live/Today</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-orange-400"></span> Scheduled</div>
                     <div className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-gray-300"></span> Past</div>
@@ -339,9 +375,7 @@ export default function SellerDashboardPage() {
                         {isSameDay(targetDate, today) ? "Today's Auctions" : `Auctions on ${formatDateTitle(targetDate)}`}
                     </h2>
                 </div>
-                {!isSameDay(targetDate, today) && (
-                    <Link href="/seller/history" className="text-sm font-semibold text-[#3A5A40] hover:text-[#2D4A2B] hover:underline">View History</Link>
-                )}
+                {headerAction}
             </div>
 
             {loading ? (

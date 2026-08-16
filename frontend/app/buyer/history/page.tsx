@@ -3,7 +3,10 @@ import { useState, useMemo, useEffect } from "react";
 import { listAuctionsHistory } from "@/services/buyer/auctionService";
 import { AuctionCard } from "@/components/features/buyer/AuctionCard";
 import { PaginationBuyerAuction } from "@/components/features/buyer/Pagination";
-import { HistoryFilterSort, FilterState } from "@/components/features/buyer/HistoryFilterSort";
+import {
+  HistoryFilterSort,
+  FilterState,
+} from "@/components/features/buyer/HistoryFilterSort";
 import { Button } from "@/components/ui/button";
 import { getAuthClaims } from "@/lib/auth";
 
@@ -13,7 +16,7 @@ export default function BuyerHistoryPage() {
   const [historyData, setHistoryData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState<FilterState>({ searchQuery: "" });
@@ -47,40 +50,63 @@ export default function BuyerHistoryPage() {
   }, [userId]);
 
   // Use fetched data or fallback
-  const AUCTION_DATA = historyData.length > 0 ? historyData : AUCTION_DATA_FALLBACK;
+  const AUCTION_DATA =
+    historyData.length > 0 ? historyData : AUCTION_DATA_FALLBACK;
 
   // Filter and sort the auction data
   const filteredAndSortedData = useMemo(() => {
     let result = [...AUCTION_DATA];
 
+    const getPrice = (auction: any) => {
+      const basePrice = auction.base_price ?? auction.basePrice ?? 0;
+      return typeof basePrice === "number"
+        ? basePrice
+        : parseFloat(String(basePrice).replace(/[^\d.]/g, "")) || 0;
+    };
+
     if (filters.searchQuery) {
       const searchLower = filters.searchQuery.toLowerCase();
-      result = result.filter(auction =>
-        auction.title.toLowerCase().includes(searchLower) ||
-        auction.company.toLowerCase().includes(searchLower) ||
-        auction.estateName.toLowerCase().includes(searchLower) ||
-        auction.grade.toLowerCase().includes(searchLower) ||
-        auction.id.toString().includes(searchLower)
+      result = result.filter(
+        (auction) => {
+          const title = String(auction.title || auction.auction_name || "Auction").toLowerCase();
+          const company = String(auction.company || auction.company_name || "-").toLowerCase();
+          const estateName = String(auction.estateName || auction.estate_name || "-").toLowerCase();
+          const grade = String(auction.grade || "-").toLowerCase();
+          const idStr = String(auction.id || auction.auction_id || "").toLowerCase();
+
+          return title.includes(searchLower) ||
+            company.includes(searchLower) ||
+            estateName.includes(searchLower) ||
+            grade.includes(searchLower) ||
+            idStr.includes(searchLower);
+        }
       );
     }
 
     if (filters.grade) {
-      result = result.filter(auction => auction.grade.includes(filters.grade!));
+      result = result.filter((auction) =>
+        String(auction.grade || "").includes(filters.grade!),
+      );
     }
 
     result.sort((a, b) => {
+      const titleA = String(a.title || a.auction_name || "Auction");
+      const titleB = String(b.title || b.auction_name || "Auction");
+      const gradeA = String(a.grade || "-");
+      const gradeB = String(b.grade || "-");
+
       switch (sortBy) {
         case "price-high":
-          return parseFloat(b.basePrice.replace('$', '')) - parseFloat(a.basePrice.replace('$', ''));
+          return getPrice(b) - getPrice(a);
         case "price-low":
-          return parseFloat(a.basePrice.replace('$', '')) - parseFloat(b.basePrice.replace('$', ''));
+          return getPrice(a) - getPrice(b);
         case "grade":
-          return a.grade.localeCompare(b.grade);
+          return gradeA.localeCompare(gradeB);
         case "name":
-          return a.title.localeCompare(b.title);
+          return titleA.localeCompare(titleB);
         case "recent":
         default:
-          return new Date(b.date).getTime() - new Date(a.date).getTime();
+          return new Date(b.date || b.created_at || 0).getTime() - new Date(a.date || a.created_at || 0).getTime();
       }
     });
 
@@ -135,8 +161,7 @@ export default function BuyerHistoryPage() {
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">Auction History</h1>
         <p className="text-muted-foreground mt-2">
-          {totalItems} auction{totalItems !== 1 ? 's' : ''} found
-          {filters.searchQuery && ` for "${filters.searchQuery}"`}
+          Review your past bids, won auctions, and complete purchase records.
         </p>
       </div>
 
@@ -149,18 +174,23 @@ export default function BuyerHistoryPage() {
 
       {loading ? (
         <div className="text-center py-10">
-          <h3 className="text-lg font-semibold mb-2">Loading auction history...</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            Loading auction history...
+          </h3>
         </div>
       ) : error ? (
         <div className="text-center py-10">
-          <h3 className="text-lg font-semibold mb-2">Failed to load auction history</h3>
+          <h3 className="text-lg font-semibold mb-2">
+            Failed to load auction history
+          </h3>
           <p className="text-muted-foreground">{error}</p>
         </div>
       ) : filteredAndSortedData.length === 0 ? (
         <div className="text-center py-10">
           <h3 className="text-lg font-semibold mb-2">No auctions found</h3>
           <p className="text-muted-foreground">
-            Try adjusting your search or filters to find what you're looking for.
+            Try adjusting your search or filters to find what you're looking
+            for.
           </p>
         </div>
       ) : (
@@ -183,18 +213,24 @@ export default function BuyerHistoryPage() {
             {hasMoreCards && (
               <div style={{ animation: "fadeInUp 0.4s ease-out" }}>
                 <Button
-                  onClick={isExpanded ? () => {
-                    setIsExpanded(false);
-                    setCurrentPage(1);
-                  } : () => {
-                    setIsExpanded(true);
-                    setCurrentPage(1);
-                  }}
+                  onClick={
+                    isExpanded
+                      ? () => {
+                          setIsExpanded(false);
+                          setCurrentPage(1);
+                        }
+                      : () => {
+                          setIsExpanded(true);
+                          setCurrentPage(1);
+                        }
+                  }
                   size="lg"
                   variant="outline"
                   className="px-12 h-11"
                 >
-                  {isExpanded ? "Show Less" : `Load More (${totalItems - initialCards} more)`}
+                  {isExpanded
+                    ? "Show Less"
+                    : `Load More (${totalItems - initialCards} more)`}
                 </Button>
               </div>
             )}

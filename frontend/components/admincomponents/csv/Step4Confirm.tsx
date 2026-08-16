@@ -1,4 +1,6 @@
 "use client";
+import { apiClient } from "@/lib/apiClient";
+import { toast } from 'sonner';
 
 const requiredFieldsByTable: Record<string, string[]> = {
     TeaPurchase: ["PurchaseDate"],
@@ -12,7 +14,7 @@ export default function Step4Confirm({
 }: any) {
     const handleUpload = async () => {
         if (!file || !table) {
-            alert("Missing file or table");
+            toast.error("Missing file or table");
             return;
         }
 
@@ -32,33 +34,21 @@ export default function Step4Confirm({
         formData.append("mapping", JSON.stringify(mapping));
 
         try {
-            const response = await fetch("http://localhost:8000/api/v1/admin/csv-upload", {
-                method: "POST",
-                body: formData,
+            const response = await apiClient.post("/admin/csv-upload", formData, {
+                headers: {
+                    "Content-Type": undefined,
+                },
             });
 
-            if (!response.ok) {
-                const errorBody = await response.json().catch(() => null);
-                const firstRowError = errorBody?.detail?.errors?.find((e: any) => e?.row)?.error;
-                const message =
-                    errorBody?.detail?.fatal_error ||
-                    errorBody?.detail?.errors?.[0]?.mapping_error ||
-                    errorBody?.detail?.errors?.[0]?.db_error ||
-                    firstRowError ||
-                    errorBody?.detail?.error ||
-                    "Upload failed";
-                throw new Error(message);
-            }
-
-            const result = await response.json();
-            alert("Upload success!");
+            const result = response.data;
+            toast.success("Upload success!");
             console.log(result);
 
         } catch (error) {
             console.error(error);
             const message =
                 error instanceof Error ? error.message : "Upload error!";
-            alert(`Upload error: ${message}`);
+            toast.error(`Upload error: ${message}`);
         }
     };
 

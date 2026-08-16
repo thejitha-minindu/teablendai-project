@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
 from typing import List, Optional
-from src.application.schemas.buyer.auction import Auction, AuctionData, AuctionOrderCard
+from src.application.schemas.buyer.auction import Auction, AuctionData, AuctionOrderCard, AuctionRemainingTimeResponse
 from src.application.use_cases.buyer.auction_service import AuctionService
 from src.infrastructure.database.base import get_db
 from src.application.dependencies import get_current_buyer
 from src.domain.models.user import User
+from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 
 router = APIRouter(prefix="/auctions", tags=["auctions"])
 router.router = router
@@ -32,15 +33,32 @@ def read_auction(
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
+    return service.get_auction(auction_id)
+
+
+@router.get("/{auction_id}/remaining-time", response_model=AuctionRemainingTimeResponse)
+def read_remaining_time(
+    auction_id: str,
+    service: AuctionService = Depends(get_auction_service),
+    current_user: User = Depends(get_current_buyer),
+):
     auction = service.get_auction(auction_id)
     if not auction:
         raise HTTPException(status_code=404, detail="Auction not found")
-    return auction
+
+    remaining_seconds = int(AuctionTimingService.get_remaining_time(auction).total_seconds())
+    is_live = str(auction.status).lower() == "live"
+
+    return AuctionRemainingTimeResponse(
+        auction_id=auction.auction_id,
+        status=str(auction.status),
+        remaining_seconds=remaining_seconds,
+        is_live=is_live,
+    )
 
 # Get auction history for user
 @router.get("/user/{user_id}/history", response_model=List[AuctionData])
 def get_auctions_history(
-    user_id: str,
     as_buyer: bool = False,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
@@ -50,7 +68,6 @@ def get_auctions_history(
 # Get auctions in user's orders
 @router.get("/user/{user_id}/orders", response_model=List[AuctionOrderCard])
 def get_auctions_orders(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -59,7 +76,6 @@ def get_auctions_orders(
 # Get auctions in user's watchlist
 @router.get("/user/{user_id}/watchlist", response_model=List[AuctionData])
 def get_auctions_watchlist(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -68,7 +84,6 @@ def get_auctions_watchlist(
 # Get home preview auctions for user
 @router.get("/user/{user_id}/preview", response_model=List[AuctionData])
 def get_home_preview(
-    user_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
 ):
@@ -77,7 +92,6 @@ def get_home_preview(
 # Add to watchlist
 @router.post("/user/{user_id}/watchlist/auctions/{auction_id}")
 def add_to_watchlist(
-    user_id: str,
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),
@@ -88,7 +102,6 @@ def add_to_watchlist(
 # Remove from watchlist
 @router.delete("/user/{user_id}/watchlist/auctions/{auction_id}")
 def remove_from_watchlist(
-    user_id: str,
     auction_id: str,
     service: AuctionService = Depends(get_auction_service),
     current_user: User = Depends(get_current_buyer),

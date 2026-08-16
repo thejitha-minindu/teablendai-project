@@ -25,8 +25,8 @@ interface ExtendedAuctionCardProps {
 }
 
 function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAuctionCardProps) {
-  const [isHovered, setIsHovered] = useState(false);
   const [isFlashing, setIsFlashing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   
   const validAuctionId = useMemo(() => {
     if (type === 'live' && auctionId) return String(auctionId).trim();
@@ -126,77 +126,76 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
 
   return (
     <Card 
-      className={`w-full mx-auto hover:shadow-lg transition-all duration-300 ${isFlashing ? 'ring-4 ring-green-400 bg-green-50' : ''}`}
+      className={`w-full mx-auto h-full hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col ${isFlashing ? 'ring-2 ring-green-400 bg-green-50' : 'bg-white'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="relative w-full h-40 overflow-hidden bg-gray-50 border-b border-gray-100 rounded-t-xl flex items-center justify-center">
+      <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0 shrink-0">
         {data.image_url ? (
-          <img src={data.image_url} alt="Tea Lot" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
+          <img src={data.image_url} alt="Tea Lot" className="w-full h-full object-cover" />
         ) : (
           <Package className="w-16 h-16 text-gray-300" />
         )}
       </div>
-      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-2 pt-4">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <CardTitle className="text-[#588157] text-xl">{id}</CardTitle>
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-gray-900 text-xl font-semibold">{id}</CardTitle>
             {type === 'live' && (
-              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center">
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
                 LIVE {connected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
               </Badge>
             )}
           </div>
-          <CardDescription>{data.grade} Grade</CardDescription>
+          <p className="text-gray-700 font-normal text-sm">{data.grade} Grade</p>
         </div>
 
-        <div className="flex flex-col items-start sm:items-end text-sm text-muted-foreground">
-          <p>{String(data.date || "Date N/A")}</p>
-          {data.time && <p>{String(data.time)}</p>}
+        <div className="flex flex-col items-start sm:items-end text-sm text-gray-600 shrink-0">
+          <p className="font-normal">{String(data.date || "Date N/A")}</p>
+          {data.time && <p className="font-normal">{String(data.time)}</p>}
         </div>
       </CardHeader>
 
-      <CardContent>
-        <div className="flex flex-col gap-2">
-            <div className="flex justify-between items-center mb-1">
-                 <span className="text-sm font-medium text-muted-foreground">{getPriceLabel()}:</span>
-                 <span className={`text-lg font-bold transition-colors duration-300 ${isFlashing ? 'text-green-600 scale-110 transform' : 'text-[#1A2F1C]'}`}>
+      <CardContent className="px-5 pb-4 pt-4 flex-grow">
+        <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
+                 <span className="text-sm font-normal text-gray-500">{getPriceLabel()}:</span>
+                 <span className={`text-lg font-semibold transition-colors duration-300 ${isFlashing ? 'text-green-600' : 'text-gray-900'}`}>
                     LKR {displayPrice} 
                  </span>
             </div>
 
-            <p className="flex justify-between text-sm">
-                <span className="font-medium text-muted-foreground">Quantity:</span>
-                <span>{data.quantity} kg</span>
+            <p className="flex justify-between text-sm items-center">
+                <span className="font-normal text-gray-500">Quantity:</span>
+                <span className="font-medium text-gray-800">{data.quantity} kg</span>
             </p>
 
             {type === 'history' && (
-                <p className="flex justify-between text-sm">
-                    <span className="font-medium text-muted-foreground">Status:</span>
-                    <span className={`font-bold ${rawBuyer !== "No Bids Yet" ? 'text-green-600' : 'text-red-600'}`}>
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-normal text-gray-500">Status:</span>
+                    <span className={`font-medium ${rawBuyer !== "No Bids Yet" ? 'text-gray-800' : 'text-gray-500'}`}>
                         {rawBuyer !== "No Bids Yet" ? 'Sold' : 'Unsold'}
                     </span>
                 </p>
             )}
 
-            {/* Always Display Leading Buyer / Winner row to prevent layout shifts */}
             {(type === 'live' || type === 'history') && (
-                <p className="flex justify-between text-sm">
-                    <span className="font-medium text-muted-foreground">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
-                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-500' : 'text-blue-600'}`}>
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-normal text-gray-500">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
+                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-400' : 'text-gray-800'}`}>
                       {safeBuyerDisplay}
                     </span>
                 </p>
             )}
 
             {(type === 'live' || type === 'scheduled') && data.countdown && (
-                <div className={`mt-2 p-2 rounded-md flex justify-between items-center ${
-                    type === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+                <div className={`mt-2 p-2.5 rounded-lg flex justify-between items-center ${
+                    type === 'live' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
                 }`}>
-                    <span className="text-xs font-bold uppercase">
+                    <span className="text-xs font-medium uppercase tracking-wider">
                         {type === 'live' ? 'Ending In' : 'Starts In'}
                     </span>
-                    <span className="text-sm font-mono font-bold">
+                    <span className="text-sm font-mono font-medium">
                         {data.countdown}
                     </span>
                 </div>
@@ -204,10 +203,14 @@ function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAu
         </div>
       </CardContent>
 
-      <CardFooter className="flex justify-end pt-2">
+      <CardFooter className="flex justify-center pb-5 pt-2 px-5 shrink-0">
         <Button 
+            variant="outline"
+            style={{ transition: "background 0.2s" }}
+            className="w-full hover:text-white hover:cursor-pointer"
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#3A5A40")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
             onClick={() => onViewClick?.()}
-            className="bg-[#E5F7CB] hover:bg-[#3A5A40] text-[#3A5A40] hover:text-white font-bold transition-colors"
         >
             View Details
         </Button>

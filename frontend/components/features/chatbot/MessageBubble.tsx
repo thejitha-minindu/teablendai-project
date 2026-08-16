@@ -4,21 +4,24 @@ import Link from "next/link";
 import { useState, useCallback, useMemo, memo } from "react";
 import type { ReactNode } from "react";
 import { ChevronDown, ChevronUp, Brain, User, Copy, Check } from "lucide-react";
-import { ChatMessage } from "@/services/chatService";
+import type { ChatMessage } from "@/types/chatbot/chat.types";
 import VisualizationRenderer from "./VisualizationRenderer";
 import { AuctionCard } from "./AuctionCard";
 import { AuctionFieldInput } from "./AuctionFieldInput";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { formatDurationFromMinutes } from "@/utils/dateFormatter";
+import { highlightText } from "./chatSearchUtils";
 
 // Constants
-const AUCTION_INDICATOR_KEYS = [
+const AUCTION_ROW_LEVEL_KEYS = [
   "auction_id",
-  "grade",
-  "quantity",
-  "base_price",
-  "origin",
+  "auction_name",
   "status",
   "start_time",
+  "duration",
+  "origin",
+  "seller_brand",
+  "estate_name",
 ] as const;
 
 const AUCTION_CONFIRMATION_PHRASES = [
@@ -35,24 +38,29 @@ const AUCTION_CREATION_PHRASES = [
   "created successfully",
 ] as const;
 
+const FRONTEND_BASE_URL =
+  process.env.NEXT_PUBLIC_FRONTEND_URL?.replace(/\/$/, "") || "";
+
 interface MessageBubbleProps {
   message: ChatMessage;
   onSendMessage?: (message: string) => void;
   isActionEnabled?: boolean;
+  highlightTerms?: string[];
+  isHighlighted?: boolean;
 }
 
 // Utility Functions
-const renderInlineMarkdown = (text: string): ReactNode[] => {
+const renderInlineMarkdown = (text: string, highlightTerms: string[] = []): ReactNode[] => {
   const segments = text.split(/(\*\*[^*]+\*\*)/g);
   return segments.map((segment, index) => {
     if (segment.startsWith("**") && segment.endsWith("**") && segment.length > 4) {
-      return <strong key={`b-${index}`}>{segment.slice(2, -2)}</strong>;
+      return <strong key={`b-${index}`}>{highlightText(segment.slice(2, -2), highlightTerms)}</strong>;
     }
-    return <span key={`t-${index}`}>{segment}</span>;
+    return <span key={`t-${index}`}>{highlightText(segment, highlightTerms)}</span>;
   });
 };
 
-const renderMessageContent = (content: string): ReactNode => {
+const renderMessageContent = (content: string, highlightTerms: string[] = []): ReactNode => {
   const lines = content
     .split("\n")
     .map((line) => line.trim())
@@ -66,7 +74,7 @@ const renderMessageContent = (content: string): ReactNode => {
     nodes.push(
       <ul key={`ul-${keySuffix}`} className="list-disc pl-5 space-y-1">
         {bullets.map((item, idx) => (
-          <li key={`li-${keySuffix}-${idx}`}>{renderInlineMarkdown(item)}</li>
+          <li key={`li-${keySuffix}-${idx}`}>{renderInlineMarkdown(item, highlightTerms)}</li>
         ))}
       </ul>
     );
@@ -79,7 +87,7 @@ const renderMessageContent = (content: string): ReactNode => {
       return;
     }
     flushBullets(index);
-    nodes.push(<p key={`p-${index}`}>{renderInlineMarkdown(line)}</p>);
+    nodes.push(<p key={`p-${index}`}>{renderInlineMarkdown(line, highlightTerms)}</p>);
   });
 
   flushBullets(lines.length + 1);
@@ -122,10 +130,20 @@ const toDisplayValue = (value: unknown): string | number | undefined => {
   return undefined;
 };
 
+const formatStructuredDuration = (value: unknown): string | undefined => {
+  if (value === undefined || value === null || value === "") return undefined;
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (Number.isFinite(numericValue)) {
+    return formatDurationFromMinutes(numericValue);
+  }
+  return String(value);
+};
+
 const extractCreatedAuctionDetails = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -142,6 +160,7 @@ const extractCreatedAuctionDetails = (content: string): {
     grade: extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -154,6 +173,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
   grade?: string;
   quantity?: string;
   origin?: string;
+  estate_name?: string;
   base_price?: string;
   start_time?: string;
   duration?: string;
@@ -170,6 +190,7 @@ const extractAuctionDetailsFromPlainText = (content: string): {
     grade: extract("Tea Grade") || extract("Grade"),
     quantity: extract("Quantity"),
     origin: extract("Origin"),
+    estate_name: extract("Estate Name"),
     base_price: extract("Starting Price"),
     start_time: extract("Start Time"),
     duration: extract("Duration"),
@@ -182,7 +203,26 @@ const isAuctionDataShape = (data: unknown): boolean => {
   if (!Array.isArray(data) || data.length === 0) return false;
   const firstRow = data[0];
   if (typeof firstRow !== "object" || firstRow === null) return false;
-  return AUCTION_INDICATOR_KEYS.some((key) => key in firstRow);
+
+  const row = firstRow as Record<string, unknown>;
+
+  // Guard against analytics datasets (e.g., avg/total/compare outputs) being rendered as auction cards.
+  const analyticsKeys = [
+    "average_base_price",
+    "average_sold_price",
+    "avg_price",
+    "total",
+    "total_sales",
+    "total_revenue",
+    "total_quantity",
+    "count",
+    "auction_count",
+    "bid_count",
+  ];
+  if (analyticsKeys.some((key) => key in row)) return false;
+
+  const rowLevelMatches = AUCTION_ROW_LEVEL_KEYS.filter((key) => key in row).length;
+  return rowLevelMatches >= 3;
 };
 
 // Detail Row Component
@@ -196,8 +236,8 @@ const DetailRow = memo(function DetailRow({
   if (!value && value !== 0) return null;
   return (
     <div className="grid grid-cols-[140px_1fr] gap-2">
-      <dt className="font-medium text-gray-600">{label}</dt>
-      <dd>{value}</dd>
+      <span className="font-medium text-gray-600">{label}</span>
+      <span>{value}</span>
     </div>
   );
 });
@@ -232,6 +272,10 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     toDisplayValue(structuredFields?.origin) ||
     createdDetails?.origin ||
     parsedAuctionDetails?.origin;
+  const estateName =
+    toDisplayValue(structuredFields?.estate_name) ||
+    createdDetails?.estate_name ||
+    parsedAuctionDetails?.estate_name;
   const basePrice = formatPriceLkr(
     (structuredFields?.base_price as string | number | undefined) || parsedAuctionDetails?.base_price
   );
@@ -239,11 +283,11 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
     structuredDisplay?.start_time ||
     structuredFields?.start_time ||
     parsedAuctionDetails?.start_time;
+  const structuredDuration = formatStructuredDuration(structuredFields?.duration);
   const duration =
     structuredDisplay?.duration ||
-    (structuredFields?.duration !== undefined && structuredFields?.duration !== null
-      ? `${structuredFields.duration} hours`
-      : parsedAuctionDetails?.duration);
+    structuredDuration ||
+    parsedAuctionDetails?.duration;
   const description =
     toDisplayValue(structuredFields?.description) ||
     createdDetails?.description ||
@@ -273,6 +317,7 @@ const AuctionConfirmationContent = memo(function AuctionConfirmationContent({
           <DetailRow label="Tea Grade" value={grade} />
           <DetailRow label="Quantity" value={quantity} />
           <DetailRow label="Origin" value={origin} />
+          <DetailRow label="Estate Name" value={estateName} />
           <DetailRow label="Starting Price" value={basePrice} />
           <DetailRow label="Start Time" value={startTime as string | undefined} />
           <DetailRow label="Duration" value={duration as string | undefined} />
@@ -303,7 +348,14 @@ const SourceBadge = memo(function SourceBadge({ source }: { source?: string }) {
   if (source === "validation") {
     return (
       <span className="inline-flex items-center text-xs bg-amber-50 text-amber-700 border border-amber-200 rounded-full px-2 py-0.5">
-        Tea Only
+        Safety Guardrail
+      </span>
+    );
+  }
+  if (source === "system") {
+    return (
+      <span className="inline-flex items-center text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full px-2 py-0.5">
+        TeaBlendAI
       </span>
     );
   }
@@ -336,18 +388,23 @@ const LoadingBubble = memo(function LoadingBubble() {
 });
 
 // User Message Component
-const UserMessage = memo(function UserMessage({ content }: { content: string }) {
+interface UserMessageProps {
+  content: string;
+  highlightTerms?: string[];
+}
+
+const UserMessage = memo(function UserMessage({ content: messageContent, highlightTerms = [] }: UserMessageProps) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
     try {
-      await navigator.clipboard.writeText(content);
+      await navigator.clipboard.writeText(messageContent);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       console.error("Copy failed", err);
     }
-  }, [content]);
+  }, [messageContent]);
 
   return (
     <div className="flex justify-end">
@@ -371,7 +428,7 @@ const UserMessage = memo(function UserMessage({ content }: { content: string }) 
           </TooltipContent>
         </Tooltip>
 
-        <p className="text-sm whitespace-pre-wrap pr-6">{content}</p>
+        <p className="text-sm whitespace-pre-wrap pr-6">{renderInlineMarkdown(messageContent, highlightTerms)}</p>
       </div>
 
       <div className="w-8 h-8 ml-2 rounded-full bg-[#558332] flex items-center justify-center text-white shrink-0">
@@ -441,6 +498,8 @@ export default function MessageBubble({
   message,
   onSendMessage,
   isActionEnabled = true,
+  highlightTerms = [],
+  isHighlighted = false,
 }: MessageBubbleProps) {
   const [actionClicked, setActionClicked] = useState(false);
 
@@ -456,7 +515,13 @@ export default function MessageBubble({
     if (isUser) return false;
     if (message.source !== "database") return false;
     if (!Array.isArray(message.data)) return false;
-    return message.data_type === "auction" || isAuctionDataShape(message.data);
+
+    // Do not trust stale data_type alone; require row-level auction shape as well.
+    if (message.data_type === "auction") {
+      return isAuctionDataShape(message.data);
+    }
+
+    return isAuctionDataShape(message.data);
   }, [isUser, message.source, message.data, message.data_type]);
 
   const normalizedContent = useMemo(() => (message.content || "").toLowerCase(), [message.content]);
@@ -570,7 +635,7 @@ export default function MessageBubble({
 
   // User message
   if (isUser) {
-    return <UserMessage content={message.content} />;
+    return <UserMessage content={message.content} highlightTerms={highlightTerms} />;
   }
 
   // Field input prompt
@@ -589,7 +654,7 @@ export default function MessageBubble({
         <div className="max-w-[85%] space-y-2">
           <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
             <div className="text-sm text-gray-800 leading-relaxed">
-              {renderMessageContent(message.content)}
+              {renderMessageContent(message.content, highlightTerms)}
             </div>
             {validationPayload?.field_errors?.length ? (
               <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
@@ -670,7 +735,7 @@ export default function MessageBubble({
         />
       );
     }
-    return renderMessageContent(message.content);
+    return renderMessageContent(message.content, highlightTerms);
   }, [
     showStructuredAuctionConfirmation,
     showStructuredCreatedMessage,
@@ -682,6 +747,7 @@ export default function MessageBubble({
     structuredCardTitle,
     structuredDisplay,
     message.content,
+    highlightTerms,
   ]);
 
   return (
@@ -693,9 +759,9 @@ export default function MessageBubble({
       <div className="flex-1 max-w-[85%] space-y-3">
         {/* Main Message Bubble */}
         <div
-          className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border ${
+          className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border transition-all duration-200 ${
             isAuctionMessage ? "bg-purple-50 border-purple-200" : "bg-white border-gray-200"
-          }`}
+          } ${isHighlighted ? "ring-2 ring-[#D6B25E] shadow-lg" : ""}`}
         >
           {/* Copy Button */}
           <Tooltip>
@@ -732,7 +798,7 @@ export default function MessageBubble({
               <p>
                 You can view the auction details here:
                 <Link
-                  href={`http://localhost:3000/seller/scheduled`}
+                  href={`${FRONTEND_BASE_URL}/seller/scheduled`}
                   className="inline-flex items-center text-sm font-medium text-[#558332] hover:text-[#4a722c] hover:underline ml-1"
                   target="_blank"
                 >

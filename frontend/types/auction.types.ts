@@ -7,7 +7,7 @@ export interface AuctionData {
   quantity: number;
   base_price: number;
   date: Date;
-  duration: number;
+  duration: number; // stored in minutes
   status: AuctionType;
   buyer?: string;
   sold_price?: number;

@@ -3,15 +3,16 @@ from typing import Callable, Literal, Optional, Dict, Any
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, WebSocket, Query, WebSocketException
 
 from src.database import get_db, get_engine
 
-from src.application.use_cases.chat.chat_use_case import ChatUseCase
+from src.application.use_cases.chatbot.chat.chat_use_case import ChatUseCase
 from src.application.security import SECRET_KEY, ALGORITHM
 from src.domain.models.user import User
-from src.infrastructure.services.chat_service import ChatService
-from src.infrastructure.services.mcp_client_manager import MCPClientManager
+from src.domain.models.admin import Admin
+from src.infrastructure.services.chatbot.chat_service import ChatService
+from src.infrastructure.services.chatbot.mcp_client_manager import MCPClientManager
 from src.infrastructure.database.chat_history import ChatHistoryDB
 from src.infrastructure.repositories import ConversationRepository, ChatMessageRepository
 
@@ -174,3 +175,69 @@ def get_optional_token_payload(
     if not token:
         return None
     return _decode_token(token)
+
+
+def _get_ws_user(token: str, db) -> "User":
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate WebSocket credentials",
+    )
+    payload = _decode_token(token)          # reuses existing _decode_token()
+    email: str = payload.get("sub")
+    if not email:
+        raise credentials_exception
+    user = db.query(User).filter(User.email == email).first()
+    if not user:
+        raise credentials_exception
+    return user
+
+
+async def get_ws_current_buyer(
+    websocket: WebSocket,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+) -> User:
+    try:
+        user = _get_ws_user(token, db)
+    except HTTPException:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
+
+    if user.default_role.lower() != "buyer":
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Buyer role required")
+
+    return user
+
+
+async def get_ws_current_user(
+    websocket: WebSocket,
+    token: str = Query(...),
+    db: Session = Depends(get_db),
+) -> User:
+    """WebSocket dependency for any authenticated user (buyer or seller)."""
+    try:
+        user = _get_ws_user(token, db)
+    except HTTPException:
+        raise WebSocketException(code=status.WS_1008_POLICY_VIOLATION, reason="Unauthorized")
+    return user
+
+def get_current_admin(token_payload=Depends(get_token_payload), db: Session = Depends(get_db)):
+    email = token_payload.get("sub")
+    role = token_payload.get("role")
+
+    if role != "admin":
+        raise HTTPException(status_code=403, detail="Not an admin")
+
+    admin = db.query(Admin).filter(Admin.email == email).first()
+
+    if not admin:
+        raise HTTPException(status_code=404, detail="Admin not found")
+
+    if admin.status != "active":
+        raise HTTPException(status_code=403, detail="Account is suspended or inactive")
+
+    return admin
+
+
+def get_system_log_service(db: Session = Depends(get_db)):
+    from src.infrastructure.services.system_log_service import SystemLogService
+    return SystemLogService(db)
