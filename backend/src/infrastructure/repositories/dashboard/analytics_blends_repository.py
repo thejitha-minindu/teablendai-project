@@ -25,49 +25,20 @@ class AnalyticsBlendsRepository:
         return float(value or 0)
 
     def _summary(self, months: int, top_blends_limit: int) -> dict[str, float | int | str]:
-        try:
-            conn = self.warehouse.get_connection()
-            rows = conn.execute("""
-                SELECT 
-                    blend_name,
-                    total_sales_kg,
-                    total_revenue_lkr,
-                    avg_profit_pct
-                FROM mart_top_blends
-                ORDER BY total_sales_kg DESC
-            """).fetchall()
-
-            if rows:
-                total_blends = len(rows)
-                avg_margin = sum(self._num(r[3]) for r in rows) / total_blends if total_blends > 0 else 0.0
-                best = rows[0]
-                total_rev = sum(self._num(r[2]) for r in rows)
-
-                return {
-                    "totalBlends": int(total_blends),
-                    "averageProfitMarginPct": round(avg_margin, 2),
-                    "bestPerformerBlend": str(best[0]),
-                    "bestPerformerMarginPct": round(self._num(best[3]), 2),
-                    "totalBlendRevenueLkr": round(total_rev, 2),
-                }
-        except Exception as e:
-            logger.warning(f"DuckDB blends summary fallback: {e}")
-
-        # Fallback to MSSQL
         row = self.db.execute(
             text("""
                 SELECT
-                    COUNT(DISTINCT COALESCE(NULLIF(auction_name, ''), 'Unknown Blend')) AS total_blends,
+                    COUNT(DISTINCT COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Unknown Blend')) AS total_blends,
                     COALESCE(AVG(CASE WHEN sold_price > 0 AND base_price > 0 THEN ((sold_price - base_price) / base_price) * 100 END), 0) AS average_profit_margin_pct,
-                    'English Breakfast Blend' AS best_performer_blend,
-                    24.5 AS best_performer_margin_pct,
-                    COALESCE(SUM(CASE WHEN status = 'History' AND buyer IS NOT NULL THEN sold_price ELSE 0 END), 0) AS total_blend_revenue_lkr
+                    COALESCE((SELECT TOP 1 COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Master Tea Lot') FROM auctions WHERE status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) GROUP BY auction_name ORDER BY SUM(quantity) DESC), 'Master Ceylon Blend') AS best_performer_blend,
+                    COALESCE((SELECT TOP 1 ((sold_price - base_price) / base_price) * 100 FROM auctions WHERE status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) AND base_price > 0 ORDER BY sold_price DESC), 24.5) AS best_performer_margin_pct,
+                    COALESCE(SUM(CASE WHEN status = 'History' AND (buyer IS NOT NULL OR sold_price > 0) THEN sold_price ELSE 0 END), 0) AS total_blend_revenue_lkr
                 FROM auctions
             """)
         ).mappings().one()
 
         return {
-            "totalBlends": int(self._num(row["total_blends"])),
+            "totalBlends": max(int(self._num(row["total_blends"])), 1),
             "averageProfitMarginPct": round(self._num(row["average_profit_margin_pct"]), 2),
             "bestPerformerBlend": str(row["best_performer_blend"]),
             "bestPerformerMarginPct": round(self._num(row["best_performer_margin_pct"]), 2),
@@ -75,18 +46,20 @@ class AnalyticsBlendsRepository:
         }
 
     def _blend_series(self, months: int, top_blends_limit: int) -> list[str]:
-        try:
-            conn = self.warehouse.get_connection()
-            rows = conn.execute("""
-                SELECT blend_name FROM mart_top_blends
-                ORDER BY total_sales_kg DESC
-                LIMIT ?
-            """, [top_blends_limit]).fetchall()
+        rows = self.db.execute(
+            text("""
+                SELECT TOP (:limit)
+                    COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Unknown Blend') AS blend_name
+                FROM auctions
+                WHERE auction_name IS NOT NULL AND LTRIM(RTRIM(auction_name)) != ''
+                GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(auction_name)), ''), 'Unknown Blend')
+                ORDER BY SUM(quantity) DESC
+            """),
+            {"limit": max(top_blends_limit, 1)}
+        ).mappings().all()
 
-            if rows:
-                return [str(r[0]) for r in rows]
-        except Exception:
-            pass
+        if rows:
+            return [str(r["blend_name"]) for r in rows]
         return ["English Breakfast #1", "Earl Grey Ceylon", "Royal Afternoon", "Silver Tips Blend"]
 
     def _composition_standards(self, blend_series: list[str]) -> list[str]:
@@ -245,7 +218,7 @@ class AnalyticsBlendsRepository:
             "annualComparison": annual_comparison,
         }
 
-    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
+    def get_latest_snapshot(self, refresh_interval_ms: int, max_age_seconds: int = 30) -> dict | None:
         try:
             row = self.db.execute(
                 text(
@@ -275,6 +248,10 @@ class AnalyticsBlendsRepository:
                 generated_at = row["snapshot_at"]
                 if generated_at.tzinfo is None:
                     generated_at = generated_at.replace(tzinfo=timezone.utc)
+
+                age_seconds = (datetime.now(timezone.utc) - generated_at).total_seconds()
+                if age_seconds > max_age_seconds:
+                    return None
 
                 return {
                     "generatedAt": generated_at,

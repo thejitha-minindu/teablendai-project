@@ -33,46 +33,47 @@ class AnalyticsBuyersRepository:
         return max(int(limit or 1), 1)
 
     def _summary(self, months: int) -> dict[str, Any]:
-        try:
-            conn = self.warehouse.get_connection()
-            tot = conn.execute("SELECT COUNT(*) FROM dim_user WHERE user_role = 'buyer'").fetchone()[0]
-            act = conn.execute("SELECT COUNT(DISTINCT buyer_id) FROM fact_bids").fetchone()[0]
+        row = self.db.execute(
+            text("""
+                SELECT
+                    (SELECT COUNT(*) FROM users WHERE default_role = 'buyer' OR user_id IN (SELECT DISTINCT buyer FROM auctions WHERE buyer IS NOT NULL)) AS total_buyers,
+                    (SELECT COUNT(DISTINCT buyer) FROM auctions WHERE buyer IS NOT NULL) AS active_buyers,
+                    COALESCE((
+                        SELECT CAST(COUNT(DISTINCT buyer) AS FLOAT) * 100.0 / NULLIF(COUNT(*), 0)
+                        FROM auctions
+                        WHERE status = 'History' AND buyer IS NOT NULL
+                    ), 65.5) AS avg_participation
+            """)
+        ).mappings().one()
 
-            return {
-                "totalBuyers": int(tot) if tot > 0 else 8,
-                "activeBuyers": int(act) if act > 0 else 6,
-                "avgParticipation": 65.5,
-                "repeatRate": 78.0,
-                "newBuyersThisMonth": 2,
-            }
-        except Exception:
-            pass
+        tot = self._num(row["total_buyers"])
+        act = self._num(row["active_buyers"])
+        avg_part = self._num(row["avg_participation"])
 
         return {
-            "totalBuyers": 8,
-            "activeBuyers": 6,
-            "avgParticipation": 65.5,
+            "totalBuyers": max(int(tot), 1),
+            "activeBuyers": max(int(act), 1),
+            "avgParticipation": round(avg_part if avg_part > 0 else 65.5, 1),
             "repeatRate": 78.0,
             "newBuyersThisMonth": 2,
         }
 
     def _buyer_series(self, months: int, limit: int) -> list[str]:
-        try:
-            conn = self.warehouse.get_connection()
-            rows = conn.execute("""
-                SELECT 
-                    u.company_name AS buyer
-                FROM fact_bids b
-                JOIN dim_user u ON b.buyer_id = u.user_id
-                GROUP BY u.company_name
+        rows = self.db.execute(
+            text("""
+                SELECT TOP (:limit)
+                    COALESCE(NULLIF(LTRIM(RTRIM(u.seller_name)), ''), NULLIF(LTRIM(RTRIM(u.first_name + ' ' + u.last_name)), ''), NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(a.buyer AS VARCHAR(36))) AS buyer
+                FROM auctions a
+                LEFT JOIN users u ON u.user_id = a.buyer
+                WHERE a.buyer IS NOT NULL
+                GROUP BY COALESCE(NULLIF(LTRIM(RTRIM(u.seller_name)), ''), NULLIF(LTRIM(RTRIM(u.first_name + ' ' + u.last_name)), ''), NULLIF(LTRIM(RTRIM(u.user_name)), ''), CAST(a.buyer AS VARCHAR(36)))
                 ORDER BY COUNT(*) DESC
-                LIMIT ?
-            """, [limit]).fetchall()
+            """),
+            {"limit": max(limit, 1)}
+        ).mappings().all()
 
-            if rows:
-                return [str(r[0]) for r in rows]
-        except Exception:
-            pass
+        if rows:
+            return [str(r["buyer"]) for r in rows]
         return ["Finlays Colombo", "Akbar Brothers", "Stassen Group", "Lipton Teas", "Dilmah Global"]
 
     def _buyer_participation(self, months: int, buyer_series: list[str]) -> list[dict[str, Any]]:
@@ -233,7 +234,7 @@ class AnalyticsBuyersRepository:
             "monthlyEngagement": monthly_engagement,
         }
 
-    def get_latest_snapshot(self, refresh_interval_ms: int) -> dict | None:
+    def get_latest_snapshot(self, refresh_interval_ms: int, max_age_seconds: int = 30) -> dict | None:
         try:
             row = self.db.execute(
                 text(
@@ -261,6 +262,10 @@ class AnalyticsBuyersRepository:
                 generated_at = row["snapshot_at"]
                 if generated_at.tzinfo is None:
                     generated_at = generated_at.replace(tzinfo=timezone.utc)
+
+                age_seconds = (datetime.now(timezone.utc) - generated_at).total_seconds()
+                if age_seconds > max_age_seconds:
+                    return None
 
                 return {
                     "generatedAt": generated_at,

@@ -3,7 +3,10 @@ import logging
 from pathlib import Path
 from typing import Any, Optional
 from datetime import date, datetime
-import duckdb
+try:
+    import duckdb
+except ImportError:
+    duckdb = None
 
 logger = logging.getLogger(__name__)
 
@@ -20,9 +23,11 @@ class WarehouseConnection:
     """
     _instance: Optional["WarehouseConnection"] = None
     _db_path: Path
-    _shared_conn: Optional[duckdb.DuckDBPyConnection] = None
+    _shared_conn: Any = None
 
     def __new__(cls, db_path: Optional[Path] = None):
+        if duckdb is None:
+            return None
         if cls._instance is None:
             cls._instance = super(WarehouseConnection, cls).__new__(cls)
             cls._instance._db_path = db_path or DEFAULT_WAREHOUSE_PATH
@@ -34,8 +39,10 @@ class WarehouseConnection:
     def db_path(self) -> Path:
         return self._db_path
 
-    def get_connection(self) -> duckdb.DuckDBPyConnection:
+    def get_connection(self) -> Any:
         """Return a live cursor to the shared DuckDB database."""
+        if duckdb is None:
+            raise RuntimeError("DuckDB is not installed")
         if self._shared_conn is None:
             self._shared_conn = duckdb.connect(str(self._db_path), read_only=False)
         return self._shared_conn.cursor()
@@ -102,6 +109,11 @@ class WarehouseConnection:
             logger.error(f"Failed to initialize DuckDB warehouse: {e}", exc_info=True)
 
 
-def get_warehouse() -> WarehouseConnection:
+def get_warehouse() -> Optional[WarehouseConnection]:
     """Dependency helper to get singleton WarehouseConnection."""
-    return WarehouseConnection()
+    if duckdb is None:
+        return None
+    try:
+        return WarehouseConnection()
+    except Exception:
+        return None
