@@ -1,158 +1,222 @@
 ﻿"use client";
-import React, { memo } from "react";
-import { Clock, Tag, Package, TrendingUp, User, Gavel } from "lucide-react";
+import React, { useState, useEffect, useMemo } from 'react';
+import { Calendar, Clock, TrendingUp, Package } from 'lucide-react'; 
+import '../../../app/globals.css';
+import { useAuctionBidsSocket } from '@/hooks/live-auction-socket'; 
+import { apiClient } from '@/lib/apiClient';
 
-interface AuctionCardProps {
-  auctionId: string;
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge"; 
+
+interface ExtendedAuctionCardProps {
+  type: string;
   id: string;
-  type: "live" | "scheduled" | "history";
-  data: {
-    grade?: string;
-    quantity?: number;
-    price?: number;
-    date?: string;
-    time?: string;
-    status?: string;
-    countdown?: string | null;
-    buyer?: string;
-    buyer_name?: string;
-    image_url?: string;
-    custom_auction_id?: string;
-    sellerBrand?: string;
-  };
-  onViewClick?: (auctionId: string) => void;
+  data: any; 
+  onViewClick?: () => void;
+  auctionId?: string;
 }
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  live: {
-    bg: "bg-green-50 border border-green-200",
-    text: "text-green-700",
-    dot: "bg-green-500",
-    label: "Live",
-  },
-  scheduled: {
-    bg: "bg-amber-50 border border-amber-200",
-    text: "text-amber-700",
-    dot: "bg-amber-500",
-    label: "Scheduled",
-  },
-  history: {
-    bg: "bg-gray-50 border border-gray-200",
-    text: "text-gray-600",
-    dot: "bg-gray-400",
-    label: "Ended",
-  },
-};
+function AuctionCardInner({ type, id, data, onViewClick, auctionId }: ExtendedAuctionCardProps) {
+  const [isFlashing, setIsFlashing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  
+  const validAuctionId = useMemo(() => {
+    if (type === 'live' && auctionId) return String(auctionId).trim();
+    return "";
+  }, [type, auctionId]);
+  
+  const { connected, events } = useAuctionBidsSocket(validAuctionId);
+  
+  // --- 1. SEPARATE STATE FOR FETCHED vs WEBSOCKET DATA ---
+  const [wsPrice, setWsPrice] = useState<number | null>(null);
+  const [wsBuyer, setWsBuyer] = useState<string | null>(null);
+  
+  const [fetchedPrice, setFetchedPrice] = useState<number | null>(null);
+  const [fetchedBuyer, setFetchedBuyer] = useState<string | null>(null);
+  const [isLoadingBids, setIsLoadingBids] = useState<boolean>(type === 'live' || type === 'history');
 
-function AuctionCardComponent({ auctionId, id, type, data, onViewClick }: AuctionCardProps) {
-  const style = STATUS_STYLES[type] ?? STATUS_STYLES.history;
+  // --- 2. FETCH EXISTING BIDS ON LOAD ---
+  useEffect(() => {
+    const fetchExistingBids = async () => {
+      if ((type !== 'live' && type !== 'history') || !auctionId) {
+          setIsLoadingBids(false);
+          return;
+      }
+      
+      try {
+        setIsLoadingBids(true);
+        const res = await apiClient.get(`/buyer/bids/auction/${auctionId}/bids`);
+        const bidsArray = Array.isArray(res.data) ? res.data : (res.data?.data || []);
+        
+        if (bidsArray.length > 0) {
+          const highestBid = bidsArray.reduce((max: any, bid: any) => 
+            bid.bid_amount > max.bid_amount ? bid : max
+          , bidsArray[0]);
+          
+          setFetchedPrice(highestBid.bid_amount);
+          setFetchedBuyer(highestBid.buyer_name || highestBid.buyer_id);
+        }
+      } catch (err) {
+        console.error(`Card ${auctionId} failed to fetch initial bids`, err);
+      } finally {
+        setIsLoadingBids(false);
+      }
+    };
 
-  const isSold = type === "history" && (data.status?.toLowerCase() === "sold" || !!data.buyer);
+    fetchExistingBids();
+  }, [auctionId, type]);
 
-  const historyBadgeStyle = isSold
-    ? { bg: "bg-emerald-50 border border-emerald-200", text: "text-emerald-700", dot: "bg-emerald-500" }
-    : { bg: "bg-red-50 border border-red-100", text: "text-red-600", dot: "bg-red-400" };
+  // --- 3. LISTEN FOR NEW WEBSOCKET BIDS ---
+  useEffect(() => {
+    if (events.length > 0) {
+      const latestEvent = events[0];
+      
+      if (latestEvent.event_type === "BID_CREATED") {
+        const newBuyerId = latestEvent.data.buyer_name || latestEvent.data.buyer_id;
+        setWsPrice(latestEvent.data.bid_amount);
+        if (newBuyerId) setWsBuyer(newBuyerId);
+        
+        setIsFlashing(true);
+        setTimeout(() => setIsFlashing(false), 800);
+      }
 
-  const badgeStyle = type === "history" ? historyBadgeStyle : { bg: style.bg, text: style.text, dot: style.dot };
+      if (latestEvent.event_type === "AUCTION_WON" || latestEvent.event_type === "AUCTION_CLOSED") {
+        const winner = latestEvent.data.winner_id || latestEvent.data.buyer_name || latestEvent.data.buyer_id;
+        if (winner) setWsBuyer(winner);
+      }
+    }
+  }, [events]);
+
+  // --- 4. THE ULTIMATE FALLBACK CHAIN ---
+  // Priority: 1. Live WS Bid -> 2. Fetched DB Bid -> 3. Passed Highest Bid -> 4. Passed Sold Price -> 5. Base Price
+  const displayPrice = wsPrice ?? fetchedPrice ?? data.highest_bid ?? data.sold_price ?? data.price;
+  
+  const rawBuyer = wsBuyer ?? fetchedBuyer ?? data.highest_bidder ?? data.buyer_name ?? data.buyer ?? (isLoadingBids ? "WAITING" : "No Bids Yet");
+
+  // Safely format the buyer without crashing if it's null
+  const safeBuyerDisplay = useMemo(() => {
+    if (rawBuyer === "WAITING") return <span className="animate-pulse">Loading bids...</span>;
+    if (!rawBuyer || rawBuyer === "No Bids Yet") return "No bids yet";
+    
+    const str = String(rawBuyer); // Force to string just in case
+    if (str.includes('@')) return str.split('@')[0];
+    return str.length > 20 ? str.substring(0, 20) + "..." : str;
+  }, [rawBuyer]);
+
+  // --- EXISTING LOGIC PRESERVED ---
+  const getPriceLabel = () => {
+    if (type === 'live') return 'Highest Bid';
+    if (type === 'history') return 'Final Price';
+    return 'Base Price';
+  };
+
+  const getStatusColor = () => {
+    if (type === 'history' && data.status === 'Sold') return 'text-green-600';
+    if (type === 'live') return 'text-blue-600';
+    return 'text-muted-foreground';
+  };
 
   return (
-    <div
-      className="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100 hover:-translate-y-0.5 flex flex-col"
-      style={{ minHeight: 240 }}
+    <Card 
+      className={`w-full mx-auto h-full hover:shadow-md transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col ${isFlashing ? 'ring-2 ring-green-400 bg-green-50' : 'bg-white'}`}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image / gradient banner */}
-      <div className="relative h-28 overflow-hidden bg-gradient-to-br from-[#2D4A2B] to-[#3A5A40] flex-shrink-0">
+      <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0 shrink-0">
         {data.image_url ? (
-          <img
-            src={data.image_url}
-            alt={`Auction ${data.grade ?? ""}`}
-            className="w-full h-full object-cover opacity-70 group-hover:scale-105 transition-transform duration-500"
-          />
+          <img src={data.image_url} alt="Tea Lot" className="w-full h-full object-cover" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center opacity-20">
-            <Gavel className="w-14 h-14 text-white" />
-          </div>
-        )}
-
-        {/* Status badge */}
-        <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${badgeStyle.bg} ${badgeStyle.text} backdrop-blur-sm`}>
-          <span className={`w-1.5 h-1.5 rounded-full ${badgeStyle.dot} ${type === "live" ? "animate-pulse" : ""}`} />
-          {type === "history" ? (isSold ? "Sold" : "Unsold") : style.label}
-        </div>
-
-        {/* Countdown badge */}
-        {data.countdown && type !== "history" && (
-          <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded-full bg-black/40 backdrop-blur-sm text-white text-xs font-mono font-bold">
-            <Clock className="w-3 h-3" />
-            {data.countdown}
-          </div>
+          <Package className="w-16 h-16 text-gray-300" />
         )}
       </div>
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-gray-900 text-xl font-semibold">{id}</CardTitle>
+            {type === 'live' && (
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
+                LIVE {connected && <span className="w-1.5 h-1.5 bg-white rounded-full"></span>}
+              </Badge>
+            )}
+          </div>
+          <p className="text-gray-700 font-normal text-sm">{data.grade} Grade</p>
+        </div>
 
-      {/* Card body */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
-        {/* Grade & custom ID */}
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-1.5 text-xs text-gray-400 mb-0.5">
-              <Tag className="w-3 h-3" />
-              {data.custom_auction_id ? (
-                <span className="font-mono">{data.custom_auction_id}</span>
-              ) : (
-                <span className="truncate max-w-[140px]">{id}</span>
-              )}
+        <div className="flex flex-col items-start sm:items-end text-sm text-gray-600 shrink-0">
+          <p className="font-normal">{String(data.date || "Date N/A")}</p>
+          {data.time && <p className="font-normal">{String(data.time)}</p>}
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-5 pb-4 pt-4 flex-grow">
+        <div className="flex flex-col gap-3">
+            <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
+                 <span className="text-sm font-normal text-gray-500">{getPriceLabel()}:</span>
+                 <span className={`text-lg font-semibold transition-colors duration-300 ${isFlashing ? 'text-green-600' : 'text-gray-900'}`}>
+                    LKR {displayPrice} 
+                 </span>
             </div>
-            <p className="text-base font-bold text-[#1A2F1C] leading-tight">
-              Grade: <span className="text-[#3A5A40]">{data.grade ?? "—"}</span>
+
+            <p className="flex justify-between text-sm items-center">
+                <span className="font-normal text-gray-500">Quantity:</span>
+                <span className="font-medium text-gray-800">{data.quantity} kg</span>
             </p>
-          </div>
+
+            {type === 'history' && (
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-normal text-gray-500">Status:</span>
+                    <span className={`font-medium ${rawBuyer !== "No Bids Yet" ? 'text-gray-800' : 'text-gray-500'}`}>
+                        {rawBuyer !== "No Bids Yet" ? 'Sold' : 'Unsold'}
+                    </span>
+                </p>
+            )}
+
+            {(type === 'live' || type === 'history') && (
+                <p className="flex justify-between text-sm items-center">
+                    <span className="font-normal text-gray-500">{type === 'live' ? 'Leading Buyer:' : 'Winner:'}</span>
+                    <span className={`font-medium ${(rawBuyer === "WAITING" || rawBuyer === "No Bids Yet") ? 'text-gray-400' : 'text-gray-800'}`}>
+                      {safeBuyerDisplay}
+                    </span>
+                </p>
+            )}
+
+            {(type === 'live' || type === 'scheduled') && data.countdown && (
+                <div className={`mt-2 p-2.5 rounded-lg flex justify-between items-center ${
+                    type === 'live' ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                }`}>
+                    <span className="text-xs font-medium uppercase tracking-wider">
+                        {type === 'live' ? 'Ending In' : 'Starts In'}
+                    </span>
+                    <span className="text-sm font-mono font-medium">
+                        {data.countdown}
+                    </span>
+                </div>
+            )}
         </div>
+      </CardContent>
 
-        {/* Stats row */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-1.5 text-gray-600">
-            <Package className="w-3.5 h-3.5 text-[#A3B18A]" />
-            <span>
-              <span className="font-semibold text-gray-800">{data.quantity ?? "—"}</span>{" "}
-              <span className="text-xs text-gray-400">kg</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 text-gray-600">
-            <TrendingUp className="w-3.5 h-3.5 text-[#A3B18A]" />
-            <span>
-              <span className="font-semibold text-gray-800">{data.price != null ? `${data.price}` : "—"}</span>{" "}
-              <span className="text-xs text-gray-400">LKR</span>
-            </span>
-          </div>
-        </div>
-
-        {/* Buyer (history only) */}
-        {type === "history" && isSold && (data.buyer_name || data.buyer) && (
-          <div className="flex items-center gap-1.5 text-xs text-gray-500">
-            <User className="w-3 h-3 text-[#A3B18A]" />
-            <span>Won by <span className="font-semibold text-gray-700">{data.buyer_name ?? data.buyer}</span></span>
-          </div>
-        )}
-
-        {/* Date/time */}
-        {(data.date || data.time) && (
-          <p className="text-xs text-gray-400">
-            {data.date} {data.time && `at ${data.time}`}
-          </p>
-        )}
-
-        {/* Spacer + View button */}
-        <div className="mt-auto pt-2">
-          <button
-            onClick={() => onViewClick?.(auctionId)}
-            className="w-full py-2 rounded-xl text-sm font-semibold bg-[#F5F7EB] text-[#2D4A2B] hover:bg-[#3A5A40] hover:text-white transition-all duration-200"
-          >
+      <CardFooter className="flex justify-center pb-5 pt-2 px-5 shrink-0">
+        <Button 
+            variant="outline"
+            style={{ transition: "background 0.2s" }}
+            className="w-full hover:text-white hover:cursor-pointer"
+            onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#3A5A40")}
+            onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+            onClick={() => onViewClick?.()}
+        >
             View Details
-          </button>
-        </div>
-      </div>
-    </div>
+        </Button>
+      </CardFooter>
+    </Card>
   );
 }
 
-export const AuctionCard = memo(AuctionCardComponent);
+export const AuctionCard = React.memo(AuctionCardInner);

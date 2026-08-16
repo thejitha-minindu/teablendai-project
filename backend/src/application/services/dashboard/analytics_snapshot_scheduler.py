@@ -11,6 +11,57 @@ from src.infrastructure.repositories.dashboard.analytics_buyers_repository impor
 
 logger = logging.getLogger(__name__)
 
+# Delay (seconds) before the very first snapshot run so startup is not blocked.
+_STARTUP_DELAY_SECONDS = 10
+
+
+def _run_all_snapshots(interval: int) -> None:
+    """Synchronous helper: create all snapshots in a single DB session.
+    Runs inside asyncio.to_thread() so it never blocks the event loop."""
+    settings = get_settings()
+    db = SessionLocal()
+    try:
+        overview_repo = AnalyticsOverviewRepository(db)
+        overview_repo.create_snapshot(
+            lookback_days=settings.ANALYTICS_KPI_LOOKBACK_DAYS,
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=interval * 1000,
+        )
+        overview_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+
+        purchases_repo = AnalyticsPurchasesRepository(db)
+        purchases_repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=interval * 1000,
+        )
+        purchases_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+
+        sales_repo = AnalyticsSalesRepository(db)
+        sales_repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=interval * 1000,
+        )
+        sales_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+
+        blends_repo = AnalyticsBlendsRepository(db)
+        blends_repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=interval * 1000,
+        )
+        blends_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+
+        buyers_repo = AnalyticsBuyersRepository(db)
+        buyers_repo.create_snapshot(
+            chart_months=settings.ANALYTICS_CHART_MONTHS,
+            refresh_interval_ms=interval * 1000,
+        )
+        buyers_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+    except Exception:
+        logger.exception("Analytics snapshot refresh failed")
+        db.rollback()
+    finally:
+        db.close()
+
 
 class AnalyticsSnapshotScheduler:
     def __init__(self) -> None:
@@ -20,49 +71,21 @@ class AnalyticsSnapshotScheduler:
         settings = get_settings()
         interval = max(settings.ANALYTICS_SNAPSHOT_INTERVAL_SECONDS, 10)
 
+        # Short startup delay so the server finishes booting before first heavy run.
+        try:
+            await asyncio.wait_for(
+                self._stop_event.wait(), timeout=_STARTUP_DELAY_SECONDS
+            )
+            return  # stop was requested during startup delay
+        except asyncio.TimeoutError:
+            pass
+
         while not self._stop_event.is_set():
-            db = SessionLocal()
             try:
-                overview_repo = AnalyticsOverviewRepository(db)
-                overview_repo.create_snapshot(
-                    lookback_days=settings.ANALYTICS_KPI_LOOKBACK_DAYS,
-                    chart_months=settings.ANALYTICS_CHART_MONTHS,
-                    refresh_interval_ms=interval * 1000,
-                )
-                overview_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
-
-                purchases_repo = AnalyticsPurchasesRepository(db)
-                purchases_repo.create_snapshot(
-                    chart_months=settings.ANALYTICS_CHART_MONTHS,
-                    refresh_interval_ms=interval * 1000,
-                )
-                purchases_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
-
-                sales_repo = AnalyticsSalesRepository(db)
-                sales_repo.create_snapshot(
-                    chart_months=settings.ANALYTICS_CHART_MONTHS,
-                    refresh_interval_ms=interval * 1000,
-                )
-                sales_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
-
-                blends_repo = AnalyticsBlendsRepository(db)
-                blends_repo.create_snapshot(
-                    chart_months=settings.ANALYTICS_CHART_MONTHS,
-                    refresh_interval_ms=interval * 1000,
-                )
-                blends_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
-
-                buyers_repo = AnalyticsBuyersRepository(db)
-                buyers_repo.create_snapshot(
-                    chart_months=settings.ANALYTICS_CHART_MONTHS,
-                    refresh_interval_ms=interval * 1000,
-                )
-                buyers_repo.prune_old_snapshots(settings.ANALYTICS_SNAPSHOT_RETENTION_DAYS)
+                # Run all DB work in a thread pool so the async event loop stays free.
+                await asyncio.to_thread(_run_all_snapshots, interval)
             except Exception:
-                logger.exception("Analytics snapshot refresh failed")
-                db.rollback()
-            finally:
-                db.close()
+                logger.exception("Analytics snapshot scheduler error")
 
             try:
                 await asyncio.wait_for(self._stop_event.wait(), timeout=interval)
@@ -74,3 +97,4 @@ class AnalyticsSnapshotScheduler:
 
 
 analytics_snapshot_scheduler = AnalyticsSnapshotScheduler()
+

@@ -1,155 +1,268 @@
 ﻿"use client";
-import React, { memo } from "react";
-import { useRouter } from "next/navigation";
-import { Tag, Package, TrendingUp, User, Building2, Gavel } from "lucide-react";
+import * as React from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { HistoryCardDialog } from "@/components/features/buyer/HistoryCardDialog";
+import { OrderCardDialog } from "@/components/features/buyer/OrderCardDialog";
 import { WatchlistButton } from "@/components/features/buyer/WatchlistButton";
+import { Package, Flag } from "lucide-react";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-interface AuctionItem {
-  id?: string;
-  auction_id?: string;
-  auction_name?: string;
-  company_name?: string;
-  estate_name?: string;
-  seller_brand?: string;
-  grade?: string;
-  quantity?: number;
-  base_price?: number;
-  sold_price?: number;
-  date?: string | Date;
-  status?: string;
-  buyer?: string;
-  buyer_name?: string;
-  image_url?: string;
-  custom_auction_id?: string;
+export type CardType = "order" | "history" | "auction";
+
+// Accepts both legacy and backend auction objects
+export interface AuctionDetails {
+  [key: string]: any;
 }
 
-interface BuyerAuctionCardProps {
-  cardType: "auction" | "history";
-  auction: AuctionItem;
-  onWatchlistChange?: () => void;
+export interface AuctionCardProps {
+  cardType: CardType;
+  auction?: AuctionDetails;
+  onWatchlistChange?: (isInWatchlist: boolean) => void;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-function formatDate(date?: string | Date | null): string {
-  if (!date) return "—";
-  try {
-    return new Date(date).toLocaleDateString(undefined, { dateStyle: "medium" });
-  } catch {
-    return String(date);
-  }
-}
+const getDefaultAuction = (cardType: CardType): AuctionDetails => ({
+  title: cardType === "auction" ? "Live Auction" : "Auction",
+  company: "Not specified",
+  date: new Date().toISOString().split("T")[0],
+  estateName: "Not specified",
+  quantity: "0 kg",
+  grade: "N/A",
+  basePrice: "$0",
+  ...(cardType === "auction" && { time: "TBD" }),
+});
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value?: string | number | null }) {
-  return (
-    <div className="flex items-center gap-2">
-      <Icon className="w-3.5 h-3.5 text-[#A3B18A] flex-shrink-0" />
-      <span className="text-xs text-gray-500">{label}:</span>
-      <span className="text-xs font-semibold text-gray-800 truncate">{value ?? "—"}</span>
-    </div>
+export function AuctionCard({
+  cardType,
+  auction,
+  onWatchlistChange,
+}: AuctionCardProps) {
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  const getAuctionTargetPath = React.useCallback(
+    (auctionId: string) => {
+      const rawStatus = String(auction?.status || "")
+        .trim()
+        .toLowerCase();
+      const isLive = rawStatus === "live";
+      return isLive
+        ? `/buyer/auction/live/${auctionId}`
+        : `/buyer/auction/${auctionId}`;
+    },
+    [auction?.status],
   );
-}
 
-// ─── Component ────────────────────────────────────────────────────────────────
-function BuyerAuctionCardComponent({ cardType, auction, onWatchlistChange }: BuyerAuctionCardProps) {
-  const router = useRouter();
-  const auctionId = auction.auction_id ?? auction.id ?? "";
-  const isLive = String(auction.status ?? "").toLowerCase() === "live";
-  const isSold = cardType === "history" && (!!auction.buyer || !!auction.buyer_name || !!auction.sold_price);
+  const safeAuction = React.useMemo(() => {
+    if (!auction) return getDefaultAuction(cardType);
 
-  const handleCardClick = () => {
-    if (cardType !== "auction" || !auctionId) return;
-    const path = isLive ? `/buyer/auction/live/${auctionId}` : `/buyer/auction/${auctionId}`;
-    router.push(path);
+    // Extract raw values from auction object with multiple fallbacks
+    const rawTitle = auction.auction_name || auction.title || "Auction";
+    const rawCompany = auction.company_name || auction.company || "-";
+    const rawDate = auction.date;
+    const rawEstateName = auction.estate_name || auction.estateName || "-";
+    const rawQuantity = auction.quantity;
+    const rawGrade = auction.grade || "-";
+    const rawBasePrice = auction.base_price || auction.basePrice;
+    const rawSoldPrice = auction.sold_price || auction.soldPrice;
+    const rawWinner = auction.buyer || auction.winner;
+    const rawWinnerName = auction.buyer_name || auction.buyerName || rawWinner || "-";
+    const rawTime = auction.time;
+
+    return {
+      title: rawTitle,
+      company: rawCompany,
+      date: rawDate
+        ? new Date(rawDate).toLocaleString(undefined, {
+          dateStyle: "medium",
+          timeStyle: "short",
+        })
+        : "-",
+      estateName: rawEstateName,
+      quantity:
+        rawQuantity !== undefined && rawQuantity !== null
+          ? `${rawQuantity} kg`
+          : "-",
+      grade: rawGrade,
+      basePrice: rawBasePrice ? `${rawBasePrice} LKR` : "-",
+      soldPrice: rawSoldPrice ? `${rawSoldPrice} LKR` : undefined,
+      winner: rawWinner,
+      winnerName: rawWinnerName,
+      time: rawTime,
+      customAuctionId: auction.custom_auction_id,
+      imageUrl: auction.image_url || auction.imageUrl,
+      status: auction.status,
+      countdown: auction.countdown,
+    };
+  }, [auction, cardType]);
+
+  const renderFooterButton = () => {
+    const auctionId = auction?.auction_id || auction?.id || "";
+
+    switch (cardType) {
+      case "history":
+        return <HistoryCardDialog auctionId={auctionId} />;
+      case "order":
+        return (
+          <div className="flex gap-3 w-full justify-between">
+            <div className="flex-1">
+              <OrderCardDialog auctionId={auctionId} />
+            </div>
+            <Button
+              variant="outline"
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 hover:text-white hover:cursor-pointer"
+              title="Report Seller"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              onClick={(e) => {
+                e.stopPropagation();
+                const sellerId = auction?.seller_id || auction?.sellerId || "";
+                window.location.href = `/buyer/violations?violatorId=${sellerId}&auctionId=${auctionId}`;
+              }}
+            >
+              Report
+            </Button>
+          </div>
+        );
+      case "auction":
+        return (
+          <div className="flex flex-wrap gap-3 justify-between w-full">
+            <WatchlistButton
+              auctionId={auctionId}
+              className="flex-1 min-w-[120px]"
+              onWatchlistChange={onWatchlistChange}
+            />
+            <Button
+              variant="outline"
+              style={{ transition: "background 0.2s" }}
+              className="flex-1 min-w-[120px] hover:text-white hover:cursor-pointer"
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "var(--color3)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "")}
+              onClick={() => {
+                if (!auctionId) return;
+                window.location.href = getAuctionTargetPath(auctionId);
+              }}
+            >
+              Place Bid
+            </Button>
+          </div>
+        );
+      default:
+        return null;
+    }
   };
 
+  // Parse date and time for display
+  let displayDate = "-";
+  let displayTime = "-";
+  if (auction?.date) {
+    const d = new Date(auction.date);
+    displayDate = d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    displayTime = d.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
   return (
-    <div
-      className={`group relative bg-white rounded-2xl shadow-sm hover:shadow-md border border-gray-100 overflow-hidden flex flex-col transition-all duration-300 ${cardType === "auction" ? "cursor-pointer hover:-translate-y-0.5" : ""}`}
-      onClick={cardType === "auction" ? handleCardClick : undefined}
+    <Card
+      className="w-full mx-auto h-full hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden border-gray-100 p-0 gap-0 flex flex-col bg-white"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Image / banner */}
-      <div className="relative h-28 overflow-hidden bg-gradient-to-br from-[#3A5A40] to-[#1A2F1C] flex-shrink-0">
-        {auction.image_url ? (
-          <img
-            src={auction.image_url}
-            alt={auction.auction_name ?? "Auction"}
-            className="w-full h-full object-cover opacity-75 group-hover:scale-105 transition-transform duration-500"
-          />
+      <div className="relative w-full h-[200px] overflow-hidden bg-gray-50 flex items-center justify-center m-0 shrink-0">
+        {safeAuction.imageUrl ? (
+          <img src={safeAuction.imageUrl} alt="Tea Lot" className="w-full h-full object-cover transition-transform duration-700 hover:scale-105" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center opacity-20">
-            <Gavel className="w-14 h-14 text-white" />
-          </div>
-        )}
-
-        {/* Status badge */}
-        {cardType === "auction" && auction.status && (
-          <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${isLive ? "bg-green-100 text-green-700" : "bg-amber-100 text-amber-700"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-500 animate-pulse" : "bg-amber-500"}`} />
-            {isLive ? "Live" : "Scheduled"}
-          </div>
-        )}
-
-        {/* History sold/unsold badge */}
-        {cardType === "history" && (
-          <div className={`absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold backdrop-blur-sm ${isSold ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"}`}>
-            <span className={`w-1.5 h-1.5 rounded-full ${isSold ? "bg-emerald-500" : "bg-red-400"}`} />
-            {isSold ? "Won" : "No Win"}
-          </div>
+          <Package className="w-16 h-16 text-gray-300" />
         )}
       </div>
 
-      {/* Body */}
-      <div className="flex flex-col flex-1 p-4 gap-3">
-        {/* Title */}
-        <div>
-          <p className="text-base font-bold text-[#1A2F1C] leading-tight truncate">
-            {auction.auction_name ?? `Grade ${auction.grade ?? "—"}`}
+      <CardHeader className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-start gap-4 pb-4 pt-5 px-5 border-b border-gray-100 shrink-0">
+        <div className="flex flex-col gap-1 min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <CardTitle className="text-gray-900 text-xl font-semibold break-all">
+              {safeAuction.title}
+            </CardTitle>
+            {safeAuction.status?.toLowerCase() === "live" && (
+              <Badge variant="destructive" className="animate-pulse flex gap-1 items-center text-white font-semibold bg-red-600">
+                LIVE
+              </Badge>
+            )}
+          </div>
+          <p className="text-gray-700 font-normal text-sm">
+            {safeAuction.grade} Grade <span className="text-gray-500 font-normal ml-1">(by {safeAuction.company})</span>
           </p>
-          {(auction.company_name || auction.estate_name || auction.seller_brand) && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <Building2 className="w-3 h-3 text-gray-400" />
-              <p className="text-xs text-gray-400 truncate">
-                {auction.estate_name ?? auction.company_name ?? auction.seller_brand}
-              </p>
+        </div>
+        <div className="flex flex-col items-start sm:items-end text-sm text-gray-600 shrink-0">
+          <p className="font-normal">{displayDate}</p>
+          {displayTime !== "-" && <p className="font-normal">{displayTime}</p>}
+        </div>
+      </CardHeader>
+
+      <CardContent className="px-5 pb-4 pt-4 flex-grow">
+        <div className="flex flex-col gap-3">
+          <div className="flex justify-between items-center pb-3 border-b border-gray-100 mb-1">
+            <span className="text-sm font-normal text-gray-500">
+              {(cardType === "history" || cardType === "order") ? "Sold Price" : "Base Price"}:
+            </span>
+            <span className="text-lg font-semibold text-gray-900">
+              {(cardType === "history" || cardType === "order") ? safeAuction.soldPrice : safeAuction.basePrice}
+            </span>
+          </div>
+
+          <p className="flex justify-between text-sm items-center">
+            <span className="font-normal text-gray-500">Estate:</span>
+            <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.estateName}</span>
+          </p>
+
+          <p className="flex justify-between text-sm items-center">
+            <span className="font-normal text-gray-500">Quantity:</span>
+            <span className="font-medium text-gray-800">{safeAuction.quantity}</span>
+          </p>
+
+          {(cardType === "history" || cardType === "order") && (
+            <p className="flex justify-between text-sm items-center">
+              <span className="font-normal text-gray-500">Winner:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.winnerName}</span>
+            </p>
+          )}
+
+          {safeAuction.customAuctionId && (
+            <p className="flex justify-between text-sm items-center">
+              <span className="font-normal text-gray-500">Ref ID:</span>
+              <span className="font-medium text-gray-800 break-all text-right max-w-[60%]">{safeAuction.customAuctionId}</span>
+            </p>
+          )}
+
+          {safeAuction.countdown && (
+            <div className={`mt-3 p-3 rounded-lg flex justify-between items-center ${safeAuction.status?.toLowerCase() === 'live' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
+              }`}>
+              <span className="text-xs font-semibold uppercase tracking-wider">
+                {safeAuction.status?.toLowerCase() === 'live' ? 'Ending In' : 'Starts In'}
+              </span>
+              <span className="text-sm font-mono font-semibold">
+                {safeAuction.countdown}
+              </span>
             </div>
           )}
         </div>
+      </CardContent>
 
-        {/* Info grid */}
-        <div className="flex flex-col gap-1.5">
-          <InfoRow icon={Tag} label="Grade" value={auction.grade} />
-          <InfoRow icon={Package} label="Qty" value={auction.quantity != null ? `${auction.quantity} kg` : null} />
-          {cardType === "auction" && (
-            <InfoRow icon={TrendingUp} label="Base" value={auction.base_price != null ? `${auction.base_price} LKR` : null} />
-          )}
-          {cardType === "history" && isSold && (
-            <InfoRow icon={TrendingUp} label="Sold" value={auction.sold_price != null ? `${auction.sold_price} LKR` : null} />
-          )}
-          {cardType === "history" && isSold && (auction.buyer_name ?? auction.buyer) && (
-            <InfoRow icon={User} label="Winner" value={auction.buyer_name ?? auction.buyer} />
-          )}
-        </div>
-
-        {/* Date */}
-        <p className="text-xs text-gray-400">{formatDate(auction.date)}</p>
-
-        {/* Watchlist button (auction type on dashboard) */}
-        {cardType === "auction" && auctionId && (
-          <div
-            className="mt-auto"
-            onClick={(e) => e.stopPropagation()} // prevent card click navigation
-          >
-            <WatchlistButton
-              auctionId={auctionId}
-              className="w-full text-xs py-1.5"
-              onWatchlistChange={() => onWatchlistChange?.()}
-            />
-          </div>
-        )}
-      </div>
-    </div>
+      <CardFooter className="flex justify-center pb-6 pt-2 px-5 shrink-0">
+        {renderFooterButton()}
+      </CardFooter>
+    </Card>
   );
 }
-
-export const AuctionCard = memo(BuyerAuctionCardComponent);
