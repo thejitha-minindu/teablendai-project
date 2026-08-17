@@ -25,7 +25,7 @@ function AuthSelectContent() {
       {/* Header NavBar */}
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 md:px-10 lg:px-12">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/Tealogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
+          <img src="/TeaLogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
         </Link>
 
         <Link

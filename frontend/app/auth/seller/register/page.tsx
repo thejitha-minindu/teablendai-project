@@ -215,7 +215,7 @@ function SellerRegisterContent() {
       {/* Header NavBar */}
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 md:px-10 lg:px-12">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/Tealogo.png" alt="Tea Blend AI Logo" className="h-15 w-35" />
+          <img src="/TeaLogo.png" alt="Tea Blend AI Logo" className="h-15 w-35" />
         </Link>
         <Link href="/auth" className="inline-flex items-center gap-2 rounded-full border border-green-200 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50">
           <ArrowLeft className="h-4 w-4" />
