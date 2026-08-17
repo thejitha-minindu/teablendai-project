@@ -104,7 +104,7 @@ function AdminRegisterContent() {
       {/* Header NavBar */}
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 md:px-10 lg:px-12">
         <Link href="/" className="flex items-center gap-3">
-          <img src="/Tealogo.png" alt="Tea Blend AI Logo" className="h-15 w-35 brightness-110 contrast-125" />
+          <img src="/TeaLogo.png" alt="Tea Blend AI Logo" className="h-15 w-35 brightness-110 contrast-125" />
         </Link>
         <Link href="/auth/admin/login" className="inline-flex items-center gap-2 rounded-full border border-purple-800/40 bg-purple-950/40 px-5 py-2 text-sm font-medium text-purple-300 transition hover:bg-purple-900/40">
           <ArrowLeft className="h-4 w-4" />

@@ -188,7 +188,7 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
         {/* Header */}
         <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
           <Link href="/" className="flex items-center gap-2">
-            <img src="/Tealogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
+            <img src="/TeaLogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
           </Link>
 
           <Link
