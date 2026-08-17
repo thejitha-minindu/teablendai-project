@@ -15,13 +15,6 @@ const nextConfig: NextConfig = {
   // Don't bundle these heavy server-only packages into the client
   serverExternalPackages: ["mssql", "plotly.js"],
 
-  // Skip tracing node_modules (saves thousands of file-stat calls on Windows)
-  outputFileTracingExcludes: {
-    "*": [
-      "./node_modules/**",
-      "./.next/**",
-    ],
-  },
 
   async rewrites() {
     return [
