@@ -905,9 +905,6 @@ export default function MessageBubble({
             query={message.content}
           />
         )}
-
-        {/* SQL Query */}
-        {message.sql_query && <SQLQuerySection sqlQuery={message.sql_query} />}
       </div>
     </div>
   );
