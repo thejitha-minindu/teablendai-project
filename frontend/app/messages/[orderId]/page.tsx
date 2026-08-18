@@ -18,6 +18,7 @@ import {
 import { getAuthClaims } from '@/lib/auth';
 import { useOrderMessages } from '@/hooks/use-order-messages';
 import { apiClient } from '@/lib/apiClient';
+import { formatMessageTime, formatMessageDateDivider, isSameDay, parseDate } from '@/lib/dateUtils';
 
 interface OrderChatInfo {
   order_id: string;
@@ -296,46 +297,54 @@ export default function ChatPage() {
             </div>
           </div>
         ) : (
-          messages.map((msg) => {
+          messages.map((msg, index) => {
             const isMe = String(msg.sender_id).toLowerCase() === String(currentUserId).toLowerCase();
-            const time = msg.timestamp
-              ? new Date(msg.timestamp).toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })
-              : '';
+            const time = formatMessageTime(msg.timestamp);
+            const fullDateTooltip = msg.timestamp ? parseDate(msg.timestamp).toLocaleString() : '';
+            const prevMsg = index > 0 ? messages[index - 1] : null;
+            const showDateDivider = !prevMsg || !isSameDay(prevMsg.timestamp, msg.timestamp);
+            const dateDividerText = showDateDivider ? formatMessageDateDivider(msg.timestamp) : '';
 
             return (
-              <div
-                key={msg.message_id}
-                className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
-              >
-                {!isMe && (
-                  <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-bold shrink-0 mb-1 border border-emerald-200">
-                    {counterpartyName.charAt(0).toUpperCase()}
+              <React.Fragment key={msg.message_id || `msg-${index}`}>
+                {showDateDivider && (
+                  <div className="flex justify-center my-3">
+                    <span className="bg-emerald-100/70 text-emerald-900 text-[10px] font-semibold uppercase tracking-wider px-3 py-0.5 rounded-full border border-emerald-200/60 shadow-2xs">
+                      {dateDividerText}
+                    </span>
                   </div>
                 )}
-
                 <div
-                  className={`max-w-[80%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-xs transition-all ${
-                    isMe
-                      ? 'bg-gradient-to-r from-[#2D6A4F] to-[#1B4332] text-white rounded-br-xs'
-                      : 'bg-white text-gray-800 border border-emerald-900/10 rounded-bl-xs'
-                  }`}
+                  className={`flex items-end gap-2 ${isMe ? 'justify-end' : 'justify-start'}`}
                 >
-                  <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
-                  <div className="flex items-center justify-end gap-1 mt-1">
-                    <span
-                      className={`text-[10px] font-medium ${
-                        isMe ? 'text-emerald-200/90' : 'text-gray-400'
-                      }`}
-                    >
-                      {time}
-                    </span>
-                    {isMe && <CheckCheck className="w-3 h-3 text-emerald-300" />}
+                  {!isMe && (
+                    <div className="w-7 h-7 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center text-[11px] font-bold shrink-0 mb-1 border border-emerald-200">
+                      {counterpartyName.charAt(0).toUpperCase()}
+                    </div>
+                  )}
+
+                  <div
+                    className={`max-w-[80%] sm:max-w-[70%] px-4 py-2.5 rounded-2xl shadow-xs transition-all ${
+                      isMe
+                        ? 'bg-gradient-to-r from-[#2D6A4F] to-[#1B4332] text-white rounded-br-xs'
+                        : 'bg-white text-gray-800 border border-emerald-900/10 rounded-bl-xs'
+                    }`}
+                  >
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                    <div className="flex items-center justify-end gap-1 mt-1">
+                      <span
+                        title={fullDateTooltip}
+                        className={`text-[10px] font-medium cursor-default ${
+                          isMe ? 'text-emerald-200/90' : 'text-gray-400'
+                        }`}
+                      >
+                        {time}
+                      </span>
+                      {isMe && <CheckCheck className="w-3 h-3 text-emerald-300" />}
+                    </div>
                   </div>
                 </div>
-              </div>
+              </React.Fragment>
             );
           })
         )}

@@ -3,6 +3,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from sqlalchemy.dialects.mssql import UNIQUEIDENTIFIER
 from uuid import uuid4
+from datetime import datetime, timezone
 from src.infrastructure.database.base import Base
 
 class OrderMessage(Base):
@@ -12,7 +13,12 @@ class OrderMessage(Base):
     order_id = Column(UNIQUEIDENTIFIER, ForeignKey("orders.order_id"), nullable=False, index=True)
     sender_id = Column(UNIQUEIDENTIFIER, ForeignKey("users.user_id"), nullable=False, index=True)
     content = Column(Text, nullable=False)
-    timestamp = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    timestamp = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=func.now(),
+        nullable=False
+    )
 
     # Relationships
     order = relationship("Order")

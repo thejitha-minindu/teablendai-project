@@ -125,6 +125,17 @@ class ChatMessage(Base):
     
     def to_dict(self) -> dict:
         """Convert model to dictionary"""
+        def safe_iso(dt):
+            if not dt:
+                return None
+            if hasattr(dt, "isoformat"):
+                if getattr(dt, "tzinfo", None) is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                else:
+                    dt = dt.astimezone(timezone.utc)
+                return dt.isoformat().replace("+00:00", "Z")
+            return str(dt)
+
         return {
             "message_id": self.message_id,
             "conversation_id": self.conversation_id,
@@ -136,7 +147,7 @@ class ChatMessage(Base):
             "visualization_type": self.visualization_type,
             "visualization": self.get_visualization_data(),
             "search_results": self.get_search_results(),
-            "timestamp": self.timestamp.isoformat() if self.timestamp else None,
+            "timestamp": safe_iso(self.timestamp),
             "response_time_ms": self.response_time_ms,
         }
     

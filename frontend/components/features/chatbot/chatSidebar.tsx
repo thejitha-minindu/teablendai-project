@@ -23,6 +23,7 @@ import {
   ChartNoAxesCombined
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { parseDate } from "@/lib/dateUtils";
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -178,7 +179,7 @@ const buildConversationSearchResults = async (
       if (!conversationId) return;
 
       const titleText = String(conversation.title || "");
-      const timestamp = new Date(conversation.updated_at || conversation.created_at || Date.now());
+      const timestamp = parseDate(conversation.updated_at || conversation.created_at);
       const normalizedTitle = normalizeSearchText(titleText);
 
       const titleMatch = scoreTextMatch(titleText, query, searchTerms, 4000);
@@ -610,9 +611,9 @@ export function ChatSidebar({
       .map((c) => ({
         id: String(c.conversation_id || ((c as unknown as Record<string, unknown>).id as string) || ""),
         title: c.title || "New Conversation",
-        timestamp: new Date(c.updated_at || c.created_at || Date.now()),
+        timestamp: parseDate(c.updated_at || c.created_at),
         pinnedAt: (c as unknown as Record<string, unknown>).pinned_at
-          ? new Date(String((c as unknown as Record<string, unknown>).pinned_at))
+          ? parseDate(String((c as unknown as Record<string, unknown>).pinned_at))
           : null,
         preview: ((c as unknown as Record<string, unknown>).preview as string) || "",
         isPinned: ((c as unknown as Record<string, unknown>).is_pinned as boolean) || false,
