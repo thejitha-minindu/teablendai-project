@@ -104,7 +104,6 @@ export default function SellerOrdersPage() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
-          <RefreshCw className="w-8 h-8 text-gray-500 animate-spin mx-auto mb-3" />
           <p className="text-gray-500 font-medium">Loading orders...</p>
         </div>
       </div>
