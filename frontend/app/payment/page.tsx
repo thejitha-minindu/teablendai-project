@@ -19,7 +19,6 @@ function PaymentPageContent() {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
         <div className="text-center bg-white p-8 rounded-3xl shadow-sm border border-slate-200 max-w-sm w-full">
-          <RefreshCw className="w-10 h-10 text-[#588157] animate-spin mx-auto mb-4" />
           <h3 className="text-lg font-bold text-slate-800 mb-1">Redirecting to Checkout</h3>
           <p className="text-sm text-slate-500">Preparing payment details...</p>
         </div>
@@ -53,7 +52,7 @@ export default function PaymentPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-          <RefreshCw className="w-8 h-8 text-[#588157] animate-spin" />
+          <p className="text-slate-500 font-medium">Loading...</p>
         </div>
       }
     >
