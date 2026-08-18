@@ -11,7 +11,7 @@ import {
 } from "lucide-react"; // UI Icons
 import { apiClient } from "@/lib/apiClient"; // Tool for sending backend requests
 import { API_BASE_URL } from "@/lib/api.config";
-import { getHomePathByRole, getStoredToken, setStoredAuthToken, clearStoredAuthToken, type UserRole } from "@/lib/auth"; // Auth tools
+import { getHomePathByRole, getStoredToken, setStoredAuthToken, clearStoredAuthToken, getAuthClaims, type UserRole } from "@/lib/auth"; // Auth tools
 
 // --- Types ---
 // This defines exactly what data we expect from the backend profile API
@@ -150,10 +150,16 @@ export default function AuthProfilePage() {
   const activeRole = profile?.active_role ?? "buyer";
   const isSellerFieldsDisabled = (activeRole === "seller" && !isEditingSeller) || isSellerPending;
 
-  // Figure out where "Dashboard" should link to (buyer or seller dashboard)
+  // Figure out where logo & "Dashboard" should link to (buyer or seller dashboard)
   const dashboardHref = useMemo(() => {
-    if (!profile) return "/buyer/dashboard";
-    return getHomePathByRole(profile.active_role);
+    if (profile?.active_role) {
+      return getHomePathByRole(profile.active_role);
+    }
+    const claims = getAuthClaims();
+    if (claims?.role) {
+      return getHomePathByRole(claims.role);
+    }
+    return "/buyer/dashboard";
   }, [profile]);
 
   // --- Handlers ---
@@ -516,7 +522,7 @@ export default function AuthProfilePage() {
       
       {/* Header NavBar */}
       <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-6 md:px-10 lg:px-12">
-        <Link href="/" className="flex items-center gap-3">
+        <Link href={dashboardHref} className="flex items-center gap-3">
           <img src="/TeaLogo.png" alt="Tea Blend AI Logo" className="h-15 w-35" />
         </Link>
         <div className="flex items-center gap-3">

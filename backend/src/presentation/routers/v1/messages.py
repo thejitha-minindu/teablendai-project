@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
+from datetime import datetime, timezone
 import json
 import logging
 
@@ -14,6 +15,13 @@ from src.infrastructure.sockets.message_connection_manager import order_message_
 
 router = APIRouter(prefix="/messages", tags=["messages"])
 logger = logging.getLogger(__name__)
+
+def format_iso_timestamp(dt: Optional[datetime]) -> Optional[str]:
+    if not dt:
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat().replace("+00:00", "Z")
 
 def get_message_service(db: Session = Depends(get_db)):
     return OrderMessageService(db)
@@ -84,7 +92,7 @@ async def create_order_message(
         "order_id": str(new_msg.order_id),
         "sender_id": str(new_msg.sender_id),
         "content": new_msg.content,
-        "timestamp": new_msg.timestamp.isoformat() if new_msg.timestamp else None
+        "timestamp": format_iso_timestamp(new_msg.timestamp)
     }
     await order_message_manager.broadcast_to_order(order_id, msg_dict)
     
@@ -133,7 +141,7 @@ async def order_message_websocket(
                         "order_id": str(new_msg.order_id),
                         "sender_id": str(new_msg.sender_id),
                         "content": new_msg.content,
-                        "timestamp": new_msg.timestamp.isoformat() if new_msg.timestamp else None
+                        "timestamp": format_iso_timestamp(new_msg.timestamp)
                     }
                     await order_message_manager.broadcast_to_order(order_id, msg_dict)
                     

@@ -49,7 +49,8 @@ class AuctionCreate(BaseModel):
         else:
             v_utc = v.astimezone(timezone.utc)
         
-        if v_utc < now_utc:
+        # Allow 3 minutes grace period for network latency / clock skew when creating or editing
+        if (now_utc - v_utc).total_seconds() > 180:
             raise ValueError("Scheduled start time cannot be in the past.")
         return v
 

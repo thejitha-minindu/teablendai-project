@@ -1,6 +1,7 @@
 from sqlalchemy.orm import Session
 from src.domain.models.order_message import OrderMessage
 from typing import List
+from datetime import datetime, timezone
 
 class OrderMessageRepository:
     def __init__(self, db: Session):
@@ -18,7 +19,8 @@ class OrderMessageRepository:
         message = OrderMessage(
             order_id=order_id,
             sender_id=sender_id,
-            content=content
+            content=content,
+            timestamp=datetime.now(timezone.utc)
         )
         self.db.add(message)
         self.db.commit()

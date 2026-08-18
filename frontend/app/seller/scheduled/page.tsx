@@ -144,12 +144,7 @@ function ScheduledAuctionsContent() {
 
     let matchesGrade = true;
     if (filters.grade && filters.grade !== "all") {
-      const gradeMap: Record<string, string[]> = {
-        A: ["FTGFOP1", "SFTGFOP", "Silver Needle"],
-        B: ["BOP", "OP", "FBOP", "TGFOP"],
-        C: ["Herbal"],
-      };
-      matchesGrade = gradeMap[filters.grade]?.includes(grade) || false;
+      matchesGrade = grade.toLowerCase() === filters.grade.toLowerCase();
     }
 
     let matchesPrice = true;

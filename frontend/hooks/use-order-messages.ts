@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import messageService, { OrderMessage } from "@/services/messageService";
 import { getAuthToken } from "@/lib/auth";
+import { parseDate } from "@/lib/dateUtils";
 
 const WS_BASE_URL =
   (process.env.NEXT_PUBLIC_API_WS_URL || "ws://localhost:8000/api/v1").replace(/\/$/, "");
@@ -27,7 +28,7 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
       const newOnes = incoming.filter((m) => !existingIds.has(m.message_id));
       if (newOnes.length === 0) return prev;
       return [...prev, ...newOnes].sort(
-        (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+        (a, b) => parseDate(a.timestamp).getTime() - parseDate(b.timestamp).getTime()
       );
     });
   }, []);
@@ -55,7 +56,7 @@ export function useOrderMessages(orderId: string, currentUserId: string) {
       setIsLoading(true);
       const msgs = await messageService.getMessages(orderId);
       setMessages(
-        msgs.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+        msgs.sort((a, b) => parseDate(a.timestamp).getTime() - parseDate(b.timestamp).getTime())
       );
     } catch (err) {
       console.error("Failed to load message history", err);

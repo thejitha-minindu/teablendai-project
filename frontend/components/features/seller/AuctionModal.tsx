@@ -74,6 +74,11 @@ const formatTime = (isoString: string) => {
   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 };
 
+export const SRI_LANKAN_GRADES = [
+  "BOP", "BOPF", "OP", "OP1", "OPA", "FBOP", "FBOPF", "FBOP1",
+  "Pekoe", "Pekoe 1", "Dust", "Dust 1", "Silver Tips", "Golden Tips"
+];
+
 // ==========================================
 // 1. SCHEDULED AUCTION MODAL
 // ==========================================
@@ -83,6 +88,8 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
   const [editMode, setEditMode] = useState<'none' | 'details' | 'schedule'>('none');
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>('');
+  const [selectedGrade, setSelectedGrade] = useState<string>('');
+  const [customGrade, setCustomGrade] = useState<string>('');
   const [formData, setFormData] = useState({
     grade: '', quantity: 0, base_price: 0, origin: '', description: '', start_time: '', duration: 0, estate_name: ''
   });
@@ -93,8 +100,16 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
         const res = await apiClient.get(`/auctions/${auctionId}`);
         const data = res.data;
         setAuction(data);
+        const gradeVal = data.grade || '';
+        if (gradeVal && !SRI_LANKAN_GRADES.includes(gradeVal)) {
+          setSelectedGrade('Other');
+          setCustomGrade(gradeVal);
+        } else {
+          setSelectedGrade(gradeVal);
+          setCustomGrade('');
+        }
         setFormData({
-          grade: data.grade,
+          grade: gradeVal,
           quantity: data.quantity,
           base_price: data.base_price,
           origin: data.origin,
@@ -115,6 +130,24 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
   const handleSave = async () => {
     try {
+      const finalGrade = (selectedGrade === 'Other' ? customGrade.trim() : selectedGrade) || formData.grade || auction.grade;
+      if (!finalGrade) {
+        toast.error("Please select or specify a tea grade.");
+        return;
+      }
+      if (!formData.origin?.trim()) {
+        toast.error("Please specify the tea origin.");
+        return;
+      }
+      if (formData.quantity <= 0) {
+        toast.error("Quantity must be greater than 0 kg.");
+        return;
+      }
+      if (formData.base_price < 0) {
+        toast.error("Base price cannot be negative.");
+        return;
+      }
+
       let finalImageUrl = auction.image_url;
 
       // Upload newly selected image if it exists
@@ -151,16 +184,25 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
       const payload = {
         ...formData,
+        grade: finalGrade,
         seller_brand: auction.seller_brand || 'My Estate',
+        company_name: auction.company_name || formData.estate_name || 'My Company',
+        estate_name: formData.estate_name || auction.estate_name || 'My Estate',
+        auction_name: `${finalGrade} - ${formData.origin || auction.origin}`,
         start_time: formatStartTimeForBackend(formData.start_time),
-        duration: Math.round(formData.duration * 60),
+        duration: Math.max(60, Math.round(formData.duration * 60)),
         image_url: finalImageUrl || undefined
       };
       await apiClient.put(`/auctions/${auctionId}`, payload);
-      toast.success("Auction updated!");
+      toast.success("Auction updated successfully!");
+      setAuction((prev: any) => ({ ...prev, ...payload, grade: finalGrade, image_url: finalImageUrl }));
       setEditMode('none');
       onClose();
-    } catch (error) { toast.error("Update failed."); }
+    } catch (error: any) {
+      console.error("Update failed:", error);
+      const errorMsg = error.response?.data?.detail || "Update failed.";
+      toast.error(errorMsg);
+    }
   };
 
   const handleCancelAuction = () => {
@@ -248,12 +290,40 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                       <input type="text" value={formData.estate_name} onChange={(e) => setFormData({ ...formData, estate_name: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm w-40" />
                     ) : <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                    <span className="font-normal text-gray-500">Grade:</span>
+                  <div className="flex justify-between items-start py-2 border-b border-gray-100">
+                    <span className="font-normal text-gray-500 pt-1.5">Grade:</span>
                     {editMode === 'details' ? (
-                      <select value={formData.grade} onChange={(e) => setFormData({ ...formData, grade: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm">
-                        <option value="BOPF">BOPF</option><option value="Dust-1">Dust-1</option><option value="Pekoe">Pekoe</option>
-                      </select>
+                      <div className="flex flex-col gap-1.5 w-48">
+                        <select
+                          value={selectedGrade}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSelectedGrade(val);
+                            if (val !== 'Other') {
+                              setFormData((prev) => ({ ...prev, grade: val }));
+                            }
+                          }}
+                          className="w-full border border-gray-200 p-1.5 rounded text-sm bg-white focus:ring-1 focus:ring-[#3A5A40] outline-none"
+                        >
+                          <option value="" disabled>Select grade</option>
+                          {SRI_LANKAN_GRADES.map((g) => (
+                            <option key={g} value={g}>{g}</option>
+                          ))}
+                          <option value="Other">Other (Custom grade)</option>
+                        </select>
+                        {selectedGrade === 'Other' && (
+                          <input
+                            type="text"
+                            value={customGrade}
+                            onChange={(e) => {
+                              setCustomGrade(e.target.value);
+                              setFormData((prev) => ({ ...prev, grade: e.target.value }));
+                            }}
+                            placeholder="Type custom grade..."
+                            className="w-full border border-gray-200 p-1.5 rounded text-sm focus:ring-1 focus:ring-[#3A5A40] outline-none"
+                          />
+                        )}
+                      </div>
                     ) : <span className="text-gray-800 font-medium">{auction.grade}</span>}
                   </div>
                   <div className="flex justify-between items-center py-2 border-b border-gray-100">
