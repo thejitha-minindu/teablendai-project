@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { apiClient } from "@/lib/apiClient";
-import { getStoredToken } from "@/lib/auth";
+import { getStoredToken, getAuthClaims } from "@/lib/auth";
 
 export type NotificationItem = {
   notification_id: string;
@@ -54,13 +54,26 @@ export function NotificationBell({ className = "", iconClassName = "" }: Notific
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [isAdmin, setIsAdmin] = useState(false);
   const modalRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const claims = getAuthClaims();
+    if (claims?.role === "admin") {
+      setIsAdmin(true);
+    }
+  }, []);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   const fetchNotifications = useCallback(async () => {
     const token = getStoredToken();
     if (!token) return;
+
+    const claims = getAuthClaims();
+    if (claims?.role === "admin") {
+      return;
+    }
 
     try {
       setIsLoading(true);
@@ -171,6 +184,10 @@ export function NotificationBell({ className = "", iconClassName = "" }: Notific
   const filteredNotifications = notifications.filter(
     (n) => filter === "all" || !n.is_read
   );
+
+  if (isAdmin) {
+    return null;
+  }
 
   return (
     <div className="relative inline-block">
