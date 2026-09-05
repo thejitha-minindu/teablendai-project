@@ -104,8 +104,8 @@ class Settings(BaseSettings):
     MSSQL_PORT: Optional[int] = None
     MSSQL_DRIVER: str = "ODBC Driver 18 for SQL Server"
     MSSQL_ENCRYPT: bool = True
-    MSSQL_TRUST_SERVER_CERTIFICATE: bool = False
-    DB_TRUSTED_CONNECTION: bool = True
+    MSSQL_TRUST_SERVER_CERTIFICATE: bool = True
+    DB_TRUSTED_CONNECTION: bool = False
     DATABASE_URL: Optional[str] = None
     INIT_DB_ON_STARTUP: bool = False
 
@@ -243,6 +243,16 @@ def get_mssql_connection_string(
         f"TrustServerCertificate={'yes' if trust_server_certificate else 'no'}",
     ]
 
+    # If username and password are provided, always prioritize SQL Authentication
+    if username and password:
+        encoded_username = quote_plus(username)
+        encoded_password = quote_plus(password)
+        return (
+            f"mssql+pyodbc://{encoded_username}:{encoded_password}@{server}/{database}"
+            f"?{'&'.join(params)}"
+        )
+
+    # Fallback to trusted connection only if explicitly enabled or no credentials exist
     if trusted or (not username and not password):
         params.append("trusted_connection=yes")
         return f"mssql+pyodbc://{server}/{database}?{'&'.join(params)}"
