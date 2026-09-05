@@ -9,6 +9,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from "recharts";
 import { useAnalyticsOverview } from "@/hooks/use-analytics-overview";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 type Trending = 'up' | 'down' | 'neutral';
 
@@ -36,9 +37,12 @@ export default function AnalyticsOverview() {
           <h1 className="text-3xl font-bold text-gray-900">Tea Analytics Dashboard</h1>
           <p className="text-gray-600 mt-1">Comprehensive insights into your tea business</p>
         </div>
-        <div className="text-xs text-right text-gray-500">
-          <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
-          {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+        <div className="flex items-center gap-4">
+          <div className="text-xs text-right text-gray-500">
+            <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
+            {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
+          </div>
+          <NotificationBell />
         </div>
       </div>
 

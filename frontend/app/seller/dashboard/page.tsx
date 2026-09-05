@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/apiClient';
 import { ChartPie } from "@/components/features/buyer/ChartPie"; 
 import { Calendar } from "@/components/ui/calendar";
 import { AuctionCard } from "@/components/features/seller/AuctionCard"; 
+import { NotificationBell } from "@/components/layout/NotificationBell"; 
 
 // Import Modals
 import { 
@@ -286,9 +287,12 @@ export default function SellerDashboardPage() {
     <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
       
       {/* 1. Page Title */}
-      <div className="mb-5 items-start">
-        <h1 className="text-3xl font-bold">Seller Dashboard</h1>
-        <p className="text-muted-foreground mt-2">Welcome back</p>
+      <div className="mb-5 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Seller Dashboard</h1>
+          <p className="text-muted-foreground mt-2">Welcome back</p>
+        </div>
+        <NotificationBell />
       </div>
 
       {/* --- ROW 1: Chart & Hero --- */}
