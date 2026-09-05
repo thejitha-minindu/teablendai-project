@@ -24,6 +24,7 @@ import {
   CartesianGrid,
   Tooltip
 } from "recharts";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 
 export default function AdminDashboard() {
 
@@ -66,11 +67,14 @@ export default function AdminDashboard() {
     <div className="p-6 space-y-6 min-h-screen">
 
       {/* PAGE TITLE */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
-          Admin Dashboard
-        </h1>
-        <p className="text-gray-500 mt-1">System overview & controls</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2">
+            Admin Dashboard
+          </h1>
+          <p className="text-gray-500 mt-1">System overview & controls</p>
+        </div>
+        <NotificationBell />
       </div>
 
       {/* STATS GRID */}

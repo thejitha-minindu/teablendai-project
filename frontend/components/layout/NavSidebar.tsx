@@ -53,6 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { NotificationBell } from "@/components/layout/NotificationBell";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
@@ -389,22 +390,25 @@ export function NavSidebar() {
                         onClick={() => router.push(`/${(getRoleDisplayName(activeUserRole)).toLowerCase()}/dashboard`)}
                       />
                     </div>
-                    <TooltipProvider delayDuration={300}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            onClick={() => setIsCollapsed(true)}
-                            className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
-                          >
-                            <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="right" sideOffset={10} className="z-[9999] bg-gray-900 text-white text-xs">
-                          Collapse sidebar
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <div className="flex items-center gap-1">
+                      <NotificationBell className="border-0 shadow-none hover:bg-gray-200 text-gray-600 hover:text-gray-900" />
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              type="button"
+                              onClick={() => setIsCollapsed(true)}
+                              className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                            >
+                              <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right" sideOffset={10} className="z-[9999] bg-gray-900 text-white text-xs">
+                            Collapse sidebar
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </SidebarGroup>
 
