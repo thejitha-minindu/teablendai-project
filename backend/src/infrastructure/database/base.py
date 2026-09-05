@@ -1,12 +1,15 @@
 """
 SQLAlchemy base configuration shared by domain and repository models.
 """
+import logging
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.pool import NullPool
 
 from src.config import get_mssql_connection_string, get_settings
+
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 
@@ -15,6 +18,19 @@ Base = declarative_base()
 
 def create_database_connection():
     connection_string = get_mssql_connection_string()
+    settings = get_settings()
+    logger.info(
+        "Initializing MSSQL Base engine: server='%s', port=%s, database='%s', "
+        "user='%s', trusted=%s, driver='%s', encrypt=%s, trust_cert=%s",
+        settings.MSSQL_SERVER,
+        settings.MSSQL_PORT,
+        settings.MSSQL_DATABASE,
+        settings.MSSQL_USERNAME,
+        settings.DB_TRUSTED_CONNECTION,
+        settings.MSSQL_DRIVER,
+        settings.MSSQL_ENCRYPT,
+        settings.MSSQL_TRUST_SERVER_CERTIFICATE,
+    )
 
     try:
         return create_engine(
