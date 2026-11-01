@@ -38,18 +38,18 @@ export default function BuyerBehaviorAnalytics() {
 
   return (
     <div className="space-y-8">
-      <div className="flex justify-between items-start">
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Buyer & Market Behavior</h1>
           <p className="text-gray-600 mt-1">Analyze buyer patterns and market participation</p>
         </div>
-        <div className="text-xs text-right text-gray-500">
+        <div className="text-xs sm:text-right text-gray-500">
           <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
           {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-6">
         <InfoCard title="Total Buyers" value={summary.totalBuyers.toLocaleString()} icon={<Users size={20} />} />
         <InfoCard title="Active Buyers" value={summary.activeBuyers.toLocaleString()} subtitle="This month" />
         <InfoCard title="Avg Participation" value={`${summary.avgParticipation.toFixed()} bids`} subtitle={data.summaryWindowLabel} />

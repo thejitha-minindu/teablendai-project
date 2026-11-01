@@ -76,7 +76,7 @@ export default function AdminVerificationPage() {
   // Check if current user has superadmin role
   if (currentUser?.role !== "superadmin") {
     return (
-      <div className="p-6 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <div className="p-0 md:p-2 max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[400px] gap-4">
         <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center max-w-md shadow-lg shadow-red-100/50">
           <ShieldAlert className="w-16 h-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-800 mb-2">Access Denied</h2>
@@ -89,7 +89,7 @@ export default function AdminVerificationPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
+    <div className="p-0 md:p-2 max-w-4xl mx-auto">
       {/* Confirmation Modal */}
       {confirmAction && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 animate-fadeIn">

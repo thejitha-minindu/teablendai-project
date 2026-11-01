@@ -144,14 +144,14 @@ const sections = [
     number: "8",
     title: "Cookie Consent",
     content: (
-      <p>
-        When you first visit TeaBlend AI, you'll see a cookie consent banner. You can:
+      <div>
+        <p>When you first visit TeaBlend AI, you'll see a cookie consent banner. You can:</p>
         <ul className="list-disc pl-5 mt-2 space-y-1">
           <li>Accept all cookies</li>
           <li>Reject non-essential cookies</li>
           <li>Customize your preferences</li>
         </ul>
-      </p>
+      </div>
     ),
   },
   {

@@ -106,16 +106,16 @@ export default function BuyerAuctionPage() {
         }
       `}</style>
 
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">Buyer Dashboard</h1>
           <p className="text-muted-foreground mt-2">Welcome back</p>
         </div>
-        <NotificationBell />
+        <NotificationBell className="hidden md:inline-flex" />
       </div>
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-10 mb-10">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 mb-10">
         <div
-          className="flex flex-col md:col-span-1 lg:col-span-1 card-animate"
+          className="flex flex-col xl:col-span-4 card-animate"
           style={{ animationDelay: "0ms" }}
         >
           <ChartPie />
@@ -128,7 +128,7 @@ export default function BuyerAuctionPage() {
           </div>
         </div>
         <div
-          className="flex flex-col md:col-span-2 lg:col-span-3 w-full m-0 gap-10 lg:gap-10 card-animate"
+          className="flex flex-col xl:col-span-8 w-full m-0 gap-10 lg:gap-10 card-animate"
           style={{ animationDelay: "80ms" }}
         >
           <div>
@@ -142,7 +142,7 @@ export default function BuyerAuctionPage() {
             <div
               className={`
               grid grid-cols-1
-              ${isSidebarOpen ? "md:grid-cols-2 lg:grid-cols-2" : "md:grid-cols-3 lg:grid-cols-3"}
+              ${isSidebarOpen ? "lg:grid-cols-2" : "lg:grid-cols-2 2xl:grid-cols-3"}
               gap-6 w-full
               `}
             >

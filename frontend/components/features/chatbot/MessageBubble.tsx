@@ -235,7 +235,7 @@ const DetailRow = memo(function DetailRow({
 }) {
   if (!value && value !== 0) return null;
   return (
-    <div className="grid grid-cols-[140px_1fr] gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-[140px_minmax(0,1fr)] gap-2">
       <span className="font-medium text-gray-600">{label}</span>
       <span>{value}</span>
     </div>
@@ -408,13 +408,13 @@ const UserMessage = memo(function UserMessage({ content: messageContent, highlig
 
   return (
     <div className="flex justify-end">
-      <div className="relative max-w-[75%] bg-[#558332] text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm group">
+      <div className="relative min-w-0 max-w-[92%] sm:max-w-[75%] bg-[#558332] text-white rounded-2xl rounded-tr-none px-4 py-3 shadow-sm group">
         <Tooltip>
           <TooltipTrigger asChild>
             <button
               onClick={handleCopy}
               aria-label="Copy message"
-              className="absolute right-2 opacity-0 group-hover:opacity-100 transition cursor-pointer"
+              className="absolute right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition cursor-pointer"
             >
               {copied ? (
                 <Check className="w-5 h-5 text-white" />
@@ -651,7 +651,7 @@ export default function MessageBubble({
           <Brain className="w-5 h-5" />
         </div>
 
-        <div className="max-w-[85%] space-y-2">
+        <div className="min-w-0 max-w-full sm:max-w-[85%] space-y-2">
           <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-none px-4 py-3 shadow-sm">
             <div className="text-sm text-gray-800 leading-relaxed">
               {renderMessageContent(message.content, highlightTerms)}
@@ -693,7 +693,7 @@ export default function MessageBubble({
           <Brain className="w-5 h-5" />
         </div>
 
-        <div className="flex-1 max-w-[90%] space-y-3">
+        <div className="flex-1 min-w-0 max-w-full sm:max-w-[90%] space-y-3">
           {message.data?.map((auction: Record<string, unknown>, index: number) => (
             <AuctionCard
               key={(auction.auction_id as string) || index}
@@ -756,7 +756,7 @@ export default function MessageBubble({
         <Brain className="w-5 h-5" />
       </div>
 
-      <div className="flex-1 max-w-[85%] space-y-3">
+      <div className="flex-1 min-w-0 max-w-full sm:max-w-[85%] space-y-3">
         {/* Main Message Bubble */}
         <div
           className={`relative rounded-2xl rounded-tl-none px-4 py-3 shadow-sm group border transition-all duration-200 ${
@@ -776,7 +776,7 @@ export default function MessageBubble({
                   }
                 }}
                 aria-label="Copy message"
-                className="absolute opacity-0 group-hover:opacity-100 transition cursor-pointer top-3 right-3"
+                className="absolute opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition cursor-pointer top-3 right-3"
               >
                 <Copy className="w-5 h-5 text-gray-500 hover:text-gray-700" />
               </button>

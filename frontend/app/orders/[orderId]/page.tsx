@@ -173,7 +173,7 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
       <div className="max-w-4xl mx-auto">
 
         {/* Header */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
           <button onClick={() => router.back()} className="flex items-center text-gray-500 hover:text-gray-800 transition-colors">
             <ArrowLeft className="w-5 h-5 mr-2" /> Back
           </button>
@@ -181,7 +181,7 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
 
         {/* --- ORDER CARD --- */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 mb-1">
                 Order {order.display_order_id || `#${order.order_id.slice(0, 8)}`}
@@ -282,8 +282,8 @@ export default function OrderTrackingPage({ params }: OrderTrackingPageProps) {
               const Icon = step.icon;
 
               return (
-                <div key={step.key} className="relative flex gap-6 mb-8 last:mb-0">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
+                <div key={step.key} className="relative flex gap-3 sm:gap-6 mb-8 last:mb-0">
+                  <div className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
                     isCompleted ? 'bg-green-50 border-green-500 text-green-600' :
                     isCurrent ? 'border-[#588157] text-[#588157] shadow-lg ring-4 ring-[#588157]/10' :
                     'border-gray-200 text-gray-300'

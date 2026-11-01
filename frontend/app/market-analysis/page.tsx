@@ -19,7 +19,7 @@ export default function MarketAnalysisPage() {
                 </div>
 
                 {/* Main Card */}
-                <div className="bg-white/80 backdrop-blur-md border border-green-100 rounded-2xl shadow-xl p-8 md:p-12 transition-all duration-300 hover:shadow-2xl">
+                <div className="bg-white/80 backdrop-blur-md border border-green-100 rounded-2xl shadow-xl p-5 sm:p-8 md:p-12 transition-all duration-300 hover:shadow-2xl">
 
                     {/* Feature Highlights */}
                     <div className="grid md:grid-cols-3 gap-6 mb-10">

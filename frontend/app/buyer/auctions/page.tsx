@@ -210,7 +210,7 @@ export default function BuyerHistoryPage() {
 
       {!loading && !error && sortedData.length > 0 && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-10 mb-10">
+          <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6 lg:gap-10 mb-10">
             {cardsToShow.map((auction, index) => (
               <div
                 key={auction.id ?? `auction-card-${index}`}

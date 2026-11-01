@@ -16,8 +16,8 @@ export default function AdminLayout({
 			<SidebarProvider>
 				<ProtectedRoute requiredRole="admin">
 					<AdminSidebar />
-					<div className="p-0 w-full min-h-screen">
-						<main className="p-6">{children}</main>
+					<div className="min-w-0 flex-1 min-h-screen">
+						<main className="px-4 pb-6 pt-20 sm:px-6 md:p-6">{children}</main>
 					</div>
 				</ProtectedRoute>
 			</SidebarProvider>

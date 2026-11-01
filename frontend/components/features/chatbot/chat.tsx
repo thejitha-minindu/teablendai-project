@@ -174,23 +174,23 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
   return (
     <div
       className={cn(
-        "flex flex-col w-full items-center bg-white text-gray-900 p-6 relative overflow-hidden",
-        showWelcome ? "h-screen justify-center" : "justify-end py-4"
+        "flex flex-col w-full items-center bg-white text-gray-900 p-3 sm:p-6 relative overflow-hidden",
+        showWelcome ? "min-h-full justify-center py-6" : "justify-end py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       )}
     >
       {/* Only show welcome text when no messages */}
       {showWelcome && (
         <div className="w-full max-w-6xl text-center space-y-1 pb-8">
-          <p className="text-xl text-gray-500 pt-2 cursor-default">
+          <p className="text-base sm:text-xl text-gray-500 pt-2 cursor-default">
             Chat with Tea AI to discover blends, rituals, and flavors, and use the auction management function.
           </p>
         </div>
       )}
 
       <div className="w-full max-w-3xl bg-gray-50 border border-gray-200 rounded-2xl shadow-xl">
-        <div className="p-4 flex flex-row items-center gap-3 w-full">
+        <div className="p-2 sm:p-4 flex flex-row items-center gap-1 sm:gap-3 w-full">
           <button className="p-2 rounded-full shrink-0 self-center" aria-label="AI Assistant">
-            <SparklesIcon className="w-8 h-8 text-[#558332] transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(85,131,50,0.7)]" />
+            <SparklesIcon className="w-6 h-6 sm:w-8 sm:h-8 text-[#558332] transition-all duration-300 hover:drop-shadow-[0_0_8px_rgba(85,131,50,0.7)]" />
           </button>
 
           <Textarea
@@ -199,7 +199,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             onChange={handleValueChange}
             onKeyDown={handleKeyDown}
             placeholder="Ask me anything about tea  .  .  ."
-            containerClassName="flex-1"
+            containerClassName="min-w-0 flex-1"
             className="text-[14px] text-gray-900 placeholder:text-gray-400 leading-normal py-2"
           />
 
@@ -210,7 +210,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             whileTap={{ scale: 0.95 }}
             disabled={isSendDisabled}
             className={cn(
-              "px-5 py-2.5 rounded-xl text-sm font-medium transition-all self-center",
+              "shrink-0 px-3 sm:px-5 py-2.5 rounded-xl text-sm font-medium transition-all self-center",
               "flex items-center gap-2",
               !isSendDisabled
                 ? "bg-[#558332] text-white shadow-lg hover:bg-[#6a9e3e]"
@@ -222,7 +222,7 @@ export function AnimatedAIChat({ onSendMessage, isLoading, showWelcome = true }:
             ) : (
               <SendIcon className="w-4 h-4" />
             )}
-            <span>Send</span>
+            <span className="sr-only sm:not-sr-only">Send</span>
           </motion.button>
         </div>
       </div>

@@ -510,7 +510,7 @@ export default function UserProfilePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                className={`pb-3 text-sm font-bold border-b-2 transition-all whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
                   activeTab === tab.id
                     ? 'border-[#588157] text-[#588157]'
                     : 'border-transparent text-gray-500 hover:text-gray-800'
@@ -565,7 +565,7 @@ export default function UserProfilePage() {
             </div>
           </div>
 
-          <div className="p-6 md:p-8">
+          <div className="p-4 sm:p-6 md:p-8">
 
             {/* ── 1. PERSONAL TAB — unchanged ── */}
             {activeTab === 'personal' && (
@@ -625,7 +625,7 @@ export default function UserProfilePage() {
             {/* ── 2. SELLER TAB — unchanged ── */}
             {activeTab === 'seller' && (
               <div className="space-y-8">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {[
                     { icon: <Star className="text-yellow-500" />, label: 'Rating', val: user.sellerRating, sub: `(${user.totalReviews})` },
                     { icon: <TrendingUp className="text-green-500" />, label: 'Total Revenue', val: `$${user.totalRevenue.toLocaleString()}` },

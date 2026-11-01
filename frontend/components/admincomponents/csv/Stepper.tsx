@@ -4,7 +4,7 @@ const steps = ["Upload CSV", "Map Columns", "Preview", "Confirm"];
 
 export default function Stepper({ current }: { current: number }) {
     return (
-        <div className="flex justify-between mb-8">
+        <div className="flex justify-between gap-2 mb-8">
             {steps.map((s, i) => (
                 <div key={i} className="flex-1 text-center">
                     <div
@@ -13,7 +13,7 @@ export default function Stepper({ current }: { current: number }) {
                     >
                         {i + 1}
                     </div>
-                    <p className="mt-2 text-sm">{s}</p>
+                    <p className="mt-2 text-xs sm:text-sm">{s}</p>
                 </div>
             ))}
         </div>

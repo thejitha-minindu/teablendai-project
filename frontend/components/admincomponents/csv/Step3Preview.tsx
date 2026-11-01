@@ -12,7 +12,7 @@ export default function Step3Preview({ data }: any) {
     const headers = Object.keys(data[0]);
 
     return (
-        <div className="overflow-auto">
+        <div className="min-w-0 max-w-full overflow-auto">
             <table className="min-w-full border border-gray-300">
                 <thead>
                     <tr>

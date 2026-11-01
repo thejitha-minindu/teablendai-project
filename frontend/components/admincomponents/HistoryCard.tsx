@@ -56,8 +56,8 @@ export function HistoryCard({
     return (
         <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-green-500">
             {/* Header with ID and Date/Time */}
-            <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start mb-4">
+                <div className="flex flex-wrap items-center gap-2">
                     <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
                         <Bell className="w-4 h-4 text-green-600" />
                     </div>
@@ -85,13 +85,13 @@ export function HistoryCard({
 
             {/* Info Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4">
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                     <Tag className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-600">
                         <span className="font-medium">Type:</span> {type}
                     </span>
                 </div>
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                     <Users className="w-4 h-4 text-gray-400" />
                     <span className="text-gray-600">
                         <span className="font-medium">Audience:</span> {revisers}
@@ -118,8 +118,8 @@ export function HistoryCard({
             )}
 
             {/* Status Badge */}
-            <div className="mt-3 flex justify-between items-center">
-                <div className="flex items-center gap-2">
+            <div className="mt-3 flex flex-wrap gap-3 justify-between items-center">
+                <div className="flex flex-wrap items-center gap-2">
                     {status === "sent" ? (
                         <CheckCircle className="w-4 h-4 text-green-500" />
                     ) : (

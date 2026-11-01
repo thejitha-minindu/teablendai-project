@@ -196,7 +196,7 @@ function ScheduledAuctionsContent() {
       {loading ? (
         <p>Loading auctions...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8 mt-6">
           {sortedData.map((auction) => (
             <AuctionCard
               key={auction.id}

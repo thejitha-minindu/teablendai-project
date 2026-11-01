@@ -66,7 +66,7 @@ export function AuctionDetailLayout({
         : "rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700";
 
   return (
-    <div className="px-4 py-4 md:px-6 lg:px-8">
+    <div className="py-2">
       <div className="mx-auto w-full max-w-7xl space-y-6">
         <div className="rounded-xl border bg-white p-5 shadow-sm md:p-6">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -89,7 +89,7 @@ export function AuctionDetailLayout({
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <div className="rounded-xl border bg-white p-5 shadow-sm h-full flex flex-col">
               <h3 className="text-base font-semibold" style={{ color: "var(--color4)" }}>Lot Details</h3>
               <div className="mt-4 space-y-2 text-sm">

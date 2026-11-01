@@ -23,6 +23,7 @@ import {
   ChartNoAxesCombined
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { parseDate } from "@/lib/dateUtils";
 import Image from "next/image";
 import Link from "next/link";
@@ -55,7 +56,7 @@ import {
 
 // Constants
 const COLLAPSED_WIDTH = "w-16 md:w-20";
-const EXPANDED_WIDTH = "w-full md:w-80";
+const EXPANDED_WIDTH = "w-[min(20rem,calc(100vw-2rem))] md:w-80";
 const PINNED_SECTION_LABEL = "Pinned";
 const RECENT_SECTION_LABEL = "Recent";
 const SEARCH_DEBOUNCE_DELAY = 300;
@@ -331,7 +332,7 @@ const ConfirmationModal = memo(function ConfirmationModal({
         exit={{ scale: 0.95, opacity: 0 }}
         transition={{ duration: 0.2 }}
         onClick={(e) => e.stopPropagation()}
-        className="bg-white rounded-2xl shadow-2xl w-80 p-6 cursor-default"
+        className="bg-white rounded-2xl shadow-2xl w-80 max-w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto p-6 cursor-default"
       >
         <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <Trash2 className="w-6 h-6 text-red-600" />
@@ -448,7 +449,7 @@ const ChatHistoryCard = memo(function ChatHistoryCard({
             <DropdownMenuTrigger asChild>
               <button
                 onClick={handleMenuClick}
-                className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-lg hover:bg-gray-200"
+                className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-lg hover:bg-gray-200"
                 aria-label="Chat options"
               >
                 <MoreVertical className="w-4 h-4 text-gray-500" />
@@ -553,6 +554,8 @@ export function ChatSidebar({
   const router = useRouter();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const isMobile = useIsMobile();
+  const showExpanded = !isCollapsed || isMobile;
   const [activeUserRole, setActiveUserRole] = useState<UserRole>("seller");
   const [availableRoles, setAvailableRoles] = useState<UserRole[]>(["buyer"]);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
@@ -648,6 +651,20 @@ export function ChatSidebar({
   useEffect(() => {
     setIsMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!isMobile || !isMobileOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileOpen(false);
+    };
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isMobile, isMobileOpen]);
 
   useEffect(() => {
     const claims = getAuthClaims();
@@ -772,16 +789,20 @@ export function ChatSidebar({
   }, [switchInfo.role, router, availableRoles]);
 
   const shouldShowOnMobile = isMobileOpen;
-  const isDesktop = isMounted && typeof window !== "undefined" && window.innerWidth >= 768;
+  const isDesktop = isMounted && !isMobile;
 
   return (
     <>
+      <div className="fixed inset-x-0 top-0 z-20 flex h-16 items-center justify-center border-b border-gray-200 bg-white md:hidden">
+        <span className="font-semibold text-[#3A5A40]">Tea AI Chat</span>
+      </div>
       {/* Mobile Menu Toggle Button */}
       {isMounted && (
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="mobile-menu-toggle fixed top-4 left-4 z-50 md:hidden p-2 bg-white rounded-xl shadow-lg border border-gray-200 hover:bg-gray-50 transition-all duration-200"
+          className="mobile-menu-toggle fixed top-2.5 left-3 z-50 md:hidden p-3 bg-white rounded-xl border border-gray-200 hover:bg-gray-50 transition-all duration-200"
           aria-label={isMobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isMobileOpen}
         >
           {isMobileOpen ? (
             <X className="w-5 h-5 text-gray-700" />
@@ -805,10 +826,10 @@ export function ChatSidebar({
       {/* Sidebar */}
       <motion.div
         className={cn(
-          "chat-sidebar h-screen bg-[#F9FAFB] border-r border-gray-200 flex flex-col relative",
+          "chat-sidebar h-dvh shrink-0 bg-[#F9FAFB] border-r border-gray-200 flex flex-col",
           "transition-all duration-300 ease-in-out",
-          isCollapsed ? COLLAPSED_WIDTH : EXPANDED_WIDTH,
-          "fixed md:relative z-40",
+          showExpanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH,
+          "fixed inset-y-0 left-0 md:relative z-40",
           !shouldShowOnMobile && "hidden md:flex",
           className
         )}
@@ -819,9 +840,9 @@ export function ChatSidebar({
         transition={{ duration: 0.3, ease: "easeInOut" }}
       >
         {/* HEADER */}
-        <div className="p-4 border-b border-gray-200 bg-gradient-to-b from-white to-[#F9FAFB]">
+        <div className="p-4 pt-16 md:pt-4 border-b border-gray-200 bg-gradient-to-b from-white to-[#F9FAFB]">
           <AnimatePresence mode="wait">
-            {!isCollapsed ? (
+            {showExpanded ? (
               <motion.div
                 key="expanded"
                 initial={{ opacity: 0, y: -10 }}
@@ -845,7 +866,7 @@ export function ChatSidebar({
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => setIsCollapsed(true)}
-                        className="p-2 hover:bg-gray-200 rounded-xl transition-all duration-200"
+                        className="hidden p-2 hover:bg-gray-200 rounded-xl transition-all duration-200 md:block"
                         aria-label="Collapse sidebar"
                       >
                         <PanelLeft className="w-4 h-4 text-gray-600" />
@@ -942,7 +963,7 @@ export function ChatSidebar({
         {/* CHAT LIST */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
           <AnimatePresence mode="wait">
-            {!isCollapsed ? (
+            {showExpanded ? (
               <motion.div
                 key="chat-list"
                 initial={{ opacity: 0 }}
@@ -1078,7 +1099,7 @@ export function ChatSidebar({
                   <div className="flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[#E5F7CB] to-[#D4E8B8] text-[#3A5A40]">
                     <User2 className="w-5 h-5" />
                   </div>
-                  {!isCollapsed && (
+                  {showExpanded && (
                     <>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-semibold text-gray-800">{userName}</span>
@@ -1095,7 +1116,7 @@ export function ChatSidebar({
 
             <DropdownMenuContent
               side="top"
-              align={isCollapsed ? "start" : "end"}
+              align={showExpanded ? "end" : "start"}
               className="min-w-72 rounded-xl bg-white shadow-xl border border-gray-100 mb-2"
             >
               <DropdownMenuLabel className="p-0 font-normal">

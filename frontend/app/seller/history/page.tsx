@@ -154,7 +154,7 @@ export default function HistoryPage() {
       {loading ? (
         <p className="text-gray-500 animate-pulse">Loading historical records...</p>
       ) : sortedAuctions.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8">
           {sortedAuctions.map((auction) => (
             <AuctionCard 
               key={auction.id} 

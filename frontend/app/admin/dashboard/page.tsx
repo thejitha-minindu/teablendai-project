@@ -63,7 +63,7 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-6 space-y-6 min-h-screen">
+    <div className="p-0 md:p-2 space-y-6 min-h-screen">
 
       {/* PAGE TITLE */}
       <div>
@@ -74,7 +74,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6">
         <StatCard
           title="Total Buyers"
           value={String(totalBuyers)}

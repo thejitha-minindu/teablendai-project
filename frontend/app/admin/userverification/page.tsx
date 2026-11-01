@@ -102,7 +102,7 @@ export default function VerificationPage() {
     }
 
     return (
-        <div className="p-6 max-w-4xl mx-auto">
+        <div className="p-0 md:p-2 max-w-4xl mx-auto">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>

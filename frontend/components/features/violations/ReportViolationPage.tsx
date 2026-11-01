@@ -383,10 +383,10 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
         className="flex items-center gap-2 mb-6 animate-fadeInUp"
         style={{ animationDelay: "120ms" }}
       >
-        <div className="flex bg-gray-100 rounded-xl p-1.5 gap-1">
+        <div className="flex flex-wrap bg-gray-100 rounded-xl p-1.5 gap-1">
           <button
             onClick={() => setActiveTab("submit")}
-            className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+            className={`px-3 sm:px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
               activeTab === "submit"
                 ? "bg-white text-gray-800 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
@@ -397,7 +397,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
           </button>
           <button
             onClick={() => setActiveTab("history")}
-            className={`px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
+            className={`px-3 sm:px-5 py-2.5 text-sm font-semibold rounded-lg transition-all duration-200 flex items-center gap-2 ${
               activeTab === "history"
                 ? "bg-white text-gray-800 shadow-sm"
                 : "text-gray-500 hover:text-gray-700"
@@ -449,7 +449,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
                 </p>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-6">
                 {/* Violator ID */}
                 <div className="space-y-2">
                   <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">
@@ -669,7 +669,7 @@ export default function ReportViolationPage({ role }: ReportViolationPageProps) 
               {reports.length === 0 && (
                 <button
                   onClick={() => setActiveTab("submit")}
-                  className="px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#3A5A40] hover:bg-[#2D4A2B] transition-all"
+                  className="px-3 sm:px-5 py-2.5 text-sm font-semibold text-white rounded-xl bg-[#3A5A40] hover:bg-[#2D4A2B] transition-all"
                 >
                   Submit Your First Report
                 </button>

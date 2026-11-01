@@ -189,7 +189,7 @@ export default function LiveAuctionsPage() {
       {loading ? (
         <p className="text-gray-500">Loading live auctions...</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-8 mt-6">
           {sortedData.length > 0 ? (
             sortedData.map((auction) => (
               <AuctionCard

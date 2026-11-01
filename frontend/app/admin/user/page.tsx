@@ -169,7 +169,7 @@ export default function AdminProfile() {
                     <User className="w-16 h-16 text-[#3A5A40]" />
                   )}
                 </div>
-                <button className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-all duration-200 opacity-0 group-hover:opacity-100">
+                <button className="absolute bottom-2 right-2 bg-white rounded-full p-2 shadow-lg hover:bg-gray-100 transition-all duration-200 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100">
                   <Camera size={14} className="text-gray-600" />
                 </button>
               </div>
@@ -195,7 +195,7 @@ export default function AdminProfile() {
           </div>
 
           {/* Account Details Form */}
-          <div className="p-8">
+          <div className="p-4 sm:p-8">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2">
                 Account Details
@@ -262,7 +262,7 @@ export default function AdminProfile() {
               </Field>
 
               {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="First Name">
                   <input
                     name="firstName"

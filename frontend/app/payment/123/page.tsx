@@ -76,7 +76,7 @@ export default function CheckoutPage({ params }: CheckoutProps) {
             
             <form onSubmit={processPayment} className="space-y-10">
               {/* Payment Method Selector */}
-              <div className="flex gap-4 flex-row flex-nowrap overflow-x-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {/* Card Option */}
                 <button
                   type="button"

@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -37,6 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MobileSidebarHeader } from "@/components/layout/MobileSidebarHeader";
 
 /* ================= ADMIN MENU ================= */
 const adminMenu = [
@@ -52,8 +53,13 @@ const adminMenu = [
 export function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter(); // FIX: Added router for logout redirect
-  const { open } = useSidebar();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const { open, setOpen, isMobile, setOpenMobile } = useSidebar();
+  const isCollapsed = !open;
+  const setIsCollapsed = (collapsed: boolean) => setOpen(!collapsed);
+
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   const isActivePath = (href: string) => pathname === href;
 
@@ -74,9 +80,10 @@ export function AdminSidebar() {
   };
 
   return (
-    <div className="relative flex h-screen">
+    <div className="relative flex shrink-0 md:h-svh">
+      <MobileSidebarHeader showNotifications={false} />
       {/* COLLAPSED BUTTON */}
-      {isCollapsed && (
+      {isCollapsed && !isMobile && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -84,6 +91,7 @@ export function AdminSidebar() {
         >
           <button
             onClick={() => setIsCollapsed(false)}
+            aria-label="Expand navigation"
             className="p-2 rounded-lg hover:bg-gray-200"
           >
             <PanelLeftIcon className="w-5 h-5 rotate-180" />
@@ -93,14 +101,14 @@ export function AdminSidebar() {
 
       {/* SIDEBAR */}
       <AnimatePresence>
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <motion.div
             initial={{ x: -300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -300, opacity: 0 }}
             transition={{ duration: 0.3 }}
           >
-            <Sidebar className="flex flex-col h-screen border-r bg-[#F9FAFB]">
+            <Sidebar className="flex flex-col h-svh border-r bg-[#F9FAFB]">
               <SidebarContent className="flex-1">
                 {/* LOGO */}
                 <SidebarGroup>
@@ -113,8 +121,9 @@ export function AdminSidebar() {
                       className="object-contain"
                     />
                     <button
-                      onClick={() => setIsCollapsed(true)}
-                      className="p-2 rounded-lg hover:bg-gray-200"
+                      onClick={() => isMobile ? setOpenMobile(false) : setIsCollapsed(true)}
+                      aria-label="Close navigation"
+                      className="hidden p-2 rounded-lg hover:bg-gray-200 md:block"
                     >
                       <PanelLeftIcon className="w-5 h-5" />
                     </button>
@@ -134,7 +143,7 @@ export function AdminSidebar() {
                             <SidebarMenuButton
                               asChild
                               isActive={active}
-                              className={`p-3 rounded-md transition-all ${
+                              className={`min-h-11 md:min-h-0 p-3 rounded-md transition-all ${
                                 active
                                   ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]"
                                   : "text-gray-600 hover:bg-gray-100"

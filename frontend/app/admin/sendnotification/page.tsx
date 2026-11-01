@@ -173,7 +173,7 @@ function CreateNotificationForm() {
     };
 
     return (
-        <div className="p-6 max-w-5xl mx-auto min-h-screen">
+        <div className="p-0 md:p-2 max-w-5xl mx-auto min-h-screen">
             {/* Header */}
             <div className="flex justify-between items-center mb-6">
                 <div>
@@ -212,7 +212,7 @@ function CreateNotificationForm() {
                 </div>
 
                 {/* Form */}
-                <div className="p-6 space-y-5">
+                <div className="p-4 sm:p-6 space-y-5">
                     {/* Title */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <label className="font-medium text-gray-700 flex items-center gap-2">

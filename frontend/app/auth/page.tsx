@@ -23,14 +23,14 @@ function AuthSelectContent() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50">
       
       {/* Header NavBar */}
-      <header className="mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-4 md:px-10 lg:px-12">
+      <header className="mx-auto flex w-full max-w-7xl items-center justify-between gap-3 px-4 py-4 md:px-10 lg:px-12">
         <Link href="/" className="flex items-center gap-3">
           <img src="/TeaLogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
         </Link>
 
         <Link
           href="/"
-          className="rounded-full border border-green-200 bg-white px-5 py-2 text-sm font-medium text-green-700 transition hover:bg-green-50"
+          className="rounded-full border border-green-200 bg-white px-3 py-2 sm:px-5 text-sm font-medium text-green-700 transition hover:bg-green-50"
         >
           Back to Home
         </Link>
@@ -52,7 +52,7 @@ function AuthSelectContent() {
           </div>
 
           {/* Cards Container */}
-          <div className="mt-8 grid grid-cols-10 gap-20 lg:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:gap-10">
             
             {/* Buyer Card */}
             {/* We pass the paths to the buyer login and register pages, including the redirect suffix if it exists */}

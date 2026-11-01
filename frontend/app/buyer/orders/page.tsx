@@ -90,7 +90,7 @@ export default function BuyerOrdersPage() {
   }
 
   return (
-    <div className="space-y-8 sm:px-4 lg:px-10 lg:pt-10 mb-10">
+    <div className="space-y-6 lg:space-y-8 mb-10">
       {/* Header */}
       <div className="mb-5 items-start">
         <h1 className="text-3xl font-bold">My Orders</h1>
@@ -98,7 +98,7 @@ export default function BuyerOrdersPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
         {[
           { label: "Total Orders", value: stats.total, color: "bg-white border-gray-200 text-gray-700" },
           { label: "Pending", value: stats.pending, color: "bg-white border-gray-200 text-gray-700" },
@@ -165,12 +165,12 @@ export default function BuyerOrdersPage() {
                   onClick={() => setExpandedOrderId(isExpanded ? null : order.order_id)}
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1">
+                    <div className="flex min-w-0 items-center gap-3 sm:gap-4 flex-1">
                       <div className="bg-gray-50 border border-gray-200 p-3 rounded-xl">
                         <Package className="w-6 h-6 text-gray-600" />
                       </div>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-lg font-semibold text-gray-900 line-clamp-1">{order.auction_name || "N/A"}</span>
                           <span className="text-xs text-gray-400 font-mono">{order.display_order_id || order.order_id.slice(0, 8)}</span>
                         </div>
@@ -182,7 +182,7 @@ export default function BuyerOrdersPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-3">
                       {/* Payment Badge */}
                       <span className={`px-3 py-1.5 rounded-full text-xs font-medium border ${paymentCfg.bg} ${paymentCfg.color}`}>
                         {paymentCfg.label}
@@ -193,7 +193,7 @@ export default function BuyerOrdersPage() {
                         {statusCfg.label}
                       </span>
                       {/* Price */}
-                      <span className="font-semibold text-gray-900 text-lg min-w-[100px] text-right">
+                      <span className="font-semibold text-gray-900 text-base sm:text-lg sm:min-w-[100px] sm:ml-auto text-right">
                         LKR {(order.sold_price || order.total_amount || 0).toLocaleString()}
                       </span>
                       <ChevronDown className={`w-5 h-5 text-gray-400 transition-transform ${isExpanded ? "rotate-180" : ""}`} />
@@ -240,7 +240,7 @@ export default function BuyerOrdersPage() {
                         )}
 
                         {/* View, Chat & Report buttons */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
                             onClick={(e) => { e.stopPropagation(); router.push(`/orders/${order.order_id}`); }}
                             className="flex-1 bg-white border border-gray-200 text-gray-700 px-3 py-2 rounded-xl font-medium text-sm hover:bg-gray-50 transition-all flex items-center justify-center gap-1.5"

@@ -32,17 +32,17 @@ export default function AnalyticsOverview() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Tea Analytics Dashboard</h1>
           <p className="text-gray-600 mt-1">Comprehensive insights into your tea business</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="text-xs text-right text-gray-500">
+          <div className="text-xs sm:text-right text-gray-500">
             <p>Last update: {new Date(lastUpdated ?? data.generatedAt).toLocaleTimeString()}</p>
             {isStale ? <p className="text-amber-600">Showing last successful snapshot</p> : null}
           </div>
-          <NotificationBell />
+          <NotificationBell className="hidden md:inline-flex" />
         </div>
       </div>
 

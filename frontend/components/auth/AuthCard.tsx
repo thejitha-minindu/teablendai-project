@@ -17,7 +17,7 @@ export function AuthCard({
   registerHref,
 }: AuthCardProps) {
   return (
-    <div className="group relative overflow-hidden rounded-[2rem] border border-green-100 bg-white/90 p-8 shadow-xl shadow-green-100/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-100/70 lg:p-10">
+    <div className="group relative overflow-hidden rounded-[2rem] border border-green-100 bg-white/90 p-5 sm:p-8 shadow-xl shadow-green-100/50 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl hover:shadow-green-100/70 lg:p-10">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(22,163,74,0.14),transparent_45%)]" />
       <div className="relative">
         <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-600 to-emerald-500 text-white shadow-lg">

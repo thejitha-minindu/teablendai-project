@@ -21,7 +21,7 @@ const INITIAL_ORDER = {
   status: 'WON', 
 };
 
-export default function OrderTrackingPage({ params }: { params: { orderId: string } }) {
+export default function OrderTrackingPage() {
   const router = useRouter();
   
   // SIMULATE USER ROLE (Toggle this button in UI to test both sides!)
@@ -91,7 +91,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
       <div className="max-w-4xl mx-auto">
         
         {/* Header & Role Toggle (For Demo Purposes) */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
           <button onClick={() => router.back()} className="flex items-center text-gray-500 hover:text-gray-800 transition-colors">
             <ArrowLeft className="w-5 h-5 mr-2" /> Back
           </button>
@@ -115,7 +115,7 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
 
         {/* --- ORDER CARD --- */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden mb-8">
-          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex justify-between items-start">
+          <div className="p-6 border-b border-gray-100 bg-gray-50/50 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <h1 className="text-2xl font-bold text-gray-800 mb-1">Order #{order.id}</h1>
               <p className="text-gray-500 text-sm">Placed on {new Date(order.orderDate).toLocaleDateString()}</p>
@@ -189,8 +189,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             <div className="absolute left-8 top-4 bottom-10 w-0.5 bg-gray-200" />
 
             {/* STEP 1: WON */}
-            <div className="relative flex gap-6 mb-10 group">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-colors bg-white ${
+            <div className="relative flex gap-3 sm:gap-6 mb-10 group">
+              <div className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center z-10 border-4 transition-colors bg-white ${
                 getStepStatus('WON') === 'completed' ? 'bg-green-50 border-green-500 text-green-600' : 'border-blue-500 text-blue-600 shadow-lg'
               }`}>
                 <CheckCircle className="w-6 h-6" />
@@ -202,8 +202,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             </div>
 
             {/* STEP 2: PAYMENT */}
-            <div className="relative flex gap-6 mb-10">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
+            <div className="relative flex gap-3 sm:gap-6 mb-10">
+              <div className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
                 getStepStatus('PAID') === 'completed' ? 'bg-green-50 border-green-500 text-green-600' : 
                 getStepStatus('PAID') === 'current' ? 'border-blue-500 text-blue-600 shadow-lg' : 'border-gray-200 text-gray-300'
               }`}>
@@ -229,8 +229,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             </div>
 
             {/* STEP 3: SHIPPING */}
-            <div className="relative flex gap-6 mb-10">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
+            <div className="relative flex gap-3 sm:gap-6 mb-10">
+              <div className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
                 getStepStatus('SHIPPED') === 'completed' ? 'bg-green-50 border-green-500 text-green-600' : 
                 getStepStatus('SHIPPED') === 'current' ? 'border-blue-500 text-blue-600 shadow-lg' : 'border-gray-200 text-gray-300'
               }`}>
@@ -261,8 +261,8 @@ export default function OrderTrackingPage({ params }: { params: { orderId: strin
             </div>
 
             {/* STEP 4: DELIVERED */}
-            <div className="relative flex gap-6">
-              <div className={`w-16 h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
+            <div className="relative flex gap-3 sm:gap-6">
+              <div className={`shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-full flex items-center justify-center z-10 border-4 transition-all bg-white ${
                 order.status === 'DELIVERED' ? 'border-green-500 bg-green-50 text-green-600 shadow-lg scale-110' : 'border-gray-200 text-gray-300'
               }`}>
                 <MapPin className="w-6 h-6" />
