@@ -99,7 +99,7 @@ export function TrackAuctionCard({
     return (
         <div className={`bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-green-500 ${isDeleting ? "opacity-50 pointer-events-none" : ""}`}>
             {/* Header */}
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start mb-4">
                 <div className="flex gap-3 items-start">
                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                         <Box className="w-5 h-5 text-green-600" />
@@ -121,21 +121,21 @@ export function TrackAuctionCard({
             {/* Details Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Building2 className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Estate:</span> {estateName}
                         </span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Star className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Grade:</span> {grade}
                         </span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Package className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Quantity:</span> {quantity} Kg
@@ -144,14 +144,14 @@ export function TrackAuctionCard({
                 </div>
 
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <DollarSign className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Base Price:</span> Rs {basePrice.toLocaleString()}
                         </span>
                     </div>
                     
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Calendar className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Start Time:</span> {new Date(startTime).toLocaleString()}
@@ -159,7 +159,7 @@ export function TrackAuctionCard({
                     </div>
                     
                     {soldPrice !== undefined && soldPrice > 0 && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                             <Trophy className="w-4 h-4 text-yellow-500" />
                             <span className="text-gray-600">
                                 <span className="font-medium">Sold Price:</span> Rs {soldPrice.toLocaleString()}
@@ -170,7 +170,7 @@ export function TrackAuctionCard({
 
                 <div className="space-y-2">
                     {buyer && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                             <User className="w-4 h-4 text-gray-400" />
                             <span className="text-gray-600">
                                 <span className="font-medium">Buyer:</span> {buyer}
@@ -208,11 +208,11 @@ export function TrackAuctionCard({
             </div>
 
             {/* Footer with additional info */}
-            <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
+            <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap gap-3 justify-between items-center">
                 <div className="text-xs text-gray-400">
                     Reference ID: {customAuctionId || "N/A"}
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     {/* {(statusLower === "active" || statusLower === "live") && (
                         <button className="text-xs px-3 py-1 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
                             View Bids

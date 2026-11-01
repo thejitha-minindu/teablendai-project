@@ -72,7 +72,7 @@ export function AnalyticsChart() {
             </div>
 
             {/* Stats Summary */}
-            <div className="mt-6 grid grid-cols-3 gap-4 text-center text-sm">
+            <div className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3 text-center text-sm">
                 <div>
                     <p className="text-gray-500">Total Auctions</p>
                     <p className="text-lg font-bold text-blue-600">930</p>

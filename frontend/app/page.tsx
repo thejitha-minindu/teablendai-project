@@ -68,7 +68,7 @@ export default function HomePage() {
                             </Badge>
                         </div>
                         
-                        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold linkedin-light">
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold linkedin-light">
                             Welcome to <br />
                             <span className="bg-linear-to-r from-green-700 to-emerald-600 bg-clip-text text-transparent">
                                 Tea BlendAI
@@ -101,7 +101,7 @@ export default function HomePage() {
                     <div className="relative flex items-center justify-center">
                         <div className="relative w-full max-w-2xl">
                             <div className="absolute inset-0 bg-linear-to-r from-green-400/20 to-emerald-400/20 rounded-3xl blur-3xl"></div>
-                            <div className="relative bg-linear-to-br from-green-50 to-emerald-50 rounded-3xl p-8 shadow-2xl">
+                            <div className="relative bg-linear-to-br from-green-50 to-emerald-50 rounded-3xl p-4 sm:p-8 shadow-2xl">
                                 <Image
                                     src="/tea-blend-background-image.svg"
                                     alt="Tea Blend AI Dashboard"
@@ -290,7 +290,7 @@ export default function HomePage() {
                         <p className="text-gray-400 text-sm">
                             © {new Date().getFullYear()} TEABLENDAI. All rights reserved.
                         </p>
-                        <div className="flex gap-6 text-sm text-gray-400">
+                        <div className="flex flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-gray-400">
                             {[
                                 { label: 'Privacy Policy', path: '/privacy' },
                                 { label: 'Terms of Service', path: '/terms' },

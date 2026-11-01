@@ -80,7 +80,7 @@ export function OrderCardDialog({ auctionId }: OrderCardDialogProps) {
           More
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
+      <DialogContent className="sm:max-w-xl lg:max-w-3xl flex flex-col p-4 sm:p-6">
         {loading ? (
           <>
             <DialogHeader>

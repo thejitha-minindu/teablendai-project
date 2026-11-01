@@ -229,10 +229,10 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
+      <div className="bg-white rounded-xl shadow-lg max-w-4xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <div className="p-4 sm:p-8">
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900">{auction.grade} - {auction.origin}</h2>
               <span className="bg-yellow-50 text-yellow-700 border border-yellow-200 px-3 py-1 rounded-full text-xs font-medium">Scheduled</span>
             </div>
@@ -284,16 +284,16 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                     <span className="font-normal text-gray-500">Ref ID:</span>
                     <span className="text-gray-800 font-medium">{auction.custom_auction_id || 'N/A'}</span>
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-100">
                     <span className="font-normal text-gray-500">Estate Name:</span>
                     {editMode === 'details' ? (
                       <input type="text" value={formData.estate_name} onChange={(e) => setFormData({ ...formData, estate_name: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm w-40" />
                     ) : <span className="text-gray-800 font-medium">{auction.estate_name || "My Estate"}</span>}
                   </div>
-                  <div className="flex justify-between items-start py-2 border-b border-gray-100">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-start py-2 border-b border-gray-100">
                     <span className="font-normal text-gray-500 pt-1.5">Grade:</span>
                     {editMode === 'details' ? (
-                      <div className="flex flex-col gap-1.5 w-48">
+                      <div className="flex flex-col gap-1.5 w-full max-w-48">
                         <select
                           value={selectedGrade}
                           onChange={(e) => {
@@ -326,19 +326,19 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
                       </div>
                     ) : <span className="text-gray-800 font-medium">{auction.grade}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-100">
                     <span className="font-normal text-gray-500">Quantity:</span>
                     {editMode === 'details' ? (
                       <input type="number" value={formData.quantity} onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) })} className="border border-gray-200 p-1.5 rounded text-sm w-20" />
                     ) : <span className="text-gray-800 font-medium">{auction.quantity} kg</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2 border-b border-gray-100">
                     <span className="font-normal text-gray-500">Origin:</span>
                     {editMode === 'details' ? (
                       <input type="text" value={formData.origin} onChange={(e) => setFormData({ ...formData, origin: e.target.value })} className="border border-gray-200 p-1.5 rounded text-sm w-32" />
                     ) : <span className="text-gray-800 font-medium">{auction.origin}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2">
                     <span className="font-normal text-gray-500">Base Price:</span>
                     {editMode === 'details' ? (
                       <input type="number" value={formData.base_price} onChange={(e) => setFormData({ ...formData, base_price: parseFloat(e.target.value) })} className="border border-gray-200 p-1.5 rounded text-sm w-24" />
@@ -358,17 +358,17 @@ export function ScheduledAuctionModal({ auctionId, onClose }: { auctionId: strin
               <div>
                 <h3 className="font-semibold text-lg text-gray-800 flex items-center gap-2 mb-4"><Calendar className="w-5 h-5 text-gray-500" /> Schedule</h3>
                 <div className="space-y-3 bg-white p-4 rounded-xl border border-gray-100">
-                  <div className="flex justify-between items-center py-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2">
                     <span className="font-normal text-gray-500 flex items-center gap-2"><Calendar className="w-4 h-4" /> Date:</span>
                     {editMode === 'schedule' ? <span className="text-xs text-blue-600 font-medium">(Edit below)</span> : <span className="font-medium">{formatDate(auction.start_time)}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2">
                     <span className="font-normal text-gray-500 flex items-center gap-2"><Clock className="w-4 h-4" /> Time:</span>
                     {editMode === 'schedule' ? (
                       <input type="datetime-local" value={formData.start_time} onChange={(e) => setFormData({ ...formData, start_time: e.target.value })} className="border p-1 rounded text-sm" />
                     ) : <span>{formatTime(auction.start_time)}</span>}
                   </div>
-                  <div className="flex justify-between items-center py-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center py-2">
                     <span className="font-semibold text-gray-700">Duration:</span>
                     {editMode === 'schedule' ? (
                       <input type="number" value={formData.duration} onChange={(e) => setFormData({ ...formData, duration: parseFloat(e.target.value) })} className="border p-1 rounded w-16" />
@@ -496,11 +496,11 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
+      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <div className="p-4 sm:p-8">
           {/* Header */}
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900">{auction.grade} - {auction.origin}</h2>
               <span className="bg-red-50 text-red-600 border border-red-200 px-3 py-1 rounded-full text-xs font-medium flex items-center gap-2">
                 LIVE {connected && <div className="w-1.5 h-1.5 bg-red-600 rounded-full animate-pulse" />}
@@ -511,7 +511,7 @@ export function LiveAuctionModal({ auctionId, onClose }: { auctionId: string; on
 
           {/* Countdown Banner */}
           <div className="bg-red-50 rounded-lg p-4 mb-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <div>
                 <p className="font-medium text-red-600">Auction in Progress</p>
                 <p className="text-sm text-red-500">Time Remaining</p>
@@ -723,7 +723,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-        <div className="bg-white p-6 rounded-xl shadow-xl flex items-center gap-3">
+        <div className="bg-white p-6 rounded-xl shadow-xl flex flex-wrap items-center gap-3">
           <div className="w-6 h-6 border-2 border-[#3A5A40] border-t-transparent rounded-full animate-spin" />
           <span className="font-medium text-gray-700">Loading historical records...</span>
         </div>
@@ -746,12 +746,12 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-8">
+      <div className="bg-white rounded-xl shadow-lg max-w-5xl w-full max-h-[calc(100dvh-2rem)] overflow-y-auto">
+        <div className="p-4 sm:p-8">
 
           {/* Header */}
           <div className="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-xl font-semibold text-gray-900">{auctionDetails.grade} - {auctionDetails.origin}</h2>
               <span className={`px-3 py-1 rounded-full text-xs font-medium border ${isSold ? 'bg-green-50 text-green-700 border-green-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
                 {displayStatus}
@@ -865,7 +865,7 @@ export function HistoryAuctionModal({ auctionId, data, onClose }: HistoryModalPr
               </div>
 
               {/* Actions */}
-              <div className="flex items-center gap-3 pt-4 border-t border-gray-100 mt-auto">
+              <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-gray-100 mt-auto">
                 {isSold ? (
                   <>
                     <Button

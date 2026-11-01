@@ -194,9 +194,43 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    overflow-wrap: anywhere;
+  }
+  /* Let nested cards, charts, and form controls shrink within flex/grid layouts. */
+  :where(.flex, .grid) > * {
+    min-width: 0;
+  }
+  img, video {
+    max-width: 100%;
+    height: auto;
+  }
+  input, select, textarea {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  /* Avoid automatic input zoom on iOS. */
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+    font-size: 16px;
+  }
+}
+
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  [data-mobile="true"] {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 
 .toaster [data-description] {
   color: #000000 !important;
+}
+
+.recharts-tooltip-wrapper {
+  max-width: 100%;
+}
+
+/* Hidden chart tooltips can retain coordinates from the previous screen size. */
+.recharts-tooltip-wrapper[style*="visibility: hidden"] {
+  transform: none !important;
 }

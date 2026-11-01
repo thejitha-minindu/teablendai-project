@@ -81,7 +81,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
             {/* Confirmation Modal */}
             {confirmAction && (
                 <div className="fixed inset-0 bg-opacity-0 backdrop-blur-sm flex items-center justify-center z-50 animate-fadeIn">
-                    <div className="bg-white rounded-xl p-6 max-w-md mx-4 shadow-2xl animate-slideUp">
+                    <div className="bg-white rounded-xl p-4 sm:p-6 max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto mx-4 shadow-2xl animate-slideUp">
                         <h3 className="text-xl font-semibold mb-3">
                             {confirmAction === "verify" ? "Verify User" : "Reject User"}
                         </h3>
@@ -117,9 +117,9 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
                 status === "rejected" ? "border-red-500" : 
                 isSeller ? "border-purple-500" : "border-green-500"
             }`}>
-                <div className="flex gap-4">
+                <div className="flex gap-3 sm:gap-4">
                     {/* Avatar with Role Badge */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                         <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-colors ${
                             status === "approved" ? "bg-green-100" : 
                             status === "rejected" ? "bg-red-100" : 
@@ -151,9 +151,9 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
 
                     {/* User Details */}
                     <div className="flex-1">
-                        <div className="flex justify-between items-start">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start">
                             <div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                     <h3 className="font-semibold text-lg text-gray-800">{name}</h3>
                                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
                                         isSeller 
@@ -167,7 +167,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
                             </div>
                             
                             {/* Action Icons */}
-                            <div className="flex gap-2">
+                            <div className="flex flex-wrap gap-2">
                                 <button 
                                     onClick={() => setShowDetails(!showDetails)}
                                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors group"
@@ -243,7 +243,7 @@ export function UserCard({ name, id, email, first_name, last_name, username, rol
 
                 {/* Action Buttons */}
                 {status === "pending" && (
-                    <div className="flex gap-3 mt-4 justify-end">
+                    <div className="flex flex-wrap gap-3 mt-4 justify-end">
                         <button
                             onClick={() => setConfirmAction("reject")}
                             disabled={loading}

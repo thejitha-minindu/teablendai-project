@@ -125,7 +125,7 @@ function PendingApprovalContent() {
 
   // --- UI Render ---
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-yellow-50 to-orange-50 flex flex-col items-center justify-center p-4">
+    <div className="min-h-screen w-full bg-gradient-to-br from-yellow-50 to-orange-50 flex flex-col items-center justify-center px-4 pb-8 pt-28">
       {/* Header Logo */}
       <div className="absolute top-6 left-6 z-20">
         <Link href="/" className="flex items-center gap-2 group">

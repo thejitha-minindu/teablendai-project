@@ -98,19 +98,19 @@ export function UseractivityCard({
     return (
         <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-green-500">
             {/* Header */}
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start mb-4">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
                         {getActivityIcon()}
                     </div>
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-gray-800">
                                 {userName}
                             </h3>
                             <span className="text-xs text-gray-400 font-mono">#{id}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                             <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor()}`}>
                                 <div className="flex items-center gap-1">
                                     {getStatusIcon()}
@@ -135,13 +135,13 @@ export function UseractivityCard({
             {/* Activity Details */}
             <div className="ml-13 pl-1">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-gray-50 rounded-lg p-4">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Activity className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Activity:</span> {activityType}
                         </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <Clock className="w-4 h-4 text-gray-400" />
                         <span className="text-gray-600">
                             <span className="font-medium">Date:</span> {date}

@@ -14,7 +14,7 @@ const CHART_TYPES = ["bar", "line", "pie"] as const;
 const DOWNLOAD_TOOLTIP_SIDE_OFFSET = 8;
 const CHART_HEIGHT_MULTI_DATASET = "h-[450px]";
 const CHART_HEIGHT_SINGLE = "h-96";
-const PIE_CHART_SIZE = "w-[400px] h-[400px]";
+const PIE_CHART_SIZE = "w-full max-w-[400px] aspect-square";
 
 interface VisualizationRendererProps {
   visualization: string;
@@ -68,8 +68,8 @@ const DownloadButton = memo(function DownloadButton({
             absolute top-3 right-3 z-10
             p-1.5
             bg-white border border-gray-200 rounded-lg shadow
-            opacity-0 group-hover:opacity-100
-            pointer-events-none group-hover:pointer-events-auto
+            opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100
+            pointer-events-auto md:pointer-events-none md:group-hover:pointer-events-auto
             transition-all duration-200 ease-in-out
             hover:bg-gray-50 hover:scale-105
           "
@@ -110,7 +110,7 @@ const TableRenderer = memo(function TableRenderer({ data }: { data: TableData })
   if (!rows.length) return null;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm relative group">
+    <div className="min-w-0 max-w-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm relative group">
       <DownloadButton onClick={downloadCSV} tooltip="Download CSV" />
 
       <div className="overflow-x-auto">
@@ -268,7 +268,7 @@ const ChartRenderer = memo(function ChartRenderer({ config }: { config: ChartCon
   const containerSize = isPieChart ? PIE_CHART_SIZE : `w-full ${chartHeight}`;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative group">
+    <div className="min-w-0 max-w-full bg-white border border-gray-200 rounded-xl p-4 shadow-sm relative group">
       <DownloadButton onClick={downloadChart} tooltip="Download Chart" />
 
       <div className={`relative mx-auto ${containerSize}`}>

@@ -54,6 +54,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { NotificationBell } from "@/components/layout/NotificationBell";
+import { MobileSidebarHeader } from "@/components/layout/MobileSidebarHeader";
 import { apiClient } from "@/lib/apiClient";
 import {
   clearStoredAuthToken,
@@ -132,7 +133,7 @@ const getRoleDisplayName = (role: UserRole): string => {
 export function NavSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { state, setOpen } = useSidebar();
+  const { open, setOpen, isMobile, setOpenMobile } = useSidebar();
   const [activeUserRole, setActiveUserRole] = useState<AuthUserRole>("seller");
   const [availableRoles, setAvailableRoles] = useState<AuthUserRole[]>(["buyer"]);
 
@@ -140,7 +141,8 @@ export function NavSidebar() {
     ? "analytics"
     : activeUserRole;
 
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = !open;
+  const setIsCollapsed = (collapsed: boolean) => setOpen(!collapsed);
   const [isSwitchingRole, setIsSwitchingRole] = useState(false);
   
   // Dynamic User State
@@ -210,13 +212,8 @@ export function NavSidebar() {
   };
 
   useEffect(() => {
-    if (state === "collapsed") setIsCollapsed(true);
-    else if (state === "expanded") setIsCollapsed(false);
-  }, [state]);
-
-  useEffect(() => {
-    setOpen(!isCollapsed);
-  }, [isCollapsed, setOpen]);
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
 
   const isActivePath = (href: string): boolean => pathname === href;
 
@@ -334,9 +331,10 @@ export function NavSidebar() {
   );
 
   return (
-    <div className="relative flex h-screen">
+    <div className="relative flex shrink-0 md:h-svh">
+      <MobileSidebarHeader />
       {/* Collapse button when sidebar is collapsed */}
-      {isCollapsed && (
+      {isCollapsed && !isMobile && (
         <motion.div
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -365,15 +363,15 @@ export function NavSidebar() {
 
       {/* Sidebar */}
       <AnimatePresence>
-        {!isCollapsed && (
+        {(!isCollapsed || isMobile) && (
           <motion.div
             initial={{ x: -300, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: -300, opacity: 0 }}
             transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="h-screen"
+            className="md:h-svh"
           >
-            <Sidebar collapsible="icon" className="flex flex-col h-screen border-r border-gray-200 bg-[#F9FAFB]">
+            <Sidebar collapsible="offcanvas" className="flex flex-col h-svh border-r border-gray-200 bg-[#F9FAFB]">
               
               {/* Logo Section */}
               <SidebarContent className="flex-1 flex flex-col">
@@ -397,8 +395,9 @@ export function NavSidebar() {
                           <TooltipTrigger asChild>
                             <button
                               type="button"
-                              onClick={() => setIsCollapsed(true)}
-                              className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors"
+                              onClick={() => isMobile ? setOpenMobile(false) : setIsCollapsed(true)}
+                              aria-label="Close navigation"
+                              className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors hidden md:block"
                             >
                               <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
                             </button>
@@ -435,7 +434,7 @@ export function NavSidebar() {
                             <SidebarMenuButton
                               asChild
                               isActive={isActive}
-                              className={`w-full transition-all duration-200 rounded-md p-3
+                              className={`w-full min-h-11 md:min-h-0 transition-all duration-200 rounded-md p-3
                                 ${isActive ? "bg-[#E5F7CB] text-[#3A5A40] font-bold border-l-4 border-[#3A5A40]" : "text-gray-600 hover:bg-gray-100 hover:text-[#3A5A40]"}`}
                             >
                               <Link href={item.href} className="flex items-center gap-3">

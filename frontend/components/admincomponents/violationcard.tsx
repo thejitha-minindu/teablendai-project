@@ -94,16 +94,16 @@ export function ViolationCard({
     return (
         <div className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 p-5 w-full border-l-4 border-red-600">
             {/* Header */}
-            <div className="flex justify-between items-start mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-start mb-4">
                 <div className="flex items-center gap-3">
                     <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                             <h3 className="font-semibold text-gray-800">
                                 Violation Report
                             </h3>
                             <span className="text-xs text-gray-400 font-mono">#{violationId}</span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-2 mt-1">
                             <div className={`px-2 py-0.5 rounded-full text-xs font-medium ${getViolationTypeColor()}`}>
                                 <div className="flex items-center gap-1">
                                     {violationType}
@@ -129,7 +129,7 @@ export function ViolationCard({
             {/* Content Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-600">
                             <span className="font-medium">Reported By:</span>{" "}
                             {senderName || senderId}
@@ -138,7 +138,7 @@ export function ViolationCard({
                             )}
                         </span>
                     </div>
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-600">
                             <span className="font-medium">Violator:</span>{" "}
                             {violatorName || violatorId}
@@ -149,19 +149,19 @@ export function ViolationCard({
                     </div>
                 </div>
                 <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-600">
                             <span className="font-medium">Violation Type:</span> {violationType}
                         </span>
                     </div>
                     {auctionId && (
-                        <div className="flex items-center gap-2 text-sm">
+                        <div className="flex flex-wrap items-center gap-2 text-sm">
                             <span className="text-gray-600">
                                 <span className="font-medium">Auction ID:</span> {auctionId}
                             </span>
                         </div>
                     )}
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-gray-600">
                             <span className="font-medium">Status:</span> {currentStatus}
                         </span>
@@ -185,7 +185,7 @@ export function ViolationCard({
                     <p className="text-xs text-gray-500 mb-2 flex items-center gap-1">
                         Update Violation Status:
                     </p>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                         {currentStatus !== "Under Review" && (
                             <button
                                 onClick={() => handleStatusChange("Under Review")}
@@ -216,7 +216,7 @@ export function ViolationCard({
             {/* Footer Buttons */}
             <div className="mt-4 flex justify-end gap-3">
                 <Link href={`/admin/sendnotification?prefillUserId=${violatorId}&prefillUserEmail=${encodeURIComponent(violatorEmail || "")}&prefillFirstName=${encodeURIComponent(violatorFirstName || "")}&prefillLastName=${encodeURIComponent(violatorLastName || "")}`}>
-                    <button className="flex items-center gap-2 px-4 py-2 rounded-lg border border-[#3A5A40] text-[#3A5A40] hover:bg-gray-50 transition-all duration-200">
+                    <button className="flex flex-wrap items-center gap-2 px-4 py-2 rounded-lg border border-[#3A5A40] text-[#3A5A40] hover:bg-gray-50 transition-all duration-200">
                         Send Notification
                     </button>
                 </Link>

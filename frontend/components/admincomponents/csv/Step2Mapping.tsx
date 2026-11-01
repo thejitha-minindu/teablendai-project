@@ -39,11 +39,11 @@ export default function Step2Mapping({
             <h2 className="font-semibold mb-4">Map Columns</h2>
 
             {tableFields[table]?.map((field) => (
-                <div key={field} className="flex gap-4 mb-3">
-                    <span className="w-48">{field}</span>
+                <div key={field} className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-4">
+                    <span className="w-full sm:w-48 sm:shrink-0">{field}</span>
 
                     <select
-                        className="border rounded p-1 flex-1"
+                        className="min-w-0 w-full border rounded p-2 sm:flex-1"
                         value={mapping[field] || ""}
                         onChange={(e) =>
                             setMapping({ ...mapping, [field]: e.target.value })

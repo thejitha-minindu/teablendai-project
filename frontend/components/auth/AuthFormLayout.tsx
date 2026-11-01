@@ -9,7 +9,7 @@ type AuthFormLayoutProps = {
 export function AuthFormLayout({ children }: AuthFormLayoutProps) {
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-gray-50 to-green-50 flex flex-col lg:flex-row">
-      <div className="lg:w-1/2 w-full relative min-h-[50vh] lg:min-h-screen">
+      <div className="lg:w-1/2 w-full relative overflow-hidden min-h-40 sm:min-h-56 lg:min-h-screen">
         <div className="absolute inset-0">
           <Image
             src="/login-image.webp"
@@ -17,7 +17,7 @@ export function AuthFormLayout({ children }: AuthFormLayoutProps) {
             fill
             className="object-cover object-center"
             priority
-            sizes="50vw"
+            sizes="(min-width: 1024px) 50vw, 100vw"
             quality={90}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/25 to-transparent" />

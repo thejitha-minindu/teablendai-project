@@ -70,14 +70,14 @@ export function AdminLoginForm() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-purple-50">
       {/* Header */}
-      <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
+      <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
         <Link href="/" className="flex items-center gap-2">
           <img src="/TeaLogo.png" className="h-15 w-auto object-contain" alt="Tea Blend AI Logo" />
         </Link>
       </header>
 
       {/* Main Content */}
-      <main className="flex min-h-screen items-center justify-center">
+      <main className="flex min-h-[calc(100dvh-5.25rem)] items-center justify-center py-6 sm:py-10">
         <div className="w-full max-w-md px-4">
           <div className="overflow-hidden rounded-2xl border border-purple-100 bg-white/95 shadow-2xl shadow-purple-100/60 backdrop-blur-sm">
             

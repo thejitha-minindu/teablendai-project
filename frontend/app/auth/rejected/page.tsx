@@ -59,7 +59,7 @@ function RejectedAccountContent() {
 
     // --- UI Render ---
     return (
-        <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-pink-50 flex flex-col items-center justify-center p-4">
+        <div className="min-h-screen w-full bg-gradient-to-br from-red-50 to-pink-50 flex flex-col items-center justify-center px-4 pb-8 pt-28">
             
             {/* Header Logo */}
             <div className="absolute top-6 left-6 z-20">

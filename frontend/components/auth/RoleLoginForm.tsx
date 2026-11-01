@@ -184,9 +184,9 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
 
   return (
     <>
-      <div className="h-screen overflow-hidden bg-gradient-to-br from-gray-50 via-white to-green-50">
+      <div className="min-h-dvh bg-gradient-to-br from-gray-50 via-white to-green-50">
         {/* Header */}
-        <header className="absolute top-0 left-0 right-0 z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
+        <header className="relative z-10 mx-auto flex w-full max-w-7xl items-center justify-between px-6 py-3 md:px-8">
           <Link href="/" className="flex items-center gap-2">
             <img src="/TeaLogo.png" className="h-15 w-35" alt="Tea Blend AI Logo" />
           </Link>
@@ -201,7 +201,7 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
         </header>
 
         {/* Main Content */}
-        <main className="flex h-full items-center justify-center">
+        <main className="flex min-h-[calc(100dvh-5.25rem)] items-center justify-center px-0 py-6 sm:py-10">
           <div className="w-full max-w-6xl px-4">
             <div className="grid overflow-hidden rounded-2xl border border-green-100 bg-white/95 shadow-2xl shadow-green-100/60 backdrop-blur-sm lg:grid-cols-2">
               {/* Left Side - Image Section */}
@@ -228,7 +228,7 @@ export function RoleLoginForm({ role }: RoleLoginFormProps) {
               </div>
 
               {/* Right Side - Login Form */}
-              <div className="flex max-h-[90vh] flex-col overflow-y-auto p-6 sm:p-8">
+              <div className="flex flex-col p-6 sm:p-8">
                 <div className="mb-5 text-center">
                   <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
                     {config.title}

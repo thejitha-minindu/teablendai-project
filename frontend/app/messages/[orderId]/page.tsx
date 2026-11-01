@@ -114,7 +114,7 @@ export default function ChatPage() {
       ];
 
   return (
-    <div className="flex flex-col h-screen bg-[#f3f6f4] max-w-4xl mx-auto border-x border-emerald-950/10 shadow-2xl overflow-hidden font-sans">
+    <div className="flex flex-col h-dvh bg-[#f3f6f4] max-w-4xl mx-auto border-x border-emerald-950/10 shadow-2xl overflow-hidden font-sans">
 
       {/* --- PREMIUM CHAT HEADER --- */}
       <header className="bg-white/95 backdrop-blur-md px-4 sm:px-6 py-3 border-b border-emerald-900/10 flex items-center justify-between shadow-xs z-20">
@@ -352,7 +352,7 @@ export default function ChatPage() {
       </div>
 
       {/* --- STYLISH INPUT AREA --- */}
-      <div className="bg-white/95 backdrop-blur-md p-3 sm:p-4 border-t border-emerald-900/10 z-20">
+      <div className="bg-white/95 backdrop-blur-md p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4 border-t border-emerald-900/10 z-20">
         <form onSubmit={handleSend} className="flex items-center gap-2.5">
           <div className="flex-1 relative">
             <input

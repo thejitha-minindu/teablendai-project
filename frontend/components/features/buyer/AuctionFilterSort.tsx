@@ -152,7 +152,7 @@ export function AuctionFilterSort({
           </div>
 
           {/* Second Row - Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <div>
               <label className="text-sm font-semibold text-foreground mb-2 block">
                 Grade

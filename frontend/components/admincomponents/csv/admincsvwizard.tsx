@@ -20,7 +20,7 @@ export default function AdminCsvWizard() {
     };
 
     return (
-        <div className="max-w-6xl mx-auto p-6 bg-gray-50 rounded-xl shadow">
+        <div className="min-w-0 max-w-6xl mx-auto p-3 sm:p-6 bg-gray-50 rounded-xl shadow">
             <Stepper current={step} />
 
             <div className="mt-6">
@@ -54,7 +54,7 @@ export default function AdminCsvWizard() {
                 )}
             </div>
 
-            <div className="flex justify-between mt-8">
+            <div className="flex flex-wrap justify-between gap-3 mt-8">
                 <button
                     disabled={step === 0}
                     onClick={() => setStep(step - 1)}

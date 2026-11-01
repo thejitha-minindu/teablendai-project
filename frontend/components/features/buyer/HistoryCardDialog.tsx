@@ -69,7 +69,7 @@ export function HistoryCardDialog({ auctionId }: HistoryCardDialogProps) {
           More
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] flex flex-col lg:p-15 md:p-10 p-6">
+      <DialogContent className="sm:max-w-xl lg:max-w-3xl flex flex-col p-4 sm:p-6">
         {loading ? (
           <>
             <DialogHeader>
@@ -130,8 +130,8 @@ export function HistoryCardDialog({ auctionId }: HistoryCardDialogProps) {
                   </div>
                 </div>
 
-                <div className="flex flex-col h-full items-center sm:items-start text-xs lg:mr-5 mt-0 mb-10">
-                  <ScrollArea className="h-48 md:h-60 lg:h-75 w-full sm:w-64 md:w-72 lg:w-80 rounded-md border ">
+                <div className="flex min-w-0 w-full md:w-auto flex-col h-full items-stretch text-xs lg:mr-5 mt-0 mb-10">
+                  <ScrollArea className="h-48 md:h-60 lg:h-75 w-full md:w-64 lg:w-80 rounded-md border ">
                     <div className="p-4">
                       <h4 className="mb-4 text-sm leading-none font-medium">
                         Bids

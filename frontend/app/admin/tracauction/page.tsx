@@ -151,7 +151,7 @@ export default function TrackAuctionPage() {
     }
 
     return (
-        <div className="flex flex-col p-6 min-h-screen">
+        <div className="flex flex-col p-0 md:p-2 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800">Track Auctions</h1>
@@ -161,7 +161,7 @@ export default function TrackAuctionPage() {
             </div>
 
             {/* Stats Overview */}
-            <div className="grid grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
                     <p className="text-xs text-gray-500">Total Auctions</p>
                     <p className="text-2xl font-bold text-gray-800">{filterStats.total}</p>
@@ -182,7 +182,7 @@ export default function TrackAuctionPage() {
 
             {/* Search and Filter Bar */}
             <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
-                <div className="flex gap-4 mb-4">
+                <div className="flex flex-col sm:flex-row gap-3 mb-4">
                     <div className="flex-1 relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input

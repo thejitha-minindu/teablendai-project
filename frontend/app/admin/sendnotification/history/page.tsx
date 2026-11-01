@@ -84,7 +84,7 @@ export default function NotificationHistoryPage() {
     const hasActiveFilters = searchTerm !== "" || typeFilter !== "all";
 
     return (
-        <div className="p-6 min-h-screen">
+        <div className="p-0 md:p-2 min-h-screen">
             {/* Header */}
             <div className="mb-6">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -94,7 +94,7 @@ export default function NotificationHistoryPage() {
             </div>
 
             {/* Stats Summary */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
                 <div className="bg-white rounded-lg p-4 shadow-sm border-l-4 border-blue-500">
                     <p className="text-xs text-gray-500">Total Sent</p>
                     <p className="text-2xl font-bold text-gray-800">{notifications.length}</p>

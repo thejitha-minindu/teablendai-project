@@ -75,7 +75,7 @@ export default function SystemActivityPage() {
   ];
 
   return (
-    <div className="p-6 min-h-screen">
+    <div className="p-0 md:p-2 min-h-screen">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
@@ -134,7 +134,7 @@ export default function SystemActivityPage() {
       )}
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 flex items-center justify-between">
           <div>
             <p className="text-xs font-semibold text-gray-405 uppercase tracking-wider">Total Recorded</p>
@@ -167,7 +167,7 @@ export default function SystemActivityPage() {
 
       {/* Search and Filter Bar */}
       <div className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-6 transition-opacity duration-300 ${isLive ? "opacity-50 pointer-events-none" : ""}`}>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 font-sans">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4 font-sans">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />

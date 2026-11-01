@@ -15,7 +15,7 @@ export default function AnalyticsLayout({
     <ProtectedRoute>
       <SidebarProvider>
         <NavSidebar />
-        <main className="p-10 m-7 h-max-screen w-full">
+        <main className="min-w-0 flex-1 px-4 pb-6 pt-20 sm:px-6 md:p-8 lg:p-10">
           {children}
         </main>
       </SidebarProvider>

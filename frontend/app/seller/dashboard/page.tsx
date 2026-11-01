@@ -284,26 +284,26 @@ export default function SellerDashboardPage() {
   }, [targetDate, today, allAuctions]);
 
   return (
-    <div className="px-4 sm:px-6 py-8 min-h-screen rounded-xl bg-[#FFFFFF]">
+    <div className="py-2 md:py-4 min-h-screen rounded-xl bg-[#FFFFFF]">
       
       {/* 1. Page Title */}
-      <div className="mb-5 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold">Seller Dashboard</h1>
           <p className="text-muted-foreground mt-2">Welcome back</p>
         </div>
-        <NotificationBell />
+        <NotificationBell className="hidden md:inline-flex" />
       </div>
 
       {/* --- ROW 1: Chart & Hero --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 mb-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 mb-8">
         {/* Left: Chart */}
-        <div className="lg:col-span-1 h-full min-h-[420px]">
+        <div className="xl:col-span-4 h-full min-h-[420px]">
             <ChartPie />
         </div>
 
         {/* Right: Create Auction Hero */}
-        <div className="lg:col-span-3 h-full">
+        <div className="xl:col-span-8 h-full">
             <div 
                 className="relative bg-gradient-to-br from-[#2D4A2B] via-[#3A5A40] to-[#1A2F1C] rounded-2xl shadow-xl overflow-hidden group h-full flex items-center min-h-[420px]"
                 onMouseEnter={() => setIsHovered(true)}
@@ -314,7 +314,7 @@ export default function SellerDashboardPage() {
                     <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -mr-20 -mt-20" />
                 </div>
 
-                <div className="relative z-10 px-8 md:px-12 py-10 w-full">
+                <div className="relative z-10 px-5 sm:px-8 md:px-10 py-10 w-full">
                     <div className="max-w-xl">
                         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 border border-white/10 text-white text-xs font-bold uppercase tracking-wider mb-4 backdrop-blur-md">
                             <span className="w-2 h-2 rounded-full bg-[#E5F7CB] animate-pulse" />
@@ -327,7 +327,7 @@ export default function SellerDashboardPage() {
                         <p className="text-gray-200 text-lg mb-8 font-medium">
                             Ready to sell? Define your grade, set your price, and reach global buyers in minutes.
                         </p>
-                        <Link href="/seller/create-auction" className="inline-flex items-center gap-3 bg-white text-[#1A2F1C] font-bold py-3.5 px-8 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/btn">
+                        <Link href="/seller/create-auction" className="inline-flex items-center gap-3 bg-white text-[#1A2F1C] font-bold py-3.5 px-4 sm:px-8 rounded-xl shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300 group/btn">
                             <Plus className="w-5 h-5 group-hover/btn:rotate-90 transition-transform duration-500 text-[#3A5A40]" />
                             <span>Create New Auction</span>
                             <ArrowRight className="w-4 h-4 text-gray-400 group-hover/btn:text-[#3A5A40] group-hover/btn:translate-x-1 transition-all" />
@@ -339,9 +339,9 @@ export default function SellerDashboardPage() {
       </div>
 
       {/* --- ROW 2: Calendar & Listings --- */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
         {/* Left: Calendar */}
-        <div className="lg:col-span-1">
+        <div className="xl:col-span-4">
             <div className="flex flex-col items-center">
                 <div className="w-full flex justify-between items-center mb-4 px-2">
                     <h3 className="font-semibold text-gray-700">Calendar</h3>
@@ -372,8 +372,8 @@ export default function SellerDashboardPage() {
         </div>
 
         {/* Right: Listings Grid */}
-        <div className="lg:col-span-3 flex flex-col h-full">
-            <div className="flex items-center justify-between mb-6">
+        <div className="xl:col-span-8 flex flex-col h-full">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
                 <div className="flex items-center gap-3">
                     <h2 className="text-xl font-bold text-[#1A2F1C]">
                         {isSameDay(targetDate, today) ? "Today's Auctions" : `Auctions on ${formatDateTitle(targetDate)}`}
@@ -387,7 +387,7 @@ export default function SellerDashboardPage() {
                     <p className="text-gray-500 animate-pulse">Loading dashboard data...</p>
                 </div>
             ) : displayedAuctions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-6">
                     {displayedAuctions.map((auction) => (
                         <AuctionCard 
                             key={auction.id}

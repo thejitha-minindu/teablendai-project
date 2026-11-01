@@ -15,8 +15,10 @@ function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(true);
   const [verified, setVerified] = useState(false);
   const [order, setOrder] = useState<any>(null);
+  const [receiptDate, setReceiptDate] = useState<Date | null>(null);
 
   useEffect(() => {
+    setReceiptDate(new Date());
     setTimeout(() => setShowContent(true), 200);
 
     const verifyPayment = async () => {
@@ -189,7 +191,7 @@ function PaymentSuccessContent() {
           </div>
           <div className="text-right">
             <p className="text-2xl font-bold text-green-600">PAID</p>
-            <p className="text-sm text-gray-500 font-mono mt-1">{new Date().toLocaleString()}</p>
+            <p className="text-sm text-gray-500 font-mono mt-1">{receiptDate?.toLocaleString()}</p>
           </div>
         </div>
 
@@ -198,7 +200,7 @@ function PaymentSuccessContent() {
             <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Order Information</h3>
             <p className="font-mono text-sm text-gray-800 mb-1"><span className="font-semibold text-gray-500">Order ID:</span> {order?.display_order_id || orderId}</p>
             <p className="font-mono text-sm text-gray-800 mb-1"><span className="font-semibold text-gray-500">Transaction ID:</span> {txnId}</p>
-            <p className="font-mono text-sm text-gray-800 mb-1"><span className="font-semibold text-gray-500">Date:</span> {order?.order_date ? new Date(order.order_date).toLocaleDateString() : new Date().toLocaleDateString()}</p>
+            <p className="font-mono text-sm text-gray-800 mb-1"><span className="font-semibold text-gray-500">Date:</span> {order?.order_date ? new Date(order.order_date).toLocaleDateString() : receiptDate?.toLocaleDateString()}</p>
             <p className="text-sm text-gray-800 mt-3"><span className="font-semibold text-gray-500">Buyer:</span> {order?.buyer_name || "N/A"}</p>
           </div>
           <div>
