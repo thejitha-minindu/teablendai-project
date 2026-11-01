@@ -70,15 +70,19 @@ async def lifespan(app: FastAPI):
     app.state.mcp_client = None
     compatibility = None
 
-    try:
-        compatibility = ensure_runtime_schema_compatibility()
-        logger.info("Runtime schema compatibility checks completed.")
-    except Exception:
-        logger.exception("Runtime schema compatibility checks failed; continuing startup.")
+    if settings.RUNTIME_SCHEMA_COMPATIBILITY_ENABLED:
+        try:
+            compatibility = await asyncio.to_thread(ensure_runtime_schema_compatibility)
+            logger.info("Runtime schema compatibility checks completed.")
+        except Exception:
+            logger.exception("Runtime schema compatibility checks failed; continuing startup.")
+    else:
+        logger.info("Runtime schema checks disabled; schema migrations are managed separately.")
 
     # Clean up any stale live auctions that expired while the server was offline
     try:
-        sync_auction_statuses(SessionLocal())
+        with SessionLocal() as startup_db:
+            sync_auction_statuses(startup_db)
         logger.info("Stale auction cleanup completed during startup")
     except Exception as e:
         logger.exception(f"Error cleaning up stale auctions on startup: {e}")
@@ -89,7 +93,8 @@ async def lifespan(app: FastAPI):
     logger.info("Auction manager background task started")
 
     # Ensure outbox table exists before publisher starts polling.
-    ensure_outbox_table_exists()
+    if settings.RUNTIME_SCHEMA_COMPATIBILITY_ENABLED:
+        await asyncio.to_thread(ensure_outbox_table_exists)
     
     # Initialize and start outbox publisher
     init_outbox_publisher(SessionLocal)
@@ -112,11 +117,14 @@ async def lifespan(app: FastAPI):
         except Exception:
             logger.exception("Database schema initialization failed; continuing startup.")
 
-    try:
-        app.state.mcp_client = await get_mcp_client()
-        logger.info("MCP client initialized during startup.")
-    except Exception:
-        logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
+    if settings.MCP_WARMUP_ON_STARTUP:
+        try:
+            app.state.mcp_client = await get_mcp_client()
+            logger.info("MCP client initialized during startup.")
+        except Exception:
+            logger.exception("MCP initialization failed at startup; continuing without warm MCP client.")
+    else:
+        logger.info("MCP startup warmup disabled; chat initializes its client on demand.")
 
     try:
         yield

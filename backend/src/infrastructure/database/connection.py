@@ -5,18 +5,16 @@ Shared database connection logic for SQLAlchemy engine.
 import logging
 from dotenv import load_dotenv
 load_dotenv()
-from sqlalchemy import create_engine
-from sqlalchemy.pool import NullPool
+from src.infrastructure.database.engine import get_database_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.orm import declarative_base
-from src.config import get_mssql_connection_string, get_settings
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
 Base = declarative_base()
 
 def create_database_engine():
-    connection_string = get_mssql_connection_string()
     settings = get_settings()
     logger.info(
         "Initializing MSSQL database engine: server='%s', port=%s, database='%s', "
@@ -31,13 +29,7 @@ def create_database_engine():
         settings.MSSQL_TRUST_SERVER_CERTIFICATE,
     )
     try:
-        engine = create_engine(
-            connection_string, 
-            poolclass=NullPool, 
-            echo=False,
-            connect_args={"timeout": 30}
-        )
-        return engine
+        return get_database_engine()
     except Exception as e:
         settings = get_settings()
         raise RuntimeError(

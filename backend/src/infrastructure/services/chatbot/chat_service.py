@@ -406,6 +406,7 @@ class ChatService:
                 columns=columns,
                 rows=rows,
                 candidates=["bar", "line", "pie", "table"],
+                sql_query=followup_context.get("sql_query"),
             )
 
             chosen_type = llm_out["visualization_type"]
@@ -456,7 +457,8 @@ class ChatService:
             q_lower = user_message.lower()
             is_obvious_data_query = any(word in q_lower for word in [
                 "average", "compare", "total", "sum", "count",
-                "how many", "how much", "show", "list", "price", "auction", "details"
+                "how many", "how much", "show", "list", "price", "auction", "details",
+                "profit", "margin", "revenue", "sales", "highest", "lowest",
             ])
 
             if is_obvious_data_query:
@@ -466,7 +468,8 @@ class ChatService:
                 is_relevant = await self._verify_data_relevance(
                     question=user_message,
                     data=db_result.get("raw_data", []),
-                    columns=db_result.get("columns", [])
+                    columns=db_result.get("columns", []),
+                    sql_query=db_result.get("sql_query"),
                 )
 
             if not is_relevant:
@@ -545,7 +548,8 @@ class ChatService:
                 question=user_message,
                 columns=columns,
                 rows=rows,
-                candidates=candidates
+                candidates=candidates,
+                sql_query=db_result.get("sql_query"),
             )
 
             chosen_type = llm_out["visualization_type"]
@@ -622,16 +626,6 @@ class ChatService:
 
         # Database query failed (timeout, SQL generation failure, etc.).
         # For knowledge-style tea questions, fall back to web search.
-        db_error_text = " ".join([
-            str(db_result.get("error", "")),
-            str(db_result.get("message", "")),
-        ]).lower()
-        is_empty_sql_generation = (
-            "empty query" in db_error_text
-            or "generated an empty" in db_error_text
-            or (not str(db_result.get("generated_sql", "")).strip())
-        )
-
         question_lower = user_message.lower()
         knowledge_markers = [
             "tell me",
@@ -659,10 +653,20 @@ class ChatService:
             "our platform",
             "database",
             "system",
+            "blend",
+            "profit",
+            "margin",
+            "revenue",
+            "sales",
+            "inventory",
+            "warehouse",
+            "formulation",
+            "customer",
+            "order",
         ]
         looks_like_platform_data_query = any(marker in question_lower for marker in platform_data_markers)
 
-        if (is_empty_sql_generation or looks_like_knowledge_query) and not looks_like_platform_data_query:
+        if looks_like_knowledge_query and not looks_like_platform_data_query:
             logger.warning("[Chat] Database failed; falling back to web search for knowledge-style query")
             search_result = await self.mcp_client.search_web(user_message)
 
@@ -962,7 +966,8 @@ class ChatService:
         self,
         question: str,
         data: list,
-        columns: list
+        columns: list,
+        sql_query: Optional[str] = None,
     ) -> bool:
         """
         Use LLM to verify if database results actually answer the question.
@@ -981,6 +986,7 @@ class ChatService:
             system = SystemMessage(content=(
                 "You are a data relevance checker. "
                 "Determine if database results answer the user's question. "
+                "Use the executed SQL to recognize applied filters even when filtered columns are absent from the results. "
                 "Reply ONLY with 'yes' or 'no'."
             ))
 
@@ -989,6 +995,7 @@ class ChatService:
 
                     Database returned {len(data)} rows with columns: {columns}
                     Sample data: {sample}
+                    Executed SQL: {sql_query}
 
                     Does this data answer the question?
 
@@ -1100,7 +1107,8 @@ class ChatService:
         question: str,
         columns: list,
         rows: list,
-        candidates: list
+        candidates: list,
+        sql_query: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Use Gemini to summarize DB results and choose visualization type"""
 
@@ -1128,6 +1136,7 @@ class ChatService:
                 system = SystemMessage(content=(
                     "You are TeaBlendAI, an analytics assistant for Sri Lankan tea data.\n"
                     "Summarize the data in 4-5 sentences. Be accurate and grounded in the data.\n"
+                    "Use the executed SQL to identify applied filters. A filtered date column need not appear in the result.\n"
                     "Return STRICT JSON only: {\"summary\": \"...\"}"
                 ))
 
@@ -1136,6 +1145,7 @@ class ChatService:
                     "question": question,
                     "columns": columns,
                     "sample_rows": sample_rows,
+                    "executed_sql": sql_query,
                 }))
 
                 resp = await self.llm.ainvoke([system, human])
@@ -1170,6 +1180,7 @@ class ChatService:
                 "Prefer BAR for comparing categories, LINE for time trends, "
                 "PIE only for share/proportion questions, TABLE for raw data.\n"
                 "Never invent values.\n"
+                "Use the executed SQL to identify applied filters. A filtered date column need not appear in the result.\n"
                 "Return STRICT JSON only: {\"summary\": \"...\", \"visualization_type\": \"...\"}"
             ))
 
@@ -1178,6 +1189,7 @@ class ChatService:
                 "question": question,
                 "columns": columns,
                 "sample_rows": sample_rows,
+                "executed_sql": sql_query,
                 "chart_candidates": candidates,
                 "instruction": (
                     "Return JSON with exactly two fields: "

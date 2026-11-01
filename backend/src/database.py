@@ -1,10 +1,10 @@
-from sqlalchemy import create_engine, text
-from sqlalchemy.pool import NullPool
+from sqlalchemy import text
+from src.infrastructure.database.engine import get_database_engine
 from langchain_community.utilities import SQLDatabase
 from sqlalchemy.orm import sessionmaker, Session
 
 from src.infrastructure.database.base import Base
-from src.config import get_mssql_connection_string, get_settings
+from src.config import get_settings
 
 # Create a session factory (singleton)
 _ENGINE = None
@@ -25,11 +25,9 @@ def create_database_connection():
 
     Supports both Trusted Connection (Windows auth) and SQL auth.
     """
-    connection_string = get_mssql_connection_string()
 
     try:
-        engine = create_engine(connection_string, poolclass=NullPool, echo=False)
-        return engine
+        return get_database_engine()
     except Exception as e:
         settings = get_settings()
         raise RuntimeError(

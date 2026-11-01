@@ -14,6 +14,7 @@ from src.domain.models.auction_status import AuctionStatus
 from src.domain.constants.auction_constants import AuctionTimingConstants, AuctionEventType
 from src.domain.services.buyer.auction_timing_service import AuctionTimingService
 from src.application.use_cases.buyer.live_auction_event_service import LiveAuctionEventService
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -22,41 +23,56 @@ class AuctionManager:
     
     def __init__(self):
         self.running = False
+        self._processing_lock = asyncio.Lock()
         
     async def start_background_task(self):
         # Start background task for auction state management
         self.running = True
-        logger.info(f"Auction manager background task started ({AuctionTimingConstants.BACKGROUND_TASK_INTERVAL}s intervals)")
+        interval = get_settings().AUCTION_POLL_INTERVAL_SECONDS
+        logger.info("Auction manager background task started (%ss intervals)", interval)
         
         while self.running:
             try:
                 await self.process_auctions()
-                await asyncio.sleep(AuctionTimingConstants.BACKGROUND_TASK_INTERVAL)
+                await asyncio.sleep(interval)
             except Exception as e:
                 logger.error(f"Error in auction manager: {e}", exc_info=True)
-                await asyncio.sleep(AuctionTimingConstants.BACKGROUND_TASK_INTERVAL)
+                await asyncio.sleep(interval)
     
     async def process_auctions(self):
-        # Process all auctions for state transitions
+        # Sessions and ORM objects stay in the worker; sockets stay on this loop.
+        async with self._processing_lock:
+            events = await asyncio.to_thread(self._process_auctions_sync)
+            event_service = LiveAuctionEventService(connection_manager)
+            for event in events:
+                try:
+                    await event_service.publish_event(event)
+                except Exception:
+                    logger.exception("Failed to publish %s for %s", event.event_type, event.auction_id)
+
+    def _process_auctions_sync(self) -> list[AuctionEvent]:
+        events: list[AuctionEvent] = []
         db = SessionLocal()
         try:
             current_time = datetime.now(timezone.utc)
             
             # Process SCHEDULE -> LIVE transition
-            await self._process_scheduled_auctions(db, current_time)
+            self._process_scheduled_auctions(db, current_time)
             
             # Process LIVE auctions (waiting for winner)
-            await self._process_live_auctions(db, current_time)
+            self._process_live_auctions(db, current_time, events)
             
             # Process WON auctions (in grace period)
-            await self._process_won_auctions(db, current_time)
+            self._process_won_auctions(db, current_time, events)
             
         except Exception as e:
+            db.rollback()
             logger.error(f"Error processing auctions: {e}", exc_info=True)
         finally:
             db.close()
+        return events
     
-    async def _process_scheduled_auctions(self, db: Session, current_time: datetime):
+    def _process_scheduled_auctions(self, db: Session, current_time: datetime):
         # Transition scheduled auctions to live when start time is reached
         scheduled_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.SCHEDULE.value
@@ -69,7 +85,7 @@ class AuctionManager:
                 db.commit()
                 logger.info(f"Auction transitioned to LIVE: {auction.auction_id}")
     
-    async def _process_live_auctions(self, db: Session, current_time: datetime):
+    def _process_live_auctions(self, db: Session, current_time: datetime, events: list[AuctionEvent]):
         # Check if live auctions should transition to WON
         live_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.LIVE.value,
@@ -96,16 +112,16 @@ class AuctionManager:
                     
                     if time_since_last_bid >= wait_threshold:
                         logger.info(f"Marking winner for auction {auction.auction_id}")  # ✅ KEEP INFO - important event
-                        await self._mark_winner(auction, highest_bid, db)
+                        event = self._mark_winner(auction, highest_bid, db)
+                        if event is not None:
+                            events.append(event)
     
-    async def _process_won_auctions(self, db: Session, current_time: datetime):
+    def _process_won_auctions(self, db: Session, current_time: datetime, events: list[AuctionEvent]):
         # Check if won auctions should transition to HISTORY (after grace period)
         won_auctions = db.query(Auction).filter(
             Auction.status == AuctionStatus.LIVE.value,
             Auction.buyer.isnot(None)
         ).all()
-        
-        event_service = LiveAuctionEventService(connection_manager)
         
         for auction in won_auctions:
             # Get last bid time
@@ -121,7 +137,7 @@ class AuctionManager:
                 )
                 
                 if is_grace_expired:
-                    await self._close_auction(auction, db)
+                    self._close_auction(auction, db)
                     
                     event = AuctionEvent(
                         event_id=str(uuid4()),
@@ -133,13 +149,9 @@ class AuctionManager:
                             "final_price": auction.sold_price,
                         }
                     )
-                    try:
-                        await event_service.publish_event(event)
-                        logger.info(f"AUCTION_ENDED event published: {auction.auction_id}")
-                    except Exception as e:
-                        logger.error(f"Failed to publish AUCTION_ENDED for {auction.auction_id}: {e}")
+                    events.append(event)
     
-    async def _mark_winner(self, auction: Auction, highest_bid: Bid, db: Session):
+    def _mark_winner(self, auction: Auction, highest_bid: Bid, db: Session):
         # Mark auction winner after waiting period expires
         try:
             auction.buyer = highest_bid.buyer_id
@@ -152,7 +164,6 @@ class AuctionManager:
             buyer_user = db.query(User).filter(User.user_id == highest_bid.buyer_id).first()
             buyer_name = buyer_user.user_name if buyer_user else None
             
-            event_service = LiveAuctionEventService(connection_manager)
             event = AuctionEvent(
                 event_id=str(uuid4()),
                 event_type=AuctionEventType.AUCTION_WON,
@@ -164,14 +175,13 @@ class AuctionManager:
                     "final_price": highest_bid.bid_amount,
                 }
             )
-            await event_service.publish_event(event)
-            logger.info(f"AUCTION_WON event published for {auction.auction_id}")
+            return event
             
         except Exception as e:
             logger.error(f"Error marking winner for {auction.auction_id}: {e}", exc_info=True)
             db.rollback()
     
-    async def _close_auction(self, auction: Auction, db: Session):
+    def _close_auction(self, auction: Auction, db: Session):
         # Close auction
         try:
             from src.domain.models.order import WinsAuction

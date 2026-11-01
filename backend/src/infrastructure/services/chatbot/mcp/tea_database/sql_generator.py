@@ -178,8 +178,12 @@ class SQLGenerator:
 
         For profit margin-style queries:
         - Calculate revenue as (PricePerKg * QuantityKg).
-        - If exact cost linkage is complex, use a simpler approximation or revenue-focused output.
-        - Prefer robust, executable SQL over highly complex matching logic.
+        - Aggregate mapped purchase costs by SaleID FIRST, using BlendPurchaseMapping JOIN TeaPurchase.
+        - Join that one-row-per-sale cost subquery to TeaBlendSale, then group by BlendName.
+        - Count each sale's revenue exactly once. Never SUM sale revenue directly over the one-to-many purchase-mapping join.
+        - Calculate margin as 100.0 * (SUM(sale revenue) - SUM(mapped cost)) / NULLIF(SUM(sale revenue), 0).
+        - Apply requested dates to TeaBlendSale.SaleDate before aggregation; use a half-open date range for a specific year.
+        - Return the calculated margin, not revenue presented as a substitute for profit margin.
 
         Output-shape requirements for charting:
         - Return grouped data suitable for charts (time series, category breakdowns).
