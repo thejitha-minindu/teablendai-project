@@ -492,26 +492,26 @@ export default function AuthProfilePage() {
 }
 
   // Error Screen (if API fails completely)
-  // if (!profile) {
-  //   return (
-  //     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 flex items-center justify-center px-4">
-  //       <div className="max-w-md rounded-[2rem] border border-red-200 bg-white p-8 text-center shadow-xl">
-  //         <h1 className="text-2xl font-bold text-gray-900">Profile unavailable</h1>
-  //         <p className="mt-3 text-sm leading-6 text-gray-600">
-  //           We couldn&apos;t load your profile details right now.
-  //         </p>
-  //         <div className="mt-6 flex justify-center gap-3">
-  //           <button onClick={loadProfile} className="rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700">
-  //             Retry
-  //           </button>
-  //           <Link href="/auth" className="rounded-full border border-green-200 px-5 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
-  //             Back
-  //           </Link>
-  //         </div>
-  //       </div>
-  //     </div>
-  //   );
-  // }
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 flex items-center justify-center px-4">
+        <div className="max-w-md rounded-[2rem] border border-red-200 bg-white p-8 text-center shadow-xl">
+          <h1 className="text-2xl font-bold text-gray-900">Profile unavailable</h1>
+          <p className="mt-3 text-sm leading-6 text-gray-600">
+            We couldn&apos;t load your profile details right now.
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button onClick={loadProfile} className="rounded-full bg-green-600 px-5 py-2 text-sm font-semibold text-white hover:bg-green-700">
+              Retry
+            </button>
+            <Link href="/auth" className="rounded-full border border-green-200 px-5 py-2 text-sm font-semibold text-green-700 hover:bg-green-50">
+              Back
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Main Profile Page
   return (
