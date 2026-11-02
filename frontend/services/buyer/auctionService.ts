@@ -15,7 +15,7 @@ const BUYER_API_BASE = "/buyer";
 
 // Create a new auction
 export async function createAuction(auction: Partial<AuctionData>): Promise<AuctionData> {
-    const response = await apiClient.post<AuctionData>(`${BUYER_API_BASE}/auctions/`, auction);
+    const response = await apiClient.post<AuctionData>(`${BUYER_API_BASE}/auctions`, auction);
     return response.data;
 }
 
@@ -46,7 +46,7 @@ export async function listAuctions(params?: {
     asBuyer?: boolean;
     status?: string;
 }): Promise<AuctionCard[]> {
-    const response = await apiClient.get<AuctionCard[]>(`${BUYER_API_BASE}/auctions/`, {
+    const response = await apiClient.get<AuctionCard[]>(`${BUYER_API_BASE}/auctions`, {
         params: {
             ...(params?.userId ? { user_id: params.userId } : {}),
             ...(params?.asBuyer !== undefined ? { as_buyer: params.asBuyer } : {}),
