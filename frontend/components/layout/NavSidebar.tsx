@@ -388,26 +388,7 @@ export function NavSidebar() {
                         onClick={() => router.push(`/${(getRoleDisplayName(activeUserRole)).toLowerCase()}/dashboard`)}
                       />
                     </div>
-                    <div className="flex items-center gap-1">
-                      <NotificationBell className="border-0 shadow-none hover:bg-gray-200 text-gray-600 hover:text-gray-900" />
-                      <TooltipProvider delayDuration={300}>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              type="button"
-                              onClick={() => isMobile ? setOpenMobile(false) : setIsCollapsed(true)}
-                              aria-label="Close navigation"
-                              className="relative group p-1.5 hover:bg-gray-200 rounded-lg transition-colors hidden md:block"
-                            >
-                              <PanelLeftIcon className="w-5 h-5 text-gray-600 group-hover:text-gray-900" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right" sideOffset={10} className="z-[9999] bg-gray-900 text-white text-xs">
-                            Collapse sidebar
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                    </div>
+                    
                   </div>
                 </SidebarGroup>
 
