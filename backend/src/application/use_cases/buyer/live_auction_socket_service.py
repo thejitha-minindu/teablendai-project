@@ -18,7 +18,14 @@ class LiveAuctionSocketService:
         auction_id: str,
         user_id: str,
     ) -> None:
-        auction = self.repo.get_auction_by_id(auction_id)
+        try:
+            auction = self.repo.get_auction_by_id(auction_id)
+        finally:
+            # A WebSocket can stay open for minutes. Release the request's DB
+            # connection after this one-time lookup instead of holding it for
+            # the lifetime of the socket.
+            self.repo.db.close()
+
         if not auction:
             logger.warning(f"WS: auction {auction_id} not found, rejecting connection")
             await websocket.accept()

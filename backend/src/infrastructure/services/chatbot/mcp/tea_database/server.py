@@ -13,7 +13,7 @@ import re
 from decimal import Decimal
 from typing import Dict, Any, List
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from anyio import get_cancelled_exc_class
 
@@ -22,6 +22,7 @@ from mcp.server.stdio import stdio_server
 from mcp.types import Tool, TextContent
 
 from src.config import get_settings, get_mssql_connection_string
+from src.infrastructure.database.engine import get_database_engine
 from src.infrastructure.services.chatbot.mcp.tea_database.sql_generator import SQLGenerator
 from src.infrastructure.services.chatbot.mcp.tea_database import schema_extractor
 from src.infrastructure.services.chatbot.mcp.tea_visualization.visualization_selector import VisualizationSelector
@@ -35,14 +36,7 @@ logger = logging.getLogger("tea_database_server")
 # DATABASE SETUP
 DATABASE_URL = get_mssql_connection_string()
 
-engine = create_engine(
-    DATABASE_URL,
-    pool_size=settings.DATABASE_POOL_SIZE,
-    max_overflow=settings.DATABASE_MAX_OVERFLOW,
-    pool_timeout=settings.DATABASE_POOL_TIMEOUT,
-    pool_recycle=settings.DATABASE_POOL_RECYCLE,
-    echo=False
-)
+engine = get_database_engine()
 
 # Initialize AI components
 sql_generator = SQLGenerator(api_key=settings.GOOGLE_API_KEY)
@@ -85,7 +79,11 @@ def get_schema() -> str:
 
     if _schema_cache is None:
         logger.info("Extracting database schema...")
-        _schema_cache = schema_extractor.extract_schema()
+        extracted = schema_extractor.extract_schema()
+        if extracted.startswith("Error extracting schema:"):
+            # A transient SQL timeout must not poison the cache for this process.
+            raise RuntimeError("Database schema is temporarily unavailable; retry the request.")
+        _schema_cache = extracted
         logger.info(f"Schema cached ({len(_schema_cache)} chars)")
     return _schema_cache
 

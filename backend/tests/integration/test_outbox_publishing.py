@@ -5,6 +5,7 @@ import json
 from datetime import datetime, timezone
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 from src.domain.models.outbox import AuctionOutbox
 from src.infrastructure.database.base import Base
 from src.infrastructure.repositories.outbox_repository import OutboxRepository
@@ -14,14 +15,15 @@ from src.application.use_cases.buyer.outbox_publisher import OutboxPublisher
 @pytest.fixture
 def db_session_factory():
     """Create in-memory test database and session factory."""
-    engine = create_engine("sqlite:///:memory:")
-    Base.metadata.create_all(engine)
+    engine = create_engine("sqlite:///:memory:", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    AuctionOutbox.__table__.create(engine)
     Session = sessionmaker(bind=engine)
     
     def _session_factory():
         return Session()
     
-    return _session_factory
+    yield _session_factory
+    engine.dispose()
 
 
 @pytest.fixture

@@ -3,7 +3,7 @@ import os
 import logging
 from typing import List, Optional
 from urllib.parse import quote_plus
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 from pathlib import Path
@@ -83,6 +83,18 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: Optional[str] = None
 
     TAVILY_API_KEY: Optional[str] = None
+
+    @field_validator("GOOGLE_API_KEY", "TAVILY_API_KEY", mode="before")
+    @classmethod
+    def normalize_ai_api_key(cls, value):
+        """Docker --env-file preserves quotes that dotenv normally removes."""
+        if value is None:
+            return None
+        normalized = str(value).strip()
+        if len(normalized) >= 2 and normalized[0] == normalized[-1] and normalized[0] in {"'", '"'}:
+            normalized = normalized[1:-1].strip()
+        return normalized or None
+
     AUCTION_API_BASE_URL: Optional[str] = None
     CLOUDINARY_URL: Optional[str] = None
 
@@ -108,19 +120,26 @@ class Settings(BaseSettings):
     DB_TRUSTED_CONNECTION: bool = False
     DATABASE_URL: Optional[str] = None
     INIT_DB_ON_STARTUP: bool = False
+    RUNTIME_SCHEMA_COMPATIBILITY_ENABLED: bool = True
 
     CHAT_DATABASE_URL: Optional[str] = None
 
     # Database pool settings
     DATABASE_POOL_SIZE: int = 5
     DATABASE_MAX_OVERFLOW: int = 10
-    DATABASE_POOL_TIMEOUT: int = 30
+    DATABASE_POOL_TIMEOUT: int = Field(default=5, ge=1)
     DATABASE_POOL_RECYCLE: int = 3600
+    DATABASE_CONNECT_TIMEOUT_SECONDS: int = Field(default=10, ge=1)
+    DATABASE_QUERY_TIMEOUT_SECONDS: int = Field(default=15, ge=1)
+
+    AUCTION_POLL_INTERVAL_SECONDS: float = Field(default=2.0, ge=0.1)
+    OUTBOX_POLL_INTERVAL_SECONDS: float = Field(default=2.0, ge=0.1)
 
     # Chat settings
     MAX_CONVERSATION_HISTORY: int = 50
     CHAT_TIMEOUT_SECONDS: int = 30
     ENABLE_TOPIC_VALIDATION: bool = True
+    MCP_WARMUP_ON_STARTUP: bool = True
 
     # Logging
     LOG_LEVEL: str = "INFO"
@@ -150,8 +169,8 @@ class Settings(BaseSettings):
     OTP_MAX_ATTEMPTS: int = 3
 
     # Analytics settings
-    ANALYTICS_SCHEDULER_ENABLED: bool = True
-    ANALYTICS_SNAPSHOT_INTERVAL_SECONDS: int = 30
+    ANALYTICS_SCHEDULER_ENABLED: bool = False
+    ANALYTICS_SNAPSHOT_INTERVAL_SECONDS: int = 3600
     ANALYTICS_SNAPSHOT_RETENTION_DAYS: int = 90
     ANALYTICS_KPI_LOOKBACK_DAYS: int = 30
     ANALYTICS_CHART_MONTHS: int = 6

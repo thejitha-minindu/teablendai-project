@@ -6,7 +6,7 @@ class AuctionTimingConstants:
     BID_EXTENSION_THRESHOLD = timedelta(seconds=10)
     GRACE_PERIOD = timedelta(seconds=40)
     WAIT_BEFORE_WIN = timedelta(seconds=10)
-    BACKGROUND_TASK_INTERVAL = 0.5
+    BACKGROUND_TASK_INTERVAL = 2.0
 
 class BidConstraints:
     """Business rules for bid placement"""

@@ -3,11 +3,11 @@ SQLAlchemy base configuration shared by domain and repository models.
 """
 import logging
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
+from sqlalchemy import text
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.pool import NullPool
+from src.infrastructure.database.engine import get_database_engine
 
-from src.config import get_mssql_connection_string, get_settings
+from src.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +17,6 @@ Base = declarative_base()
 
 
 def create_database_connection():
-    connection_string = get_mssql_connection_string()
     settings = get_settings()
     logger.info(
         "Initializing MSSQL Base engine: server='%s', port=%s, database='%s', "
@@ -33,12 +32,7 @@ def create_database_connection():
     )
 
     try:
-        return create_engine(
-            connection_string,
-            poolclass=NullPool,
-            echo=False,
-            implicit_returning=False,
-        )
+        return get_database_engine()
     except Exception as e:
         settings = get_settings()
         raise RuntimeError(
