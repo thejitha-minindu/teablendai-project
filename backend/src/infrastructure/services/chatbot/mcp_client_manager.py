@@ -85,13 +85,10 @@ class MCPClientManager:
                 loop = asyncio.get_running_loop()
                 if not hasattr(loop, '_make_subprocess_transport') or \
                    type(loop)._make_subprocess_transport is asyncio.BaseEventLoop._make_subprocess_transport:
-                    # Current loop doesn't support subprocesses; create a new
-                    # ProactorEventLoop-backed subprocess and run the connection there.
                     logger.warning(
                         f"Current event loop ({type(loop).__name__}) lacks subprocess "
-                        f"support. Attempting ProactorEventLoop workaround for {server_name}."
+                        f"support on Windows. Start uvicorn with '--loop none' so ProactorEventLoop is used."
                     )
-                    asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
             # Create server parameters
             server_params = StdioServerParameters(
