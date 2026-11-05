@@ -484,15 +484,12 @@ export default function AuthProfilePage() {
 
   // Loading Screen
   if (isPageLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-green-50 flex items-center justify-center">
-        <div className="flex items-center gap-3 rounded-full border border-green-200 bg-white px-5 py-3 text-sm font-semibold text-green-700 shadow-sm">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading profile...
-        </div>
-      </div>
-    );
-  }
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 text-center text-gray-500">
+      Loading Profile...
+    </div>
+  );
+}
 
   // Error Screen (if API fails completely)
   if (!profile) {
