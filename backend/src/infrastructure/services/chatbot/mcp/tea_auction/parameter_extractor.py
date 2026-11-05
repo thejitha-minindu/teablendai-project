@@ -33,9 +33,10 @@ class ParameterExtractor:
     """Extract structured parameters from natural language using LLM"""
     
     def __init__(self):
+        api_key = settings.GOOGLE_API_KEY or "ci-placeholder-key"
         self.llm = ChatGoogleGenerativeAI(
             model=settings.MODEL_NAME,
-            google_api_key=settings.GOOGLE_API_KEY,
+            google_api_key=api_key,
             temperature=0
         )
 

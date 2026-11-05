@@ -79,9 +79,10 @@ class ChatService:
         self.auction_handler = AuctionHandler(message_repo, mcp_client)
 
         self.settings = get_settings()
+        api_key = self.settings.GOOGLE_API_KEY or "ci-placeholder-key"
         self.llm = ChatGoogleGenerativeAI(
             model=self.settings.MODEL_NAME,
-            google_api_key=self.settings.GOOGLE_API_KEY,
+            google_api_key=api_key,
             temperature=0
         )
     

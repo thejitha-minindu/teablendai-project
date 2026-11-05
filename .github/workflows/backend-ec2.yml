@@ -40,6 +40,8 @@ jobs:
           docker run --rm --network none
           -e ENVIRONMENT=test
           -e JWT_SECRET_KEY=ci-only-not-a-production-secret
+          -e GOOGLE_API_KEY=ci-dummy-google-api-key
+          -e TAVILY_API_KEY=ci-dummy-tavily-api-key
           -e DATABASE_URL=sqlite:////tmp/teablendai-ci.db
           -e CHAT_DATABASE_URL=sqlite:////tmp/teablendai-chat-ci.db
           -e INIT_DB_ON_STARTUP=false
