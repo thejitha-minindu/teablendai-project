@@ -79,6 +79,7 @@ class IntentClassifier:
         'quantity', 'amount', 'volume',
         'group by', 'breakdown', 'categorize',
         'top', 'bottom', 'highest', 'lowest', 'best', 'worst',
+        'profit', 'margin', 'profitability', 'blend', 'blends',
     }
 
     KNOWLEDGE_INDICATORS = {
@@ -89,6 +90,14 @@ class IntentClassifier:
         'flavor', 'flavour', 'taste', 'aroma',
         'history', 'historical', 'origin', 'elevation',
         'ceylon tea', 'difference between', 'why is',
+        'unique', 'distinctive', 'special about', 'what makes',
+    }
+
+    TEA_DOMAIN_INDICATORS = {
+        'tea', 'ceylon', 'dimbula', 'uva', 'kand', 'brew', 'camellia',
+        'blend', 'auction', 'bid', 'buyer', 'seller', 'purchase', 'sales',
+        'sale', 'profit', 'margin', 'revenue', 'estate', 'tea grade',
+        'harvest', 'leaf', 'leaves', 'oxidation', 'steep', 'bopf', 'bop',
     }
 
     def __init__(self):
@@ -129,6 +138,11 @@ class IntentClassifier:
         """Tier 1: Fast Rule & Domain Heuristic Matcher (< 1ms)"""
         q = question.lower().strip()
 
+        # Questions asking what distinguishes a tea/product are research
+        # questions even when they contain a blend name also present in data.
+        if re.search(r"\bwhat makes\b.+\b(unique|distinctive|special)\b", q):
+            return "knowledge"
+
         if self.is_greeting(q) and len(q.split()) <= 6:
             return "general_greeting"
 
@@ -147,13 +161,24 @@ class IntentClassifier:
 
         return None
 
+    @classmethod
+    def _has_tea_domain_context(cls, question: str) -> bool:
+        q = question.lower()
+        return any(indicator in q for indicator in cls.TEA_DOMAIN_INDICATORS)
+
     def classify(self, question: str) -> QueryIntent:
         """Synchronous legacy interface with smart fallbacks"""
         fast_result = self.classify_fast(question)
-        if fast_result is not None:
+        if fast_result == "general_greeting":
             return fast_result
 
         q = question.lower().strip()
+        if not self._has_tea_domain_context(q):
+            return "off_topic"
+        if fast_result is not None:
+            return fast_result
+        if re.search(r"\bwhat makes\b.+\b(unique|distinctive|special)\b", q):
+            return "knowledge"
         if any(q.startswith(p) for p in ['what is', 'what are', 'why', 'how to']):
             return "knowledge"
         return "database"
@@ -196,6 +221,24 @@ class IntentClassifier:
                 suggested_questions=[]
             )
 
+        if fast_intent == "knowledge" and self._has_tea_domain_context(question):
+            return SemanticClassificationResult(
+                is_tea_or_platform_related=True,
+                intent="knowledge",
+                target_domain="botany_culture",
+                reasoning="Fast rule recognized a tea knowledge question.",
+                suggested_questions=[],
+            )
+
+        if fast_intent == "database" and self._has_tea_domain_context(question):
+            return SemanticClassificationResult(
+                is_tea_or_platform_related=True,
+                intent="database",
+                target_domain="analytics_warehouse",
+                reasoning="Fast rules recognized a tea business data query.",
+                suggested_questions=[],
+            )
+
         # Use LLM Guardrail for complex / ambiguous queries
         try:
             llm = self._get_guardrail_llm()
@@ -220,8 +263,9 @@ class IntentClassifier:
 
         # Fallback if LLM unavailable
         fallback_intent = self.classify(question)
+        fallback_is_related = fallback_intent != "off_topic"
         return SemanticClassificationResult(
-            is_tea_or_platform_related=True,
+            is_tea_or_platform_related=fallback_is_related,
             intent=fallback_intent,
             target_domain="analytics_warehouse" if fallback_intent == "database" else "botany_culture",
             reasoning="Classified via heuristic fallback engine.",

@@ -14,7 +14,10 @@ import { getAuthClaims, getHomePathByRole, setStoredAuthToken, clearStoredAuthTo
 import { apiClient } from "@/lib/apiClient";
 import authService, { GoogleCredentialResponse } from "@/services/authService";
 
-const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+// Keep this fallback aligned with the client ID verified by the backend.
+const GOOGLE_CLIENT_ID =
+  process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+  "66190572875-bnen1rjau39fma3pd86c1d6udqm22dri.apps.googleusercontent.com";
 
 function getSafeRedirectPath(redirectPath: string | null) {
   if (!redirectPath || !redirectPath.startsWith("/")) {

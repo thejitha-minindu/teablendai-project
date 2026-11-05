@@ -6,6 +6,7 @@ Used when database has no relevant data.
 """
 
 import anyio
+import asyncio
 import json
 import logging
 from typing import Dict, Any, List
@@ -77,11 +78,12 @@ async def search_tea_web(query: str, max_results: int = 5) -> Dict[str, Any]:
         # Add tea context to query for better results
         tea_query = f"Sri Lanka Ceylon tea industry {query}"
         
-        response = client.search(
+        response = await asyncio.to_thread(
+            client.search,
             query=tea_query,
-            search_depth="advanced",
+            search_depth="basic",
             max_results=max_results,
-            include_answer=True
+            include_answer=True,
         )
         
         logger.info(f"[SEARCH] Got {len(response.get('results', []))} results")
@@ -98,6 +100,10 @@ async def search_tea_web(query: str, max_results: int = 5) -> Dict[str, Any]:
         # Step 3: Generate answer with Gemini
         if results:
             answer = await generate_answer(query, results)
+            if not answer:
+                answer = response.get("answer") or "\n\n".join(
+                    f"{result['title']}: {result['content']}" for result in results[:3]
+                )
         else:
             answer = "No relevant information found for this tea-related query."
         
@@ -169,7 +175,7 @@ async def generate_answer(question: str, results: List[Dict]) -> str:
         logger.error(f"[SEARCH] Answer generation failed: {e}")
         # Fallback: return snippet from first result
         if results:
-            return results[0].get("content", "")[:300]
+            return ""
         return "Could not generate answer from search results."
 
 

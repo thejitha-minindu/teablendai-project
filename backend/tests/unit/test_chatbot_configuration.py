@@ -96,3 +96,53 @@ async def test_valid_profit_results_are_not_replaced_by_web_search():
     service.mcp_client.search_web.assert_not_awaited()
     assert result["source"] == "database"
     assert result["data"] == rows
+
+
+@pytest.mark.asyncio
+async def test_what_makes_tea_unique_routes_directly_to_web_knowledge():
+    from src.infrastructure.services.chatbot.intent_classifier import IntentClassifier
+
+    classifier = IntentClassifier()
+    result = await classifier.classify_semantic("What makes Dimbula tea unique?")
+    assert classifier.classify_fast("What makes Dimbula tea unique?") == "knowledge"
+    assert result.is_tea_or_platform_related is True
+    assert result.intent == "knowledge"
+    assert result.target_domain == "botany_culture"
+    assert classifier._llm is None
+
+
+@pytest.mark.asyncio
+async def test_profit_question_keeps_database_route_without_gemini_quota():
+    from src.infrastructure.services.chatbot.intent_classifier import IntentClassifier
+
+    classifier = IntentClassifier()
+    result = await classifier.classify_semantic("Which blends had the highest profit margins in 2024?")
+    assert result.intent == "database"
+    assert result.is_tea_or_platform_related is True
+    assert classifier._llm is None
+
+
+@pytest.mark.asyncio
+async def test_off_topic_guardrail_works_without_gemini():
+    from src.infrastructure.services.chatbot.intent_classifier import IntentClassifier
+
+    classifier = IntentClassifier()
+    classifier._get_guardrail_llm = Mock(side_effect=RuntimeError("Gemini quota exceeded"))
+    result = await classifier.classify_semantic("How do I play basketball?")
+    assert result.intent == "off_topic"
+    assert result.is_tea_or_platform_related is False
+
+
+@pytest.mark.asyncio
+async def test_profit_margin_sql_fallback_when_gemini_quota_is_exhausted():
+    from src.infrastructure.services.chatbot.mcp.tea_database.sql_generator import SQLGenerator
+
+    generator = SQLGenerator.__new__(SQLGenerator)
+    generator.llm = SimpleNamespace(ainvoke=AsyncMock(side_effect=RuntimeError("429 quota exceeded")))
+    schema = "TABLE: TeaBlendSale\nTABLE: BlendPurchaseMapping\nTABLE: TeaPurchase"
+    sql = await generator.generate_sql("Which blends had the highest profit margins in 2024?", schema)
+    upper = sql.upper()
+    assert upper.startswith("SELECT TOP 100")
+    assert "SALEDATE >= '2024-01-01'" in upper
+    assert "SALEDATE < '2025-01-01'" in upper
+    assert "GROUP BY BPM.SALEID" in upper

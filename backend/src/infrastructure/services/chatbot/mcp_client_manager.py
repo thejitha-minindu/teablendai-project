@@ -244,7 +244,7 @@ class MCPClientManager:
                     "search_web",
                     arguments={"query": query}
                 ),
-                timeout=30.0
+                timeout=45.0
             )
             
             # Parse response
