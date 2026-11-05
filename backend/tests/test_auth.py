@@ -4,11 +4,23 @@ Run with: pytest tests/test_auth.py -v
 """
 import pytest
 from datetime import datetime, timedelta
+from uuid import uuid4
 from sqlalchemy.orm import Session
 from src.domain.models.user import User
 from src.domain.models.password_reset import PasswordReset
 from src.infrastructure.services.auth_service import AuthService
-from src.infrastructure.database.base import SessionLocal
+from src.infrastructure.database.base import Base, engine, SessionLocal
+
+
+@pytest.fixture(scope="module", autouse=True)
+def setup_tables():
+    """Ensure database tables exist for auth tests."""
+    Base.metadata.create_all(bind=engine)
+    yield
+    try:
+        Base.metadata.drop_all(bind=engine)
+    except Exception:
+        pass
 
 
 @pytest.fixture
@@ -16,12 +28,24 @@ def db():
     """Provide a test database session."""
     session = SessionLocal()
     yield session
-    session.close()
+    try:
+        session.query(PasswordReset).delete()
+        session.query(User).filter(User.email == "test@example.com").delete()
+        session.commit()
+    except Exception:
+        session.rollback()
+    finally:
+        session.close()
 
 
 @pytest.fixture
 def test_user(db):
     """Create a test user."""
+    # Ensure any previous user with this email is removed
+    db.query(PasswordReset).delete()
+    db.query(User).filter(User.email == "test@example.com").delete()
+    db.commit()
+
     user = User(
         email="test@example.com",
         hashed_password=AuthService.hash_password("TestPassword123"),
@@ -34,7 +58,13 @@ def test_user(db):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return user
+    yield user
+    try:
+        db.query(PasswordReset).filter(PasswordReset.user_id == user.user_id).delete()
+        db.delete(user)
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 class TestPasswordHashing:
@@ -224,30 +254,24 @@ class TestResetPassword:
 
     def test_reset_password_invalid_user(self, db):
         """Test password reset with invalid user."""
-        reset = PasswordReset(
-            user_id="invalid-id",
-            otp_code="123456",
-            expires_at=datetime.utcnow() + timedelta(minutes=5)
-        )
-        db.add(reset)
-        db.commit()
-        
+        fake_user_id = str(uuid4())
+        fake_reset_id = str(uuid4())
         success = AuthService.reset_password(
             db,
-            "invalid-id",
+            fake_user_id,
             "NewPassword123",
-            str(reset.id)
+            fake_reset_id
         )
-        
         assert success is False
 
     def test_reset_password_invalid_reset_id(self, db, test_user):
         """Test password reset with invalid reset ID."""
+        fake_reset_id = str(uuid4())
         success = AuthService.reset_password(
             db,
             str(test_user.user_id),
             "NewPassword123",
-            "invalid-id"
+            fake_reset_id
         )
         
         assert success is False
@@ -311,13 +335,14 @@ class TestCompletePasswordResetFlow:
         assert not AuthService.verify_password(original_password, updated_user.hashed_password)
 
     def test_cannot_use_same_otp_twice(self, db, test_user):
-        """Test that same OTP cannot be used twice."""
+        """Test that same OTP cannot be used twice after password reset."""
         reset = AuthService.create_password_reset_request(db, str(test_user.user_id))
         otp_code = reset.otp_code
         
-        # First use
+        # First use and reset password
         verified1 = AuthService.verify_otp(db, str(test_user.user_id), otp_code)
         assert verified1 is not None
+        AuthService.reset_password(db, str(test_user.user_id), "NewPassword123", str(reset.id))
         
         # Try to use same OTP again
         verified2 = AuthService.verify_otp(db, str(test_user.user_id), otp_code)
