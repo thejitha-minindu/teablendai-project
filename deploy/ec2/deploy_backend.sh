@@ -66,10 +66,16 @@ if [[ "$ENTRYPOINT" != "null" || "$PORT_BINDING" != '[{"HostIp":"127.0.0.1","Hos
   exit 1
 fi
 
-mapfile -t APP_CMD < <(sudo docker inspect --format '{{range .Config.Cmd}}{{println .}}{{end}}' "$CONTAINER")
-mapfile -t MOUNTS < <(sudo docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{printf "%s|%s|%t\n" .Name .Destination .RW}}{{end}}{{end}}' "$CONTAINER")
+mapfile -t APP_CMD < <(
+  sudo docker inspect --format '{{range .Config.Cmd}}{{println .}}{{end}}' "$CONTAINER" \
+    | sed '/^$/d'
+)
+mapfile -t MOUNTS < <(
+  sudo docker inspect --format '{{range .Mounts}}{{if eq .Type "volume"}}{{printf "%s|%s|%t\n" .Name .Destination .RW}}{{end}}{{end}}' "$CONTAINER" \
+    | sed '/^$/d'
+)
 if [[ ${#APP_CMD[@]} -eq 0 || ${#MOUNTS[@]} -ne 2 ]]; then
-  echo "Unexpected backend command or persistent volume configuration" >&2
+  echo "Unexpected backend command or persistent volume configuration (command entries: ${#APP_CMD[@]}, volume mounts: ${#MOUNTS[@]})" >&2
   exit 1
 fi
 
