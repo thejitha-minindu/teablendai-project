@@ -22,9 +22,7 @@ htmlcov/
 *~
 
 # Environment
-.env
-.env.local
-.env.*.local
+.env*
 
 # Logs
 *.log
@@ -33,6 +31,14 @@ logs/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local and persistent application data
+data_warehouse/
+uploads/
+test_*.db
+*_test.db
+*.sqlite
+*.sqlite3
 
 # Docker
 Dockerfile

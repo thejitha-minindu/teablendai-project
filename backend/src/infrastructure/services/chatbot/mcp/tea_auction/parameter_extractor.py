@@ -175,8 +175,8 @@ class ParameterExtractor:
 
         return None, None, None
 
-    def _extract_natural_estate_name(self, user_message: str) -> Optional[str]:
-        """Deterministically extract estate name from short free-text replies."""
+    def _extract_natural_estate_name(self, user_message: str, is_single_field: bool = False) -> Optional[str]:
+        """Deterministically extract estate name from free-text replies."""
         if not user_message:
             return None
 
@@ -192,6 +192,11 @@ class ParameterExtractor:
         if lowered in stop_words:
             return None
 
+        # Look for explicit patterns like: estate: Kandy Valley Estate or estate name: XYZ
+        estate_match = re.search(r'(?:estate(?:\s*name)?|garden)\s*[:=]\s*([^\n,;]+)', value, re.IGNORECASE)
+        if estate_match:
+            return estate_match.group(1).strip()
+
         # Handle prefixed forms like: estate: Kandy Valley Estate
         for prefix in ("estate name", "estate"):
             if lowered.startswith(prefix):
@@ -199,7 +204,12 @@ class ParameterExtractor:
                 if len(parts) == 2 and parts[1].strip():
                     return parts[1].strip()
 
-        return value
+        # Only treat entire text as estate name if this is a single field prompt
+        # (e.g. user answering "What is the estate name?")
+        if is_single_field and len(value) <= 120:
+            return value
+
+        return None
 
     def _extract_natural_start_time(self, user_message: str) -> Optional[Dict[str, Any]]:
         """
@@ -455,7 +465,8 @@ class ParameterExtractor:
                     normalized["start_time"] = natural_start_time["start_time"]
 
             if "estate_name" in expected_fields and not normalized.get("estate_name"):
-                natural_estate_name = self._extract_natural_estate_name(user_message)
+                is_single = len(expected_fields) == 1
+                natural_estate_name = self._extract_natural_estate_name(user_message, is_single_field=is_single)
                 if natural_estate_name:
                     normalized["estate_name"] = natural_estate_name
             
@@ -531,15 +542,17 @@ class ParameterExtractor:
         Returns: "create", "update", "delete", "schedule", or "unknown"
         """
         msg = user_message.lower()
+        has_id = bool(self.extract_auction_id(user_message))
         
-        if any(word in msg for word in ['update', 'change', 'modify', 'edit']):
-            return "update"
+        # Explicit creation keywords take precedence
+        if any(word in msg for word in ['create', 'new', 'add', 'start auction', 'list', 'post']):
+            return "create"
         elif any(word in msg for word in ['delete', 'remove', 'cancel', 'close']):
             return "delete"
-        elif any(word in msg for word in ['schedule', 'set time', 'set date', 'reschedule']):
-            return "schedule"
-        elif any(word in msg for word in ['create', 'new', 'add', 'start auction', 'list', 'post']):
-            return "create"
+        elif any(word in msg for word in ['update', 'change', 'modify', 'edit', 'reschedule']):
+            return "update"
+        elif any(word in msg for word in ['schedule', 'set time', 'set date']):
+            return "update" if has_id else "create"
         else:
             return "unknown"
     

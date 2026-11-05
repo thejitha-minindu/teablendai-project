@@ -600,7 +600,7 @@ class AuctionHandler:
         
         logger.info(f"[AuctionHandler] Starting {action} operation")
         
-        if action == "create":
+        if action in ("create", "schedule"):
             return await self._handle_create_start(user_message, conversation, user_id)
         
         elif action == "update":

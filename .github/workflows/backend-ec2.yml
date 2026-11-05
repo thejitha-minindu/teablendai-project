@@ -1,0 +1,134 @@
+name: Backend CI and EC2 deployment
+
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-ec2-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  backend-tests:
+    name: Build backend test image and run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build CI image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.ci
+          tags: teablendai-backend-ci:${{ github.sha }}
+          load: true
+          cache-from: type=gha,scope=backend-ci
+          cache-to: type=gha,mode=max,scope=backend-ci
+
+      - name: Run backend tests
+        run: >-
+          docker run --rm --network none
+          -e ENVIRONMENT=test
+          -e JWT_SECRET_KEY=ci-only-not-a-production-secret
+          -e DATABASE_URL=sqlite:////tmp/teablendai-ci.db
+          -e CHAT_DATABASE_URL=sqlite:////tmp/teablendai-chat-ci.db
+          -e INIT_DB_ON_STARTUP=false
+          -e RUNTIME_SCHEMA_COMPATIBILITY_ENABLED=false
+          -e ANALYTICS_SCHEDULER_ENABLED=false
+          -e MCP_WARMUP_ON_STARTUP=false
+          teablendai-backend-ci:${{ github.sha }}
+
+  deploy-ec2:
+    name: Deploy backend Docker container to EC2
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/dev'
+    needs: backend-tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Create secret-free source archive
+        run: |
+          tar -czf "$RUNNER_TEMP/backend-source.tar.gz" \
+            --exclude='backend/.env*' \
+            --exclude='backend/venv' \
+            --exclude='backend/.venv' \
+            --exclude='backend/**/__pycache__' \
+            --exclude='backend/__pycache__' \
+            --exclude='backend/.pytest_cache' \
+            --exclude='backend/data_warehouse' \
+            --exclude='backend/uploads' \
+            --exclude='backend/test_*.db' \
+            --exclude='backend/*_test.db' \
+            --exclude='backend/*.sqlite' \
+            --exclude='backend/*.sqlite3' \
+            --exclude='backend/*.log' \
+            --exclude='backend/.git' \
+            -C "$GITHUB_WORKSPACE" backend
+
+      - name: Configure pinned EC2 SSH access
+        env:
+          EC2_SSH_PRIVATE_KEY: ${{ secrets.EC2_SSH_PRIVATE_KEY }}
+        run: |
+          install -m 700 -d "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$EC2_SSH_PRIVATE_KEY" | tr -d '\r' > "$RUNNER_TEMP/ssh/ec2_key"
+          chmod 600 "$RUNNER_TEMP/ssh/ec2_key"
+          cat > "$RUNNER_TEMP/ssh/known_hosts" <<'EOF'
+          teablendai-api.duckdns.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBjBCp9fycYzLjoXZzSTsgc7zsG+ZSuM3Rfm+jrzb21p
+          EOF
+
+      - name: Upload source and deploy script
+        env:
+          SSH_KEY_FILE: ${{ runner.temp }}/ssh/ec2_key
+          KNOWN_HOSTS_FILE: ${{ runner.temp }}/ssh/known_hosts
+          DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          remote_dir="/home/ubuntu/teablendai/cicd-deployments/${COMMIT_SHA}-${DEPLOY_ID}"
+          ssh -i "$SSH_KEY_FILE" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$KNOWN_HOSTS_FILE" \
+            ubuntu@teablendai-api.duckdns.org \
+            "mkdir -p '$remote_dir'"
+          scp -i "$SSH_KEY_FILE" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$KNOWN_HOSTS_FILE" \
+            "$RUNNER_TEMP/backend-source.tar.gz" \
+            deploy/ec2/deploy_backend.sh \
+            "ubuntu@teablendai-api.duckdns.org:$remote_dir/"
+
+      - name: Deploy and verify backend container
+        env:
+          SSH_KEY_FILE: ${{ runner.temp }}/ssh/ec2_key
+          KNOWN_HOSTS_FILE: ${{ runner.temp }}/ssh/known_hosts
+          DEPLOY_ID: ${{ github.run_id }}-${{ github.run_attempt }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          remote_script="/home/ubuntu/teablendai/cicd-deployments/${COMMIT_SHA}-${DEPLOY_ID}/deploy_backend.sh"
+          ssh -i "$SSH_KEY_FILE" \
+            -o BatchMode=yes \
+            -o IdentitiesOnly=yes \
+            -o StrictHostKeyChecking=yes \
+            -o "UserKnownHostsFile=$KNOWN_HOSTS_FILE" \
+            ubuntu@teablendai-api.duckdns.org \
+            "bash '$remote_script' '$COMMIT_SHA' '$DEPLOY_ID'"
+
+      - name: Verify public API health
+        run: >-
+          curl --fail --silent --show-error --retry 10 --retry-delay 3
+          --retry-all-errors
+          https://teablendai-api.duckdns.org/api/v1/health
